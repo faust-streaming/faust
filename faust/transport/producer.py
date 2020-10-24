@@ -103,6 +103,7 @@ class ProducerBuffer(Service, ProducerBufferT):
 
 class Producer(Service, ProducerT):
     """Base Producer."""
+    """Base Producer."""
 
     app: AppT
 

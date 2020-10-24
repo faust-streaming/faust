@@ -180,6 +180,7 @@ class Fetcher(Service):
             self.set_shutdown()
 
 
+# Probably this has to go because Transactions are supported in aiokafka
 class TransactionManager(Service, TransactionManagerT):
     """Manage producer transactions."""
 

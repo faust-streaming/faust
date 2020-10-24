@@ -202,6 +202,7 @@ class ProducerT(ServiceT):
         ...
 
 
+# Probably this has to go because Transactions are supported in aiokafka
 class TransactionManagerT(ProducerT):
     consumer: 'ConsumerT'
     producer: 'ProducerT'
