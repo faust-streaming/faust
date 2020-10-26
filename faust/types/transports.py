@@ -514,12 +514,5 @@ class TransportT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def create_transaction_manager(self,
-                                   consumer: ConsumerT,
-                                   producer: ProducerT,
-                                   **kwargs: Any) -> TransactionManagerT:
-        ...
-
-    @abc.abstractmethod
     def create_conductor(self, **kwargs: Any) -> ConductorT:
         ...
