@@ -73,17 +73,17 @@ class Transport(TransportT):
         """Create new producer."""
         return self.Producer(self, **kwargs)
 
-    def create_transaction_manager(self,
-                                   consumer: ConsumerT,
-                                   producer: ProducerT,
-                                   **kwargs: Any) -> TransactionManagerT:
-        """Create new transaction manager."""
-        return self.TransactionManager(
-            self,
-            consumer=consumer,
-            producer=producer,
-            **kwargs,
-        )
+    # def create_transaction_manager(self,
+    #                                consumer: ConsumerT,
+    #                                producer: ProducerT,
+    #                                **kwargs: Any) -> TransactionManagerT:
+    #     """Create new transaction manager."""
+    #     return self.TransactionManager(
+    #         self,
+    #         consumer=consumer,
+    #         producer=producer,
+    #         **kwargs,
+    #     )
 
     def create_conductor(self, **kwargs: Any) -> ConductorT:
         """Create new consumer conductor."""

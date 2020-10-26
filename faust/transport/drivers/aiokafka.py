@@ -958,7 +958,7 @@ class Producer(base.Producer):
 
     def _settings_extra(self) -> Mapping[str, Any]:
         if self.app.in_transaction:
-            return {'acks': 'all'}
+            return {'acks': 'all', 'enable_idempotence': True}
         return {}
 
     def _new_producer(self) -> aiokafka.AIOKafkaProducer:
@@ -971,8 +971,8 @@ class Producer(base.Producer):
 
     @property
     def _producer_type(self) -> Type[aiokafka.AIOKafkaProducer]:
-        if self.app.in_transaction:
-            return aiokafka.MultiTXNProducer
+        # if self.app.in_transaction:
+        #     return aiokafka.MultiTXNProducer
         return aiokafka.AIOKafkaProducer
 
     # async def _on_irrecoverable_error(self, exc: BaseException) -> None:
