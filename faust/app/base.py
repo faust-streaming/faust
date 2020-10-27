@@ -1427,14 +1427,6 @@ class App(AppT, Service):
             callback=callback,
         )
 
-    @cached_property
-    def in_transaction(self) -> bool:
-        """Return :const:`True` if stream is using transactions."""
-        return (
-            self.in_worker and
-            self.conf.processing_guarantee == ProcessingGuarantee.EXACTLY_ONCE
-        )
-
     def LiveCheck(self, **kwargs: Any) -> _LiveCheck:
         """Return new LiveCheck instance testing features for this app."""
         from faust.livecheck import LiveCheck
@@ -1443,11 +1435,6 @@ class App(AppT, Service):
     @stampede
     async def maybe_start_producer(self) -> ProducerT:
         """Ensure producer is started."""
-        # if self.in_transaction:
-        #     # return TransactionManager when
-        #     # processing_guarantee="exactly_once" enabled.
-        #     return self.consumer.transactions
-        # else:
         producer = self.producer
         # producer may also have been started by app.start()
         await producer.maybe_start()
@@ -1584,9 +1571,6 @@ class App(AppT, Service):
                     # we need to wait for them.
                     await T(self._consumer_wait_empty)(consumer, on_timeout)
                     await T(self._producer_flush)(on_timeout)
-                    # if self.in_transaction:
-                    #     await T(consumer.transactions.on_partitions_revoked)(
-                    #         revoked)
                 else:
                     self.log.dev('ON P. REVOKED NOT COMMITTING: NO ASSIGNMENT')
                 on_timeout.info('+send signal: on_partitions_revoked')
@@ -1641,9 +1625,6 @@ class App(AppT, Service):
                 on_timeout.info('topics.on_partitions_assigned()')
                 await T(self.topics.on_partitions_assigned)(assigned)
                 on_timeout.info('transactions.on_rebalance()')
-                # if self.in_transaction:
-                #     await T(consumer.transactions.on_rebalance)(
-                #         assigned, revoked, newly_assigned)
                 on_timeout.info('tables.on_rebalance()')
                 await asyncio.sleep(0)
                 await T(self.tables.on_rebalance)(

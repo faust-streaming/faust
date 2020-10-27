@@ -45,7 +45,7 @@ __all__ = [
     'ConsumerT',
     'ProducerT',
     'ConductorT',
-    'TransactionManagerT',
+    # 'TransactionManagerT',
     'TransportT',
 ]
 
@@ -170,90 +170,9 @@ class ProducerT(ServiceT):
         ...
 
     @abc.abstractmethod
-    async def begin_transaction(self, transactional_id: str) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def commit_transaction(self, transactional_id: str) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def abort_transaction(self, transactional_id: str) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def stop_transaction(self, transactional_id: str) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def maybe_begin_transaction(self, transactional_id: str) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def commit_transactions(
-            self,
-            tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-            group_id: str,
-            start_new_transaction: bool = True) -> None:
-        ...
-
-    @abc.abstractmethod
     def supports_headers(self) -> bool:
         ...
 
-
-# Probably this has to go because Transactions are supported in aiokafka
-class TransactionManagerT(ProducerT):
-    consumer: 'ConsumerT'
-    producer: 'ProducerT'
-
-    @abc.abstractmethod
-    def __init__(self,
-                 transport: 'TransportT',
-                 loop: asyncio.AbstractEventLoop = None,
-                 *,
-                 consumer: 'ConsumerT',
-                 producer: 'ProducerT',
-                 **kwargs: Any) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def on_partitions_revoked(self, revoked: Set[TP]) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
-        ...
-
-    @abc.abstractmethod
-    async def commit(self, offsets: Mapping[TP, int],
-                     start_new_transaction: bool = True) -> bool:
-        ...
-
-    async def begin_transaction(self, transactional_id: str) -> None:
-        raise NotImplementedError()
-
-    async def commit_transaction(self, transactional_id: str) -> None:
-        raise NotImplementedError()
-
-    async def abort_transaction(self, transactional_id: str) -> None:
-        raise NotImplementedError()
-
-    async def stop_transaction(self, transactional_id: str) -> None:
-        raise NotImplementedError()
-
-    async def maybe_begin_transaction(self, transactional_id: str) -> None:
-        raise NotImplementedError()
-
-    async def commit_transactions(
-            self,
-            tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-            group_id: str,
-            start_new_transaction: bool = True) -> None:
-        raise NotImplementedError()
 
 
 class SchedulingStrategyT:
@@ -272,7 +191,7 @@ class ConsumerT(ServiceT):
     #: The transport that created this Consumer.
     transport: 'TransportT'
 
-    transactions: TransactionManagerT
+    # transactions: TransactionManagerT
 
     #: How often we commit topic offsets.
     #: See :setting:`broker_commit_interval`.
@@ -477,7 +396,7 @@ class TransportT(abc.ABC):
     Producer: ClassVar[Type[ProducerT]]
 
     #: The TransactionManager class used for managing multiple transactions.
-    TransactionManager: ClassVar[Type[TransactionManagerT]]
+    # TransactionManager: ClassVar[Type[TransactionManagerT]]
 
     #: The Conductor class used to delegate messages from Consumer to streams.
     Conductor: ClassVar[Type[ConductorT]]

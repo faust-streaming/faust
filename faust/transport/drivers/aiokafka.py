@@ -914,7 +914,6 @@ class Producer(base.Producer):
             'max_batch_size': self.max_batch_size,
             'max_request_size': self.max_request_size,
             'compression_type': self.compression_type,
-            # 'on_irrecoverable_error': self._on_irrecoverable_error,
             'security_protocol': 'SSL' if self.ssl_context else 'PLAINTEXT',
             'partitioner': self.partitioner,
             'request_timeout_ms': int(self.request_timeout * 1000),
@@ -925,62 +924,18 @@ class Producer(base.Producer):
         return credentials_to_aiokafka_auth(
             self.credentials, self.ssl_context)
 
-    # async def begin_transaction(self, transactional_id: str) -> None:
-    #     """Begin transaction by id."""
-    #     await self._ensure_producer().begin_transaction(transactional_id)
-
-    # async def commit_transaction(self, transactional_id: str) -> None:
-    #     """Commit transaction by id."""
-    #     await self._ensure_producer().commit_transaction(transactional_id)
-
-    # async def abort_transaction(self, transactional_id: str) -> None:
-    #     """Abort and rollback transaction by id."""
-    #     await self._ensure_producer().abort_transaction(transactional_id)
-
-    # async def stop_transaction(self, transactional_id: str) -> None:
-    #     """Stop transaction by id."""
-    #     await self._ensure_producer().stop_transaction(transactional_id)
-
-    # async def maybe_begin_transaction(self, transactional_id: str) -> None:
-    #     """Begin transaction (if one does not already exist)."""
-    #     await self._ensure_producer().maybe_begin_transaction(transactional_id)
-
-    # async def commit_transactions(
-    #         self,
-    #         tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-    #         group_id: str,
-    #         start_new_transaction: bool = True) -> None:
-    #     """Commit transactions."""
-    #     await self._ensure_producer().commit(
-    #         tid_to_offset_map, group_id,
-    #         start_new_transaction=start_new_transaction,
-    #     )
-
     def _settings_extra(self) -> Mapping[str, Any]:
         if self.app.in_transaction:
             return {'acks': 'all', 'enable_idempotence': True}
         return {}
 
     def _new_producer(self) -> aiokafka.AIOKafkaProducer:
-        return self._producer_type(
+        return aiokafka.AIOKafkaProducer(
             loop=self.loop,
             **{**self._settings_default(),
                **self._settings_auth(),
                **self._settings_extra()},
         )
-
-    @property
-    def _producer_type(self) -> Type[aiokafka.AIOKafkaProducer]:
-        # if self.app.in_transaction:
-        #     return aiokafka.MultiTXNProducer
-        return aiokafka.AIOKafkaProducer
-
-    # async def _on_irrecoverable_error(self, exc: BaseException) -> None:
-    #     consumer = self.transport.app.consumer
-    #     if consumer is not None:  # pragma: no cover
-    #         # coverage executes this line, but does not mark as covered.
-    #         await consumer.crash(exc)
-    #     await self.crash(exc)
 
     async def create_topic(self,
                            topic: str,

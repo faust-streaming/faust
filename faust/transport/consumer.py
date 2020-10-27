@@ -87,7 +87,6 @@ from faust.types.transports import (
     PartitionsRevokedCallback,
     ProducerT,
     TPorTopicSet,
-    TransactionManagerT,
     TransportT,
 )
 from faust.types.tuples import FutureMessage
@@ -178,177 +177,6 @@ class Fetcher(Service):
             pass
         finally:
             self.set_shutdown()
-
-
-# Probably this has to go because Transactions are supported in aiokafka
-class TransactionManager(Service, TransactionManagerT):
-    """Manage producer transactions."""
-
-    app: AppT
-
-    transactional_id_format = '{group_id}-{tpg.group}-{tpg.partition}'
-
-    def __init__(self, transport: TransportT,
-                 *,
-                 consumer: 'ConsumerT',
-                 producer: 'ProducerT',
-                 **kwargs: Any) -> None:
-        self.transport = transport
-        self.app = self.transport.app
-        self.consumer = consumer
-        self.producer = producer
-        super().__init__(**kwargs)
-
-    async def flush(self) -> None:
-        """Wait for producer to transmit all pending messages."""
-        await self.producer.flush()
-
-    async def on_partitions_revoked(self, revoked: Set[TP]) -> None:
-        """Call when the cluster is rebalancing and partitions are revoked."""
-        await traced_from_parent_span()(self.flush)()
-
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
-        """Call when the cluster is rebalancing."""
-        T = traced_from_parent_span()
-        # Stop producers for revoked partitions.
-        revoked_tids = sorted(self._tps_to_transactional_ids(revoked))
-        if revoked_tids:
-            self.log.info(
-                'Stopping %r transactional %s for %r revoked %s...',
-                len(revoked_tids),
-                pluralize(len(revoked_tids), 'producer'),
-                len(revoked),
-                pluralize(len(revoked), 'partition'))
-            await T(self._stop_transactions, tids=revoked_tids)(revoked_tids)
-
-        # Start produers for assigned partitions
-        assigned_tids = sorted(self._tps_to_transactional_ids(assigned))
-        if assigned_tids:
-            self.log.info(
-                'Starting %r transactional %s for %r assigned %s...',
-                len(assigned_tids),
-                pluralize(len(assigned_tids), 'producer'),
-                len(assigned),
-                pluralize(len(assigned), 'partition'))
-            await T(self._start_transactions,
-                    tids=assigned_tids)(assigned_tids)
-
-    async def _stop_transactions(self, tids: Iterable[str]) -> None:
-        T = traced_from_parent_span()
-        producer = self.producer
-        for transactional_id in tids:
-            await T(producer.stop_transaction)(transactional_id)
-
-    async def _start_transactions(self, tids: Iterable[str]) -> None:
-        T = traced_from_parent_span()
-        producer = self.producer
-        for transactional_id in tids:
-            await T(producer.maybe_begin_transaction)(transactional_id)
-
-    def _tps_to_transactional_ids(self, tps: Set[TP]) -> Set[str]:
-        return {
-            self.transactional_id_format.format(
-                tpg=tpg,
-                group_id=self.app.conf.id,
-            )
-            for tpg in self._tps_to_active_tpgs(tps)
-        }
-
-    def _tps_to_active_tpgs(self, tps: Set[TP]) -> Set[TopicPartitionGroup]:
-        assignor = self.app.assignor
-        return {
-            TopicPartitionGroup(
-                tp.topic,
-                tp.partition,
-                assignor.group_for_topic(tp.topic),
-            )
-            for tp in tps
-            if not assignor.is_standby(tp)
-        }
-
-    async def send(self, topic: str, key: Optional[bytes],
-                   value: Optional[bytes],
-                   partition: Optional[int],
-                   timestamp: Optional[float],
-                   headers: Optional[HeadersArg],
-                   *,
-                   transactional_id: str = None) -> Awaitable[RecordMetadata]:
-        """Schedule message to be sent by producer."""
-        group = transactional_id = None
-        p = self.consumer.key_partition(topic, key, partition)
-        if p is not None:
-            group = self.app.assignor.group_for_topic(topic)
-            transactional_id = f'{self.app.conf.id}-{group}-{p}'
-        return await self.producer.send(
-            topic, key, value, p, timestamp, headers,
-            transactional_id=transactional_id,
-        )
-
-    def send_soon(self, fut: FutureMessage) -> None:
-        raise NotImplementedError()
-
-    async def send_and_wait(self, topic: str, key: Optional[bytes],
-                            value: Optional[bytes],
-                            partition: Optional[int],
-                            timestamp: Optional[float],
-                            headers: Optional[HeadersArg],
-                            *,
-                            transactional_id: str = None) -> RecordMetadata:
-        """Send message and wait for it to be transmitted."""
-        fut = await self.send(topic, key, value, partition, timestamp, headers)
-        return await fut
-
-    async def commit(self, offsets: Mapping[TP, int],
-                     start_new_transaction: bool = True) -> bool:
-        """Commit offsets for partitions."""
-        producer = self.producer
-        group_id = self.app.conf.id
-        by_transactional_id: MutableMapping[str, MutableMapping[TP, int]]
-        by_transactional_id = defaultdict(dict)
-
-        for tp, offset in offsets.items():
-            group = self.app.assignor.group_for_topic(tp.topic)
-            transactional_id = f'{group_id}-{group}-{tp.partition}'
-            by_transactional_id[transactional_id][tp] = offset
-
-        if by_transactional_id:
-            await producer.commit_transactions(
-                by_transactional_id, group_id,
-                start_new_transaction=start_new_transaction,
-            )
-        return True
-
-    def key_partition(self, topic: str, key: bytes) -> TP:
-        raise NotImplementedError()
-
-    async def create_topic(self,
-                           topic: str,
-                           partitions: int,
-                           replication: int,
-                           *,
-                           config: Mapping[str, Any] = None,
-                           timeout: Seconds = 30.0,
-                           retention: Seconds = None,
-                           compacting: bool = None,
-                           deleting: bool = None,
-                           ensure_created: bool = False) -> None:
-        """Create/declare topic on server."""
-        return await self.producer.create_topic(
-            topic, partitions, replication,
-            config=config,
-            timeout=timeout,
-            retention=retention,
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
-
-    def supports_headers(self) -> bool:
-        """Return :const:`True` if the Kafka server supports headers."""
-        return self.producer.supports_headers()
 
 
 class Consumer(Service, ConsumerT):
@@ -447,19 +275,9 @@ class Consumer(Service, ConsumerT):
         self._reset_state()
         super().__init__(loop=loop or self.transport.loop, **kwargs)
         self.transactions = None
-        # self.transactions = self.transport.create_transaction_manager(
-        #     consumer=self,
-        #     producer=self.app.producer,
-        #     beacon=self.beacon,
-        #     loop=self.loop,
-        # )
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services this consumer depends on."""
-        # We start the TransactionManager only if
-        # processing_guarantee='exactly_once'
-        # if self.in_transaction:
-        #     return [self.transactions]
         return []
 
     def _reset_state(self) -> None:
@@ -951,12 +769,6 @@ class Consumer(Service, ConsumerT):
         with flight_recorder(self.log, timeout=300.0) as on_timeout:
             did_commit = False
             on_timeout.info('+consumer.commit()')
-            # if self.in_transaction:
-            #     did_commit = await self.transactions.commit(
-            #         committable_offsets,
-            #         start_new_transaction=start_new_transaction,
-            #     )
-            # else:
             did_commit = await self._commit(committable_offsets)
             on_timeout.info('-consumer.commit()')
             if did_commit:

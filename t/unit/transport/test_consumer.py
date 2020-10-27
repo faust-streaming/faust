@@ -11,7 +11,7 @@ from faust.transport.consumer import (
     Fetcher,
     ProducerSendError,
     ThreadDelegateConsumer,
-    TransactionManager,
+    # TransactionManager,
 )
 from faust.transport.conductor import Conductor
 from faust.types import Message, TP
@@ -118,215 +118,215 @@ class test_Fetcher:
             assert wait_for.call_count == 3
 
 
-class test_TransactionManager:
+# class test_TransactionManager:
 
-    @pytest.fixture()
-    def consumer(self):
-        return Mock(
-            name='consumer',
-            spec=Consumer,
-        )
+#     @pytest.fixture()
+#     def consumer(self):
+#         return Mock(
+#             name='consumer',
+#             spec=Consumer,
+#         )
 
-    @pytest.fixture()
-    def producer(self):
-        return Mock(
-            name='producer',
-            spec=Producer,
-            create_topic=AsyncMock(),
-            stop_transaction=AsyncMock(),
-            maybe_begin_transaction=AsyncMock(),
-            commit_transactions=AsyncMock(),
-            send=AsyncMock(),
-            flush=AsyncMock(),
-        )
+#     @pytest.fixture()
+#     def producer(self):
+#         return Mock(
+#             name='producer',
+#             spec=Producer,
+#             create_topic=AsyncMock(),
+#             stop_transaction=AsyncMock(),
+#             maybe_begin_transaction=AsyncMock(),
+#             commit_transactions=AsyncMock(),
+#             send=AsyncMock(),
+#             flush=AsyncMock(),
+#         )
 
-    @pytest.fixture()
-    def transport(self, *, app):
-        return Mock(
-            name='transport',
-            spec=Transport,
-            app=app,
-        )
+#     @pytest.fixture()
+#     def transport(self, *, app):
+#         return Mock(
+#             name='transport',
+#             spec=Transport,
+#             app=app,
+#         )
 
-    @pytest.fixture()
-    def manager(self, *, consumer, producer, transport):
-        return TransactionManager(
-            transport,
-            consumer=consumer,
-            producer=producer,
-        )
+#     @pytest.fixture()
+#     def manager(self, *, consumer, producer, transport):
+#         return TransactionManager(
+#             transport,
+#             consumer=consumer,
+#             producer=producer,
+#         )
 
-    @pytest.mark.asyncio
-    async def test_on_partitions_revoked(self, *, manager):
-        manager.flush = AsyncMock()
-        await manager.on_partitions_revoked({TP1})
-        manager.flush.assert_called_once_with()
+#     @pytest.mark.asyncio
+#     async def test_on_partitions_revoked(self, *, manager):
+#         manager.flush = AsyncMock()
+#         await manager.on_partitions_revoked({TP1})
+#         manager.flush.assert_called_once_with()
 
-    @pytest.mark.asyncio
-    async def test_on_rebalance(self, *, manager):
-        TP3_group = 0
-        TP2_group = 2
-        manager.app.assignor._topic_groups = {
-            TP3.topic: TP3_group,
-            TP2.topic: TP2_group,
-        }
+#     @pytest.mark.asyncio
+#     async def test_on_rebalance(self, *, manager):
+#         TP3_group = 0
+#         TP2_group = 2
+#         manager.app.assignor._topic_groups = {
+#             TP3.topic: TP3_group,
+#             TP2.topic: TP2_group,
+#         }
 
-        assert TP3.topic != TP2.topic  # must be different topics
-        manager._stop_transactions = AsyncMock()
-        manager._start_transactions = AsyncMock()
+#         assert TP3.topic != TP2.topic  # must be different topics
+#         manager._stop_transactions = AsyncMock()
+#         manager._start_transactions = AsyncMock()
 
-        assigned = {TP2}
-        revoked = {TP3}
-        newly_assigned = {TP2}
-        await manager.on_rebalance(assigned, revoked, newly_assigned)
+#         assigned = {TP2}
+#         revoked = {TP3}
+#         newly_assigned = {TP2}
+#         await manager.on_rebalance(assigned, revoked, newly_assigned)
 
-        manager._stop_transactions.assert_called_once_with(
-            [f'{manager.app.conf.id}-{TP3_group}-{TP3.partition}'])
-        manager._start_transactions.assert_called_once_with(
-            [f'{manager.app.conf.id}-{TP2_group}-{TP2.partition}'])
+#         manager._stop_transactions.assert_called_once_with(
+#             [f'{manager.app.conf.id}-{TP3_group}-{TP3.partition}'])
+#         manager._start_transactions.assert_called_once_with(
+#             [f'{manager.app.conf.id}-{TP2_group}-{TP2.partition}'])
 
-        await manager.on_rebalance(set(), set(), set())
+#         await manager.on_rebalance(set(), set(), set())
 
-    @pytest.mark.asyncio
-    async def test__stop_transactions(self, *, manager, producer):
-        await manager._stop_transactions(['0-0', '1-0'])
-        producer.stop_transaction.assert_has_calls([
-            call('0-0'),
-            call.coro('0-0'),
-            call('1-0'),
-            call.coro('1-0'),
-        ])
+#     @pytest.mark.asyncio
+#     async def test__stop_transactions(self, *, manager, producer):
+#         await manager._stop_transactions(['0-0', '1-0'])
+#         producer.stop_transaction.assert_has_calls([
+#             call('0-0'),
+#             call.coro('0-0'),
+#             call('1-0'),
+#             call.coro('1-0'),
+#         ])
 
-    @pytest.mark.asyncio
-    async def test_start_transactions(self, *, manager, producer):
-        manager._start_new_producer = AsyncMock()
-        await manager._start_transactions(['0-0', '1-0'])
-        producer.maybe_begin_transaction.assert_has_calls([
-            call('0-0'),
-            call.coro('0-0'),
-            call('1-0'),
-            call.coro('1-0'),
-        ])
+#     @pytest.mark.asyncio
+#     async def test_start_transactions(self, *, manager, producer):
+#         manager._start_new_producer = AsyncMock()
+#         await manager._start_transactions(['0-0', '1-0'])
+#         producer.maybe_begin_transaction.assert_has_calls([
+#             call('0-0'),
+#             call.coro('0-0'),
+#             call('1-0'),
+#             call.coro('1-0'),
+#         ])
 
-    @pytest.mark.asyncio
-    async def test_send(self, *, manager, producer):
-        manager.app.assignor._topic_groups = {
-            't': 3,
-        }
-        manager.consumer.key_partition.return_value = 1
+#     @pytest.mark.asyncio
+#     async def test_send(self, *, manager, producer):
+#         manager.app.assignor._topic_groups = {
+#             't': 3,
+#         }
+#         manager.consumer.key_partition.return_value = 1
 
-        await manager.send(
-            't', 'k', 'v', partition=None, headers=None, timestamp=None)
-        manager.consumer.key_partition.assert_called_once_with('t', 'k', None)
-        producer.send.assert_called_once_with(
-            't', 'k', 'v', 1, None, None, transactional_id='testid-3-1',
-        )
+#         await manager.send(
+#             't', 'k', 'v', partition=None, headers=None, timestamp=None)
+#         manager.consumer.key_partition.assert_called_once_with('t', 'k', None)
+#         producer.send.assert_called_once_with(
+#             't', 'k', 'v', 1, None, None, transactional_id='testid-3-1',
+#         )
 
-    @pytest.mark.asyncio
-    async def test_send__topic_not_transactive(self, *, manager, producer):
-        manager.app.assignor._topic_groups = {
-            't': 3,
-        }
-        manager.consumer.key_partition.return_value = None
+#     @pytest.mark.asyncio
+#     async def test_send__topic_not_transactive(self, *, manager, producer):
+#         manager.app.assignor._topic_groups = {
+#             't': 3,
+#         }
+#         manager.consumer.key_partition.return_value = None
 
-        await manager.send(
-            't', 'k', 'v', partition=None, headers=None, timestamp=None)
-        manager.consumer.key_partition.assert_called_once_with('t', 'k', None)
-        producer.send.assert_called_once_with(
-            't', 'k', 'v', None, None, None, transactional_id=None,
-        )
+#         await manager.send(
+#             't', 'k', 'v', partition=None, headers=None, timestamp=None)
+#         manager.consumer.key_partition.assert_called_once_with('t', 'k', None)
+#         producer.send.assert_called_once_with(
+#             't', 'k', 'v', None, None, None, transactional_id=None,
+#         )
 
-    def test_send_soon(self, *, manager):
-        with pytest.raises(NotImplementedError):
-            manager.send_soon(Mock(name='FutureMessage'))
+#     def test_send_soon(self, *, manager):
+#         with pytest.raises(NotImplementedError):
+#             manager.send_soon(Mock(name='FutureMessage'))
 
-    @pytest.mark.asyncio
-    async def test_send_and_wait(self, *, manager):
-        on_send = Mock()
+#     @pytest.mark.asyncio
+#     async def test_send_and_wait(self, *, manager):
+#         on_send = Mock()
 
-        async def send(*args, **kwargs):
-            on_send(*args, **kwargs)
-            return done_future()
-        manager.send = send
+#         async def send(*args, **kwargs):
+#             on_send(*args, **kwargs)
+#             return done_future()
+#         manager.send = send
 
-        await manager.send_and_wait('t', 'k', 'v', 3, 43.2, {})
-        on_send.assert_called_once_with(
-            't', 'k', 'v', 3, 43.2, {},
-        )
+#         await manager.send_and_wait('t', 'k', 'v', 3, 43.2, {})
+#         on_send.assert_called_once_with(
+#             't', 'k', 'v', 3, 43.2, {},
+#         )
 
-    @pytest.mark.asyncio
-    async def test_commit(self, *, manager, producer):
-        manager.app.assignor._topic_groups = {
-            'foo': 1,
-            'bar': 2,
-        }
-        await manager.commit(
-            {
-                TP('foo', 0): 3003,
-                TP('bar', 0): 3004,
-                TP('foo', 3): 4004,
-                TP('foo', 1): 4005,
-            },
-            start_new_transaction=False,
-        )
-        producer.commit_transactions.assert_called_once_with(
-            {
-                'testid-1-0': {
-                    TP('foo', 0): 3003,
-                },
-                'testid-1-3': {
-                    TP('foo', 3): 4004,
-                },
-                'testid-1-1': {
-                    TP('foo', 1): 4005,
-                },
-                'testid-2-0': {
-                    TP('bar', 0): 3004,
-                },
-            },
-            'testid',
-            start_new_transaction=False,
-        )
+#     @pytest.mark.asyncio
+#     async def test_commit(self, *, manager, producer):
+#         manager.app.assignor._topic_groups = {
+#             'foo': 1,
+#             'bar': 2,
+#         }
+#         await manager.commit(
+#             {
+#                 TP('foo', 0): 3003,
+#                 TP('bar', 0): 3004,
+#                 TP('foo', 3): 4004,
+#                 TP('foo', 1): 4005,
+#             },
+#             start_new_transaction=False,
+#         )
+#         producer.commit_transactions.assert_called_once_with(
+#             {
+#                 'testid-1-0': {
+#                     TP('foo', 0): 3003,
+#                 },
+#                 'testid-1-3': {
+#                     TP('foo', 3): 4004,
+#                 },
+#                 'testid-1-1': {
+#                     TP('foo', 1): 4005,
+#                 },
+#                 'testid-2-0': {
+#                     TP('bar', 0): 3004,
+#                 },
+#             },
+#             'testid',
+#             start_new_transaction=False,
+#         )
 
-    @pytest.mark.asyncio
-    async def test_commit__empty(self, *, manager):
-        await manager.commit({}, start_new_transaction=False)
+#     @pytest.mark.asyncio
+#     async def test_commit__empty(self, *, manager):
+#         await manager.commit({}, start_new_transaction=False)
 
-    def test_key_partition(self, *, manager):
-        with pytest.raises(NotImplementedError):
-            manager.key_partition('topic', 'key')
+#     def test_key_partition(self, *, manager):
+#         with pytest.raises(NotImplementedError):
+#             manager.key_partition('topic', 'key')
 
-    @pytest.mark.asyncio
-    async def test_flush(self, *, manager, producer):
-        await manager.flush()
-        producer.flush.assert_called_once_with()
+#     @pytest.mark.asyncio
+#     async def test_flush(self, *, manager, producer):
+#         await manager.flush()
+#         producer.flush.assert_called_once_with()
 
-    @pytest.mark.asyncio
-    async def test_create_topic(self, *, manager):
-        await manager.create_topic(
-            topic='topic',
-            partitions=100,
-            replication=3,
-            config={'C': 1},
-            timeout=30.0,
-            retention=40.0,
-            compacting=True,
-            deleting=True,
-            ensure_created=True,
-        )
-        manager.producer.create_topic.assert_called_once_with(
-            'topic', 100, 3,
-            config={'C': 1},
-            timeout=30.0,
-            retention=40.0,
-            compacting=True,
-            deleting=True,
-            ensure_created=True,
-        )
+#     @pytest.mark.asyncio
+#     async def test_create_topic(self, *, manager):
+#         await manager.create_topic(
+#             topic='topic',
+#             partitions=100,
+#             replication=3,
+#             config={'C': 1},
+#             timeout=30.0,
+#             retention=40.0,
+#             compacting=True,
+#             deleting=True,
+#             ensure_created=True,
+#         )
+#         manager.producer.create_topic.assert_called_once_with(
+#             'topic', 100, 3,
+#             config={'C': 1},
+#             timeout=30.0,
+#             retention=40.0,
+#             compacting=True,
+#             deleting=True,
+#             ensure_created=True,
+#         )
 
-    def test_supports_headers(self, *, manager):
-        ret = manager.supports_headers()
-        assert ret is manager.producer.supports_headers.return_value
+#     def test_supports_headers(self, *, manager):
+#         ret = manager.supports_headers()
+#         assert ret is manager.producer.supports_headers.return_value
 
 
 class MockedConsumerAbstractMethods:

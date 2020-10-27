@@ -180,34 +180,6 @@ class Producer(Service, ProducerT):
         """Hash key to determine partition."""
         raise NotImplementedError()
 
-    async def begin_transaction(self, transactional_id: str) -> None:
-        """Begin transaction by id."""
-        raise NotImplementedError()
-
-    async def commit_transaction(self, transactional_id: str) -> None:
-        """Commit transaction by id."""
-        raise NotImplementedError()
-
-    async def abort_transaction(self, transactional_id: str) -> None:
-        """Abort and rollback transaction by id."""
-        raise NotImplementedError()
-
-    async def stop_transaction(self, transactional_id: str) -> None:
-        """Stop transaction by id."""
-        raise NotImplementedError()
-
-    async def maybe_begin_transaction(self, transactional_id: str) -> None:
-        """Begin transaction by id, if not already started."""
-        raise NotImplementedError()
-
-    async def commit_transactions(
-            self,
-            tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-            group_id: str,
-            start_new_transaction: bool = True) -> None:
-        """Commit transactions."""
-        raise NotImplementedError()
-
     def supports_headers(self) -> bool:
         """Return :const:`True` if headers are supported by this transport."""
         return False

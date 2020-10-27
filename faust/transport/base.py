@@ -21,12 +21,11 @@ from faust.types.transports import (
     ConsumerCallback,
     ConsumerT,
     ProducerT,
-    TransactionManagerT,
     TransportT,
 )
 
 from .conductor import Conductor
-from .consumer import Consumer, Fetcher, TransactionManager
+from .consumer import Consumer, Fetcher
 from .producer import Producer
 
 __all__ = ['Conductor', 'Consumer', 'Fetcher', 'Producer', 'Transport']
@@ -42,9 +41,6 @@ class Transport(TransportT):
     #: Producer subclass used for this transport.
     Producer: ClassVar[Type[ProducerT]]
     Producer = Producer
-
-    TransactionManager: ClassVar[Type[TransactionManagerT]]
-    TransactionManager = TransactionManager
 
     Conductor: ClassVar[Type[ConductorT]]
     Conductor = Conductor

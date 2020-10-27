@@ -25,7 +25,7 @@ from .transports import (
     ConsumerCallback,
     ConsumerT,
     ProducerT,
-    TransactionManagerT,
+    # TransactionManagerT,
     TransportT,
 )
 from .tuples import (
@@ -102,7 +102,7 @@ __all__ = [
     'ConsumerCallback',
     'ConsumerT',
     'ProducerT',
-    'TransactionManagerT',
+    # 'TransactionManagerT',
     'TransportT',
 
     # types.tuples
