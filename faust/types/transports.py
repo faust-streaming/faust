@@ -202,6 +202,7 @@ class ProducerT(ServiceT):
         ...
 
 
+# Probably this has to go because Transactions are supported in aiokafka
 class TransactionManagerT(ProducerT):
     consumer: 'ConsumerT'
     producer: 'ProducerT'
@@ -510,13 +511,6 @@ class TransportT(abc.ABC):
 
     @abc.abstractmethod
     def create_producer(self, **kwargs: Any) -> ProducerT:
-        ...
-
-    @abc.abstractmethod
-    def create_transaction_manager(self,
-                                   consumer: ConsumerT,
-                                   producer: ProducerT,
-                                   **kwargs: Any) -> TransactionManagerT:
         ...
 
     @abc.abstractmethod

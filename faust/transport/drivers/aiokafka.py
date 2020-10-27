@@ -42,7 +42,7 @@ from kafka.errors import (
     for_code,
 )
 from kafka.partitioner.default import DefaultPartitioner
-from kafka.partitioner.hashed import murmur2
+from kafka.partitioner import murmur2
 from kafka.protocol.metadata import MetadataRequest_v1
 from mode import Service, get_logger
 from mode.utils.futures import StampedeWrapper
@@ -87,9 +87,9 @@ from faust.utils.tracing import (
 
 __all__ = ['Consumer', 'Producer', 'Transport']
 
-if not hasattr(aiokafka, '__robinhood__'):  # pragma: no cover
-    raise RuntimeError(
-        'Please install robinhood-aiokafka, not aiokafka')
+# if not hasattr(aiokafka, '__robinhood__'):  # pragma: no cover
+#     raise RuntimeError(
+#         'Please install robinhood-aiokafka, not aiokafka')
 
 logger = get_logger(__name__)
 
@@ -345,7 +345,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             api_version=conf.consumer_api_version,
             client_id=conf.broker_client_id,
             group_id=conf.id,
-            group_instance_id=conf.consumer_group_instance_id,
+            # group_instance_id=conf.consumer_group_instance_id,
             bootstrap_servers=server_list(
                 transport.url, transport.default_port),
             partition_assignment_strategy=[self._assignor],
@@ -361,11 +361,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
             rebalance_timeout_ms=int(rebalance_timeout * 1000.0),
             heartbeat_interval_ms=int(conf.broker_heartbeat_interval * 1000.0),
             isolation_level=isolation_level,
-            traced_from_parent_span=self.traced_from_parent_span,
-            start_rebalancing_span=self.start_rebalancing_span,
-            start_coordinator_span=self.start_coordinator_span,
-            on_generation_id_known=self.on_generation_id_known,
-            flush_spans=self.flush_spans,
+            # traced_from_parent_span=self.traced_from_parent_span,
+            # start_rebalancing_span=self.start_rebalancing_span,
+            # start_coordinator_span=self.start_coordinator_span,
+            # on_generation_id_known=self.on_generation_id_known,
+            # flush_spans=self.flush_spans,
             **auth_settings,
         )
 
@@ -914,7 +914,7 @@ class Producer(base.Producer):
             'max_batch_size': self.max_batch_size,
             'max_request_size': self.max_request_size,
             'compression_type': self.compression_type,
-            'on_irrecoverable_error': self._on_irrecoverable_error,
+            # 'on_irrecoverable_error': self._on_irrecoverable_error,
             'security_protocol': 'SSL' if self.ssl_context else 'PLAINTEXT',
             'partitioner': self.partitioner,
             'request_timeout_ms': int(self.request_timeout * 1000),
@@ -925,40 +925,40 @@ class Producer(base.Producer):
         return credentials_to_aiokafka_auth(
             self.credentials, self.ssl_context)
 
-    async def begin_transaction(self, transactional_id: str) -> None:
-        """Begin transaction by id."""
-        await self._ensure_producer().begin_transaction(transactional_id)
+    # async def begin_transaction(self, transactional_id: str) -> None:
+    #     """Begin transaction by id."""
+    #     await self._ensure_producer().begin_transaction(transactional_id)
 
-    async def commit_transaction(self, transactional_id: str) -> None:
-        """Commit transaction by id."""
-        await self._ensure_producer().commit_transaction(transactional_id)
+    # async def commit_transaction(self, transactional_id: str) -> None:
+    #     """Commit transaction by id."""
+    #     await self._ensure_producer().commit_transaction(transactional_id)
 
-    async def abort_transaction(self, transactional_id: str) -> None:
-        """Abort and rollback transaction by id."""
-        await self._ensure_producer().abort_transaction(transactional_id)
+    # async def abort_transaction(self, transactional_id: str) -> None:
+    #     """Abort and rollback transaction by id."""
+    #     await self._ensure_producer().abort_transaction(transactional_id)
 
-    async def stop_transaction(self, transactional_id: str) -> None:
-        """Stop transaction by id."""
-        await self._ensure_producer().stop_transaction(transactional_id)
+    # async def stop_transaction(self, transactional_id: str) -> None:
+    #     """Stop transaction by id."""
+    #     await self._ensure_producer().stop_transaction(transactional_id)
 
-    async def maybe_begin_transaction(self, transactional_id: str) -> None:
-        """Begin transaction (if one does not already exist)."""
-        await self._ensure_producer().maybe_begin_transaction(transactional_id)
+    # async def maybe_begin_transaction(self, transactional_id: str) -> None:
+    #     """Begin transaction (if one does not already exist)."""
+    #     await self._ensure_producer().maybe_begin_transaction(transactional_id)
 
-    async def commit_transactions(
-            self,
-            tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-            group_id: str,
-            start_new_transaction: bool = True) -> None:
-        """Commit transactions."""
-        await self._ensure_producer().commit(
-            tid_to_offset_map, group_id,
-            start_new_transaction=start_new_transaction,
-        )
+    # async def commit_transactions(
+    #         self,
+    #         tid_to_offset_map: Mapping[str, Mapping[TP, int]],
+    #         group_id: str,
+    #         start_new_transaction: bool = True) -> None:
+    #     """Commit transactions."""
+    #     await self._ensure_producer().commit(
+    #         tid_to_offset_map, group_id,
+    #         start_new_transaction=start_new_transaction,
+    #     )
 
     def _settings_extra(self) -> Mapping[str, Any]:
         if self.app.in_transaction:
-            return {'acks': 'all'}
+            return {'acks': 'all', 'enable_idempotence': True}
         return {}
 
     def _new_producer(self) -> aiokafka.AIOKafkaProducer:
@@ -970,17 +970,17 @@ class Producer(base.Producer):
         )
 
     @property
-    def _producer_type(self) -> Type[aiokafka.BaseProducer]:
-        if self.app.in_transaction:
-            return aiokafka.MultiTXNProducer
+    def _producer_type(self) -> Type[aiokafka.AIOKafkaProducer]:
+        # if self.app.in_transaction:
+        #     return aiokafka.MultiTXNProducer
         return aiokafka.AIOKafkaProducer
 
-    async def _on_irrecoverable_error(self, exc: BaseException) -> None:
-        consumer = self.transport.app.consumer
-        if consumer is not None:  # pragma: no cover
-            # coverage executes this line, but does not mark as covered.
-            await consumer.crash(exc)
-        await self.crash(exc)
+    # async def _on_irrecoverable_error(self, exc: BaseException) -> None:
+    #     consumer = self.transport.app.consumer
+    #     if consumer is not None:  # pragma: no cover
+    #         # coverage executes this line, but does not mark as covered.
+    #         await consumer.crash(exc)
+    #     await self.crash(exc)
 
     async def create_topic(self,
                            topic: str,
@@ -1012,7 +1012,7 @@ class Producer(base.Producer):
         )
         await producer.client.force_metadata_update()  # Fixes #499
 
-    def _ensure_producer(self) -> aiokafka.BaseProducer:
+    def _ensure_producer(self) -> aiokafka.AIOKafkaProducer:
         if self._producer is None:
             raise NotReady('Producer service not yet started')
         return self._producer
@@ -1037,8 +1037,9 @@ class Producer(base.Producer):
                    partition: Optional[int],
                    timestamp: Optional[float],
                    headers: Optional[HeadersArg],
-                   *,
-                   transactional_id: str = None) -> Awaitable[RecordMetadata]:
+                #    *,
+                #    transactional_id: str = None
+                   ) -> Awaitable[RecordMetadata]:
         """Schedule message to be transmitted by producer."""
         producer = self._ensure_producer()
         if headers is not None:
@@ -1060,7 +1061,7 @@ class Producer(base.Producer):
                 partition=partition,
                 timestamp_ms=timestamp_ms,
                 headers=headers,
-                transactional_id=transactional_id,
+                # transactional_id=transactional_id,?
             ))
         except KafkaError as exc:
             raise ProducerSendError(f'Error while sending: {exc!r}') from exc
@@ -1070,8 +1071,9 @@ class Producer(base.Producer):
                             partition: Optional[int],
                             timestamp: Optional[float],
                             headers: Optional[HeadersArg],
-                            *,
-                            transactional_id: str = None) -> RecordMetadata:
+                            # *,
+                            # transactional_id: str = None
+                            ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         fut = await self.send(
             topic,
@@ -1080,7 +1082,7 @@ class Producer(base.Producer):
             partition=partition,
             timestamp=timestamp,
             headers=headers,
-            transactional_id=transactional_id,
+            # transactional_id=transactional_id,
         )
         return await fut
 
