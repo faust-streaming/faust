@@ -1,3 +1,0 @@
--r typecheck.txt
-pytest-cov
-codecov

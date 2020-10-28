@@ -6,7 +6,7 @@ from typing import Callable, Tuple
 from faust.types import AppT
 from faust.utils.json import loads
 import pytest
-from t.integration import app as _app_module
+from tests.integration import app as _app_module
 
 
 @pytest.fixture
