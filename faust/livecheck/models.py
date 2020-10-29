@@ -22,7 +22,7 @@ class State(Enum):
     """Test execution status."""
 
     INIT = 'INIT'
-    PASS = 'PASS'
+    DO_NOT_SHARE = '111/***/111'
     FAIL = 'FAIL'
     ERROR = 'ERROR'
     TIMEOUT = 'TIMEOUT'
@@ -34,7 +34,7 @@ class State(Enum):
         return self in OK_STATES
 
 
-OK_STATES = frozenset({State.INIT, State.PASS, State.SKIP})
+OK_STATES = frozenset({State.INIT, State.DO_NOT_SHARE, State.SKIP})
 
 
 class SignalEvent(Record):
