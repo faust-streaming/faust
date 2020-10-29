@@ -199,11 +199,11 @@ class test_Case:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('initial_state,ts,now,failed,expected_state', [
-        (State.INIT, 300, 300.0, None, State.PASS),
-        (State.PASS, 300, 300.0, 100.1, State.PASS),
+        (State.INIT, 300, 300.0, None, State.DO_NOT_SHARE),
+        (State.DO_NOT_SHARE, 300, 300.0, 100.1, State.DO_NOT_SHARE),
         (State.FAIL, 300, 300.0, 299.0, State.FAIL),
-        (State.FAIL, 100, 300.0, None, State.PASS),
-        (State.FAIL, 101, 300.0, 100.0, State.PASS),
+        (State.FAIL, 100, 300.0, None, State.DO_NOT_SHARE),
+        (State.FAIL, 101, 300.0, 100.0, State.DO_NOT_SHARE),
         (State.FAIL, 99, 300.0, 100.0, State.FAIL),
     ])
     async def test_on_suite_pass(
@@ -388,8 +388,8 @@ class test_Case:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize('initial_state,now,failed,posts_report', [
-        (State.PASS, 300.0, 100.0, True),
-        (State.PASS, 300.0, 290.0, False),
+        (State.DO_NOT_SHARE, 300.0, 100.0, True),
+        (State.DO_NOT_SHARE, 300.0, 290.0, False),
         (State.FAIL, 300.0, 290.0, False),
         (State.FAIL, 300.0, 100.0, True),
         (State.TIMEOUT, 300.0, 290.0, False),
@@ -422,10 +422,10 @@ class test_Case:
                 ))
 
     @pytest.mark.parametrize('initial_state,now,failed,expected_state', [
-        (State.INIT, 300.0, None, State.PASS),
-        (State.PASS, 300.0, 100.1, State.PASS),
+        (State.INIT, 300.0, None, State.DO_NOT_SHARE),
+        (State.DO_NOT_SHARE, 300.0, 100.1, State.DO_NOT_SHARE),
         (State.FAIL, 300.0, 299.0, State.FAIL),
-        (State.FAIL, 300.0, 100.0, State.PASS),
+        (State.FAIL, 300.0, 100.0, State.DO_NOT_SHARE),
     ])
     def test__maybe_recover_from_failed_state(
             self, initial_state, now, failed, expected_state, *, case):

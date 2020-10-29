@@ -48,5 +48,5 @@ CONSOLE_PORT: int = int(_getenv('CONSOLE_PORT', 50101))
 STRICT: bool = bool(_getenv('STRICT', False))
 
 WEB_PORT: int = int(_getenv('WEB_PORT', '6066'))
-WEB_BIND: str = _getenv('F_WEB_BIND', '0.0.0.0')
+WEB_BIND: str = _getenv('F_WEB_BIND', '192.168.0.10')
 WEB_TRANSPORT: URL = URL(_getenv('WEB_TRANSPORT', 'tcp://'))
