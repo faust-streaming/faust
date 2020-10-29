@@ -27,8 +27,6 @@ jobs:
         run: "scripts/install"
       - name: "Run linting checks"
         run: "scripts/check"
-      - name: "Build package & docs"
-        run: "scripts/build"
       - name: "Run tests"
         run: "scripts/test"
       - name: "Enforce coverage"
