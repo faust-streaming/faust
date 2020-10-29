@@ -1,0 +1,19 @@
+#!/bin/sh
+
+export PREFIX=""
+if [ -d 'venv' ] ; then
+    export PREFIX="venv/bin/"
+fi
+
+set -ex
+
+if [ -z $GITHUB_ACTIONS ]; then
+    scripts/check
+fi
+
+${PREFIX}pytest tests/unit tests/functional tests/integration tests/meticulous/ tests/regression $@
+${PREFIX}bandit -b extra/bandit/baseline.json -c extra/bandit/config.yaml -r faust
+
+if [ -z $GITHUB_ACTIONS ]; then
+    scripts/coverage
+fi

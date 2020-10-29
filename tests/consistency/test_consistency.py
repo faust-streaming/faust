@@ -3,7 +3,7 @@ import os
 import random
 import subprocess
 import sys
-from t.consistency.consistency_checker import ConsistencyChecker
+from tests.consistency.consistency_checker import ConsistencyChecker
 
 
 class Stresser(object):

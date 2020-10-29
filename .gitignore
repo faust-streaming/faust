@@ -47,3 +47,5 @@ faust/transport/_cython/*.c
 
 # ide
 .vscode/
+
+.logs

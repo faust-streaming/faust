@@ -1,7 +1,7 @@
 import asyncio
 from mode.utils.aiter import anext
 import pytest
-from t.helpers import message
+from tests.helpers import message
 
 __all__ = ['channel_empty', 'times_out', 'is_empty', 'message', 'put']
 

@@ -6,7 +6,7 @@ from faust import joins
 from faust.exceptions import Skip
 from mode.utils.contexts import ExitStack
 from mode.utils.mocks import AsyncMock, Mock, patch
-from t.helpers import new_event
+from tests.helpers import new_event
 
 
 class Model(faust.Record):

@@ -209,7 +209,7 @@ def do_setup(**kwargs):
         include_package_data=True,
         python_requires='>=3.6.0',
         zip_safe=False,
-        install_requires=reqs('default.txt'),
+        install_requires=reqs('requirements.txt'),
         tests_require=reqs('test.txt'),
         extras_require=extras_require(),
         entry_points={
