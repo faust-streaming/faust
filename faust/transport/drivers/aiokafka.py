@@ -904,8 +904,7 @@ class Producer(base.Producer):
             wanted_api_version = parse_kafka_version(self._api_version)
             if wanted_api_version < (0, 11):
                 self.allow_headers = False
-        self._transaction_producers = dict()
-        self._trn_locks = dict()
+
 
     def _settings_default(self) -> Mapping[str, Any]:
         transport = cast(Transport, self.transport)
@@ -932,7 +931,7 @@ class Producer(base.Producer):
     async def begin_transaction(self, transactional_id: str) -> None:
         """Begin transaction by id."""
         try :
-            transaction_producer = self._transaction_producers.get(transactional_id, None)
+            transaction_producer = self._transaction_producers.get(transactional_id)
             if transaction_producer is None:
                 transaction_producer = self._new_producer(transactional_id=transactional_id)
                 await transaction_producer.start()
@@ -954,7 +953,7 @@ class Producer(base.Producer):
         try:
             async with self._trn_locks[transactional_id]:
 
-                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     await transaction_producer.commit_transaction()
                     logger.info(f'Done committing transaction {transactional_id}')
@@ -974,7 +973,7 @@ class Producer(base.Producer):
         try:
             async with self._trn_locks[transactional_id]:
 
-                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer :
                     await transaction_producer.abort_transaction()
                 else :
@@ -1009,7 +1008,7 @@ class Producer(base.Producer):
             # get the producer
             async with self._trn_locks[transactional_id]:
 
-                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer :
                     logger.debug(f'Sending offsets {offsets} to transaction {transactional_id}')
                     await transaction_producer.send_offsets_to_transaction(offsets, group_id)
@@ -1031,7 +1030,7 @@ class Producer(base.Producer):
             return {'acks': 'all', 'enable_idempotence': True}
         return {}
 
-    def _new_producer(self, transactional_id=None) -> aiokafka.AIOKafkaProducer:
+    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
             loop=self.loop,
             **{**self._settings_default(),
@@ -1042,16 +1041,14 @@ class Producer(base.Producer):
 
     @property
     def _producer_type(self) -> Type[aiokafka.AIOKafkaProducer]:
-        # if self.app.in_transaction:
-        #     return aiokafka.MultiTXNProducer
         return aiokafka.AIOKafkaProducer
 
-    async def _on_irrecoverable_error(self, exc: BaseException) -> None:
-        consumer = self.transport.app.consumer
-        if consumer is not None:  # pragma: no cover
-            # coverage executes this line, but does not mark as covered.
-            await consumer.crash(exc)
-        await self.crash(exc)
+    # async def _on_irrecoverable_error(self, exc: BaseException) -> None:
+    #     consumer = self.transport.app.consumer
+    #     if consumer is not None:  # pragma: no cover
+    #         # coverage executes this line, but does not mark as covered.
+    #         await consumer.crash(exc)
+    #     await self.crash(exc)
 
     async def create_topic(self,
                            topic: str,
@@ -1119,7 +1116,7 @@ class Producer(base.Producer):
 
         transaction_producer = self._ensure_producer()
         if transactional_id:
-            transaction_producer = self._transaction_producers.get(transactional_id, None)
+            transaction_producer = self._transaction_producers.get(transactional_id)
             if transaction_producer is None:
                 raise ProducerSendError(f'No transaction producer found for : {transactional_id}')
         if headers is not None:
