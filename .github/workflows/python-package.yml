@@ -28,6 +28,6 @@ jobs:
       - name: "Run linting checks"
         run: "scripts/check"
       - name: "Run tests"
-        run: "scripts/test"
+        run: "scripts/tests"
       - name: "Enforce coverage"
         run: "scripts/coverage"
