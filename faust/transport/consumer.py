@@ -446,20 +446,19 @@ class Consumer(Service, ConsumerT):
         self.can_resume_flow = Event()
         self._reset_state()
         super().__init__(loop=loop or self.transport.loop, **kwargs)
-        self.transactions = None
-        # self.transactions = self.transport.create_transaction_manager(
-        #     consumer=self,
-        #     producer=self.app.producer,
-        #     beacon=self.beacon,
-        #     loop=self.loop,
-        # )
+        self.transactions = self.transport.create_transaction_manager(
+            consumer=self,
+            producer=self.app.producer,
+            beacon=self.beacon,
+            loop=self.loop,
+        )
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services this consumer depends on."""
         # We start the TransactionManager only if
         # processing_guarantee='exactly_once'
-        # if self.in_transaction:
-        #     return [self.transactions]
+        if self.in_transaction:
+            return [self.transactions]
         return []
 
     def _reset_state(self) -> None:
@@ -951,13 +950,13 @@ class Consumer(Service, ConsumerT):
         with flight_recorder(self.log, timeout=300.0) as on_timeout:
             did_commit = False
             on_timeout.info('+consumer.commit()')
-            # if self.in_transaction:
-            #     did_commit = await self.transactions.commit(
-            #         committable_offsets,
-            #         start_new_transaction=start_new_transaction,
-            #     )
-            # else:
-            did_commit = await self._commit(committable_offsets)
+            if self.in_transaction:
+                did_commit = await self.transactions.commit(
+                    committable_offsets,
+                    start_new_transaction=start_new_transaction,
+                )
+            else:
+                did_commit = await self._commit(committable_offsets)
             on_timeout.info('-consumer.commit()')
             if did_commit:
                 on_timeout.info('+tables.on_commit')
