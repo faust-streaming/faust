@@ -1,6 +1,7 @@
 """Message transport using :pypi:`aiokafka`."""
 import asyncio
 import typing
+from asyncio import Lock
 
 from collections import deque
 from time import monotonic
@@ -20,7 +21,6 @@ from typing import (
     cast,
     no_type_check,
 )
-
 import aiokafka
 import aiokafka.abc
 import opentracing
@@ -29,7 +29,7 @@ from aiokafka.errors import (
     CommitFailedError,
     ConsumerStoppedError,
     IllegalStateError,
-    KafkaError,
+    KafkaError, ProducerFenced,
 )
 from aiokafka.structs import (
     OffsetAndMetadata,
@@ -431,7 +431,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
 
             class LazySpan(cls):
 
-                def finish() -> None:
+                def finish(self) -> None:
                     consumer._span_finish(span)
 
             span._real_finish, span.finish = span.finish, LazySpan.finish
@@ -638,45 +638,45 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
         aiotp = parent._new_topicpartition(tp.topic, tp.partition)
 
-        request_at = consumer.records_last_request.get(aiotp)
-        if request_at is None:
-            if secs_since_started >= self.tp_fetch_request_timeout_secs:
-                # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
-                self.log.error(
-                    SLOW_PROCESSING_NO_FETCH_SINCE_START,
-                    tp, humanize_seconds_ago(secs_since_started),
-                )
-            return True
-
-        response_at = consumer.records_last_response.get(aiotp)
-        if response_at is None:
-            if secs_since_started >= self.tp_fetch_response_timeout_secs:
-                # NO FETCH RESPONSE RECEIVED AT ALL SINCE WORKER START
-                self.log.error(
-                    SLOW_PROCESSING_NO_RESPONSE_SINCE_START,
-                    tp, humanize_seconds_ago(secs_since_started),
-                )
-            return True
-
-        secs_since_request = now - request_at
-        if secs_since_request >= self.tp_fetch_request_timeout_secs:
-            # NO REQUEST SENT BY AIOKAFKA IN THE LAST n SECONDS
-            self.log.error(
-                SLOW_PROCESSING_NO_RECENT_FETCH,
-                tp,
-                humanize_seconds_ago(secs_since_request),
-            )
-            return True
-
-        secs_since_response = now - response_at
-        if secs_since_response >= self.tp_fetch_response_timeout_secs:
-            # NO RESPONSE RECEIVED FROM KAKFA IN THE LAST n SECONDS
-            self.log.error(
-                SLOW_PROCESSING_NO_RECENT_RESPONSE,
-                tp,
-                humanize_seconds_ago(secs_since_response),
-            )
-            return True
+        # request_at = consumer._fetcher.records_last_request.get(aiotp)
+        # if request_at is None:
+        #     if secs_since_started >= self.tp_fetch_request_timeout_secs:
+        #         # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
+        #         self.log.error(
+        #             SLOW_PROCESSING_NO_FETCH_SINCE_START,
+        #             tp, humanize_seconds_ago(secs_since_started),
+        #         )
+        #     return True
+        #
+        # response_at = consumer.records_last_response.get(aiotp)
+        # if response_at is None:
+        #     if secs_since_started >= self.tp_fetch_response_timeout_secs:
+        #         # NO FETCH RESPONSE RECEIVED AT ALL SINCE WORKER START
+        #         self.log.error(
+        #             SLOW_PROCESSING_NO_RESPONSE_SINCE_START,
+        #             tp, humanize_seconds_ago(secs_since_started),
+        #         )
+        #     return True
+        #
+        # secs_since_request = now - request_at
+        # if secs_since_request >= self.tp_fetch_request_timeout_secs:
+        #     # NO REQUEST SENT BY AIOKAFKA IN THE LAST n SECONDS
+        #     self.log.error(
+        #         SLOW_PROCESSING_NO_RECENT_FETCH,
+        #         tp,
+        #         humanize_seconds_ago(secs_since_request),
+        #     )
+        #     return True
+        #
+        # secs_since_response = now - response_at
+        # if secs_since_response >= self.tp_fetch_response_timeout_secs:
+        #     # NO RESPONSE RECEIVED FROM KAKFA IN THE LAST n SECONDS
+        #     self.log.error(
+        #         SLOW_PROCESSING_NO_RECENT_RESPONSE,
+        #         tp,
+        #         humanize_seconds_ago(secs_since_response),
+        #     )
+        #     return True
         return False
 
     def _log_slow_processing_stream(self, msg: str, *args: Any) -> None:
@@ -894,6 +894,7 @@ class Producer(base.Producer):
     allow_headers: bool = True
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
+    _trn_locks: typing.Dict[str, Lock] = {}
 
     def __post_init__(self) -> None:
         self._send_on_produce_message = self.app.on_produce_message.send
@@ -904,6 +905,7 @@ class Producer(base.Producer):
             if wanted_api_version < (0, 11):
                 self.allow_headers = False
         self._transaction_producers = dict()
+        self._trn_locks = dict()
 
     def _settings_default(self) -> Mapping[str, Any]:
         transport = cast(Transport, self.transport)
@@ -916,7 +918,7 @@ class Producer(base.Producer):
             'max_batch_size': self.max_batch_size,
             'max_request_size': self.max_request_size,
             'compression_type': self.compression_type,
-            'on_irrecoverable_error': self._on_irrecoverable_error,
+            # 'on_irrecoverable_error': self._on_irrecoverable_error,
             'security_protocol': 'SSL' if self.ssl_context else 'PLAINTEXT',
             'partitioner': self.partitioner,
             'request_timeout_ms': int(self.request_timeout * 1000),
@@ -933,12 +935,16 @@ class Producer(base.Producer):
             transaction_producer = self._transaction_producers.get(transactional_id, None)
             if transaction_producer is None:
                 transaction_producer = self._new_producer(transactional_id=transactional_id)
+                await transaction_producer.start()
                 self._transaction_producers[transactional_id] = transaction_producer
-            self._ensure_producer()
-            await self._transaction_producers[transactional_id].begin_transaction()
+                self._trn_locks[transactional_id] = asyncio.Lock()
+            async with self._trn_locks[transactional_id]:
+                self._ensure_producer()
+                await self._transaction_producers[transactional_id].begin_transaction()
         except ProducerFenced as pf:
             logger.info(f'Current Producer for transaction {transactional_id} fenced')
-            self._transaction_producers.pop(transactional_id)
+            tp = self._transaction_producers.pop(transactional_id)
+            await tp.stop()
         except Exception as ex:
             logger.warning(f'Exception in begin_transaction for transaction {transactional_id} exception {ex}')
 
@@ -946,14 +952,19 @@ class Producer(base.Producer):
     async def commit_transaction(self, transactional_id: str) -> None:
         """Commit transaction by id."""
         try:
-            transaction_producer = self._transaction_producers.get(transactional_id, None)
-            if transaction_producer:
-                await transaction_producer.commit_transaction()
-            else:
-                logger.warning(f'Commit invoked for unknown transaction {transactional_id}')
+            async with self._trn_locks[transactional_id]:
+
+                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                if transaction_producer:
+                    await transaction_producer.commit_transaction()
+                    logger.info(f'Done committing transaction {transactional_id}')
+                else:
+                    logger.warning(f'Commit invoked for unknown transaction {transactional_id}')
         except ProducerFenced as pf:
             logger.info(f'Current Producer for transaction {transactional_id} fenced')
-            self._transaction_producers.pop(transactional_id)
+            tp = self._transaction_producers.pop(transactional_id)
+            await tp.stop()
+
         except Exception as ex:
             logger.warning(f'Exception in commit_transaction for transaction {transactional_id} exception {ex}')
 
@@ -961,14 +972,17 @@ class Producer(base.Producer):
     async def abort_transaction(self, transactional_id: str) -> None:
         """Abort and rollback transaction by id."""
         try:
-            transaction_producer = self._transaction_producers.get(transactional_id, None)
-            if transaction_producer :
-                await transaction_producer.abort_transaction()
-            else :
-                logger.warning(f'Abort invoked for unknown transaction {transactional_id}')
+            async with self._trn_locks[transactional_id]:
+
+                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                if transaction_producer :
+                    await transaction_producer.abort_transaction()
+                else :
+                    logger.warning(f'Abort invoked for unknown transaction {transactional_id}')
         except ProducerFenced as pf :
             logger.info(f'Current Producer for transaction {transactional_id} fenced')
-            self._transaction_producers.pop(transactional_id)
+            tp = self._transaction_producers.pop(transactional_id)
+            await tp.stop()
         except Exception as ex :
             logger.warning(f'Exception in abort_transaction for transaction {transactional_id} exception {ex}')
 
@@ -977,7 +991,9 @@ class Producer(base.Producer):
         """Stop transaction by id."""
         # Let Kafka Manage the transactions. On rebalance a new producer with the
         # same transaction id will fence off this producer
-        await self._transaction_producers.pop(transactional_id, None)
+        tp =  self._transaction_producers.pop(transactional_id, None)
+        if tp:
+            await tp.stop()
 
     async def maybe_begin_transaction(self, transactional_id: str) -> None:
         """Begin transaction (if one does not already exist)."""
@@ -991,17 +1007,21 @@ class Producer(base.Producer):
         """Commit transactions."""
         for transactional_id, offsets in tid_to_offset_map.items() :
             # get the producer
-            transaction_producer = self._transaction_producers.get(transactional_id, None)
-            if transaction_producer :
-                logger.debug(f'Sending offsets {offsets} to transaction {transactional_id}')
-                await transaction_producer.send_offsets_to_transaction(
-                    transactional_id, offsets, group_id)
-                await transaction_producer.commit_transaction()
-                if start_new_transaction:
-                    await self.begin_transaction(transactional_id)
+            async with self._trn_locks[transactional_id]:
 
-            else :
-                logger.warning(f'Commit invoked for unknown transaction {transactional_id}')
+                transaction_producer = self._transaction_producers.get(transactional_id, None)
+                if transaction_producer :
+                    logger.debug(f'Sending offsets {offsets} to transaction {transactional_id}')
+                    await transaction_producer.send_offsets_to_transaction(offsets, group_id)
+                    await transaction_producer.commit_transaction()
+                    logger.info(f'Done committing transaction {transactional_id}')
+                    if start_new_transaction:
+                        logger.info(f'Starting transaction {transactional_id}')
+                        await transaction_producer.begin_transaction()
+                        logger.info(f'Started transaction {transactional_id}')
+
+                else :
+                    logger.warning(f'Commit invoked for unknown transaction {transactional_id}')
 
 
 
@@ -1017,7 +1037,7 @@ class Producer(base.Producer):
             **{**self._settings_default(),
                **self._settings_auth(),
                **self._settings_extra()},
-               transactional_id=transactional_id,
+            transactional_id=transactional_id,
         )
 
     @property
@@ -1071,6 +1091,7 @@ class Producer(base.Producer):
     async def on_start(self) -> None:
         """Call when producer starts."""
         await super().on_start()
+        # if not self.app.in_transaction:
         producer = self._producer = self._new_producer()
         self.beacon.add(producer)
         await producer.start()
@@ -1095,10 +1116,12 @@ class Producer(base.Producer):
                     transactional_id: str = None
                    ) -> Awaitable[RecordMetadata]:
         """Schedule message to be transmitted by producer."""
-        producer = self._ensure_producer()
-        transaction_producer = self._transaction_producers.get(transactional_id, None)
-        if transaction_producer is None:
-            raise ProducerSendError(f'No transaction producer found for : {transactional_id}')
+
+        transaction_producer = self._ensure_producer()
+        if transactional_id:
+            transaction_producer = self._transaction_producers.get(transactional_id, None)
+            if transaction_producer is None:
+                raise ProducerSendError(f'No transaction producer found for : {transactional_id}')
         if headers is not None:
             if isinstance(headers, Mapping):
                 headers = list(headers.items())
@@ -1112,13 +1135,25 @@ class Producer(base.Producer):
             headers = None
         timestamp_ms = int(timestamp * 1000.0) if timestamp else timestamp
         try:
-            return cast(Awaitable[RecordMetadata], await transaction_producer.send(
-                topic, value,
-                key=key,
-                partition=partition,
-                timestamp_ms=timestamp_ms,
-                headers=headers,
-            ))
+            if transactional_id:
+                async with self._trn_locks[transactional_id]:
+
+                    return cast(Awaitable[RecordMetadata], await transaction_producer.send(
+                        topic, value,
+                        key=key,
+                        partition=partition,
+                        timestamp_ms=timestamp_ms,
+                        headers=headers,
+                    ))
+            else:
+                return cast(Awaitable[RecordMetadata], await transaction_producer.send(
+                    topic, value,
+                    key=key,
+                    partition=partition,
+                    timestamp_ms=timestamp_ms,
+                    headers=headers,
+                ))
+
         except KafkaError as exc:
             raise ProducerSendError(f'Error while sending: {exc!r}') from exc
 
