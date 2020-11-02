@@ -623,18 +623,19 @@ class AIOKafkaConsumerThread(ConsumerThread):
         aiotp = TopicPartition(tp.topic, tp.partition)
         assignment = consumer._fetcher._subscriptions.subscription.assignment
         if not assignment and not assignment.active:
-            self.log.error(f'No active partitions for {tp}')
+            self.log.error(f"No active partitions for {tp}")
             return True
         poll_at = None
         aiotp_state = assignment.state_value(aiotp)
         if aiotp_state:
-            poll_at = aiotp_state.timestamp
+            poll_at = aiotp_state.timestamp / 1000
         if poll_at is None:
             if secs_since_started >= self.tp_fetch_request_timeout_secs:
                 # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
                 self.log.error(
                     SLOW_PROCESSING_NO_FETCH_SINCE_START,
-                    tp, humanize_seconds_ago(secs_since_started),
+                    tp,
+                    humanize_seconds_ago(secs_since_started),
                 )
             return True
 
