@@ -27,7 +27,6 @@ BUNDLES = {
     'aiodns',
     'aiomonitor',
     'cchardet',
-    'ckafka',
     'ciso8601',
     'cython',
     'datadog',

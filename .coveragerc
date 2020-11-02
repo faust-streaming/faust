@@ -2,7 +2,7 @@
 branch = 1
 cover_pylib = 0
 include=*faust/*
-omit = t.*
+omit = tests.*
 
 [report]
 omit =
@@ -22,7 +22,6 @@ omit =
     */faust/web/apps/*
     */faust/assignor/*
     */faust/transport/drivers/memory.py
-    */faust/transport/drivers/confluent.py
 
     # tested by integration
     */faust/tables/recovery.py
