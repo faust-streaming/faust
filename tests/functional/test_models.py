@@ -2,7 +2,11 @@ import abc
 from datetime import datetime
 from decimal import Decimal
 from typing import ClassVar, Dict, List, Mapping, Optional, Set, Tuple
+
+import pytest
 from dateutil.parser import parse as parse_date
+from mode.utils.logging import get_logger
+
 import faust
 from faust.exceptions import SecurityError, ValidationError
 from faust.models import maybe_model
@@ -15,21 +19,14 @@ from faust.models.fields import (
     IntegerField,
     StringField,
 )
-from mode.utils.logging import get_logger
-from faust.models.tags import (
-    Secret,
-    Sensitive,
-    _FrameLocal,
-    allow_protected_vars,
-)
+from faust.models.tags import Secret, Sensitive, _FrameLocal, allow_protected_vars
 from faust.types import ModelT
 from faust.utils import json
-import pytest
 
 logger = get_logger(__name__)
 
 
-class Record(faust.Record, serializer='json'):
+class Record(faust.Record, serializer="json"):
     # make sure all models in this test uses json as the serializer.
     ...
 
@@ -53,16 +50,16 @@ class AccountMap(Record):
 
 
 class FREFAccountList(Record):
-    accounts: 'List[Account]'
+    accounts: "List[Account]"
 
 
 class FREFAccountSet(Record):
-    accounts: 'Set[Account]'
+    accounts: "Set[Account]"
 
 
 class FREFAccountMap(Record):
-    accounts: Dict[str, 'Account']
-    something: 'ClassVar[bool]' = True
+    accounts: Dict[str, "Account"]
+    something: "ClassVar[bool]" = True
 
 
 class User(Record):
@@ -72,31 +69,30 @@ class User(Record):
 
 
 def test_parameters():
-    account = Account('id', 'name', True)
-    assert account.id == 'id'
-    assert account.name == 'name'
+    account = Account("id", "name", True)
+    assert account.id == "id"
+    assert account.name == "name"
     assert account.active
 
-    account2 = Account('id', 'name', active=False)
-    assert account2.id == 'id'
-    assert account2.name == 'name'
+    account2 = Account("id", "name", active=False)
+    assert account2.id == "id"
+    assert account2.name == "name"
     assert not account2.active
 
     class Account3(Account):
         foo: int = None
 
-    account3 = Account3('id', 'name', False, 'foo')
-    assert account3.id == 'id'
-    assert account3.name == 'name'
+    account3 = Account3("id", "name", False, "foo")
+    assert account3.id == "id"
+    assert account3.name == "name"
     assert not account3.active
-    assert account3.foo == 'foo'
+    assert account3.foo == "foo"
 
     with pytest.raises(AttributeError):
         account2.foo
 
 
 def test_paramters_with_custom_init():
-
     class Point(Record, include_metadata=False):
         x: int
         y: int
@@ -109,7 +105,7 @@ def test_paramters_with_custom_init():
     assert p.x == 30
     assert p.y == 10
 
-    payload = p.dumps(serializer='json')
+    payload = p.dumps(serializer="json")
     assert payload == b'{"x": 30, "y": 10}'
 
     data = json.loads(payload)
@@ -119,7 +115,6 @@ def test_paramters_with_custom_init():
 
 
 def test_parameters_with_custom_init_and_super():
-
     class Point(Record, include_metadata=False):
         x: int
         y: int
@@ -132,7 +127,7 @@ def test_parameters_with_custom_init_and_super():
     assert p.y == 10
     assert p.z == 40
 
-    payload = p.dumps(serializer='json')
+    payload = p.dumps(serializer="json")
     assert payload == b'{"x": 30, "y": 10}'
 
     data = json.loads(payload)
@@ -143,7 +138,6 @@ def test_parameters_with_custom_init_and_super():
 
 
 def test_datetimes():
-
     class Date(Record, coerce=True):
         date: datetime
 
@@ -175,33 +169,33 @@ def test_datetimes():
     assert OptionalDate.loads(OptionalDate(date=n1).dumps()).date == n1
     assert OptionalDate.loads(OptionalDate(date=None).dumps()).date is None
     n2 = datetime.utcnow()
-    assert ListOfDate.loads(ListOfDate(
-        dates=[n1, n2]).dumps()).dates == [n1, n2]
-    assert OptionalListOfDate.loads(OptionalListOfDate(
-        dates=None).dumps()).dates is None
-    assert OptionalListOfDate.loads(OptionalListOfDate(
-        dates=[n2, n1]).dumps()).dates == [n2, n1]
-    assert OptionalListOfDate2.loads(OptionalListOfDate2(
-        dates=None).dumps()).dates is None
-    assert OptionalListOfDate2.loads(OptionalListOfDate2(
-        dates=[n1, n2]).dumps()).dates == [n1, n2]
-    assert TupleOfDate.loads(TupleOfDate(
-        dates=(n1, n2)).dumps()).dates == (n1, n2)
-    assert TupleOfDate.loads(TupleOfDate(
-        dates=(n2,)).dumps()).dates == (n2,)
-    assert SetOfDate.loads(SetOfDate(
-        dates={n1, n2}).dumps()).dates == {n1, n2}
-    assert MapOfDate.loads(MapOfDate(
-        dates={'A': n1, 'B': n2}).dumps()).dates == {'A': n1, 'B': n2}
+    assert ListOfDate.loads(ListOfDate(dates=[n1, n2]).dumps()).dates == [n1, n2]
+    assert (
+        OptionalListOfDate.loads(OptionalListOfDate(dates=None).dumps()).dates is None
+    )
+    assert OptionalListOfDate.loads(
+        OptionalListOfDate(dates=[n2, n1]).dumps()
+    ).dates == [n2, n1]
+    assert (
+        OptionalListOfDate2.loads(OptionalListOfDate2(dates=None).dumps()).dates is None
+    )
+    assert OptionalListOfDate2.loads(
+        OptionalListOfDate2(dates=[n1, n2]).dumps()
+    ).dates == [n1, n2]
+    assert TupleOfDate.loads(TupleOfDate(dates=(n1, n2)).dumps()).dates == (n1, n2)
+    assert TupleOfDate.loads(TupleOfDate(dates=(n2,)).dumps()).dates == (n2,)
+    assert SetOfDate.loads(SetOfDate(dates={n1, n2}).dumps()).dates == {n1, n2}
+    assert MapOfDate.loads(MapOfDate(dates={"A": n1, "B": n2}).dumps()).dates == {
+        "A": n1,
+        "B": n2,
+    }
 
-    datelist = ListOfDate.from_data({
-        'dates': [n1.isoformat(), n2.isoformat()]})
+    datelist = ListOfDate.from_data({"dates": [n1.isoformat(), n2.isoformat()]})
     assert isinstance(datelist.dates[0], datetime)
     assert isinstance(datelist.dates[1], datetime)
 
 
 def test_datetimes__isodates_compat():
-
     class Date(Record, coerce=False, isodates=True):
         date: datetime
 
@@ -226,153 +220,162 @@ def test_datetimes__isodates_compat():
     n1 = datetime.utcnow()
     assert Date.loads(Date(date=n1).dumps()).date == n1
     n2 = datetime.utcnow()
-    assert ListOfDate.loads(ListOfDate(
-        dates=[n1, n2]).dumps()).dates == [n1, n2]
-    assert OptionalListOfDate.loads(OptionalListOfDate(
-        dates=None).dumps()).dates is None
-    assert OptionalListOfDate.loads(OptionalListOfDate(
-        dates=[n2, n1]).dumps()).dates == [n2, n1]
-    assert OptionalListOfDate2.loads(OptionalListOfDate2(
-        dates=None).dumps()).dates is None
-    assert OptionalListOfDate2.loads(OptionalListOfDate2(
-        dates=[n1, n2]).dumps()).dates == [n1, n2]
-    assert TupleOfDate.loads(TupleOfDate(
-        dates=(n1, n2)).dumps()).dates == (n1, n2)
-    assert TupleOfDate.loads(TupleOfDate(
-        dates=(n2,)).dumps()).dates == (n2,)
-    assert SetOfDate.loads(SetOfDate(
-        dates={n1, n2}).dumps()).dates == {n1, n2}
-    assert MapOfDate.loads(MapOfDate(
-        dates={'A': n1, 'B': n2}).dumps()).dates == {'A': n1, 'B': n2}
+    assert ListOfDate.loads(ListOfDate(dates=[n1, n2]).dumps()).dates == [n1, n2]
+    assert (
+        OptionalListOfDate.loads(OptionalListOfDate(dates=None).dumps()).dates is None
+    )
+    assert OptionalListOfDate.loads(
+        OptionalListOfDate(dates=[n2, n1]).dumps()
+    ).dates == [n2, n1]
+    assert (
+        OptionalListOfDate2.loads(OptionalListOfDate2(dates=None).dumps()).dates is None
+    )
+    assert OptionalListOfDate2.loads(
+        OptionalListOfDate2(dates=[n1, n2]).dumps()
+    ).dates == [n1, n2]
+    assert TupleOfDate.loads(TupleOfDate(dates=(n1, n2)).dumps()).dates == (n1, n2)
+    assert TupleOfDate.loads(TupleOfDate(dates=(n2,)).dumps()).dates == (n2,)
+    assert SetOfDate.loads(SetOfDate(dates={n1, n2}).dumps()).dates == {n1, n2}
+    assert MapOfDate.loads(MapOfDate(dates={"A": n1, "B": n2}).dumps()).dates == {
+        "A": n1,
+        "B": n2,
+    }
 
-    datelist = ListOfDate.from_data({
-        'dates': [n1.isoformat(), n2.isoformat()]})
+    datelist = ListOfDate.from_data({"dates": [n1.isoformat(), n2.isoformat()]})
     assert isinstance(datelist.dates[0], datetime)
     assert isinstance(datelist.dates[1], datetime)
 
 
 def test_decimals():
-
-    class IsDecimal(Record, coerce=True, serializer='json'):
+    class IsDecimal(Record, coerce=True, serializer="json"):
         number: Decimal
 
-    class ListOfDecimal(Record, coerce=True, serializer='json'):
+    class ListOfDecimal(Record, coerce=True, serializer="json"):
         numbers: List[Decimal]
 
-    class OptionalListOfDecimal(Record, coerce=True, serializer='json'):
+    class OptionalListOfDecimal(Record, coerce=True, serializer="json"):
         numbers: List[Decimal] = None
 
-    class OptionalListOfDecimal2(Record, coerce=True, serializer='json'):
+    class OptionalListOfDecimal2(Record, coerce=True, serializer="json"):
         numbers: Optional[List[Decimal]]
 
-    class TupleOfDecimal(Record, coerce=True, serializer='json'):
+    class TupleOfDecimal(Record, coerce=True, serializer="json"):
         numbers: Tuple[Decimal, ...]
 
-    class SetOfDecimal(Record, coerce=True, serializer='json'):
+    class SetOfDecimal(Record, coerce=True, serializer="json"):
         numbers: Set[Decimal]
 
-    class MapOfDecimal(Record, coerce=True, serializer='json'):
+    class MapOfDecimal(Record, coerce=True, serializer="json"):
         numbers: Mapping[str, Decimal]
 
-    n1 = Decimal('1.31341324')
+    n1 = Decimal("1.31341324")
     assert IsDecimal.loads(IsDecimal(number=n1).dumps()).number == n1
-    n2 = Decimal('3.41569')
-    assert ListOfDecimal.loads(ListOfDecimal(
-        numbers=[n1, n2]).dumps()).numbers == [n1, n2]
-    assert OptionalListOfDecimal.loads(OptionalListOfDecimal(
-        numbers=None).dumps()).numbers is None
-    assert OptionalListOfDecimal.loads(OptionalListOfDecimal(
-        numbers=[n2, n1]).dumps()).numbers == [n2, n1]
-    assert OptionalListOfDecimal2.loads(OptionalListOfDecimal2(
-        numbers=None).dumps()).numbers is None
-    assert OptionalListOfDecimal2.loads(OptionalListOfDecimal2(
-        numbers=[n1, n2]).dumps()).numbers == [n1, n2]
-    assert TupleOfDecimal.loads(TupleOfDecimal(
-        numbers=(n1, n2)).dumps()).numbers == (n1, n2)
-    assert TupleOfDecimal.loads(TupleOfDecimal(
-        numbers=(n2,)).dumps()).numbers == (n2,)
-    assert SetOfDecimal.loads(SetOfDecimal(
-        numbers={n1, n2}).dumps()).numbers == {n1, n2}
-    assert MapOfDecimal.loads(MapOfDecimal(
-        numbers={'A': n1, 'B': n2}).dumps()).numbers == {'A': n1, 'B': n2}
+    n2 = Decimal("3.41569")
+    assert ListOfDecimal.loads(ListOfDecimal(numbers=[n1, n2]).dumps()).numbers == [
+        n1,
+        n2,
+    ]
+    assert (
+        OptionalListOfDecimal.loads(OptionalListOfDecimal(numbers=None).dumps()).numbers
+        is None
+    )
+    assert OptionalListOfDecimal.loads(
+        OptionalListOfDecimal(numbers=[n2, n1]).dumps()
+    ).numbers == [n2, n1]
+    assert (
+        OptionalListOfDecimal2.loads(
+            OptionalListOfDecimal2(numbers=None).dumps()
+        ).numbers
+        is None
+    )
+    assert OptionalListOfDecimal2.loads(
+        OptionalListOfDecimal2(numbers=[n1, n2]).dumps()
+    ).numbers == [n1, n2]
+    assert TupleOfDecimal.loads(TupleOfDecimal(numbers=(n1, n2)).dumps()).numbers == (
+        n1,
+        n2,
+    )
+    assert TupleOfDecimal.loads(TupleOfDecimal(numbers=(n2,)).dumps()).numbers == (n2,)
+    assert SetOfDecimal.loads(SetOfDecimal(numbers={n1, n2}).dumps()).numbers == {
+        n1,
+        n2,
+    }
+    assert MapOfDecimal.loads(
+        MapOfDecimal(numbers={"A": n1, "B": n2}).dumps()
+    ).numbers == {"A": n1, "B": n2}
 
-    dlist = ListOfDecimal.from_data({'numbers': ['1.312341', '3.41569']})
+    dlist = ListOfDecimal.from_data({"numbers": ["1.312341", "3.41569"]})
     assert isinstance(dlist.numbers[0], Decimal)
     assert isinstance(dlist.numbers[1], Decimal)
 
 
 def test_decimals_compat():
-
-    class IsDecimal(Record, coerce=False, decimals=True, serializer='json'):
+    class IsDecimal(Record, coerce=False, decimals=True, serializer="json"):
         number: Decimal
 
-    class ListOfDecimal(Record,
-                        coerce=False,
-                        decimals=True,
-                        serializer='json'):
+    class ListOfDecimal(Record, coerce=False, decimals=True, serializer="json"):
         numbers: List[Decimal]
 
-    class OptionalListOfDecimal(Record,
-                                coerce=False,
-                                decimals=True,
-                                serializer='json'):
+    class OptionalListOfDecimal(Record, coerce=False, decimals=True, serializer="json"):
         numbers: List[Decimal] = None
 
-    class OptionalListOfDecimal2(Record,
-                                 coerce=False,
-                                 decimals=True,
-                                 serializer='json'):
+    class OptionalListOfDecimal2(
+        Record, coerce=False, decimals=True, serializer="json"
+    ):
         numbers: Optional[List[Decimal]]
 
-    class TupleOfDecimal(Record,
-                         coerce=False,
-                         decimals=True,
-                         serializer='json'):
+    class TupleOfDecimal(Record, coerce=False, decimals=True, serializer="json"):
         numbers: Tuple[Decimal, ...]
 
-    class SetOfDecimal(Record,
-                       coerce=False,
-                       decimals=True,
-                       serializer='json'):
+    class SetOfDecimal(Record, coerce=False, decimals=True, serializer="json"):
         numbers: Set[Decimal]
 
-    class MapOfDecimal(Record,
-                       coerce=False,
-                       decimals=True,
-                       serializer='json'):
+    class MapOfDecimal(Record, coerce=False, decimals=True, serializer="json"):
         numbers: Mapping[str, Decimal]
 
-    n1 = Decimal('1.31341324')
+    n1 = Decimal("1.31341324")
     assert IsDecimal.loads(IsDecimal(number=n1).dumps()).number == n1
-    n2 = Decimal('3.41569')
-    assert ListOfDecimal.loads(ListOfDecimal(
-        numbers=[n1, n2]).dumps()).numbers == [n1, n2]
-    assert OptionalListOfDecimal.loads(OptionalListOfDecimal(
-        numbers=None).dumps()).numbers is None
-    assert OptionalListOfDecimal.loads(OptionalListOfDecimal(
-        numbers=[n2, n1]).dumps()).numbers == [n2, n1]
-    assert OptionalListOfDecimal2.loads(OptionalListOfDecimal2(
-        numbers=None).dumps()).numbers is None
-    assert OptionalListOfDecimal2.loads(OptionalListOfDecimal2(
-        numbers=[n1, n2]).dumps()).numbers == [n1, n2]
-    assert TupleOfDecimal.loads(TupleOfDecimal(
-        numbers=(n1, n2)).dumps()).numbers == (n1, n2)
-    assert TupleOfDecimal.loads(TupleOfDecimal(
-        numbers=(n2,)).dumps()).numbers == (n2,)
-    assert SetOfDecimal.loads(SetOfDecimal(
-        numbers={n1, n2}).dumps()).numbers == {n1, n2}
-    assert MapOfDecimal.loads(MapOfDecimal(
-        numbers={'A': n1, 'B': n2}).dumps()).numbers == {'A': n1, 'B': n2}
+    n2 = Decimal("3.41569")
+    assert ListOfDecimal.loads(ListOfDecimal(numbers=[n1, n2]).dumps()).numbers == [
+        n1,
+        n2,
+    ]
+    assert (
+        OptionalListOfDecimal.loads(OptionalListOfDecimal(numbers=None).dumps()).numbers
+        is None
+    )
+    assert OptionalListOfDecimal.loads(
+        OptionalListOfDecimal(numbers=[n2, n1]).dumps()
+    ).numbers == [n2, n1]
+    assert (
+        OptionalListOfDecimal2.loads(
+            OptionalListOfDecimal2(numbers=None).dumps()
+        ).numbers
+        is None
+    )
+    assert OptionalListOfDecimal2.loads(
+        OptionalListOfDecimal2(numbers=[n1, n2]).dumps()
+    ).numbers == [n1, n2]
+    assert TupleOfDecimal.loads(TupleOfDecimal(numbers=(n1, n2)).dumps()).numbers == (
+        n1,
+        n2,
+    )
+    assert TupleOfDecimal.loads(TupleOfDecimal(numbers=(n2,)).dumps()).numbers == (n2,)
+    assert SetOfDecimal.loads(SetOfDecimal(numbers={n1, n2}).dumps()).numbers == {
+        n1,
+        n2,
+    }
+    assert MapOfDecimal.loads(
+        MapOfDecimal(numbers={"A": n1, "B": n2}).dumps()
+    ).numbers == {"A": n1, "B": n2}
 
-    dlist = ListOfDecimal.from_data({'numbers': ['1.312341', '3.41569']})
+    dlist = ListOfDecimal.from_data({"numbers": ["1.312341", "3.41569"]})
     assert isinstance(dlist.numbers[0], Decimal)
     assert isinstance(dlist.numbers[1], Decimal)
 
 
 def test_custom_coercion():
-
     class Foo:
-
         def __init__(self, value: int):
             assert isinstance(value, int)
             self.value: int = value
@@ -389,21 +392,18 @@ def test_custom_coercion():
             return self.value
 
         def __repr__(self):
-            return f'<{type(self).__name__}: {self.value}>'
+            return f"<{type(self).__name__}: {self.value}>"
 
-    class CanFooModel(Record,
-                      abstract=True,
-                      coercions={Foo: Foo},
-                      serializer='json'):
+    class CanFooModel(Record, abstract=True, coercions={Foo: Foo}, serializer="json"):
         ...
 
-    class IsFoo(CanFooModel, serializer='json'):
+    class IsFoo(CanFooModel, serializer="json"):
         foo: Foo
 
-    class ListOfFoo(CanFooModel, serializer='json'):
+    class ListOfFoo(CanFooModel, serializer="json"):
         foos: List[Foo]
 
-    class OptionalListOfFoo(CanFooModel, serializer='json'):
+    class OptionalListOfFoo(CanFooModel, serializer="json"):
         foos: List[Foo] = None
 
     class OptionalListOfFoo2(CanFooModel):
@@ -421,47 +421,50 @@ def test_custom_coercion():
     n1 = Foo(101)
     assert IsFoo.loads(IsFoo(foo=n1).dumps()).foo == n1
     n2 = Foo(202)
-    assert ListOfFoo.loads(ListOfFoo(
-        foos=[n1, n2]).dumps()).foos == [n1, n2]
-    assert OptionalListOfFoo.loads(OptionalListOfFoo(
-        foos=None).dumps()).foos is None
-    assert OptionalListOfFoo.loads(OptionalListOfFoo(
-        foos=[n2, n1]).dumps()).foos == [n2, n1]
-    assert OptionalListOfFoo2.loads(OptionalListOfFoo2(
-        foos=None).dumps()).foos is None
-    assert OptionalListOfFoo2.loads(OptionalListOfFoo2(
-        foos=[n1, n2]).dumps()).foos == [n1, n2]
-    assert TupleOfFoo.loads(TupleOfFoo(
-        foos=(n1, n2)).dumps()).foos == (n1, n2)
-    assert TupleOfFoo.loads(TupleOfFoo(
-        foos=(n2,)).dumps()).foos == (n2,)
-    assert SetOfFoo.loads(SetOfFoo(
-        foos={n1, n2}).dumps()).foos == {n1, n2}
-    assert MapOfFoo.loads(MapOfFoo(
-        foos={'A': n1, 'B': n2}).dumps()).foos == {'A': n1, 'B': n2}
+    assert ListOfFoo.loads(ListOfFoo(foos=[n1, n2]).dumps()).foos == [n1, n2]
+    assert OptionalListOfFoo.loads(OptionalListOfFoo(foos=None).dumps()).foos is None
+    assert OptionalListOfFoo.loads(OptionalListOfFoo(foos=[n2, n1]).dumps()).foos == [
+        n2,
+        n1,
+    ]
+    assert OptionalListOfFoo2.loads(OptionalListOfFoo2(foos=None).dumps()).foos is None
+    assert OptionalListOfFoo2.loads(OptionalListOfFoo2(foos=[n1, n2]).dumps()).foos == [
+        n1,
+        n2,
+    ]
+    assert TupleOfFoo.loads(TupleOfFoo(foos=(n1, n2)).dumps()).foos == (n1, n2)
+    assert TupleOfFoo.loads(TupleOfFoo(foos=(n2,)).dumps()).foos == (n2,)
+    assert SetOfFoo.loads(SetOfFoo(foos={n1, n2}).dumps()).foos == {n1, n2}
+    assert MapOfFoo.loads(MapOfFoo(foos={"A": n1, "B": n2}).dumps()).foos == {
+        "A": n1,
+        "B": n2,
+    }
 
 
 def test_constructor():
     with pytest.raises(TypeError):
-        Account(id='123')
+        Account(id="123")
     with pytest.raises(TypeError):
-        Account(name='foo')
+        Account(name="foo")
     with pytest.raises(TypeError):
         Account(unknown_argument=303)
-    account = Account(id='123', name='foo')
-    assert account.id == '123'
-    assert account.name == 'foo'
+    account = Account(id="123", name="foo")
+    assert account.id == "123"
+    assert account.name == "foo"
     assert account.active
-    assert not Account(id='123', name='foo', active=False).active
+    assert not Account(id="123", name="foo", active=False).active
 
 
 def test_submodels():
-    a1 = Account(id='123', name='foo', active=True)
-    a2 = Account(id='456', name='bar', active=False)
-    a3 = Account(id='789', name='baz', active=True)
+    a1 = Account(id="123", name="foo", active=True)
+    a2 = Account(id="456", name="bar", active=False)
+    a3 = Account(id="789", name="baz", active=True)
 
-    assert AccountList.loads(AccountList(
-        accounts=[a1, a2, a3]).dumps()).accounts == [a1, a2, a3]
+    assert AccountList.loads(AccountList(accounts=[a1, a2, a3]).dumps()).accounts == [
+        a1,
+        a2,
+        a3,
+    ]
 
     expected_set = {a1, a2, a3}
     acc1 = AccountSet.loads(AccountSet(accounts={a1, a2, a3}).dumps()).accounts
@@ -469,63 +472,66 @@ def test_submodels():
     assert len(acc1) == len(expected_set)
     for acc in acc1:
         assert acc in expected_set
-    assert AccountMap.loads(AccountMap(
-        accounts={'a': a1, 'b': a2, 'c': a3}).dumps()).accounts == {
-        'a': a1,
-        'b': a2,
-        'c': a3,
+    assert AccountMap.loads(
+        AccountMap(accounts={"a": a1, "b": a2, "c": a3}).dumps()
+    ).accounts == {
+        "a": a1,
+        "b": a2,
+        "c": a3,
     }
 
 
 def test_submodels_forward_reference():
-    a1 = Account(id='123', name='foo', active=True)
-    a2 = Account(id='456', name='bar', active=False)
-    a3 = Account(id='789', name='baz', active=True)
+    a1 = Account(id="123", name="foo", active=True)
+    a2 = Account(id="456", name="bar", active=False)
+    a3 = Account(id="789", name="baz", active=True)
 
-    assert AccountList.loads(FREFAccountList(
-        accounts=[a1, a2, a3]).dumps()).accounts == [a1, a2, a3]
-    assert sorted(AccountSet.loads(FREFAccountSet(
-        accounts={a1, a2, a3}).dumps()).accounts) == sorted({a1, a2, a3})
-    assert AccountMap.loads(FREFAccountMap(
-        accounts={'a': a1, 'b': a2, 'c': a3}).dumps()).accounts == {
-        'a': a1,
-        'b': a2,
-        'c': a3,
+    assert AccountList.loads(
+        FREFAccountList(accounts=[a1, a2, a3]).dumps()
+    ).accounts == [a1, a2, a3]
+    assert sorted(
+        AccountSet.loads(FREFAccountSet(accounts={a1, a2, a3}).dumps()).accounts
+    ) == sorted({a1, a2, a3})
+    assert AccountMap.loads(
+        FREFAccountMap(accounts={"a": a1, "b": a2, "c": a3}).dumps()
+    ).accounts == {
+        "a": a1,
+        "b": a2,
+        "c": a3,
     }
 
 
 def test_derive():
-    a1 = Account(id='123', name='foo', active=True)
-    b1 = Account(id='456', name='bar', active=False)
-    c1 = Account(id='789', name='baz', active=True)
+    a1 = Account(id="123", name="foo", active=True)
+    b1 = Account(id="456", name="bar", active=False)
+    c1 = Account(id="789", name="baz", active=True)
 
     assert a1.active
     a2 = a1.derive(active=False)
-    assert a2.id == '123'
-    assert a2.name == 'foo'
+    assert a2.id == "123"
+    assert a2.name == "foo"
     assert not a2.active
 
-    c2 = a1.derive(b1, c1, name='xuzzy')
-    assert c2.id == '789'
-    assert c2.name == 'xuzzy'
+    c2 = a1.derive(b1, c1, name="xuzzy")
+    assert c2.id == "789"
+    assert c2.name == "xuzzy"
     assert c2.active
 
     b2 = b1.derive(active=True)
     assert b2.active
-    assert b2.id == '456'
-    assert b2.name == 'bar'
+    assert b2.id == "456"
+    assert b2.name == "bar"
 
 
 def test_classvar_is_not_a_field():
-
     class PP(Record):
         x: int
         y: int
         z: ClassVar[int] = 3
 
     p = PP(10, 3)
-    assert 'z' not in repr(p)
-    assert p.asdict() == {'x': 10, 'y': 3}
+    assert "z" not in repr(p)
+    assert p.asdict() == {"x": 10, "y": 3}
     assert p.z == 3
 
     with pytest.raises(TypeError):
@@ -537,25 +543,31 @@ def test_classvar_is_not_a_field():
 
 def test_constructor_from_data():
     with pytest.raises(TypeError):
-        Account.from_data({'id': '123'})
+        Account.from_data({"id": "123"})
     with pytest.raises(TypeError):
-        Account.from_data({'name': 'foo'})
+        Account.from_data({"name": "foo"})
     with pytest.raises(TypeError):
-        Account.from_data({'unknown_argument': 303})
-    account = Account.from_data({'id': '123', 'name': 'foo'})
-    assert account.id == '123'
-    assert account.name == 'foo'
+        Account.from_data({"unknown_argument": 303})
+    account = Account.from_data({"id": "123", "name": "foo"})
+    assert account.id == "123"
+    assert account.name == "foo"
     assert account.active
-    assert not Account.from_data(
-        {'id': '123', 'name': 'foo', 'active': False}).active
+    assert not Account.from_data({"id": "123", "name": "foo", "active": False}).active
 
 
-@pytest.mark.parametrize('a,b', [
-    (User(id=1, username=2, account=Account(id=1, name=2)),
-     User(id=1, username=2, account=Account(id=1, name=2))),
-    (User(id=1, username=2, account=Account(id=1, name=2, active=False)),
-     User(id=1, username=2, account=Account(id=1, name=2, active=False))),
-])
+@pytest.mark.parametrize(
+    "a,b",
+    [
+        (
+            User(id=1, username=2, account=Account(id=1, name=2)),
+            User(id=1, username=2, account=Account(id=1, name=2)),
+        ),
+        (
+            User(id=1, username=2, account=Account(id=1, name=2, active=False)),
+            User(id=1, username=2, account=Account(id=1, name=2, active=False)),
+        ),
+    ],
+)
 def test_eq(a, b):
     assert a == b
 
@@ -564,20 +576,27 @@ def test_eq__incompatible():
     assert Account(id=1, name=2) != object()
 
 
-@pytest.mark.parametrize('a,b', [
-    (User(id=1, username=2, account=Account(id=1, name=2)),
-     User(id=2, username=2, account=Account(id=2, name=2))),
-    (User(id=1, username=2, account=Account(id=1, name=2)),
-     User(id=1, username=3, account=Account(id=1, name=2))),
-    (User(id=1, username=2, account=Account(id=1, name=2)),
-     User(id=1, username=2, account=Account(id=1, name=3))),
-    (User(id=1,
-          username=2,
-          account=Account(id=1, name=2, active=False)),
-     User(id=1,
-          username=2,
-          account=Account(id=1, name=3, active=True))),
-])
+@pytest.mark.parametrize(
+    "a,b",
+    [
+        (
+            User(id=1, username=2, account=Account(id=1, name=2)),
+            User(id=2, username=2, account=Account(id=2, name=2)),
+        ),
+        (
+            User(id=1, username=2, account=Account(id=1, name=2)),
+            User(id=1, username=3, account=Account(id=1, name=2)),
+        ),
+        (
+            User(id=1, username=2, account=Account(id=1, name=2)),
+            User(id=1, username=2, account=Account(id=1, name=3)),
+        ),
+        (
+            User(id=1, username=2, account=Account(id=1, name=2, active=False)),
+            User(id=1, username=2, account=Account(id=1, name=3, active=True)),
+        ),
+    ],
+)
 def test_ne(a, b):
     assert a != b
 
@@ -589,29 +608,28 @@ def test_json():
     payload = json.dumps(user)
     deser = json.loads(payload)
     assert deser == {
-        'id': 1,
-        'username': 2,
-        'account': {
-            'id': 1,
-            'name': 2,
-            'active': True,
-            '__faust': {'ns': Account._options.namespace},
+        "id": 1,
+        "username": 2,
+        "account": {
+            "id": 1,
+            "name": 2,
+            "active": True,
+            "__faust": {"ns": Account._options.namespace},
         },
-        '__faust': {'ns': User._options.namespace},
+        "__faust": {"ns": User._options.namespace},
     }
 
     assert user.__json__() == {
-        'id': 1,
-        'username': 2,
-        'account': account,
-        '__faust': {'ns': User._options.namespace},
+        "id": 1,
+        "username": 2,
+        "account": account,
+        "__faust": {"ns": User._options.namespace},
     }
 
     assert User.from_data(deser) == user
 
 
 class test_FieldDescriptor:
-
     def test_getattr(self):
         u = User(id=1, username=2, account=Account(id=3, name=4))
 
@@ -621,25 +639,27 @@ class test_FieldDescriptor:
         assert User.account.name.getattr(u) == 4
 
 
-@pytest.mark.parametrize('record', [
-    Account(id=None, name=None),
-    Account(id='123', name='123'),
-    Account(id='123', name='123', active=False),
-    User(id='123',
-         username='foo',
-         account=Account(id='123', name='Foo', active=True)),
-    User(id='123', username='foo', account=None),
-    User(id=None, username=None, account=None),
-    AccountList(accounts=[Account(id=None, name=None)]),
-    AccountMap(accounts={'foo': Account(id=None, name='foo')}),
-])
+@pytest.mark.parametrize(
+    "record",
+    [
+        Account(id=None, name=None),
+        Account(id="123", name="123"),
+        Account(id="123", name="123", active=False),
+        User(
+            id="123", username="foo", account=Account(id="123", name="Foo", active=True)
+        ),
+        User(id="123", username="foo", account=None),
+        User(id=None, username=None, account=None),
+        AccountList(accounts=[Account(id=None, name=None)]),
+        AccountMap(accounts={"foo": Account(id=None, name="foo")}),
+    ],
+)
 def test_dumps(record):
     assert record.loads(record.dumps()) == record
     assert repr(record)
 
 
 def test_subclass_default_values():
-
     class X(Record):
         x: int
         y: int = None
@@ -656,7 +676,6 @@ def test_subclass_default_values():
 
 
 def test_subclass_preserves_required_values():
-
     class X(Record):
         x: int
         z: int = None
@@ -664,8 +683,8 @@ def test_subclass_preserves_required_values():
     class Y(X):
         y: int
 
-    assert Y._options.defaults == {'z': None}
-    assert Y._options.optionalset == {'z'}
+    assert Y._options.defaults == {"z": None}
+    assert Y._options.optionalset == {"z"}
     with pytest.raises(TypeError):
         Y(y=10)
     with pytest.raises(TypeError):
@@ -683,18 +702,16 @@ def test_too_many_arguments_raises_TypeError():
     with pytest.raises(TypeError) as einfo:
         Y(10, 20, 30)
     reason = str(einfo.value)
-    assert '__init__() takes' in reason
+    assert "__init__() takes" in reason
 
 
 def test_fields_with_concrete_polymorphic_type__dict():
-
     class X(Record, isodates=True):
         foo: int
         details: dict
 
 
 def test_fields_with_concrete_polymorphic_type__dict_optional():
-
     class X(Record, isodates=True):
         username: str
         metric_name: str
@@ -704,35 +721,30 @@ def test_fields_with_concrete_polymorphic_type__dict_optional():
 
 
 def test_fields_with_concrete_polymorphic_type__tuple():
-
     class X(Record, isodates=True):
         foo: int
         details: tuple
 
 
 def test_fields_with_concrete_polymorphic_type__list():
-
     class X(Record, isodates=True):
         foo: int
         details: list
 
 
 def test_fields_with_concrete_polymorphic_type__set():
-
     class X(Record, isodates=True):
         foo: int
         details: set
 
 
 def test_fields_with_concrete_polymorphic_type__frozenset():
-
     class X(Record, isodates=True):
         foo: int
         details: frozenset
 
 
 def test_supports_post_init():
-
     class X(Record):
         x: int
         y: int
@@ -745,7 +757,6 @@ def test_supports_post_init():
 
 
 def test_default_no_blessed_key():
-
     class X(Record):
         a: int
 
@@ -758,13 +769,12 @@ def test_default_no_blessed_key():
     x = LooksLikeX(303)
     y = Y(x)
 
-    data = Y.dumps(y, serializer='json')
-    y2 = Y.loads(data, serializer='json')
+    data = Y.dumps(y, serializer="json")
+    y2 = Y.loads(data, serializer="json")
     assert isinstance(y2.x, X)
 
 
 def test_default_multiple_levels_no_blessed_key():
-
     class StdAttribution(Record):
         first_name: str
         last_name: str
@@ -778,18 +788,19 @@ def test_default_multiple_levels_no_blessed_key():
     class Event(Record):
         account: Account
 
-    event = Event(account=Account(
-        first_name='George',
-        last_name='Costanza',
-        address=Address('US'),
-    ))
-    s = event.loads(event.dumps(serializer='json'), serializer='json')
+    event = Event(
+        account=Account(
+            first_name="George",
+            last_name="Costanza",
+            address=Address("US"),
+        )
+    )
+    s = event.loads(event.dumps(serializer="json"), serializer="json")
     assert isinstance(s.account, Account)
     assert isinstance(s.account.address, Address)
 
 
 def test_polymorphic_fields(app):
-
     class X(Record):
         a: int
 
@@ -802,13 +813,12 @@ def test_polymorphic_fields(app):
     x = LooksLikeX(303)
     y = Y(x)
 
-    data = Y.dumps(y, serializer='json')
-    y2 = app.serializers.loads_key(Y, data, serializer='json')
+    data = Y.dumps(y, serializer="json")
+    y2 = app.serializers.loads_key(Y, data, serializer="json")
     assert isinstance(y2.x, LooksLikeX)
 
 
 def test_compat_enabled_blessed_key(app):
-
     class X(Record):
         a: int
 
@@ -821,15 +831,13 @@ def test_compat_enabled_blessed_key(app):
     x = LooksLikeX(303)
     y = Y(x)
 
-    data = Y.dumps(y, serializer='json')
-    y2 = app.serializers.loads_key(Y, data, serializer='json')
+    data = Y.dumps(y, serializer="json")
+    y2 = app.serializers.loads_key(Y, data, serializer="json")
     assert isinstance(y2.x, LooksLikeX)
 
 
 def test__polymorphic_fields_deeply_nested():
-
     class BaseAttribution(Record, abc.ABC):
-
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -844,23 +852,23 @@ def test__polymorphic_fields_deeply_nested():
     class AdjustRecord(BaseAttribution):
         event: Event
 
-    x = AdjustRecord(Event(
-        category='foo',
-        event='bar',
-        data=AdjustData('baz'),
-    ))
-    value = x.dumps(serializer='json')
+    x = AdjustRecord(
+        Event(
+            category="foo",
+            event="bar",
+            data=AdjustData("baz"),
+        )
+    )
+    value = x.dumps(serializer="json")
     value_dict = json.loads(value)
-    value_dict['event']['__faust']['ns'] = 'x.y.z'
+    value_dict["event"]["__faust"]["ns"] = "x.y.z"
     model = AdjustRecord.from_data(value_dict)
     assert isinstance(model.event, Event)
     assert isinstance(model.event.data, AdjustData)
 
 
 def test_compat_blessed_key_deeply_nested():
-
     class BaseAttribution(Record, abc.ABC):
-
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -875,20 +883,22 @@ def test_compat_blessed_key_deeply_nested():
     class AdjustRecord(BaseAttribution):
         event: Event
 
-    x = AdjustRecord(Event(
-        category='foo',
-        event='bar',
-        data=AdjustData('baz'),
-    ))
-    value = x.dumps(serializer='json')
+    x = AdjustRecord(
+        Event(
+            category="foo",
+            event="bar",
+            data=AdjustData("baz"),
+        )
+    )
+    value = x.dumps(serializer="json")
     value_dict = json.loads(value)
-    value_dict['event']['__faust']['ns'] = 'x.y.z'
+    value_dict["event"]["__faust"]["ns"] = "x.y.z"
     model = AdjustRecord.from_data(value_dict)
     assert isinstance(model.event, Event)
     assert isinstance(model.event.data, AdjustData)
 
 
-ADTRIBUTE_PAYLOAD = '''
+ADTRIBUTE_PAYLOAD = """
 {"user": {"username": "3da6ef8f-aed1-47e7-ad4f-034363d0565b",
  "secret": null, "__faust": {"ns": "trebuchet.models.logging.User"}},
  "device": {"platform": "iOS",
@@ -920,13 +930,11 @@ ADTRIBUTE_PAYLOAD = '''
  "timestamp": "2018-03-22 16:57:19.000", "client_ip": "174.207.10.101",
  "event_hash": "50c9a0e19b9644abe269aadcea9e7526", "__faust": {
     "ns": "trebuchet.models.logging.LoggingEvent"}}
-'''
+"""
 
 
 def test_adtribute_payload(app):
-
     class BaseAttribution(Record, abc.ABC):
-
         def __post_init__(self) -> None:
             self.data_store = None
 
@@ -986,8 +994,7 @@ def test_adtribute_payload(app):
     def __post_init__(self) -> None:
         self.data_store = None
 
-    app.serializers.loads_value(
-        AdjustRecord, ADTRIBUTE_PAYLOAD, serializer='json')
+    app.serializers.loads_value(AdjustRecord, ADTRIBUTE_PAYLOAD, serializer="json")
 
 
 def test_overwrite_asdict():
@@ -995,13 +1002,11 @@ def test_overwrite_asdict():
     with pytest.raises(RuntimeError):
 
         class R(Record):
-
             def asdict(self):
-                return {'foo': 1}
+                return {"foo": 1}
 
 
 def test_prepare_dict():
-
     class Quote(Record):
         ask_price: float = None
         bid_price: float = None
@@ -1010,12 +1015,11 @@ def test_prepare_dict():
             return {k: v for k, v in payload.items() if v is not None}
 
     assert Quote().asdict() == {}
-    assert Quote(1.0, 2.0).asdict() == {'ask_price': 1.0, 'bid_price': 2.0}
-    assert Quote(None, 2.0).asdict() == {'bid_price': 2.0}
+    assert Quote(1.0, 2.0).asdict() == {"ask_price": 1.0, "bid_price": 2.0}
+    assert Quote(None, 2.0).asdict() == {"bid_price": 2.0}
 
 
 def test_custom_init_calling_model_init():
-
     class Quote(Record):
         ask_price: float
         bid_price: float
@@ -1036,19 +1040,18 @@ def test_repr():
 
 
 def test_ident():
-    assert Account.id.ident == 'Account.id'
+    assert Account.id.ident == "Account.id"
 
 
 def test_list_field_refers_to_self():
-
     class X(Record):
         id: int
-        xs: List['X']  # noqa: F821
+        xs: List["X"]  # noqa: F821
 
     x = X(1, [X(2, [X(3, [])])])
 
-    as_json = x.dumps(serializer='json')
-    loads = X.loads(as_json, serializer='json')
+    as_json = x.dumps(serializer="json")
+    loads = X.loads(as_json, serializer="json")
     assert loads == x
 
     assert isinstance(loads.xs[0], X)
@@ -1056,7 +1059,6 @@ def test_list_field_refers_to_self():
 
 
 def test_optional_modelfield():
-
     class X(Record):
         id: int
 
@@ -1065,8 +1067,8 @@ def test_optional_modelfield():
 
     y = Y(X(30))
 
-    as_json = y.dumps(serializer='json')
-    loads = Y.loads(as_json, serializer='json')
+    as_json = y.dumps(serializer="json")
+    loads = Y.loads(as_json, serializer="json")
     assert loads == y
 
     assert isinstance(loads.x, X)
@@ -1076,24 +1078,26 @@ def test_optional_modelfield_with_coercion():
     class X(Record, coercions={str: str}):
         y: Optional[str]
 
-    x = X(y='test')
+    x = X(y="test")
 
-    assert x.y == 'test'
+    assert x.y == "test"
 
 
-@pytest.mark.parametrize('flag,expected_default', [
-    ('isodates', False),
-    ('include_metadata', True),
-    ('polymorphic_fields', False),
-])
+@pytest.mark.parametrize(
+    "flag,expected_default",
+    [
+        ("isodates", False),
+        ("include_metadata", True),
+        ("polymorphic_fields", False),
+    ],
+)
 def test_subclass_inherit_flags(flag, expected_default):
-
     class BaseX(Record):
         x: datetime
 
-    X = type('X', (BaseX,), {}, **{flag: not expected_default})
-    Y = type('Y', (X,), {})
-    Z = type('Z', (Y,), {}, **{flag: expected_default})
+    X = type("X", (BaseX,), {}, **{flag: not expected_default})
+    Y = type("Y", (X,), {})
+    Z = type("Z", (Y,), {}, **{flag: expected_default})
 
     assert getattr(BaseX._options, flag) is expected_default
     assert getattr(X._options, flag) is not expected_default
@@ -1102,7 +1106,6 @@ def test_subclass_inherit_flags(flag, expected_default):
 
 
 def test_abstract_model_repr():
-
     class MyBase(faust.Record, abstract=True):
         ...
 
@@ -1114,6 +1117,7 @@ def test_abstract_model_repr():
 def test_raises_when_defaults_in_wrong_order():
 
     with pytest.raises(TypeError):
+
         class X(Record):
             foo: str
             bar: int = 3
@@ -1125,31 +1129,31 @@ def test_maybe_namespace_raises_for_missing_abstract_type():
         foo: str
 
     with pytest.raises(KeyError):
-        X._maybe_namespace({X._blessed_key: {'ns': 'a.b.c.d.e.f'}},
-                           preferred_type=ModelT)
+        X._maybe_namespace(
+            {X._blessed_key: {"ns": "a.b.c.d.e.f"}}, preferred_type=ModelT
+        )
 
 
 def test_compat_loads_DeprecationWarning():
     class X(Record):
         foo: str
 
-    payload = X('foo').dumps(serializer='json')
+    payload = X("foo").dumps(serializer="json")
     with pytest.warns(DeprecationWarning):
-        X.loads(payload, default_serializer='json')
+        X.loads(payload, default_serializer="json")
 
 
 def test_model_overriding_Options_sets_options():
-
     class X(Record):
         foo: str
 
         class Options:
-            coercions = {'foo': 'bar'}
+            coercions = {"foo": "bar"}
             foo = 1.345
 
     with pytest.raises(AttributeError):
         X.Options
-    assert X._options.coercions == {'foo': 'bar'}
+    assert X._options.coercions == {"foo": "bar"}
     assert X._options.foo == 1.345
 
 
@@ -1202,27 +1206,25 @@ def test_Record_comparison():
 
 
 def test_maybe_model():
-
     class X(Record):
         x: int
         y: int
 
-    assert maybe_model('foo') == 'foo'
+    assert maybe_model("foo") == "foo"
     assert maybe_model(1) == 1
     assert maybe_model(1.01) == 1.01
 
     x1 = X(10, 20)
-    assert maybe_model(json.loads(x1.dumps(serializer='json'))) == x1
+    assert maybe_model(json.loads(x1.dumps(serializer="json"))) == x1
 
 
 def test_StringField():
-
     class Moo(Record):
         foo: str = StringField(max_length=10, min_length=3, allow_blank=False)
 
-    too_long_moo = Moo('thequickbrownfoxjumpsoverthelazydog')
-    too_short_moo = Moo('xo')
-    perfect_moo = Moo('foobar')
+    too_long_moo = Moo("thequickbrownfoxjumpsoverthelazydog")
+    too_short_moo = Moo("xo")
+    perfect_moo = Moo("foobar")
 
     assert perfect_moo.is_valid()
     assert not too_long_moo.is_valid()
@@ -1232,22 +1234,20 @@ def test_StringField():
     assert too_long_moo.validation_errors
     assert too_short_moo.validation_errors
 
-    assert too_long_moo.foo == 'thequickbrownfoxjumpsoverthelazydog'
-    assert too_short_moo.foo == 'xo'
-    assert perfect_moo.foo == 'foobar'
+    assert too_long_moo.foo == "thequickbrownfoxjumpsoverthelazydog"
+    assert too_short_moo.foo == "xo"
+    assert perfect_moo.foo == "foobar"
 
-    assert not Moo('').is_valid()
-    assert Moo('').validation_errors
-    assert 'blank' in str(Moo('').validation_errors[0])
+    assert not Moo("").is_valid()
+    assert Moo("").validation_errors
+    assert "blank" in str(Moo("").validation_errors[0])
 
 
 def test_StringField_optional__explicit():
-
     class Moo(Record):
-        foo: str = StringField(max_length=10,
-                               min_length=3,
-                               required=False,
-                               allow_blank=False)
+        foo: str = StringField(
+            max_length=10, min_length=3, required=False, allow_blank=False
+        )
 
     moo = Moo()
     assert moo.foo is None
@@ -1255,11 +1255,8 @@ def test_StringField_optional__explicit():
 
 
 def test_StringField_optional__Optional():
-
     class Moo(Record):
-        foo: Optional[str] = StringField(max_length=10,
-                                         min_length=3,
-                                         allow_blank=False)
+        foo: Optional[str] = StringField(max_length=10, min_length=3, allow_blank=False)
 
     moo = Moo()
     assert moo.foo is None
@@ -1267,7 +1264,6 @@ def test_StringField_optional__Optional():
 
 
 def test_validation_ensures_types_match():
-
     class Order(Record, validation=True):
         price: Decimal = DecimalField()
         quantity: int = IntegerField()
@@ -1278,86 +1274,79 @@ def test_validation_ensures_types_match():
     with pytest.raises(TypeError):
         Order()
     with pytest.raises(TypeError):
-        Order(price=Decimal('3.13'))
+        Order(price=Decimal("3.13"))
     with pytest.raises(TypeError):
-        Order(price=Decimal('3.13'), quantity=30)
+        Order(price=Decimal("3.13"), quantity=30)
 
     with pytest.raises(ValidationError):
-        Order(price='NaN', quantity=2, side='BUY')
+        Order(price="NaN", quantity=2, side="BUY")
     with pytest.raises(ValueError):
-        Order(price='3.13', quantity='xyz', side='BUY')
+        Order(price="3.13", quantity="xyz", side="BUY")
 
-    assert Order(price=Decimal(3.13), quantity=10, side='BUY')
+    assert Order(price=Decimal(3.13), quantity=10, side="BUY")
 
-    order = Order(price='3.13', quantity='10', side='BUY', foo='3.33')
-    assert order.price == Decimal('3.13')
+    order = Order(price="3.13", quantity="10", side="BUY", foo="3.33")
+    assert order.price == Decimal("3.13")
     assert isinstance(order.price, Decimal)
     assert order.quantity == 10
-    assert order.side == 'BUY'
+    assert order.side == "BUY"
     assert order.foo == 3.33
     assert isinstance(order.foo, float)
 
 
 def test_Decimal_max_digits():
-
     class X(Record, validation=True):
         foo: Decimal = DecimalField(max_digits=3)
 
     with pytest.raises(ValidationError):
-        X(foo='3333.3333333333')
+        X(foo="3333.3333333333")
 
-    assert X(foo='33.33333333333333333').foo
+    assert X(foo="33.33333333333333333").foo
 
 
 def test_StringField_trim_whitespace():
-
     class X(Record, validation=True):
         foo: str = StringField(trim_whitespace=True)
 
-    assert X(foo='  the quick    ').foo == 'the quick'
+    assert X(foo="  the quick    ").foo == "the quick"
 
 
 def test_BytesField():
-
     class X(Record, validation=True):
         foo: bytes = BytesField(max_length=10, min_length=3)
 
-    assert X(foo='foo').foo == b'foo'
+    assert X(foo="foo").foo == b"foo"
 
 
 def test_BytesField_trim_whitespace():
-
     class X(Record, validation=True):
         foo: bytes = BytesField(trim_whitespace=True)
 
-    assert X(foo='  the quick    ').foo == b'the quick'
+    assert X(foo="  the quick    ").foo == b"the quick"
 
 
 def test_field_descriptors_may_mix_with_non_defaults():
-
     class Person(faust.Record, validation=True):
         age: int = IntegerField(min_value=18, max_value=200)
         name: str
 
     with pytest.raises(ValidationError):
-        Person(age=9, name='Robin')
+        Person(age=9, name="Robin")
 
     with pytest.raises(ValidationError):
-        Person(age=203, name='Abraham Lincoln')
+        Person(age=203, name="Abraham Lincoln")
 
 
 def test_field_descriptors_throws_type_error():
-
     class Person(faust.Record):
         age: int
         name: str
 
-    person = Person(age='Batman', name='Robin')
+    person = Person(age="Batman", name="Robin")
     assert person.validation_errors
 
 
 def test_implicit_descritor_types():
-
     class X(Record):
         a: int
         b: float
@@ -1373,13 +1362,12 @@ def test_implicit_descritor_types():
 
 
 def test_exclude():
-
     class X(Record):
         a: str
         b: str
         c: str = StringField(exclude=True)
 
-    x = X('A', 'B', 'C')
+    x = X("A", "B", "C")
 
     assert X.a.required
     assert X.b.required
@@ -1389,15 +1377,13 @@ def test_exclude():
     assert not X.b.exclude
     assert X.c.exclude
 
-    assert x.asdict() == {'a': 'A', 'b': 'B'}
+    assert x.asdict() == {"a": "A", "b": "B"}
 
-    assert 'c' not in x.to_representation()
+    assert "c" not in x.to_representation()
 
 
 def test_custom_field_validation():
-
     class ChoiceField(FieldDescriptor[str]):
-
         def __init__(self, choices: List[str], **kwargs) -> None:
             self.choices = choices
             # Must pass any custom args to init,
@@ -1406,26 +1392,25 @@ def test_custom_field_validation():
 
         def validate(self, value: str):
             if value not in self.choices:
-                choices = ', '.join(self.choices)
+                choices = ", ".join(self.choices)
                 yield self.validation_error(
-                    f'Field {self.field} must be one of {choices}')
+                    f"Field {self.field} must be one of {choices}"
+                )
 
     class Order(faust.Record, validation=True):
-        side: str = ChoiceField(['SELL', 'BUY'])
+        side: str = ChoiceField(["SELL", "BUY"])
 
     with pytest.raises(ValidationError):
-        Order(side='LEFT')
+        Order(side="LEFT")
 
     class Order2(faust.Record, validation=True):
-        side: str = ChoiceField(['SELL', 'BUY'], required=False)
+        side: str = ChoiceField(["SELL", "BUY"], required=False)
 
     assert Order2()
 
 
 def test_custom_field__internal_errot():
-
     class XField(FieldDescriptor[str]):
-
         def prepare_value(self, value, coerce=None):
             if coerce:
                 raise RuntimeError()
@@ -1434,63 +1419,61 @@ def test_custom_field__internal_errot():
     class Foo(Record, coerce=False):
         foo: str = XField()
 
-    f = Foo('foo')
+    f = Foo("foo")
     assert f.validation_errors
-    assert 'RuntimeError' in str(f.validation_errors[0])
+    assert "RuntimeError" in str(f.validation_errors[0])
 
 
 def test_datetime_does_not_coerce():
-
     class X(Record, coerce=False):
         d: datetime
 
-    date_string = 'Sat Jan 12 00:44:36 +0000 2019'
+    date_string = "Sat Jan 12 00:44:36 +0000 2019"
     assert X(date_string).d == date_string
 
 
 def test_datetime_custom_date_parser():
-
     class X(Record, coerce=True, date_parser=parse_date):
         d: datetime
 
-    date_string = 'Sat Jan 12 00:44:36 +0000 2019'
-    assert X.from_data({'d': date_string}).d == parse_date(date_string)
+    date_string = "Sat Jan 12 00:44:36 +0000 2019"
+    assert X.from_data({"d": date_string}).d == parse_date(date_string)
 
 
 def test_float_does_not_coerce():
-
     class X(Record, coerce=False):
         f: float
+
     X.make_final()  # <-- just to test it still works for non-lazy creation
 
-    assert X('3.14').f == '3.14'
+    assert X("3.14").f == "3.14"
 
 
 def test_payload_with_reserved_keyword():
-
     class X(Record):
-        location: str = StringField(input_name='in')
-        foo: str = StringField(required=False, default='BAR',
-                               input_name='bar', output_name='foobar')
+        location: str = StringField(input_name="in")
+        foo: str = StringField(
+            required=False, default="BAR", input_name="bar", output_name="foobar"
+        )
 
     with pytest.raises(TypeError):
         X()
 
-    assert X('foo').location == 'foo'
-    assert X(location='FOO').location == 'FOO'
+    assert X("foo").location == "foo"
+    assert X(location="FOO").location == "FOO"
 
-    d = X.from_data({'in': 'foo', 'bar': 'bar'})
-    assert d.location == 'foo'
-    assert d.foo == 'bar'
+    d = X.from_data({"in": "foo", "bar": "bar"})
+    assert d.location == "foo"
+    assert d.foo == "bar"
 
     assert d.asdict() == {
-        'in': 'foo',
-        'foobar': 'bar',
+        "in": "foo",
+        "foobar": "bar",
     }
 
 
 class LazyX(Record, lazy_creation=True):
-    y: 'EagerY'
+    y: "EagerY"
 
 
 class EagerY(Record):
@@ -1504,7 +1487,6 @@ def test_lazy_creation():
 
 
 def test_Sensitive(*, capsys):
-
     class Foo(Record):
         name: str
         phone_number: Sensitive[str]
@@ -1517,39 +1499,39 @@ def test_Sensitive(*, capsys):
         alias: str
         bar: List[Bar]
 
-    x = Foo(name='Foo', phone_number='631-342-3412')
+    x = Foo(name="Foo", phone_number="631-342-3412")
 
     assert Foo._options.has_sensitive_fields
     assert Foo._options.has_tagged_fields
     assert not Foo._options.has_secret_fields
     assert not Foo._options.has_personal_fields
 
-    assert 'phone_number' in Foo._options.sensitive_fields
-    assert 'foo' not in Foo._options.sensitive_fields
+    assert "phone_number" in Foo._options.sensitive_fields
+    assert "foo" not in Foo._options.sensitive_fields
 
     # Model with related model that has sensitive fields, is also sensitive.
     assert Bar._options.has_sensitive_fields
-    assert 'foo' in Bar._options.sensitive_fields
-    assert 'alias' not in Bar._options.sensitive_fields
+    assert "foo" in Bar._options.sensitive_fields
+    assert "alias" not in Bar._options.sensitive_fields
 
     assert Baz._options.has_sensitive_fields
-    assert 'bar' in Baz._options.sensitive_fields
-    assert 'alias' not in Baz._options.sensitive_fields
+    assert "bar" in Baz._options.sensitive_fields
+    assert "alias" not in Baz._options.sensitive_fields
 
-    assert x.name == 'Foo'
+    assert x.name == "Foo"
     with pytest.raises(SecurityError):
         str(x.phone_number)
-    assert x.phone_number.get_value() == '631-342-3412'
+    assert x.phone_number.get_value() == "631-342-3412"
 
     with pytest.raises(SecurityError):
-        f'Name={x.name} Phone={x.phone_number}'
+        f"Name={x.name} Phone={x.phone_number}"
 
     with pytest.raises(SecurityError):
-        logger.critical('User foo error %s', x.phone_number)
+        logger.critical("User foo error %s", x.phone_number)
 
     def exclaim(x: str) -> str:
         assert isinstance(x, _FrameLocal)
-        return f'{x}!'
+        return f"{x}!"
 
     with pytest.raises(SecurityError):
         exclaim(x.phone_number.get_value())
@@ -1561,11 +1543,10 @@ def test_Sensitive(*, capsys):
         upper(x.phone_number.get_value())
 
     with allow_protected_vars():
-        assert upper(x.phone_number.get_value()) == '631-342-3412'
+        assert upper(x.phone_number.get_value()) == "631-342-3412"
 
 
 def test_Secret(*, caplog):
-
     class Foo(Record):
         name: str
         phone_number: Secret[str]
@@ -1578,33 +1559,35 @@ def test_Secret(*, caplog):
         alias: str
         bar: List[Bar]
 
-    x = Foo(name='Foo', phone_number='631-342-3412')
+    x = Foo(name="Foo", phone_number="631-342-3412")
 
     assert Foo._options.has_secret_fields
     assert not Foo._options.has_sensitive_fields
     assert Foo._options.has_tagged_fields
     assert not Foo._options.has_personal_fields
 
-    assert 'phone_number' in Foo._options.secret_fields
-    assert 'foo' not in Foo._options.secret_fields
+    assert "phone_number" in Foo._options.secret_fields
+    assert "foo" not in Foo._options.secret_fields
 
     # Model with related model that has sensitive fields, is also sensitive.
     assert Bar._options.has_secret_fields
-    assert 'foo' in Bar._options.secret_fields
-    assert 'alias' not in Bar._options.secret_fields
+    assert "foo" in Bar._options.secret_fields
+    assert "alias" not in Bar._options.secret_fields
 
     assert Baz._options.has_secret_fields
-    assert 'bar' in Baz._options.secret_fields
-    assert 'alias' not in Baz._options.secret_fields
+    assert "bar" in Baz._options.secret_fields
+    assert "alias" not in Baz._options.secret_fields
 
-    assert x.name == 'Foo'
+    assert x.name == "Foo"
     assert str(x.phone_number) == x.phone_number.mask
-    assert x.phone_number.get_value() == '631-342-3412'
+    assert x.phone_number.get_value() == "631-342-3412"
 
-    assert (f'Name={x.name} Phone={x.phone_number}' ==
-            f'Name={x.name} Phone={x.phone_number.mask}')
+    assert (
+        f"Name={x.name} Phone={x.phone_number}"
+        == f"Name={x.name} Phone={x.phone_number.mask}"
+    )
 
-    logger.critical('User foo error %s', x.phone_number)
+    logger.critical("User foo error %s", x.phone_number)
 
     assert x.phone_number.get_value() not in caplog.text
     assert x.phone_number.mask in caplog.text

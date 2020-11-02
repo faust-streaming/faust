@@ -15,13 +15,17 @@ def max_open_files() -> Optional[int]:
         if hard_limit == RLIM_INFINITY:
             # macOS bash always returns infinity, even though there
             # is an actual system limit.
-            if platform.system() == 'Darwin':
-                output = subprocess.check_output([
-                    'sysctl', '-q', 'kern.maxfilesperproc',
-                ])
+            if platform.system() == "Darwin":
+                output = subprocess.check_output(
+                    [
+                        "sysctl",
+                        "-q",
+                        "kern.maxfilesperproc",
+                    ]
+                )
                 # $ sysctl -q kern.maxfilesperproc
                 # kern.maxfilesperproc: 24576
-                _, _, svalue = output.decode().partition(':')
+                _, _, svalue = output.decode().partition(":")
                 return int(svalue.strip())
             return None
         return hard_limit

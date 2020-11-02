@@ -1,13 +1,13 @@
 import pytest
-from faust import Event, Table
-from faust.stores.base import SerializedStore, Store
-from faust.types import TP
 from mode import label
 from mode.utils.mocks import Mock
 
+from faust import Event, Table
+from faust.stores.base import SerializedStore, Store
+from faust.types import TP
+
 
 class MyStore(Store):
-
     def __getitem__(self, key):
         ...
 
@@ -31,52 +31,52 @@ class MyStore(Store):
 
 
 class test_Store:
-
     @pytest.fixture
     def store(self, *, app):
         return MyStore(
-            url='foo://',
+            url="foo://",
             app=app,
-            table=Mock(name='table'),
-            key_serializer='json',
-            value_serializer='json')
+            table=Mock(name="table"),
+            key_serializer="json",
+            value_serializer="json",
+        )
 
     def test_persisted_offset(self, *, store):
         with pytest.raises(NotImplementedError):
-            store.persisted_offset(TP('foo', 0))
+            store.persisted_offset(TP("foo", 0))
 
     def test_set_persisted_offset(self, *, store):
-        store.set_persisted_offset(TP('foo', 0), 30303)
+        store.set_persisted_offset(TP("foo", 0), 30303)
 
     @pytest.mark.asyncio
     async def test_need_active_standby_for(self, *, store):
-        assert await store.need_active_standby_for(TP('foo', 0))
+        assert await store.need_active_standby_for(TP("foo", 0))
 
     @pytest.mark.asyncio
     async def test_on_rebalance(self, *, store):
         await store.on_rebalance(
-            Mock(name='table', autospec=Table),
+            Mock(name="table", autospec=Table),
             set(),
             set(),
             set(),
         )
 
     def test_encode_key(self, *, store):
-        assert store._encode_key({'foo': 1}) == b'{"foo": 1}'
+        assert store._encode_key({"foo": 1}) == b'{"foo": 1}'
 
     def test_encode_key__cannot_be_None(self, *, store):
-        store.key_serializer = 'raw'
+        store.key_serializer = "raw"
         with pytest.raises(TypeError):
             store._encode_key(None)
 
     def test_encode_value(self, *, store):
-        assert store._encode_value({'foo': 1}) == b'{"foo": 1}'
+        assert store._encode_value({"foo": 1}) == b'{"foo": 1}'
 
     def test_decode_key(self, *, store):
-        assert store._decode_key(b'{"foo": 1}') == {'foo': 1}
+        assert store._decode_key(b'{"foo": 1}') == {"foo": 1}
 
     def test_decode_value(self, *, store):
-        assert store._decode_value(b'{"foo": 1}') == {'foo': 1}
+        assert store._decode_value(b'{"foo": 1}') == {"foo": 1}
 
     def test_repr(self, *, store):
         assert repr(store)
@@ -86,7 +86,6 @@ class test_Store:
 
 
 class MySerializedStore(SerializedStore):
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.keep = {}
@@ -123,58 +122,56 @@ class MySerializedStore(SerializedStore):
 
 
 class test_SerializedStore:
-
     @pytest.fixture
     def store(self, *, app):
         return MySerializedStore(
-            url='foo://',
+            url="foo://",
             app=app,
-            table=Mock(name='table'),
-            key_serializer='json',
-            value_serializer='json',
+            table=Mock(name="table"),
+            key_serializer="json",
+            value_serializer="json",
         )
 
     def test_apply_changelog_batch(self, *, store):
-        event = Mock(name='event', autospec=Event)
-        event.message.key = b'foo'
-        event.message.value = b'bar'
+        event = Mock(name="event", autospec=Event)
+        event.message.key = b"foo"
+        event.message.value = b"bar"
         store.apply_changelog_batch([event], to_key=Mock(), to_value=Mock())
-        assert store.keep[b'foo'] == b'bar'
+        assert store.keep[b"foo"] == b"bar"
 
     def test_apply_changelog_batch__delete_None_value(self, *, store):
         self.test_apply_changelog_batch(store=store)
-        assert store.keep[b'foo'] == b'bar'
-        event = Mock(name='event', autospec=Event)
-        event.message.key = b'foo'
+        assert store.keep[b"foo"] == b"bar"
+        event = Mock(name="event", autospec=Event)
+        event.message.key = b"foo"
         event.message.value = None
         store.apply_changelog_batch([event], to_key=Mock(), to_value=Mock())
         with pytest.raises(KeyError):
-            store.keep[b'foo']
+            store.keep[b"foo"]
 
     def test_apply_changelog_batch__key_is_None(self, *, store):
-        event = Mock(name='event', autospec=Event)
+        event = Mock(name="event", autospec=Event)
         event.message.key = None
-        event.message.value = b'bar'
+        event.message.value = b"bar"
         with pytest.raises(TypeError):
-            store.apply_changelog_batch(
-                [event], to_key=Mock(), to_value=Mock())
+            store.apply_changelog_batch([event], to_key=Mock(), to_value=Mock())
 
     def test_setitem__getitem__delitem(self, *, store):
-        store['foo'] = '303'
+        store["foo"] = "303"
         with pytest.raises(KeyError):
-            store[{'foo': 2}]
-        assert store['foo'] == '303'
+            store[{"foo": 2}]
+        assert store["foo"] == "303"
         assert len(store) == 1
-        assert 'foo' in store
-        assert list(iter(store)) == ['foo']
+        assert "foo" in store
+        assert list(iter(store)) == ["foo"]
         keys = store.keys()
-        assert list(iter(keys)) == ['foo']
+        assert list(iter(keys)) == ["foo"]
         values = store.values()
-        assert list(iter(values)) == ['303']
+        assert list(iter(values)) == ["303"]
         items = store.items()
-        assert list(iter(items)) == [('foo', '303')]
-        del(store['foo'])
+        assert list(iter(items)) == [("foo", "303")]
+        del store["foo"]
         assert not len(store)
-        store['foo'] = '303'
+        store["foo"] = "303"
         store.clear()
         assert not len(store)

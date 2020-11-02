@@ -1,14 +1,15 @@
 from typing import Mapping
-from mode import setup_logging
+
 import pytest
+from mode import setup_logging
+
 from .app import simple
 
-
-setup_logging(loglevel='INFO')
+setup_logging(loglevel="INFO")
 
 
 def _build_data(i: int) -> Mapping:
-    return {'A': {'the': {'quick': {'brown': {'fox': i}}}}}
+    return {"A": {"the": {"quick": {"brown": {"fox": i}}}}}
 
 
 @pytest.mark.asyncio
@@ -24,7 +25,7 @@ async def test_simple_map() -> None:
     check = set(range(100))
     replies = set()
     async for reply in simple.map(values):
-        v = reply['A']['the']['quick']['brown']['fox']
+        v = reply["A"]["the"]["quick"]["brown"]["fox"]
         assert v in check
         replies.add(v)
     assert replies == check

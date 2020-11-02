@@ -1,4 +1,5 @@
 black
+isort
 autoflake
 flake8
 hypothesis>=3.31

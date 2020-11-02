@@ -1,13 +1,14 @@
 import asyncio
 from copy import copy
 
-import faust
 import pytest
-from faust.exceptions import ImproperlyConfigured
-from faust.streams import maybe_forward
 from mode import label
 from mode.utils.aiter import aiter, anext
 from mode.utils.mocks import AsyncMock, Mock
+
+import faust
+from faust.exceptions import ImproperlyConfigured
+from faust.streams import maybe_forward
 
 from .helpers import channel_empty, message, put
 
@@ -21,7 +22,7 @@ def new_stream(app, *args, **kwargs):
     return _new_stream(app, app.channel(loop=app.loop, maxsize=1000), **kwargs)
 
 
-def new_topic_stream(app, *args, name: str = 'test', **kwargs):
+def new_topic_stream(app, *args, name: str = "test", **kwargs):
     app = _prepare_app(app)
     return _new_stream(app, app.topic(name, loop=app.loop), **kwargs)
 
@@ -43,8 +44,8 @@ async def test_simple(app, loop):
     async with new_stream(app) as stream:
         stream_it = aiter(stream)
         assert await channel_empty(stream.channel)
-        await put(stream.channel, key='key', value='value')
-        assert await anext(stream_it) == 'value'
+        await put(stream.channel, key="key", value="value")
+        assert await anext(stream_it) == "value"
         assert await channel_empty(stream.channel)
 
 
@@ -66,9 +67,9 @@ async def test_async_iterator(app):
 async def test_throw(app):
     async with new_stream(app) as stream:
         streamit = aiter(stream)
-        await stream.channel.deliver(message(key='key', value='val'))
-        assert await anext(streamit) == 'val'
-        await stream.throw(KeyError('foo'))
+        await stream.channel.deliver(message(key="key", value="val"))
+        assert await anext(streamit) == "val"
+        await stream.throw(KeyError("foo"))
         with pytest.raises(KeyError):
             await anext(streamit)
 
@@ -133,17 +134,17 @@ def test_through_with_concurrency_index(app):
     s.concurrency_index = 0
 
     with pytest.raises(ImproperlyConfigured):
-        s.through('foo')
+        s.through("foo")
 
 
 @pytest.mark.asyncio
 async def test_through_twice(app):
     async with new_topic_stream(app) as s:
         s._enable_passive = Mock()
-        async with s.through('bar') as s2:
+        async with s.through("bar") as s2:
             s2._enable_passive = Mock()
             with pytest.raises(ImproperlyConfigured):
-                s.through('baz')
+                s.through("baz")
 
 
 def test_group_by_with_concurrency_index(app):
@@ -162,9 +163,9 @@ def test_group_by_callback_must_have_name(app):
 
 @pytest.mark.asyncio
 async def test_group_by__with_prefix(app):
-    expected_topic = 'foo.bar.baz-test-FooModel.foo-repartition'
+    expected_topic = "foo.bar.baz-test-FooModel.foo-repartition"
     async with new_topic_stream(app) as stream:
-        stream.prefix = 'foo.bar.baz'
+        stream.prefix = "foo.bar.baz"
         stream._enable_passive = Mock()
         async with stream.group_by(FooModel.foo) as s2:
             assert s2.channel.get_topic_name() == expected_topic
@@ -174,10 +175,10 @@ async def test_group_by__with_prefix(app):
 async def test_group_by_twice(app):
     async with new_topic_stream(app) as s:
         s._enable_passive = Mock()
-        async with s.group_by(lambda s: s.foo, name='foo') as s2:
+        async with s.group_by(lambda s: s.foo, name="foo") as s2:
             s2._enable_passive = Mock()
             with pytest.raises(ImproperlyConfigured):
-                s.group_by(lambda s: s.foo, name='foo')
+                s.group_by(lambda s: s.foo, name="foo")
 
 
 @pytest.mark.asyncio
@@ -251,15 +252,13 @@ def assert_events_acked(events):
                 assert not event.message.refcount
     except AssertionError:
         fail_count = len([e for e in events if not e.ack.call_count])
-        fail_positions = [i for i, e in enumerate(events)
-                          if not e.ack.call_count]
-        print(f'ACK FAILED FOR {fail_count} EVENT(S)')
-        print(f'  POSITIONS: {fail_positions}')
+        fail_positions = [i for i, e in enumerate(events) if not e.ack.call_count]
+        print(f"ACK FAILED FOR {fail_count} EVENT(S)")
+        print(f"  POSITIONS: {fail_positions}")
         raise
 
 
 class test_chained_streams:
-
     def _chain(self, app):
         root = new_stream(app)
         root._next = s1 = new_stream(app, prev=root)
@@ -463,9 +462,9 @@ async def test_acked_when_raising(app):
 @pytest.mark.allow_lingering_tasks(count=1)
 async def test_maybe_forward__when_event(app):
     async with new_stream(app) as s:
-        event = await get_event_from_value(s, 'foo')
-        s.channel.send = Mock(name='channel.send')
-        event.forward = AsyncMock(name='event.forward')
+        event = await get_event_from_value(s, "foo")
+        s.channel.send = Mock(name="channel.send")
+        event.forward = AsyncMock(name="event.forward")
         await maybe_forward(event, s.channel)
         event.forward.assert_called_once_with(s.channel)
         s.channel.send.assert_not_called()
@@ -474,9 +473,9 @@ async def test_maybe_forward__when_event(app):
 @pytest.mark.asyncio
 async def test_maybe_forward__when_concrete_value(app):
     s = new_stream(app)
-    s.channel.send = AsyncMock(name='channel.send')
-    await maybe_forward('foo', s.channel)
-    s.channel.send.assert_called_once_with(value='foo')
+    s.channel.send = AsyncMock(name="channel.send")
+    await maybe_forward("foo", s.channel)
+    s.channel.send.assert_called_once_with(value="foo")
 
 
 def mock_stream_event_ack(stream, return_value=False):
@@ -484,7 +483,7 @@ def mock_stream_event_ack(stream, return_value=False):
 
 
 def mock_event_ack(event, return_value=False):
-    event.ack = Mock(name='ack')
+    event.ack = Mock(name="ack")
     event.ack.return_value = return_value
     return event
 
@@ -494,7 +493,7 @@ async def get_event_from_value(stream, value, key=None):
     async for value in stream:
         event = stream.current_event
         assert event
-        event.ack = Mock(name='event.ack')
+        event.ack = Mock(name="event.ack")
         return event
 
 
@@ -525,7 +524,7 @@ def test_iter_raises(app):
 
 def test_derive_topic_from_nontopic_channel_raises(app):
     with pytest.raises(ValueError):
-        new_stream(app).derive_topic('bar')
+        new_stream(app).derive_topic("bar")
 
 
 @pytest.mark.asyncio
@@ -587,6 +586,7 @@ async def test_take__10(app, loop):
             await s.channel.send(value=9)
             for i in range(10):
                 await s.channel.send(value=i + 10)
+
         asyncio.ensure_future(in_one_second_finalize())
 
         event = None
@@ -621,9 +621,7 @@ async def test_take__10(app, loop):
 
 @pytest.mark.asyncio
 async def test_take__no_event_crashes(app, loop):
-
     class NoCurrentEventStream(faust.Stream):
-
         @property
         def current_event(self):
             return None
@@ -631,6 +629,7 @@ async def test_take__no_event_crashes(app, loop):
         @current_event.setter
         def current_event(self, event):
             pass
+
     app.conf.Stream = NoCurrentEventStream
 
     s = new_stream(app)
@@ -639,11 +638,11 @@ async def test_take__no_event_crashes(app, loop):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         buffer_processor = s.take(10, within=10.0)
-        print('STARTING STREAM ITERATION')
+        print("STARTING STREAM ITERATION")
         async for value in buffer_processor:
-            print(f'RECEIVED VALUE: {value!r}')
+            print(f"RECEIVED VALUE: {value!r}")
             break
-        print('ENDING STREAM ITERATION')
+        print("ENDING STREAM ITERATION")
 
         try:
             await buffer_processor.athrow(asyncio.CancelledError())
@@ -656,5 +655,5 @@ async def test_take__no_event_crashes(app, loop):
         await asyncio.sleep(0)  # needed for some reason
         await asyncio.sleep(0)  # needed for some reason
         assert isinstance(s._crash_reason, RuntimeError)
-    print('RETURNING')
+    print("RETURNING")
     assert s.enable_acks is True

@@ -2,7 +2,6 @@ from faust.windows import SlidingWindow
 
 
 class test_SlidingWindow:
-
     def test_constructor(self):
         x = SlidingWindow(10.1, 20.2, 30.3)
         assert x.before == 10.1
@@ -72,5 +71,5 @@ class test_SlidingWindow:
 
         window = SlidingWindow(size, step, expires)
         for time in range(0, now_timestamp - expires):
-            print(f'TIME: {time} NOW TIMESTAMP: {now_timestamp}')
+            print(f"TIME: {time} NOW TIMESTAMP: {now_timestamp}")
             assert window.stale(time, now_timestamp) is True

@@ -1,6 +1,6 @@
 import faust
 
-__all__ = ['Error', 'Status']
+__all__ = ["Error", "Status"]
 
 
 class Error(faust.Record):
@@ -9,7 +9,7 @@ class Error(faust.Record):
     message: str
 
     #: Format (sent to logging, e.g. 'the %s for %s did %r'
-    format: str   # noqa
+    format: str  # noqa
 
     hostname: str = None
 
@@ -29,7 +29,7 @@ class Error(faust.Record):
     lineno: int = None
 
     #: Logging severity
-    severity: str = 'ERROR'
+    severity: str = "ERROR"
 
     timestamp: float = None
 
@@ -66,8 +66,8 @@ class Status(faust.Record):
     @property
     def details(self):
         return {
-            'state': self.state,
-            'count': self.count,
-            'severity': self.severity,
-            'color': self.color,
+            "state": self.state,
+            "count": self.count,
+            "severity": self.severity,
+            "color": self.color,
         }

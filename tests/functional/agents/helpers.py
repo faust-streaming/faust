@@ -3,10 +3,12 @@ from collections import Counter
 from itertools import cycle
 from time import time
 from typing import Any, List, Optional, Set
-from faust.types import AppT, CodecT, EventT, Message as MessageT, StreamT, TP
-from faust.types.core import HeadersArg
+
 from mode import Service
 from mode.utils.aiter import aenumerate
+
+from faust.types import TP, AppT, CodecT, EventT, Message as MessageT, StreamT
+from faust.types.core import HeadersArg
 
 CURRENT_OFFSETS = Counter()
 
@@ -17,29 +19,33 @@ class AgentCase(Service):
     wait_for_shutdown = True
 
     @classmethod
-    async def run_test(cls, app: AppT, *,
-                       num_messages: int = 100,
-                       **kwargs: Any) -> 'AgentCase':
+    async def run_test(
+        cls, app: AppT, *, num_messages: int = 100, **kwargs: Any
+    ) -> "AgentCase":
         case = cls(app, num_messages=num_messages, **kwargs)
         try:
             async with case:
                 await case.wait(case.finished)
         except Exception as exc:
-            print(f'AgentConcurrencyCase raised: {exc!r}')
+            print(f"AgentConcurrencyCase raised: {exc!r}")
             raise
         else:
             assert not case._crashed.is_set()
         assert case.processed_total == num_messages
         return case
 
-    def __init__(self, app: AppT, *,
-                 partitions: List[int] = None,
-                 concurrency: int = 10,
-                 value_serializer: CodecT = 'raw',
-                 num_messages: int = 100,
-                 isolated_partitions: bool = False,
-                 name: str = None,
-                 **kwargs: Any):
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        partitions: List[int] = None,
+        concurrency: int = 10,
+        value_serializer: CodecT = "raw",
+        num_messages: int = 100,
+        isolated_partitions: bool = False,
+        name: str = None,
+        **kwargs: Any,
+    ):
         self.app = app
         if name is not None:
             self.name = name
@@ -68,8 +74,7 @@ class AgentCase(Service):
 
     async def on_start(self) -> None:
         app = self.app
-        topic = app.topic(self.topic_name,
-                          value_serializer=self.value_serializer)
+        topic = app.topic(self.topic_name, value_serializer=self.value_serializer)
         create_agent = app.agent(
             topic,
             concurrency=self.concurrency,
@@ -89,8 +94,7 @@ class AgentCase(Service):
     async def assert_success(self) -> None:
         assert self.processed_total == self.num_messages
 
-    async def on_agent_event(
-            self, stream: StreamT, event: EventT) -> None:
+    async def on_agent_event(self, stream: StreamT, event: EventT) -> None:
         ...
 
     async def process(self, stream: StreamT[bytes]) -> None:
@@ -104,9 +108,8 @@ class AgentCase(Service):
 
                 key = event.message.tp, event.message.offset
                 if key in self.seen_offsets:
-                    print(f'EVENT PROCESSED TWICE: {key}')
-                    await self.crash(
-                        Exception(f'Event processed twice: {key}'))
+                    print(f"EVENT PROCESSED TWICE: {key}")
+                    await self.crash(Exception(f"Event processed twice: {key}"))
                 self.seen_offsets.add(key)
                 assert key in self.seen_offsets
                 if self.processed_total >= self.num_messages:
@@ -114,10 +117,10 @@ class AgentCase(Service):
                 await self.sleep(0)
         except asyncio.CancelledError:
             if self.processed_total < self.num_messages:
-                print('I WAS CANCELLED?!?!?')
+                print("I WAS CANCELLED?!?!?")
             raise
         except Exception as exc:
-            print(f'AGENT RAISED ERROR: {exc!r}')
+            print(f"AGENT RAISED ERROR: {exc!r}")
             await self.crash(exc)
             raise
 
@@ -155,25 +158,26 @@ class AgentCase(Service):
         await self.app.topics._update_indices()
         await self.app.topics.on_partitions_assigned(assigned)
 
-    async def put(self, key: bytes, value: bytes, *,
-                  tp: TP = None,
-                  **kwargs: Any) -> MessageT:
+    async def put(
+        self, key: bytes, value: bytes, *, tp: TP = None, **kwargs: Any
+    ) -> MessageT:
         # send first message
-        message = self.Message(
-            tp=tp, key=key, value=bytes, headers=None, **kwargs)
+        message = self.Message(tp=tp, key=key, value=bytes, headers=None, **kwargs)
         await self.app.topics.on_message(message)
         return message
 
-    def Message(self,
-                tp: TP = None,
-                offset: int = None,
-                timestamp: float = None,
-                timestamp_type: int = 1,
-                headers: Optional[HeadersArg] = None,
-                key: Optional[bytes] = None,
-                value: Optional[bytes] = None,
-                checksum: Optional[bytes] = None,
-                **kwargs: Any) -> MessageT:
+    def Message(
+        self,
+        tp: TP = None,
+        offset: int = None,
+        timestamp: float = None,
+        timestamp_type: int = 1,
+        headers: Optional[HeadersArg] = None,
+        key: Optional[bytes] = None,
+        value: Optional[bytes] = None,
+        checksum: Optional[bytes] = None,
+        **kwargs: Any,
+    ) -> MessageT:
         if tp is None:
             tp = next(self.next_tp)
         return MessageT(

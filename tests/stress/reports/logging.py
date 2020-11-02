@@ -2,8 +2,11 @@ import asyncio
 import logging
 import socket
 from typing import Any
-import faust
+
 from mode import Service
+
+import faust
+
 from .app import get_error_topic
 from .models import Error
 
@@ -45,12 +48,12 @@ class LogHandler(logging.Handler):
         return self._emit(record)
 
     def _emit(self, record: logging.LogRecord) -> None:
-        no_alert = getattr(record, 'no_alert', False)
+        no_alert = getattr(record, "no_alert", False)
         if not no_alert and record.levelno >= logging.ERROR:
-            stack = getattr(record, 'stack', None)
+            stack = getattr(record, "stack", None)
             traceback = None
             if stack is True:
-                traceback = '\n'.join(traceback.format_stack())
+                traceback = "\n".join(traceback.format_stack())
             error = Error(
                 message=record.getMessage(),
                 format=str(record.msg),

@@ -1,25 +1,24 @@
 import logging as _logging
 import os
-import pytest
-import faust
 from copy import copy
-from typing import Dict, IO, NamedTuple, Union
-from faust.web.cache.backends.memory import CacheStorage
-from faust.utils.tracing import set_current_span
+from typing import IO, Dict, NamedTuple, Union
+
+import pytest
 from mode.utils.logging import setup_logging
 from mode.utils.mocks import AsyncMock, Mock
 
+import faust
+from faust.utils.tracing import set_current_span
+from faust.web.cache.backends.memory import CacheStorage
+
 
 class AppMarks(NamedTuple):
-    name: str = 'funtest'
-    store: str = 'memory://'
-    cache: str = 'memory://'
+    name: str = "funtest"
+    store: str = "memory://"
+    cache: str = "memory://"
 
 
-def create_appmarks(name='funtest',
-                    store='memory://',
-                    cache='memory://',
-                    **rest):
+def create_appmarks(name="funtest", store="memory://", cache="memory://", **rest):
     options = AppMarks(
         name=name,
         store=store,
@@ -30,13 +29,12 @@ def create_appmarks(name='funtest',
 
 @pytest.yield_fixture()
 def app(event_loop, request):
-    os.environ.pop('F_DATADIR', None)
-    os.environ.pop('FAUST_DATADIR', None)
-    os.environ.pop('F_WORKDIR', None)
-    os.environ.pop('FAUST_WORKDIR', None)
-    marks = request.node.get_closest_marker('app')
-    options, rest = create_appmarks(
-        **((marks.kwargs or {}) if marks else {}))
+    os.environ.pop("F_DATADIR", None)
+    os.environ.pop("FAUST_DATADIR", None)
+    os.environ.pop("F_WORKDIR", None)
+    os.environ.pop("FAUST_WORKDIR", None)
+    marks = request.node.get_closest_marker("app")
+    options, rest = create_appmarks(**((marks.kwargs or {}) if marks else {}))
     app = faust.App(
         options.name,
         store=options.store,
@@ -59,19 +57,19 @@ def web(app):
 
 class LoggingMarks(NamedTuple):
     logfile: Union[str, IO] = None
-    loglevel: Union[str, int] = 'info'
+    loglevel: Union[str, int] = "info"
     logging_config: Dict = None
 
 
 @pytest.yield_fixture()
 def logging(request):
-    marks = request.node.get_closest_marker('logging')
-    options = LoggingMarks(**{
-        **{'logfile': None,
-           'loglevel': 'info',
-           'logging_config': None},
-        **((marks.kwargs or {}) if marks else {}),
-    })
+    marks = request.node.get_closest_marker("logging")
+    options = LoggingMarks(
+        **{
+            **{"logfile": None, "loglevel": "info", "logging_config": None},
+            **((marks.kwargs or {}) if marks else {}),
+        }
+    )
     _logging._acquireLock()
     try:
         prev_state = copy(_logging.Logger.manager.loggerDict)
@@ -101,7 +99,7 @@ def mocked_redis(*, event_loop, monkeypatch):
     storage = CacheStorage()
 
     client_cls = Mock(
-        name='StrictRedis',
+        name="StrictRedis",
         return_value=Mock(
             autospec=aredis.StrictRedis,
             ping=AsyncMock(),
@@ -113,14 +111,16 @@ def mocked_redis(*, event_loop, monkeypatch):
         ),
     )
     client_cls.storage = storage
-    monkeypatch.setattr('aredis.StrictRedis', client_cls)
+    monkeypatch.setattr("aredis.StrictRedis", client_cls)
     return client_cls
 
 
 def pytest_configure(config):
     config.addinivalue_line(
-        'markers', 'app: App instance to use for tests',
+        "markers",
+        "app: App instance to use for tests",
     )
     config.addinivalue_line(
-        'markers', 'logging: Configure logging setup to use for tests',
+        "markers",
+        "logging: Configure logging setup to use for tests",
     )

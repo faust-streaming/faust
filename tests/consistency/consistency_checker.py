@@ -1,18 +1,18 @@
 import asyncio
 from collections import defaultdict
+
 from aiokafka import AIOKafkaClient, AIOKafkaConsumer
-from faust.utils import json
-from kafka.protocol.commit import (
-    GroupCoordinatorRequest_v0, OffsetFetchRequest_v1,
-)
+from kafka.protocol.commit import GroupCoordinatorRequest_v0, OffsetFetchRequest_v1
 from kafka.structs import TopicPartition
+
+from faust.utils import json
 
 
 class MissingDataException(Exception):
     pass
 
 
-bootstrap_servers = 'localhost:9092'
+bootstrap_servers = "localhost:9092"
 
 
 class BaseKafkaTableBuilder(object):
@@ -47,7 +47,7 @@ class BaseKafkaTableBuilder(object):
                 self.topic,
                 loop=self.loop,
                 bootstrap_servers=bootstrap_servers,
-                auto_offset_reset='earliest',
+                auto_offset_reset="earliest",
             )
             await self.consumer.start()
             self._assignment = self.consumer.assignment()
@@ -58,7 +58,7 @@ class BaseKafkaTableBuilder(object):
             self.messages.append(message)
             await self._apply(message)
             if await self._positions() == self._highwaters():
-                print('Done building table')
+                print("Done building table")
                 return
 
     async def _apply(self, message):
@@ -66,21 +66,14 @@ class BaseKafkaTableBuilder(object):
 
     async def _positions(self):
         assert self.consumer
-        return {
-            tp: await self.consumer.position(tp)
-            for tp in self._assignment
-        }
+        return {tp: await self.consumer.position(tp) for tp in self._assignment}
 
     def _highwaters(self):
         assert self.consumer
-        return {
-            tp: self.consumer.highwater(tp)
-            for tp in self._assignment
-        }
+        return {tp: self.consumer.highwater(tp) for tp in self._assignment}
 
 
 class ChangelogTableBuilder(BaseKafkaTableBuilder):
-
     async def _apply(self, message):
         k = self.get_key(message)
         v = self.get_value(message)
@@ -89,21 +82,20 @@ class ChangelogTableBuilder(BaseKafkaTableBuilder):
 
 
 class SourceTableBuilder(BaseKafkaTableBuilder):
-
     async def _apply(self, message):
         k = self.get_key(message)
         v = self.get_value(message)
-        self.table[k] += v['amount']
+        self.table[k] += v["amount"]
         self.key_tps[k].add(message.partition)
 
 
 class ConsistencyChecker(object):
-
     def __init__(self, source, changelog, loop):
         self.source = source
         self.loop = loop
-        self.client = AIOKafkaClient(bootstrap_servers=bootstrap_servers,
-                                     loop=self.loop)
+        self.client = AIOKafkaClient(
+            bootstrap_servers=bootstrap_servers, loop=self.loop
+        )
         self._source_builder = SourceTableBuilder(source, loop)
         self.changelog = changelog
         self._changelog_builder = ChangelogTableBuilder(changelog, loop)
@@ -115,8 +107,8 @@ class ConsistencyChecker(object):
         await self._changelog_builder.build()
 
     async def wait_no_lag(self):
-        print('Ensuring no lag')
-        consumer_group = 'f-simple'
+        print("Ensuring no lag")
+        consumer_group = "f-simple"
         client = self.client
         await self.client.bootstrap()
         source = self.source
@@ -132,14 +124,14 @@ class ConsistencyChecker(object):
         coordinator_id = coordinator_response.coordinator_id
 
         while True:
-            consumer_offsets_req = OffsetFetchRequest_v1(
-                consumer_group, protocol_tps)
+            consumer_offsets_req = OffsetFetchRequest_v1(consumer_group, protocol_tps)
             consumer_offsets_resp = await client.send(
-                coordinator_id, consumer_offsets_req)
+                coordinator_id, consumer_offsets_req
+            )
             topics = consumer_offsets_resp.topics
-            assert len(topics) == 1, f'{topics!r}'
+            assert len(topics) == 1, f"{topics!r}"
             topic, partition_resps = topics[0]
-            assert topic == source, f'{source}'
+            assert topic == source, f"{source}"
             assert len(partition_resps) == len(source_tps)
 
             # + 1 is to account for the difference in how faust commits
@@ -149,7 +141,7 @@ class ConsistencyChecker(object):
             }
 
             if positions != source_highwaters:
-                print('There is lag. Waiting!')
+                print("There is lag. Waiting!")
                 await asyncio.sleep(2.0)
             else:
                 return
@@ -161,8 +153,8 @@ class ConsistencyChecker(object):
     def _analyze(self):
         res = self._changelog_builder.table
         truth = self._source_builder.table
-        print('Res: {} keys | Truth: {} keys'.format(len(res), len(truth)))
-        print('Res keys subset of truth: {}'.format(set(res).issubset(truth)))
+        print("Res: {} keys | Truth: {} keys".format(len(res), len(truth)))
+        print("Res keys subset of truth: {}".format(set(res).issubset(truth)))
 
         self._analyze_keys()
         self._analyze_key_partitions()
@@ -177,33 +169,44 @@ class ConsistencyChecker(object):
             if truth[key] != res[key]:
                 keys_same = False
                 break
-        print('Keys in res have the same value in truth: {}'.format(keys_same))
+        print("Keys in res have the same value in truth: {}".format(keys_same))
         diff_keys = [k for k in res if truth[k] != res[k]]
-        print('{} differing keys'.format(len(diff_keys)))
+        print("{} differing keys".format(len(diff_keys)))
 
         for key in diff_keys:
             self._analyze_non_atomic_commit(key)
 
     def _get_messages_for_key(self, key):
-        source_messages = [message for message in self._source_builder.messages
-                           if self._source_builder.get_key(message) == key]
-        cl_messages = [message for message in self._changelog_builder.messages
-                       if self._changelog_builder.get_key(message) == key]
+        source_messages = [
+            message
+            for message in self._source_builder.messages
+            if self._source_builder.get_key(message) == key
+        ]
+        cl_messages = [
+            message
+            for message in self._changelog_builder.messages
+            if self._changelog_builder.get_key(message) == key
+        ]
         return source_messages, cl_messages
 
     def _analyze_non_atomic_commit(self, key):
-        print('Analyzing key: {}'.format(key))
+        print("Analyzing key: {}".format(key))
         source_messages, cl_messages = self._get_messages_for_key(key)
-        print('# source messages: {} # cl messags: {}'.format(len(
-            source_messages), len(cl_messages)))
+        print(
+            "# source messages: {} # cl messags: {}".format(
+                len(source_messages), len(cl_messages)
+            )
+        )
         cl_pos = source_sum = 0
         for i, message in enumerate(source_messages):
-            source_sum += self._source_builder.get_value(message)['amount']
+            source_sum += self._source_builder.get_value(message)["amount"]
             while True:
                 cl_sum = self._changelog_builder.get_value(cl_messages[cl_pos])
                 if cl_sum > source_sum:
-                    print('Key diverged at: source: {}, changelog: '
-                          '{}'.format(i, cl_pos))
+                    print(
+                        "Key diverged at: source: {}, changelog: "
+                        "{}".format(i, cl_pos)
+                    )
                     return
                 elif cl_sum == source_sum:
                     break
@@ -216,16 +219,22 @@ class ConsistencyChecker(object):
         truth_kps = self._source_builder.key_tps
 
         # Analyze key partitions
-        print('Res kps and truth kps have same keys: {}'.format(
-            res_kps.keys() == truth_kps.keys()))
-        diff_kps = [(key, truth_kps[key], res_kps[key])
-                    for key in truth_kps if truth_kps[key] != res_kps[key]]
-        print('Key partitions are the same: {}'.format(not diff_kps))
+        print(
+            "Res kps and truth kps have same keys: {}".format(
+                res_kps.keys() == truth_kps.keys()
+            )
+        )
+        diff_kps = [
+            (key, truth_kps[key], res_kps[key])
+            for key in truth_kps
+            if truth_kps[key] != res_kps[key]
+        ]
+        print("Key partitions are the same: {}".format(not diff_kps))
 
     def _assert_results(self):
         res = self._changelog_builder.table
         truth = self._source_builder.table
         res_kps = self._changelog_builder.key_tps
         truth_kps = self._source_builder.key_tps
-        assert res == truth, 'Tables need to be the same'
-        assert res_kps == truth_kps, 'Must be co-located'
+        assert res == truth, "Tables need to be the same"
+        assert res_kps == truth_kps, "Must be co-located"

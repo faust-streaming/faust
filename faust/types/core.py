@@ -11,14 +11,18 @@ from typing import (
     Union,
     cast,
 )
+
 from mode.utils.compat import want_bytes, want_str
 
 if typing.TYPE_CHECKING:
     from .models import ModelT as _ModelT
 else:
-    class _ModelT: ...  # noqa
 
-__all__ = ['K', 'V']
+    class _ModelT:
+        ...  # noqa
+
+
+__all__ = ["K", "V"]
 
 #: Shorthand for the type of a key
 K = Optional[Union[bytes, _ModelT, Any]]
@@ -52,10 +56,11 @@ _MUTABLE_SEQ_TYPES: _TYPTUP = (list, MutableSequence)
 
 
 def prepare_headers(
-        target: HeadersArg,
-        tuple_types: _TYPTUP = _TUPLE_TYPES,
-        mutable_map_types: _TYPTUP = _MUTABLE_MAP_TYPES,
-        mutable_seq_types: _TYPTUP = _MUTABLE_SEQ_TYPES) -> OpenHeadersArg:
+    target: HeadersArg,
+    tuple_types: _TYPTUP = _TUPLE_TYPES,
+    mutable_map_types: _TYPTUP = _MUTABLE_MAP_TYPES,
+    mutable_seq_types: _TYPTUP = _MUTABLE_SEQ_TYPES,
+) -> OpenHeadersArg:
     if isinstance(target, tuple_types):
         return list(cast(tuple, target))
     elif isinstance(target, mutable_map_types):
@@ -66,8 +71,7 @@ def prepare_headers(
         return list(cast(list, target))
 
 
-def merge_headers(target: OpenHeadersArg,
-                  source: Mapping[str, Any]) -> None:
+def merge_headers(target: OpenHeadersArg, source: Mapping[str, Any]) -> None:
     # XXX modify in-place
     if source:
         source = {want_str(k): want_bytes(v) for k, v in source.items()}

@@ -14,16 +14,16 @@ from .tables import tables
 from .worker import worker
 
 __all__ = [
-    'agents',
-    'call_command',
-    'clean_versions',
-    'cli',
-    'completion',
-    'livecheck',
-    'model',
-    'models',
-    'reset',
-    'send',
-    'tables',
-    'worker',
+    "agents",
+    "call_command",
+    "clean_versions",
+    "cli",
+    "completion",
+    "livecheck",
+    "model",
+    "models",
+    "reset",
+    "send",
+    "tables",
+    "worker",
 ]

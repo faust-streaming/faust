@@ -1,33 +1,30 @@
 import asyncio
+
 import pytest
-from faust.agents.models import ReqRepResponse
-from faust.agents.replies import (
-    BarrierState,
-    ReplyConsumer,
-    ReplyPromise,
-)
 from mode.utils.mocks import AsyncMock, Mock
+
+from faust.agents.models import ReqRepResponse
+from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
 
 
 def test_ReplyPromise():
-    r = ReplyPromise(reply_to='rt', correlation_id='id1')
-    assert r.reply_to == 'rt'
-    assert r.correlation_id == 'id1'
+    r = ReplyPromise(reply_to="rt", correlation_id="id1")
+    assert r.reply_to == "rt"
+    assert r.correlation_id == "id1"
     assert not r.done()
-    r.fulfill('id1', 'value')
-    assert r.result() == 'value'
+    r.fulfill("id1", "value")
+    assert r.result() == "value"
 
     with pytest.raises(ValueError):
-        r._verify_correlation_id('')
+        r._verify_correlation_id("")
     with pytest.raises(ValueError):
         r._verify_correlation_id(None)
 
 
 class test_BarrierState:
-
     @pytest.mark.asyncio
     async def test_parallel_join(self):
-        p = BarrierState(reply_to='rt')
+        p = BarrierState(reply_to="rt")
         assert not p.pending
         assert p.size == 0
 
@@ -40,7 +37,7 @@ class test_BarrierState:
 
     @pytest.mark.asyncio
     async def test_get_nowait__exhaust_sentinels(self):
-        p = BarrierState(reply_to='rt')
+        p = BarrierState(reply_to="rt")
         for _ in range(20):
             p._results.put_nowait(None)
         with pytest.raises(asyncio.QueueEmpty):
@@ -48,11 +45,11 @@ class test_BarrierState:
 
     @pytest.mark.asyncio
     async def test_iterate__completion(self):
-        p = BarrierState(reply_to='rt')
-        p.done = Mock(name='done')
+        p = BarrierState(reply_to="rt")
+        p.done = Mock(name="done")
         p.done.return_value = False
         p._results.put_nowait(None)
-        p._results.get = AsyncMock(name='get')
+        p._results.get = AsyncMock(name="get")
 
         def se():
             p.done.return_value = True
@@ -64,7 +61,7 @@ class test_BarrierState:
 
     @pytest.mark.asyncio
     async def test_parallel_iterate(self):
-        p = BarrierState(reply_to='rt')
+        p = BarrierState(reply_to="rt")
         assert not p.pending
         assert p.size == 0
 
@@ -80,19 +77,20 @@ class test_BarrierState:
 
         if pending:
             raise Exception(
-                f'Test did not return in 5s:\n'
-                f'  DONE_TASKS={done}\n'
-                f'  PENDING_TASKS={pending}\n'
-                f'  size={p.size}\n'
-                f'  total={p.total}\n'
-                f'  fulfilled={p.fulfilled}\n'
-                f'  pending={len(p.pending)}\n'
-                f'  done={p.done()}'
-                f'  result={p.result() if p.done() else None}')
+                f"Test did not return in 5s:\n"
+                f"  DONE_TASKS={done}\n"
+                f"  PENDING_TASKS={pending}\n"
+                f"  size={p.size}\n"
+                f"  total={p.total}\n"
+                f"  fulfilled={p.fulfilled}\n"
+                f"  pending={len(p.pending)}\n"
+                f"  done={p.done()}"
+                f"  result={p.result() if p.done() else None}"
+            )
 
     @pytest.mark.asyncio
     async def test_sync_join(self):
-        p = BarrierState(reply_to='rt')
+        p = BarrierState(reply_to="rt")
         assert not p.pending
         assert p.size == 0
 
@@ -104,7 +102,7 @@ class test_BarrierState:
 
     @pytest.mark.asyncio
     async def test_sync_iterate(self):
-        p = BarrierState(reply_to='rt')
+        p = BarrierState(reply_to="rt")
         assert not p.pending
         assert p.size == 0
 
@@ -146,7 +144,6 @@ class test_BarrierState:
 
 
 class test_ReplyConsumer:
-
     @pytest.fixture()
     def c(self, *, app):
         return ReplyConsumer(app)
@@ -169,16 +166,16 @@ class test_ReplyConsumer:
     async def test_add(self, *, c):
         assert not c._waiting
         c._start_fetcher = AsyncMock()
-        p = ReplyPromise(reply_to='rt', correlation_id='id1')
-        await c.add('id1', p)
-        assert 'id1' in c._waiting
-        assert p in list(c._waiting['id1'])
+        p = ReplyPromise(reply_to="rt", correlation_id="id1")
+        await c.add("id1", p)
+        assert "id1" in c._waiting
+        assert p in list(c._waiting["id1"])
 
-        p2 = ReplyPromise(reply_to='rt', correlation_id='id1')
+        p2 = ReplyPromise(reply_to="rt", correlation_id="id1")
         c._fetchers[p2.reply_to] = Mock()
-        await c.add('id1', p2)
-        assert p in list(c._waiting['id1'])
-        assert p2 in list(c._waiting['id1'])
+        await c.add("id1", p2)
+        assert p in list(c._waiting["id1"])
+        assert p2 in list(c._waiting["id1"])
 
         c._start_fetcher.assert_called_once_with(p.reply_to)
 
@@ -193,12 +190,12 @@ class test_ReplyConsumer:
         c.sleep = AsyncMock()
         c.add_future = Mock()
 
-        await c._start_fetcher('topic1')
-        assert 'topic1' in c._fetchers
-        assert c._fetchers['topic1'] is c.add_future.return_value
-        await c._start_fetcher('topic1')
+        await c._start_fetcher("topic1")
+        assert "topic1" in c._fetchers
+        assert c._fetchers["topic1"] is c.add_future.return_value
+        await c._start_fetcher("topic1")
 
-        c._reply_topic.assert_called_once_with('topic1')
+        c._reply_topic.assert_called_once_with("topic1")
         topic = c._reply_topic.return_value
         topic.maybe_declare.assert_called_once_with()
 
@@ -211,8 +208,8 @@ class test_ReplyConsumer:
     @pytest.mark.asyncio
     async def test_drain_replies(self, *, c):
         responses = [
-            ReqRepResponse(key='key1', value='value1', correlation_id='id1'),
-            ReqRepResponse(key='key2', value='value2', correlation_id='id2'),
+            ReqRepResponse(key="key1", value="value1", correlation_id="id1"),
+            ReqRepResponse(key="key2", value="value2", correlation_id="id2"),
         ]
         channel = Mock(
             stream=Mock(return_value=self._response_stream(responses)),
@@ -220,22 +217,22 @@ class test_ReplyConsumer:
         p1 = Mock()
         p2 = Mock()
         p3 = Mock()
-        c._waiting['id1'] = {p1, p2}
-        c._waiting['id2'] = {p3}
+        c._waiting["id1"] = {p1, p2}
+        c._waiting["id2"] = {p3}
 
         await c._drain_replies(channel)
 
-        p1.fulfill.assert_called_once_with('id1', 'value1')
-        p2.fulfill.assert_called_once_with('id1', 'value1')
-        p3.fulfill.assert_called_once_with('id2', 'value2')
+        p1.fulfill.assert_called_once_with("id1", "value1")
+        p2.fulfill.assert_called_once_with("id1", "value1")
+        p3.fulfill.assert_called_once_with("id2", "value2")
 
     async def _response_stream(self, responses):
         for response in responses:
             yield response
 
     def test_reply_topic(self, *, c, app):
-        topic = c._reply_topic('foo')
-        assert topic.get_topic_name() == 'foo'
+        topic = c._reply_topic("foo")
+        assert topic.get_topic_name() == "foo"
         assert topic.partitions == 1
         assert topic.replicas == 0
         assert topic.deleting

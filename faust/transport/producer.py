@@ -9,12 +9,14 @@ The Producer is responsible for:
 import asyncio
 from asyncio import QueueEmpty
 from typing import Any, Awaitable, Mapping, Optional, cast
-from mode import Seconds, Service
-from faust.types import AppT, HeadersArg
-from faust.types.tuples import FutureMessage, RecordMetadata, TP
-from faust.types.transports import ProducerBufferT, ProducerT, TransportT
 
-__all__ = ['Producer']
+from mode import Seconds, Service
+
+from faust.types import AppT, HeadersArg
+from faust.types.transports import ProducerBufferT, ProducerT, TransportT
+from faust.types.tuples import TP, FutureMessage, RecordMetadata
+
+__all__ = ["Producer"]
 
 
 class ProducerBuffer(Service, ProducerBufferT):
@@ -103,15 +105,19 @@ class ProducerBuffer(Service, ProducerBufferT):
 
 class Producer(Service, ProducerT):
     """Base Producer."""
+
     """Base Producer."""
 
     app: AppT
 
     _api_version: str
 
-    def __init__(self, transport: TransportT,
-                 loop: asyncio.AbstractEventLoop = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        transport: TransportT,
+        loop: asyncio.AbstractEventLoop = None,
+        **kwargs: Any
+    ) -> None:
         self.transport = transport
         self.app = self.transport.app
         conf = self.transport.app.conf
@@ -134,26 +140,34 @@ class Producer(Service, ProducerT):
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)
 
-    async def send(self, topic: str, key: Optional[bytes],
-                   value: Optional[bytes],
-                   partition: Optional[int],
-                   timestamp: Optional[float],
-                   headers: Optional[HeadersArg],
-                   *,
-                   transactional_id: str = None) -> Awaitable[RecordMetadata]:
+    async def send(
+        self,
+        topic: str,
+        key: Optional[bytes],
+        value: Optional[bytes],
+        partition: Optional[int],
+        timestamp: Optional[float],
+        headers: Optional[HeadersArg],
+        *,
+        transactional_id: str = None
+    ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         raise NotImplementedError()
 
     def send_soon(self, fut: FutureMessage) -> None:
         self.buffer.put(fut)
 
-    async def send_and_wait(self, topic: str, key: Optional[bytes],
-                            value: Optional[bytes],
-                            partition: Optional[int],
-                            timestamp: Optional[float],
-                            headers: Optional[HeadersArg],
-                            *,
-                            transactional_id: str = None) -> RecordMetadata:
+    async def send_and_wait(
+        self,
+        topic: str,
+        key: Optional[bytes],
+        value: Optional[bytes],
+        partition: Optional[int],
+        timestamp: Optional[float],
+        headers: Optional[HeadersArg],
+        *,
+        transactional_id: str = None
+    ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         raise NotImplementedError()
 
@@ -162,17 +176,19 @@ class Producer(Service, ProducerT):
         # XXX subclasses must call self.buffer.flush() here.
         ...
 
-    async def create_topic(self,
-                           topic: str,
-                           partitions: int,
-                           replication: int,
-                           *,
-                           config: Mapping[str, Any] = None,
-                           timeout: Seconds = 1000.0,
-                           retention: Seconds = None,
-                           compacting: bool = None,
-                           deleting: bool = None,
-                           ensure_created: bool = False) -> None:
+    async def create_topic(
+        self,
+        topic: str,
+        partitions: int,
+        replication: int,
+        *,
+        config: Mapping[str, Any] = None,
+        timeout: Seconds = 1000.0,
+        retention: Seconds = None,
+        compacting: bool = None,
+        deleting: bool = None,
+        ensure_created: bool = False
+    ) -> None:
         """Create/declare topic on server."""
         raise NotImplementedError()
 
@@ -201,10 +217,11 @@ class Producer(Service, ProducerT):
         raise NotImplementedError()
 
     async def commit_transactions(
-            self,
-            tid_to_offset_map: Mapping[str, Mapping[TP, int]],
-            group_id: str,
-            start_new_transaction: bool = True) -> None:
+        self,
+        tid_to_offset_map: Mapping[str, Mapping[TP, int]],
+        group_id: str,
+        start_new_transaction: bool = True,
+    ) -> None:
         """Commit transactions."""
         raise NotImplementedError()
 

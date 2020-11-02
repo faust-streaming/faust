@@ -1,23 +1,26 @@
 import click.exceptions
 import pytest
 from yarl import URL
+
 from faust.cli.params import CaseInsensitiveChoice, TCPPort, URLParam
 
 
 def test_CaseInsensitiveChoice():
-    choices = CaseInsensitiveChoice([
-        'FOO',
-        'BAR',
-        'baz',
-    ])
+    choices = CaseInsensitiveChoice(
+        [
+            "FOO",
+            "BAR",
+            "baz",
+        ]
+    )
 
-    assert choices.convert('FOO', None, None) == 'FOO'
-    assert choices.convert('foo', None, None) == 'foo'
-    assert choices.convert('Foo', None, None) == 'Foo'
-    assert choices.convert('BAZ', None, None) == 'BAZ'
+    assert choices.convert("FOO", None, None) == "FOO"
+    assert choices.convert("foo", None, None) == "foo"
+    assert choices.convert("Foo", None, None) == "Foo"
+    assert choices.convert("BAZ", None, None) == "BAZ"
 
     with pytest.raises(click.exceptions.BadParameter):
-        choices.convert('xuz', None, None)
+        choices.convert("xuz", None, None)
 
 
 def test_TCPPort():
@@ -37,8 +40,8 @@ def test_TCPPort():
 
 def test_URLParam():
     urlp = URLParam()
-    assert repr(urlp) == 'URL'
+    assert repr(urlp) == "URL"
 
-    url = urlp.convert('http://foo.com/path/', None, None)
+    url = urlp.convert("http://foo.com/path/", None, None)
     assert isinstance(url, URL)
-    assert url.host == 'foo.com'
+    assert url.host == "foo.com"

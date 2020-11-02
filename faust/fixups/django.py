@@ -13,20 +13,25 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from django.apps.registry import Apps as _Apps
     from django.settings import Settings as _Settings
 else:
-    class _Apps: ...      # noqa
-    class _Settings: ...  # noqa
 
-__all__ = ['Fixup']
+    class _Apps:
+        ...  # noqa
 
-WARN_NOT_INSTALLED = '''\
+    class _Settings:
+        ...  # noqa
+
+
+__all__ = ["Fixup"]
+
+WARN_NOT_INSTALLED = """\
 Environment variable DJANGO_SETTINGS_MODULE is defined
 but Django isn't installed.  Won't apply Django fix-ups!
-'''
+"""
 
-WARN_DEBUG_ENABLED = '''\
+WARN_DEBUG_ENABLED = """\
 Using settings.DEBUG leads to a memory leak, never
 use this setting in production environments!
-'''
+"""
 
 
 class Fixup(base.Fixup):
@@ -54,7 +59,7 @@ class Fixup(base.Fixup):
 
     def enabled(self) -> bool:
         """Return :const:`True` if Django is used in this environment."""
-        if os.environ.get('DJANGO_SETTINGS_MODULE'):
+        if os.environ.get("DJANGO_SETTINGS_MODULE"):
             try:
                 import django  # noqa
             except ImportError:
@@ -90,9 +95,9 @@ class Fixup(base.Fixup):
     @cached_property
     def apps(self) -> _Apps:
         """Return the Django app registry."""
-        return symbol_by_name('django.apps:apps')
+        return symbol_by_name("django.apps:apps")
 
     @cached_property
     def settings(self) -> _Settings:
         """Return the Django settings object."""
-        return symbol_by_name('django.conf:settings')
+        return symbol_by_name("django.conf:settings")

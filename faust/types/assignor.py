@@ -10,13 +10,16 @@ from .tuples import TP
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
-    class _AppT: ...      # noqa
+
+    class _AppT:
+        ...  # noqa
+
 
 __all__ = [
-    'TopicToPartitionMap',
-    'HostToPartitionMap',
-    'PartitionAssignorT',
-    'LeaderAssignorT',
+    "TopicToPartitionMap",
+    "HostToPartitionMap",
+    "PartitionAssignorT",
+    "LeaderAssignorT",
 ]
 
 TopicToPartitionMap = MutableMapping[str, List[int]]

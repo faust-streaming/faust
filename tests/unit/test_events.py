@@ -1,21 +1,21 @@
 import pytest
 from mode.utils.mocks import AsyncMock, Mock
+
 from faust import Event
 
 
 class test_Event:
-
     @pytest.fixture
     def key(self):
-        return Mock(name='key')
+        return Mock(name="key")
 
     @pytest.fixture
     def value(self):
-        return Mock(name='value')
+        return Mock(name="value")
 
     @pytest.fixture
     def message(self):
-        return Mock(name='message')
+        return Mock(name="message")
 
     @pytest.fixture
     def event(self, *, app, key, value, message):
@@ -23,182 +23,182 @@ class test_Event:
 
     @pytest.mark.asyncio
     async def test_send(self, *, event):
-        callback = Mock(name='callback')
-        schema = Mock(name='schema')
-        event._send = AsyncMock(name='event._send')
+        callback = Mock(name="callback")
+        schema = Mock(name="schema")
+        event._send = AsyncMock(name="event._send")
         await event.send(
-            channel='chan',
+            channel="chan",
             key=event.key,
             value=event.value,
             partition=3,
             timestamp=None,
-            headers={'k': 'v'},
+            headers={"k": "v"},
             schema=schema,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         event._send.assert_called_once_with(
-            'chan',
+            "chan",
             event.key,
             event.value,
             3,
             None,
-            {'k': 'v'},
+            {"k": "v"},
             schema,
-            'kser',
-            'vser',
+            "kser",
+            "vser",
             callback,
             force=False,
         )
 
     @pytest.mark.asyncio
     async def test_send__USE_EXISTING_KEY_VALUE(self, *, event):
-        callback = Mock(name='callback')
-        event._send = AsyncMock(name='event._send')
-        event.headers = {'k': 'v'}
+        callback = Mock(name="callback")
+        event._send = AsyncMock(name="event._send")
+        event.headers = {"k": "v"}
         await event.send(
-            channel='chan',
+            channel="chan",
             partition=3,
             timestamp=None,
             schema=None,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         event._send.assert_called_once_with(
-            'chan',
+            "chan",
             event.key,
             event.value,
             3,
             None,
             event.headers,
             None,
-            'kser',
-            'vser',
+            "kser",
+            "vser",
             callback,
             force=False,
         )
 
     @pytest.mark.asyncio
     async def test_forward(self, *, event):
-        callback = Mock(name='callback')
-        event._send = AsyncMock(name='event._send')
+        callback = Mock(name="callback")
+        event._send = AsyncMock(name="event._send")
         await event.forward(
-            channel='chan',
+            channel="chan",
             key=event.key,
             value=event.value,
-            headers={'k': 'v'},
+            headers={"k": "v"},
             partition=3,
             timestamp=1234,
             schema=None,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         event._send.assert_called_once_with(
-            'chan',
+            "chan",
             event.key,
             event.value,
             3,
             1234,
-            {'k': 'v'},
+            {"k": "v"},
             None,
-            'kser',
-            'vser',
+            "kser",
+            "vser",
             callback,
             force=False,
         )
 
     @pytest.mark.asyncio
     async def test_forward__USE_EXISTING_KEY_VALUE(self, *, event):
-        callback = Mock(name='callback')
-        event._send = AsyncMock(name='event._send')
-        event.message.headers = {'k1': 'v1'}
-        schema = Mock(name='schema')
+        callback = Mock(name="callback")
+        event._send = AsyncMock(name="event._send")
+        event.message.headers = {"k1": "v1"}
+        schema = Mock(name="schema")
         await event.forward(
-            channel='chan',
+            channel="chan",
             partition=3,
             timestamp=None,
             schema=schema,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         event._send.assert_called_once_with(
-            'chan',
+            "chan",
             event.message.key,
             event.message.value,
             3,
             None,
             event.message.headers,
             schema,
-            'kser',
-            'vser',
+            "kser",
+            "vser",
             callback,
             force=False,
         )
 
     def test_attach(self, *, event, app):
-        callback = Mock(name='callback')
-        schema = Mock(name='schema')
-        app._attachments.put = Mock(name='_attachments.put')
+        callback = Mock(name="callback")
+        schema = Mock(name="schema")
+        app._attachments.put = Mock(name="_attachments.put")
         result = event._attach(
-            channel='chan',
-            key=b'k',
-            value=b'v',
+            channel="chan",
+            key=b"k",
+            value=b"v",
             partition=3,
             timestamp=None,
-            headers={'k': 'v'},
+            headers={"k": "v"},
             schema=schema,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         app._attachments.put.assert_called_once_with(
             event.message,
-            'chan',
-            b'k',
-            b'v',
+            "chan",
+            b"k",
+            b"v",
             partition=3,
             timestamp=None,
-            headers={'k': 'v'},
+            headers={"k": "v"},
             schema=schema,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
         )
         assert result is app._attachments.put()
 
     @pytest.mark.asyncio
     async def test__send(self, *, event, app):
-        app._attachments.maybe_put = AsyncMock(name='maybe_put')
-        callback = Mock(name='callback')
-        schema = Mock(name='schema')
+        app._attachments.maybe_put = AsyncMock(name="maybe_put")
+        callback = Mock(name="callback")
+        schema = Mock(name="schema")
         await event._send(
-            channel='chan',
-            key=b'k',
-            value=b'v',
+            channel="chan",
+            key=b"k",
+            value=b"v",
             partition=4,
             timestamp=33.31234,
-            headers=[('k', 'v')],
+            headers=[("k", "v")],
             schema=schema,
-            key_serializer='kser',
-            value_serializer='vser',
+            key_serializer="kser",
+            value_serializer="vser",
             callback=callback,
             force=True,
         )
 
         app._attachments.maybe_put.assert_called_once_with(
-            'chan',
-            b'k',
-            b'v',
+            "chan",
+            b"k",
+            b"v",
             4,
             33.31234,
-            [('k', 'v')],
+            [("k", "v")],
             schema,
-            'kser',
-            'vser',
+            "kser",
+            "vser",
             callback,
             force=True,
         )
@@ -208,7 +208,7 @@ class test_Event:
 
     @pytest.mark.asyncio
     async def test_AsyncContextManager(self, *, event):
-        event.ack = Mock(name='ack')
+        event.ack = Mock(name="ack")
         block_executed = False
         async with event:
             block_executed = True

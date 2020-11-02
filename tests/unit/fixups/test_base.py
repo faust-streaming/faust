@@ -2,7 +2,6 @@ from faust.fixups.base import Fixup
 
 
 class test_Fixup:
-
     def test_init(self, *, app):
         assert Fixup(app).app is app
 

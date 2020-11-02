@@ -4,14 +4,16 @@ import typing
 
 from yarl import URL
 
+from . import web
 from .assignor import HostToPartitionMap
 from .core import K
-from . import web
 
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
-    class _AppT: ...      # noqa
+
+    class _AppT:
+        ...  # noqa
 
 
 class RouterT(abc.ABC):
@@ -36,6 +38,7 @@ class RouterT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    async def route_req(self, table_name: str, key: K, web: web.Web,
-                        request: web.Request) -> web.Response:
+    async def route_req(
+        self, table_name: str, key: K, web: web.Web, request: web.Request
+    ) -> web.Response:
         ...

@@ -3,8 +3,11 @@ import operator
 import socket
 from contextlib import contextmanager
 from typing import Any, Callable, Mapping, MutableMapping, Optional, cast
+
 from mode import Service
+
 from faust.types import AppT
+
 from . import states
 from .app import send_update
 from .models import Status
@@ -13,7 +16,7 @@ CHECK_FREQUENCY = 5.0
 
 
 class Check(Service):
-    description: str = ''
+    description: str = ""
 
     # This can be used to format the "current value" in error logs.
     # If not set it will just use ``repr(value)``.
@@ -34,11 +37,13 @@ class Check(Service):
 
     default_operator = None
 
-    def __init__(self,
-                 name: str,
-                 get_value: Callable[[], Any] = None,
-                 operator: Callable[[Any, Any], bool] = None,
-                 **kwargs: Any):
+    def __init__(
+        self,
+        name: str,
+        get_value: Callable[[], Any] = None,
+        operator: Callable[[Any, Any], bool] = None,
+        **kwargs: Any,
+    ):
         self.name = name
         self._get_value = cast(Callable[[], Any], get_value)
         if operator is None:
@@ -64,9 +69,9 @@ class Check(Service):
 
     def asdict(self) -> Mapping[str, Any]:
         return {
-            'state': self.status,
-            'color': self.color,
-            'faults': self.faults,
+            "state": self.status,
+            "color": self.color,
+            "faults": self.faults,
         }
 
     def get_value(self) -> Any:
@@ -95,17 +100,15 @@ class Check(Service):
                 if self.compare(prev_value, current_value):
                     self.faults += 1
                     self.status = self.get_state_for_faults(self.faults)
-                    severity = self.state_to_severity.get(
-                        self.status, logging.INFO)
-                    await self.on_failed_log(
-                        severity, app, prev_value, current_value)
+                    severity = self.state_to_severity.get(self.status, logging.INFO)
+                    await self.on_failed_log(severity, app, prev_value, current_value)
                 else:
                     self.faults = 0
                     self.status = states.OK
                     await self.on_ok_log(app, prev_value, current_value)
             self.store_previous_value(current_value)
         except Exception as exc:
-            print(f'ERROR: {exc!r}')
+            print(f"ERROR: {exc!r}")
             raise
 
     def compare(self, prev_value: Any, current_value: Any):
@@ -114,11 +117,9 @@ class Check(Service):
     def store_previous_value(self, current_value):
         self.prev_value = current_value
 
-    async def on_failed_log(self,
-                            severity: int,
-                            app: AppT,
-                            prev_value: Any,
-                            current_value: Any) -> None:
+    async def on_failed_log(
+        self, severity: int, app: AppT, prev_value: Any, current_value: Any
+    ) -> None:
         await send_update(app, self.to_representation(app, severity))
         prev_value_repr = self.prev_value_repr
         current_value_repr = self.current_value_repr
@@ -127,21 +128,29 @@ class Check(Service):
         if prev_value_repr is None:
             prev_value_repr = repr(prev_value)
 
-        app.log.log(severity,
-                    '%s:%s %s (x%s): was %s now %s',
-                    app.conf.id, self.name, self.negate_description,
-                    self.faults, prev_value_repr, current_value_repr,
-                    extra={'no_alert': True})
+        app.log.log(
+            severity,
+            "%s:%s %s (x%s): was %s now %s",
+            app.conf.id,
+            self.name,
+            self.negate_description,
+            self.faults,
+            prev_value_repr,
+            current_value_repr,
+            extra={"no_alert": True},
+        )
 
-    async def on_ok_log(self,
-                        app: AppT,
-                        prev_value: Any,
-                        current_value: Any) -> None:
+    async def on_ok_log(self, app: AppT, prev_value: Any, current_value: Any) -> None:
         await send_update(app, self.to_representation(app, logging.INFO))
-        app.log.info('%s:%s %s: was %s now %s',
-                     app.conf.id, self.name, self.description,
-                     prev_value, current_value,
-                     extra={'no_alert': True})
+        app.log.info(
+            "%s:%s %s: was %s now %s",
+            app.conf.id,
+            self.name,
+            self.description,
+            prev_value,
+            current_value,
+            extra={"no_alert": True},
+        )
 
     def get_state_for_faults(self, faults: int) -> str:
         for level, state in self.faults_to_state:
@@ -152,10 +161,10 @@ class Check(Service):
     @property
     def color(self) -> str:
         if self.status in states.OK_STATES:
-            return 'green'
+            return "green"
         elif self.status in states.MAYBE_STATES:
-            return 'yellow'
-        return 'red'
+            return "yellow"
+        return "red"
 
     @Service.task
     async def _run_check(self) -> None:
@@ -172,18 +181,18 @@ class Check(Service):
                 else:
                     await self.check(app)
         except Exception as exc:
-            print(f'RUN CHECK RAISED: {exc!r}')
+            print(f"RUN CHECK RAISED: {exc!r}")
             raise
 
     @property
     def label(self) -> str:
-        return f'{type(self).__name__}: {self.name}'
+        return f"{type(self).__name__}: {self.name}"
 
 
 class Increasing(Check):
     default_operator = operator.le
-    description = 'increasing'
-    negate_description = 'not increasing'
+    description = "increasing"
+    negate_description = "not increasing"
 
 
 def _transitioned_to_false(previous: bool, current: bool) -> bool:
@@ -191,8 +200,8 @@ def _transitioned_to_false(previous: bool, current: bool) -> bool:
 
 
 class Condition(Check):
-    description = 'functional'
-    negate_description = 'nonfunctional'
+    description = "functional"
+    negate_description = "nonfunctional"
 
     default_operator = _transitioned_to_false
 
@@ -204,8 +213,9 @@ class Condition(Check):
 
 class Stationary(Check):
     """Monitors a value that should stand still, i.e, not going up or down."""
-    description = 'functional'
-    negate_description = 'increasing'
+
+    description = "functional"
+    negate_description = "increasing"
 
     default_operator = operator.ne
 

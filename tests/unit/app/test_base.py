@@ -1,5 +1,12 @@
-import re
 import collections
+import re
+
+import pytest
+from mode import Service
+from mode.utils.compat import want_bytes
+from mode.utils.mocks import ANY, AsyncMock, Mock, call, patch
+from yarl import URL
+
 import faust
 from faust.agents import Agent
 from faust.app.base import SCAN_AGENT, SCAN_PAGE, SCAN_TASK
@@ -23,27 +30,22 @@ from faust.types.models import ModelT
 from faust.types.settings import Settings
 from faust.types.tables import GlobalTableT
 from faust.types.web import ResourceOptions
-from mode import Service
-from mode.utils.compat import want_bytes
-from mode.utils.mocks import ANY, AsyncMock, Mock, call, patch
-from yarl import URL
-import pytest
 
-TEST_TOPIC = 'test'
+TEST_TOPIC = "test"
 CONFIG_DICT = {
-    'broker': 'kafka://foo',
-    'stream_buffer_maxsize': 1,
+    "broker": "kafka://foo",
+    "stream_buffer_maxsize": 1,
 }
-CONFIG_PATH = 't.unit.app.test_base.ConfigClass'
+CONFIG_PATH = "t.unit.app.test_base.ConfigClass"
 
-TP1 = TP('foo', 0)
-TP2 = TP('bar', 1)
-TP3 = TP('baz', 2)
-TP4 = TP('xuz', 3)
+TP1 = TP("foo", 0)
+TP2 = TP("bar", 1)
+TP3 = TP("baz", 2)
+TP4 = TP("xuz", 3)
 
 
 class ConfigClass:
-    broker = 'kafka://foo'
+    broker = "kafka://foo"
     stream_buffer_maxsize = 1
 
 
@@ -51,21 +53,23 @@ class Key(faust.Record):
     value: int
 
 
-class Value(faust.Record, serializer='json'):
+class Value(faust.Record, serializer="json"):
     amount: float
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('key,topic_name,expected_topic,key_serializer', [
-    ('key', TEST_TOPIC, TEST_TOPIC, None),
-    (Key(value=10), TEST_TOPIC, TEST_TOPIC, None),
-    ({'key': 'k'}, TEST_TOPIC, TEST_TOPIC, 'json'),
-    (None, 'topic', 'topic', None),
-    (b'key', TEST_TOPIC, TEST_TOPIC, None),
-    ('key', 'topic', 'topic', None),
-])
-async def test_send(
-        key, topic_name, expected_topic, key_serializer, app):
+@pytest.mark.parametrize(
+    "key,topic_name,expected_topic,key_serializer",
+    [
+        ("key", TEST_TOPIC, TEST_TOPIC, None),
+        (Key(value=10), TEST_TOPIC, TEST_TOPIC, None),
+        ({"key": "k"}, TEST_TOPIC, TEST_TOPIC, "json"),
+        (None, "topic", "topic", None),
+        (b"key", TEST_TOPIC, TEST_TOPIC, None),
+        ("key", "topic", "topic", None),
+    ],
+)
+async def test_send(key, topic_name, expected_topic, key_serializer, app):
     topic = app.topic(topic_name)
     event = Value(amount=0.0)
     await app.send(topic, key, event, key_serializer=key_serializer)
@@ -76,9 +80,9 @@ async def test_send(
         if isinstance(key, str):
             # Default serializer is raw, and str should be serialized
             # (note that a bytes key will be left alone.
-            key_serializer = 'raw'
+            key_serializer = "raw"
         if isinstance(key, ModelT):
-            expected_key = key.dumps(serializer='raw')
+            expected_key = key.dumps(serializer="raw")
         elif key_serializer:
             expected_key = codecs.dumps(key_serializer, key)
         else:
@@ -86,7 +90,9 @@ async def test_send(
     else:
         expected_key = None
     expected_sender.assert_called_with(
-        expected_topic, expected_key, event.dumps(),
+        expected_topic,
+        expected_key,
+        event.dumps(),
         partition=None,
         timestamp=None,
         headers={},
@@ -95,11 +101,10 @@ async def test_send(
 
 @pytest.mark.asyncio
 async def test_send_str(app):
-    await app.send('foo', Value(amount=0.0))
+    await app.send("foo", Value(amount=0.0))
 
 
 class test_App:
-
     def test_stream(self, *, app):
         s = app.topic(TEST_TOPIC).stream()
         assert s.channel.topics == (TEST_TOPIC,)
@@ -109,54 +114,62 @@ class test_App:
     def test_new_producer(self, *, app):
         app._producer = None
         transport = app._transport = Mock(
-            name='transport',
+            name="transport",
             autospec=Transport,
         )
         assert app._new_producer() is transport.create_producer.return_value
         transport.create_producer.assert_called_with(beacon=ANY)
         assert app.producer is transport.create_producer.return_value
 
-    @pytest.mark.parametrize('broker_url,broker_consumer_url', [
-        ('moo://', None),
-        ('moo://', 'zoo://'),
-    ])
-    def test_new_transport(self, broker_url, broker_consumer_url, *,
-                           app, patching):
+    @pytest.mark.parametrize(
+        "broker_url,broker_consumer_url",
+        [
+            ("moo://", None),
+            ("moo://", "zoo://"),
+        ],
+    )
+    def test_new_transport(self, broker_url, broker_consumer_url, *, app, patching):
         app.conf.broker = broker_url
         if broker_consumer_url:
             app.conf.broker_consumer = broker_consumer_url
-        by_url = patching('faust.transport.by_url')
+        by_url = patching("faust.transport.by_url")
         assert app._new_transport() is by_url.return_value.return_value
         assert app.transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_consumer[0])
         by_url.return_value.assert_called_with(
-            app.conf.broker_consumer, app, loop=app.loop)
+            app.conf.broker_consumer, app, loop=app.loop
+        )
         app.transport = 10
         assert app.transport == 10
 
-    @pytest.mark.parametrize('broker_url,broker_producer_url', [
-        ('moo://', None),
-        ('moo://', 'zoo://'),
-    ])
-    def test_new_producer_transport(self, broker_url, broker_producer_url, *,
-                                    app, patching):
+    @pytest.mark.parametrize(
+        "broker_url,broker_producer_url",
+        [
+            ("moo://", None),
+            ("moo://", "zoo://"),
+        ],
+    )
+    def test_new_producer_transport(
+        self, broker_url, broker_producer_url, *, app, patching
+    ):
         app.conf.broker = broker_url
         if broker_producer_url:
             app.conf.broker_producer = broker_producer_url
-        by_url = patching('faust.transport.by_url')
+        by_url = patching("faust.transport.by_url")
         transport = app._new_producer_transport()
         assert transport is by_url.return_value.return_value
         assert app.producer_transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_producer[0])
         by_url.return_value.assert_called_with(
-            app.conf.broker_producer, app, loop=app.loop)
+            app.conf.broker_producer, app, loop=app.loop
+        )
         app.producer_transport = 10
         assert app.producer_transport == 10
 
     @pytest.mark.asyncio
     async def test_on_stop(self, *, app):
-        app._http_client = Mock(name='http_client', close=AsyncMock())
-        app._producer = Mock(name='producer', flush=AsyncMock())
+        app._http_client = Mock(name="http_client", close=AsyncMock())
+        app._producer = Mock(name="producer", flush=AsyncMock())
         await app.on_stop()
         app._http_client.close.assert_called_once_with()
         app._http_client = None
@@ -190,7 +203,7 @@ class test_App:
         await app._stop_consumer()
 
         consumer.assignment.side_effect = None
-        assigned = {TP('foo', 0), TP('bar', 1)}
+        assigned = {TP("foo", 0), TP("bar", 1)}
         consumer.assignment.return_value = assigned
 
         await app._stop_consumer()
@@ -200,7 +213,7 @@ class test_App:
         app._stop_fetcher.assert_called_once_with()
 
     def test_on_rebalance_start__existing_state(self, *, app):
-        app._rebalancing_sensor_state = {'foo': 'bar'}
+        app._rebalancing_sensor_state = {"foo": "bar"}
         app.log.warning = Mock()
         app.on_rebalance_start()
 
@@ -211,18 +224,19 @@ class test_App:
         app.log.warning.assert_called_once()
 
     def test_on_rebalance_return__has_state(self, *, app):
-        app._rebalancing_sensor_state = {'time_start': 100.0}
+        app._rebalancing_sensor_state = {"time_start": 100.0}
         app.sensors.on_rebalance_return = Mock()
         app.on_rebalance_return()
         app.sensors.on_rebalance_return.assert_called_once_with(
-            app, app._rebalancing_sensor_state,
+            app,
+            app._rebalancing_sensor_state,
         )
 
     def test_on_rebalance_start_end(self, *, app):
         app.tables = Mock()
         app.sensors = Mock()
         app.sensors.on_rebalance_start.return_value = {
-            'time_start': 100.,
+            "time_start": 100.0,
         }
         assert not app.rebalancing
 
@@ -237,7 +251,7 @@ class test_App:
         assert not app.rebalancing
         assert not app._rebalancing_sensor_state
 
-        app.tracer = Mock(name='tracer')
+        app.tracer = Mock(name="tracer")
         app.on_rebalance_start()
         span = app._rebalancing_span
         assert span is not None
@@ -251,25 +265,26 @@ class test_App:
 
     def test_trace(self, *, app):
         app.tracer = None
-        with app.trace('foo'):
+        with app.trace("foo"):
             pass
         app.tracer = Mock()
-        assert app.trace('foo') is app.tracer.trace.return_value
+        assert app.trace("foo") is app.tracer.trace.return_value
 
     def test_traced(self, *, app):
         @app.traced
         def foo(val):
             return val
+
         assert foo(42) == 42
 
     def test__start_span_from_rebalancing(self, *, app):
         app.tracer = None
         app._rebalancing_span = None
-        assert app._start_span_from_rebalancing('foo')
-        app.tracer = Mock(name='tracer')
+        assert app._start_span_from_rebalancing("foo")
+        app.tracer = Mock(name="tracer")
         try:
-            app._rebalancing_span = Mock(name='span')
-            assert app._start_span_from_rebalancing('foo')
+            app._rebalancing_span = Mock(name="span")
+            assert app._start_span_from_rebalancing("foo")
         finally:
             app.tracer = None
             app._rebalancing_span = None
@@ -286,8 +301,8 @@ class test_App:
         app.tables = Mock()
         app.flow_control = Mock()
         app._producer = Mock(flush=AsyncMock())
-        revoked = {TP('foo', 0), TP('bar', 1)}
-        ass = app.consumer.assignment.return_value = {TP('foo', 0)}
+        revoked = {TP("foo", 0), TP("bar", 1)}
+        ass = app.consumer.assignment.return_value = {TP("foo", 0)}
 
         app.in_transaction = False
         await app._on_partitions_revoked(revoked)
@@ -303,15 +318,14 @@ class test_App:
 
         app.in_transaction = True
         await app._on_partitions_revoked(revoked)
-        consumer.transactions.on_partitions_revoked.assert_called_once_with(
-            revoked)
+        consumer.transactions.on_partitions_revoked.assert_called_once_with(revoked)
 
     @pytest.mark.asyncio
     async def test_on_partitions_revoked__no_assignment(self, *, app):
         app.on_partitions_revoked = Mock(send=AsyncMock())
         app.consumer = Mock()
         app.tables = Mock()
-        revoked = {TP('foo', 0), TP('bar', 1)}
+        revoked = {TP("foo", 0), TP("bar", 1)}
         app.consumer.assignment.return_value = set()
         await app._on_partitions_revoked(revoked)
 
@@ -323,7 +337,7 @@ class test_App:
         app.crash = AsyncMock()
         app.consumer = Mock()
         app.tables = Mock()
-        revoked = {TP('foo', 0), TP('bar', 1)}
+        revoked = {TP("foo", 0), TP("bar", 1)}
         app.consumer.assignment.side_effect = RuntimeError()
         await app._on_partitions_revoked(revoked)
 
@@ -357,7 +371,7 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned(self, *, app):
-        app._assignment = {TP('foo', 1), TP('bar', 2)}
+        app._assignment = {TP("foo", 1), TP("bar", 2)}
         app.on_partitions_assigned = Mock(send=AsyncMock())
         app.consumer = Mock(
             transactions=Mock(
@@ -375,32 +389,33 @@ class test_App:
             on_partitions_assigned=AsyncMock(),
         )
 
-        assigned = {TP('foo', 1), TP('baz', 3)}
-        revoked = {TP('bar', 2)}
-        newly_assigned = {TP('baz', 3)}
+        assigned = {TP("foo", 1), TP("baz", 3)}
+        revoked = {TP("bar", 2)}
+        newly_assigned = {TP("baz", 3)}
 
         app.in_transaction = False
         await app._on_partitions_assigned(assigned)
 
-        app.agents.on_rebalance.assert_called_once_with(
-            revoked, newly_assigned)
+        app.agents.on_rebalance.assert_called_once_with(revoked, newly_assigned)
         app.topics.maybe_wait_for_subscriptions.assert_called_once_with()
         app.consumer.pause_partitions.assert_called_once_with(assigned)
         app.topics.on_partitions_assigned.assert_called_once_with(assigned)
         app.consumer.transactions.on_rebalance.assert_not_called()
         app.tables.on_rebalance.assert_called_once_with(
-            assigned, revoked, newly_assigned)
+            assigned, revoked, newly_assigned
+        )
         app.on_partitions_assigned.send.assert_called_once_with(assigned)
 
         app.in_transaction = True
-        app._assignment = {TP('foo', 1), TP('bar', 2)}
+        app._assignment = {TP("foo", 1), TP("bar", 2)}
         await app._on_partitions_assigned(assigned)
         app.consumer.transactions.on_rebalance.assert_called_once_with(
-            assigned, revoked, newly_assigned)
+            assigned, revoked, newly_assigned
+        )
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned__crashes(self, *, app):
-        app._assignment = {TP('foo', 1), TP('bar', 2)}
+        app._assignment = {TP("foo", 1), TP("bar", 2)}
         app.on_partitions_assigned = Mock(send=AsyncMock())
         app.consumer = Mock()
         app.agents = Mock(
@@ -412,16 +427,19 @@ class test_App:
         await app._on_partitions_assigned(set())
         app.crash.assert_called_once()
 
-    @pytest.mark.parametrize('prev,new,expected_revoked,expected_assigned', [
-        (None, {TP1, TP2}, set(), {TP1, TP2}),
-        (set(), set(), set(), set()),
-        (set(), {TP1, TP2}, set(), {TP1, TP2}),
-        ({TP1, TP2}, {TP1, TP2}, set(), set()),
-        ({TP1, TP2}, {TP1, TP3, TP4}, {TP2}, {TP3, TP4}),
-    ])
+    @pytest.mark.parametrize(
+        "prev,new,expected_revoked,expected_assigned",
+        [
+            (None, {TP1, TP2}, set(), {TP1, TP2}),
+            (set(), set(), set(), set()),
+            (set(), {TP1, TP2}, set(), {TP1, TP2}),
+            ({TP1, TP2}, {TP1, TP2}, set(), set()),
+            ({TP1, TP2}, {TP1, TP3, TP4}, {TP2}, {TP3, TP4}),
+        ],
+    )
     def test_update_assignment(
-            self, prev, new, expected_revoked, expected_assigned,
-            *, app):
+        self, prev, new, expected_revoked, expected_assigned, *, app
+    ):
         app._assignment = prev
         revoked, newly_assigned = app._update_assignment(new)
         assert revoked == expected_revoked
@@ -429,8 +447,8 @@ class test_App:
         assert app._assignment == new
 
     def test_worker_init(self, *, app):
-        fixup1 = Mock(name='fixup1', autospec=Fixup)
-        fixup2 = Mock(name='fixup2', autospec=Fixup)
+        fixup1 = Mock(name="fixup1", autospec=Fixup)
+        fixup2 = Mock(name="fixup2", autospec=Fixup)
         app.fixups = [fixup1, fixup2]
         app.worker_init()
         app.worker_init_post_autodiscover()
@@ -438,29 +456,28 @@ class test_App:
         fixup2.on_worker_init.assert_called_once_with()
 
     def test_worker_init_post_autodiscover(self, *, app):
-        on_worker_init = app.on_worker_init.connect(
-            Mock(name='on_worker_init'))
+        on_worker_init = app.on_worker_init.connect(Mock(name="on_worker_init"))
         app.worker_init_post_autodiscover()
         on_worker_init.assert_called_once_with(app, signal=app.on_worker_init)
 
     def test_discover(self, *, app):
-        app.conf.autodiscover = ['a', 'b', 'c']
-        app.conf.origin = 'faust'
-        fixup1 = Mock(name='fixup1', autospec=Fixup)
-        fixup1.autodiscover_modules.return_value = ['d', 'e']
+        app.conf.autodiscover = ["a", "b", "c"]
+        app.conf.origin = "faust"
+        fixup1 = Mock(name="fixup1", autospec=Fixup)
+        fixup1.autodiscover_modules.return_value = ["d", "e"]
         app.fixups = [fixup1]
-        with patch('faust.app.base.venusian'):
-            with patch('importlib.import_module') as import_module:
+        with patch("faust.app.base.venusian"):
+            with patch("importlib.import_module") as import_module:
                 app.discover()
 
                 import_module.assert_has_calls(
                     [
-                        call('a'),
-                        call('b'),
-                        call('c'),
-                        call('d'),
-                        call('e'),
-                        call('faust'),
+                        call("a"),
+                        call("b"),
+                        call("c"),
+                        call("d"),
+                        call("e"),
+                        call("faust"),
                     ],
                     any_order=True,
                 )
@@ -470,34 +487,34 @@ class test_App:
         app.discover()
 
     def test_discover__unknown_module(self, *, app):
-        app.conf.autodiscover = ['xcxz']
-        app.conf.origin = 'faust'
-        with patch('faust.app.base.venusian'):
+        app.conf.autodiscover = ["xcxz"]
+        app.conf.origin = "faust"
+        with patch("faust.app.base.venusian"):
             with pytest.raises(ModuleNotFoundError):
                 app.discover()
 
     def test_discovery_modules__bool(self, *, app):
-        app.conf.origin = 'faust'
+        app.conf.origin = "faust"
         app.conf.autodiscover = True
-        assert app._discovery_modules() == ['faust']
+        assert app._discovery_modules() == ["faust"]
 
     def test_discovery_modules__callable(self, *, app):
-        app.conf.origin = 'faust'
-        app.conf.autodiscover = lambda: ['a', 'b', 'c']
-        assert app._discovery_modules() == ['a', 'b', 'c', 'faust']
+        app.conf.origin = "faust"
+        app.conf.autodiscover = lambda: ["a", "b", "c"]
+        assert app._discovery_modules() == ["a", "b", "c", "faust"]
 
     def test_discovery_modules__list(self, *, app):
-        app.conf.origin = 'faust'
-        app.conf.autodiscover = ['a', 'b', 'c']
-        assert app._discovery_modules() == ['a', 'b', 'c', 'faust']
+        app.conf.origin = "faust"
+        app.conf.autodiscover = ["a", "b", "c"]
+        assert app._discovery_modules() == ["a", "b", "c", "faust"]
 
     def test_discovery_modules__list_no_origin(self, *, app):
         app.conf.origin = None
-        app.conf.autodiscover = ['a', 'b', 'c']
-        assert app._discovery_modules() == ['a', 'b', 'c']
+        app.conf.autodiscover = ["a", "b", "c"]
+        assert app._discovery_modules() == ["a", "b", "c"]
 
     def test_discovery_modules__disabled(self, *, app):
-        app.conf.origin = 'faust'
+        app.conf.origin = "faust"
         app.conf.autodiscover = False
         assert app._discovery_modules() == []
 
@@ -508,46 +525,51 @@ class test_App:
             app._discovery_modules()
 
     def test_discover_ignore(self, *, app):
-        with patch('faust.app.base.venusian') as venusian:
-            app.conf.origin = 'faust'
-            app.conf.autodiscover = ['re', 'collections']
-            app.discover(categories=['faust.agent'], ignore=['re', 'faust'])
+        with patch("faust.app.base.venusian") as venusian:
+            app.conf.origin = "faust"
+            app.conf.autodiscover = ["re", "collections"]
+            app.discover(categories=["faust.agent"], ignore=["re", "faust"])
 
-            assert venusian.Scanner().scan.assert_has_calls([
-                call(
-                    re,
-                    categories=('faust.agent', ),
-                    ignore=['re', 'faust'],
-                    onerror=app._on_autodiscovery_error,
-                ),
-                call(
-                    faust,
-                    categories=('faust.agent', ),
-                    ignore=['re', 'faust'],
-                    onerror=app._on_autodiscovery_error,
-                ),
-                call(
-                    collections,
-                    categories=('faust.agent', ),
-                    ignore=['re', 'faust'],
-                    onerror=app._on_autodiscovery_error,
-                ),
-            ], any_order=True) is None
+            assert (
+                venusian.Scanner().scan.assert_has_calls(
+                    [
+                        call(
+                            re,
+                            categories=("faust.agent",),
+                            ignore=["re", "faust"],
+                            onerror=app._on_autodiscovery_error,
+                        ),
+                        call(
+                            faust,
+                            categories=("faust.agent",),
+                            ignore=["re", "faust"],
+                            onerror=app._on_autodiscovery_error,
+                        ),
+                        call(
+                            collections,
+                            categories=("faust.agent",),
+                            ignore=["re", "faust"],
+                            onerror=app._on_autodiscovery_error,
+                        ),
+                    ],
+                    any_order=True,
+                )
+                is None
+            )
 
     def test__on_autodiscovery_error(self, *, app):
-        with patch('faust.app.base.logger') as logger:
+        with patch("faust.app.base.logger") as logger:
             try:
-                raise KeyError('foo')
+                raise KeyError("foo")
             except Exception as exc:
-                app._on_autodiscovery_error('name')
-                logger.warning.assert_called_once_with(
-                    ANY, 'name', exc, exc_info=1)
+                app._on_autodiscovery_error("name")
+                logger.warning.assert_called_once_with(ANY, "name", exc, exc_info=1)
 
     def test_main(self, *, app):
-        with patch('faust.cli.faust.cli') as cli:
-            app.finalize = Mock(name='app.finalize')
-            app.worker_init = Mock(name='app.worker_init')
-            app.discover = Mock(name='app.discover')
+        with patch("faust.cli.faust.cli") as cli:
+            app.finalize = Mock(name="app.finalize")
+            app.worker_init = Mock(name="app.worker_init")
+            app.discover = Mock(name="app.discover")
 
             app.conf.autodiscover = False
             with pytest.raises(SystemExit):
@@ -569,12 +591,13 @@ class test_App:
         channel = app.channel()
         assert isinstance(channel, Channel)
         assert isinstance(channel, ChannelT)
-        assert app.channel(key_type='x').key_type == 'x'
-        assert app.channel(value_type='x').value_type == 'x'
+        assert app.channel(key_type="x").key_type == "x"
+        assert app.channel(value_type="x").value_type == "x"
         assert app.channel(maxsize=303).maxsize == 303
 
     def test_agent(self, *, app):
-        with patch('faust.app.base.venusian') as venusian:
+        with patch("faust.app.base.venusian") as venusian:
+
             @app.agent()
             async def foo(stream):
                 ...
@@ -587,29 +610,30 @@ class test_App:
     @pytest.mark.asyncio
     async def test_on_agent_error(self, *, app):
         app._consumer = None
-        agent = Mock(name='agent', autospec=Agent)
+        agent = Mock(name="agent", autospec=Agent)
         await app._on_agent_error(agent, KeyError())
 
     @pytest.mark.asyncio
     async def test_on_agent_error__consumer(self, *, app):
-        app._consumer = Mock(name='consumer', autospec=Consumer)
-        agent = Mock(name='agent', autospec=Agent)
+        app._consumer = Mock(name="consumer", autospec=Consumer)
+        agent = Mock(name="agent", autospec=Agent)
         exc = KeyError()
         await app._on_agent_error(agent, exc)
         app._consumer.on_task_error.assert_called_with(exc)
 
     @pytest.mark.asyncio
     async def test_on_agent_error__MemoryError(self, *, app):
-        app._consumer = Mock(name='consumer', autospec=Consumer)
+        app._consumer = Mock(name="consumer", autospec=Consumer)
         app._consumer.on_task_error.side_effect = MemoryError()
-        agent = Mock(name='agent', autospec=Agent)
+        agent = Mock(name="agent", autospec=Agent)
         exc = KeyError()
         with pytest.raises(MemoryError):
             await app._on_agent_error(agent, exc)
         app._consumer.on_task_error.assert_called_with(exc)
 
     def test_task(self, *, app):
-        with patch('faust.app.base.venusian') as venusian:
+        with patch("faust.app.base.venusian") as venusian:
+
             @app.task
             async def foo():
                 ...
@@ -631,8 +655,8 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_timer(self, *, app):
-        did_execute = Mock(name='did_execute')
-        app._producer = Mock(name='producer', flush=AsyncMock())
+        did_execute = Mock(name="did_execute")
+        app._producer = Mock(name="producer", flush=AsyncMock())
 
         @app.timer(0.1)
         async def foo():
@@ -644,7 +668,7 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_timer__sleep_stopped(self, *, app):
-        did_execute = Mock(name='did_execute')
+        did_execute = Mock(name="did_execute")
         app.sleep = AsyncMock()
 
         def on_sleep(seconds, **kwargs):
@@ -660,13 +684,14 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_timer__on_leader_not_leader(self, *, app):
-        did_execute = Mock(name='did_execute')
+        did_execute = Mock(name="did_execute")
         app.is_leader = Mock(return_value=False)
         app.sleep = AsyncMock()
 
         def on_sleep(seconds, **kwargs):
             if app.sleep.call_count >= 3:
                 app._stopped.set()
+
         # cannot use list side_effect arg as it causes
         # StopIteration to be raised.
         app.sleep.coro.side_effect = on_sleep
@@ -682,13 +707,14 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_timer__on_leader_is_leader(self, *, app):
-        did_execute = Mock(name='did_execute')
+        did_execute = Mock(name="did_execute")
         app.is_leader = Mock(return_value=True)
         app.sleep = AsyncMock()
 
         def on_sleep(seconds, **kwargs):
             if app.sleep.call_count >= 3:
                 app._stopped.set()
+
         # cannot use list side_effect arg as it causes
         # StopIteration to be raised.
         app.sleep.coro.side_effect = on_sleep
@@ -704,13 +730,13 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_crontab(self, *, app):
-        did_execute = Mock(name='did_execute')
-        app._producer = Mock(name='producer', flush=AsyncMock())
+        did_execute = Mock(name="did_execute")
+        app._producer = Mock(name="producer", flush=AsyncMock())
 
-        with patch('faust.app.base.cron') as cron:
+        with patch("faust.app.base.cron") as cron:
             cron.secs_for_next.return_value = 0.1
 
-            @app.crontab('* * * * *')
+            @app.crontab("* * * * *")
             async def foo():
                 did_execute()
                 await app.stop()
@@ -720,11 +746,11 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_crontab__on_leader_not_leader(self, *, app):
-        did_execute = Mock(name='did_execute')
-        with patch('faust.app.base.cron') as cron:
+        did_execute = Mock(name="did_execute")
+        with patch("faust.app.base.cron") as cron:
             cron.secs_for_next.return_value = 0.1
 
-            @app.crontab('* * * * *', on_leader=True)
+            @app.crontab("* * * * *", on_leader=True)
             async def foo():
                 did_execute()
 
@@ -734,6 +760,7 @@ class test_App:
         def on_sleep(seconds, **kwargs):
             if app.sleep.call_count >= 3:
                 app._stopped.set()
+
         app.sleep.coro.side_effect = on_sleep
 
         await foo()
@@ -742,11 +769,11 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_crontab__on_leader_is_leader(self, *, app):
-        did_execute = Mock(name='did_execute')
-        with patch('faust.app.base.cron') as cron:
+        did_execute = Mock(name="did_execute")
+        with patch("faust.app.base.cron") as cron:
             cron.secs_for_next.return_value = 0.1
 
-            @app.crontab('* * * * *', on_leader=True)
+            @app.crontab("* * * * *", on_leader=True)
             async def foo(app):
                 did_execute()
 
@@ -756,6 +783,7 @@ class test_App:
         def on_sleep(seconds, **kwargs):
             if app.sleep.call_count >= 3:
                 app._stopped.set()
+
         app.sleep.coro.side_effect = on_sleep
 
         await foo()
@@ -763,7 +791,6 @@ class test_App:
         assert did_execute.call_count == 2
 
     def test_service(self, *, app):
-
         @app.service
         class Foo(Service):
             ...
@@ -772,83 +799,84 @@ class test_App:
 
     def test_is_leader(self, *, app):
         app._leader_assignor = Mock(
-            name='_leader_assignor',
+            name="_leader_assignor",
             autospec=LeaderAssignor,
         )
         app._leader_assignor.is_leader.return_value = True
         assert app.is_leader()
 
     def test_Table(self, *, app):
-        table = app.Table('name')
-        assert app.tables.data['name'] is table
+        table = app.Table("name")
+        assert app.tables.data["name"] is table
 
     def test_GlobalTable(self, *, app):
-        table = app.GlobalTable('name')
-        assert app.tables.data['name'] is table
-        assert isinstance(app.tables.data['name'], GlobalTableT)
+        table = app.GlobalTable("name")
+        assert app.tables.data["name"] is table
+        assert isinstance(app.tables.data["name"], GlobalTableT)
 
     def test_SetTable(self, *, app):
-        table = app.SetTable('name')
-        assert app.tables.data['name'] is table
+        table = app.SetTable("name")
+        assert app.tables.data["name"] is table
 
     def test_SetGlobalTable(self, *, app):
-        table = app.SetGlobalTable('name')
-        assert app.tables.data['name'] is table
-        assert isinstance(app.tables.data['name'], GlobalTableT)
+        table = app.SetGlobalTable("name")
+        assert app.tables.data["name"] is table
+        assert isinstance(app.tables.data["name"], GlobalTableT)
 
     def test_page(self, *, app):
 
-        with patch('faust.app.base.venusian') as venusian:
+        with patch("faust.app.base.venusian") as venusian:
 
-            @app.page('/foo')
+            @app.page("/foo")
             async def view(self, request):
                 ...
 
-            assert '/foo' in app.web.views
+            assert "/foo" in app.web.views
 
             venusian.attach.assert_called_once_with(view, category=SCAN_PAGE)
 
     def test_page__with_cors_options(self, *, app):
 
-        with patch('faust.app.base.venusian') as venusian:
+        with patch("faust.app.base.venusian") as venusian:
 
             @app.page(
-                '/foo',
+                "/foo",
                 cors_options={
-                    'http://foo.example.com': ResourceOptions(
+                    "http://foo.example.com": ResourceOptions(
                         allow_credentials=True,
-                        expose_headers='*',
-                        allow_headers='*',
+                        expose_headers="*",
+                        allow_headers="*",
                         max_age=None,
-                        allow_methods='*',
+                        allow_methods="*",
                     ),
                 },
             )
             async def view(self, request):
                 ...
 
-            assert '/foo' in app.web.views
+            assert "/foo" in app.web.views
 
             venusian.attach.assert_called_once_with(view, category=SCAN_PAGE)
 
     def test_page__view_class_but_not_view(self, *, app):
         with pytest.raises(TypeError):
-            @app.page('/foo')
+
+            @app.page("/foo")
             class Foo:
                 ...
 
     @pytest.mark.asyncio
     async def test_table_route__query_param(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         view = Mock()
         request = Mock()
         app.router.route_req = AsyncMock()
 
-        @app.table_route(table, query_param='q')
+        @app.table_route(table, query_param="q")
         async def routed(self, request):
             return 42
 
-        request.query = {'q': 'KEY'}
+        request.query = {"q": "KEY"}
 
         ret = await routed(view, request)
         assert ret is app.router.route_req.coro.return_value
@@ -859,16 +887,16 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_table_route__match_info(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         view = Mock()
         request = Mock()
         app.router.route_req = AsyncMock()
 
-        @app.table_route(table, match_info='q')
+        @app.table_route(table, match_info="q")
         async def routed(self, request):
             return 42
 
-        request.match_info = {'q': 'KEY'}
+        request.match_info = {"q": "KEY"}
 
         ret = await routed(view, request)
         assert ret is app.router.route_req.coro.return_value
@@ -879,12 +907,12 @@ class test_App:
 
     @pytest.mark.asyncio
     async def test_table_route__exact_key(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         view = Mock()
         request = Mock()
         app.router.route_req = AsyncMock()
 
-        @app.table_route(table, exact_key='active')
+        @app.table_route(table, exact_key="active")
         async def routed(self, request):
             return 42
 
@@ -896,23 +924,26 @@ class test_App:
         assert ret == 42
 
     def test_table_route__compat_shard_param(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         with pytest.warns(DeprecationWarning):
-            @app.table_route(table, shard_param='x')
+
+            @app.table_route(table, shard_param="x")
             async def view(self, request):
                 ...
 
     def test_table_route__query_param_and_shard_param(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         with pytest.warns(DeprecationWarning):
             with pytest.raises(TypeError):
-                @app.table_route(table, query_param='q', shard_param='x')
+
+                @app.table_route(table, query_param="q", shard_param="x")
                 async def view(self, request):
                     ...
 
     def test_table_route__missing_param(self, *, app):
-        table = app.Table('foo')
+        table = app.Table("foo")
         with pytest.raises(TypeError):
+
             @app.table_route(table)
             async def view(self, request):
                 ...
@@ -935,14 +966,14 @@ class test_App:
     @pytest.mark.asyncio
     async def test_start_client(self, *, app):
         app.topics.wait_for_subscriptions = AsyncMock()
-        app.maybe_start = AsyncMock(name='app.maybe_start')
+        app.maybe_start = AsyncMock(name="app.maybe_start")
         await app.start_client()
         assert app.client_only
         app.maybe_start.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_maybe_start_client(self, *, app):
-        app.start_client = AsyncMock(name='start_client')
+        app.start_client = AsyncMock(name="start_client")
         app._started.set()
         await app.maybe_start_client()
         app.start_client.assert_not_called()
@@ -954,7 +985,7 @@ class test_App:
     @pytest.mark.asyncio
     async def test_commit(self, *, app):
         app.topics = Mock(
-            name='topics',
+            name="topics",
             autospec=Conductor,
             commit=AsyncMock(),
         )
@@ -962,13 +993,13 @@ class test_App:
         app.topics.commit.assert_called_with({1})
 
     def test_Worker(self, *, app):
-        app.conf = Mock(name='conf', autospec=Settings)
+        app.conf = Mock(name="conf", autospec=Settings)
         worker = app.Worker(loglevel=10)
         app.conf.Worker.assert_called_once_with(app, loglevel=10)
         assert worker is app.conf.Worker()
 
     def test_create_directories(self, *, app):
-        app.conf = Mock(name='conf', autospec=Settings)
+        app.conf = Mock(name="conf", autospec=Settings)
 
         app._create_directories()
 
@@ -996,18 +1027,17 @@ class test_App:
     def test_monitor(self, *, app):
         assert app._monitor is None
         app.conf.Monitor = Mock(
-            name='Monitor',
+            name="Monitor",
             return_value=Mock(autospec=Monitor),
         )
         monitor = app.monitor
-        app.conf.Monitor.assert_called_once_with(
-            loop=app.loop, beacon=app.beacon)
+        app.conf.Monitor.assert_called_once_with(loop=app.loop, beacon=app.beacon)
         assert monitor is app.conf.Monitor()
         assert app.monitor is monitor
         assert app._monitor is monitor
 
         monitor2 = app.monitor = Mock(
-            name='monitor2',
+            name="monitor2",
             autospec=Monitor,
         )
         assert app._monitor is monitor2
@@ -1015,20 +1045,21 @@ class test_App:
 
     def test_fetcher(self, *, app):
         app.transport.Fetcher = Mock(
-            name='Fetcher',
+            name="Fetcher",
             return_value=Mock(autospec=Fetcher),
         )
         fetcher = app._fetcher
         app.transport.Fetcher.assert_called_once_with(
-            app, loop=app.loop, beacon=app.consumer.beacon,
+            app,
+            loop=app.loop,
+            beacon=app.consumer.beacon,
         )
         assert fetcher is app.transport.Fetcher()
 
     def test_reply_consumer(self, *, app):
-        with patch('faust.app.base.ReplyConsumer') as ReplyConsumer:
+        with patch("faust.app.base.ReplyConsumer") as ReplyConsumer:
             reply_consumer = app._reply_consumer
-            ReplyConsumer.assert_called_once_with(
-                app, loop=app.loop, beacon=app.beacon)
+            ReplyConsumer.assert_called_once_with(app, loop=app.loop, beacon=app.beacon)
             assert reply_consumer is ReplyConsumer()
 
     def test_label(self, *, app):
@@ -1042,7 +1073,7 @@ class test_App:
         assert app.cache is obj
 
     def test_http_client(self, *, app):
-        app.conf.HttpClient = Mock(name='HttpClient')
+        app.conf.HttpClient = Mock(name="HttpClient")
         assert app._http_client is None
         client = app.http_client
         app.conf.HttpClient.assert_called_once_with()
@@ -1063,29 +1094,31 @@ class test_App:
 
 
 class test_AppConfiguration:
-
     def test_conf__before_finalized(self, *, monkeypatch, app):
         app.finalized = False
-        monkeypatch.setattr('faust.app.base.STRICT', False)
+        monkeypatch.setattr("faust.app.base.STRICT", False)
         app.conf.id
-        monkeypatch.setattr('faust.app.base.STRICT', True)
+        monkeypatch.setattr("faust.app.base.STRICT", True)
         with pytest.raises(ImproperlyConfigured):
             app.conf.id
 
     def test_set_conf(self, *, app):
-        conf = Mock(name='conf', autospec=Settings)
+        conf = Mock(name="conf", autospec=Settings)
         app.conf = conf
         assert app.conf is conf
 
-    @pytest.mark.parametrize('config_source', [
-        ConfigClass,
-        CONFIG_DICT,
-        CONFIG_PATH,
-    ])
+    @pytest.mark.parametrize(
+        "config_source",
+        [
+            ConfigClass,
+            CONFIG_DICT,
+            CONFIG_PATH,
+        ],
+    )
     def test_config_From_object(self, config_source, *, app):
-        on_before = app.on_before_configured.connect(Mock(name='on_before'))
-        on_config = app.on_configured.connect(Mock(name='on_config'))
-        on_after = app.on_after_configured.connect(Mock(name='on_after'))
+        on_before = app.on_before_configured.connect(Mock(name="on_before"))
+        on_config = app.on_configured.connect(Mock(name="on_config"))
+        on_after = app.on_after_configured.connect(Mock(name="on_after"))
 
         app.configured = False
         app.finalized = False
@@ -1108,7 +1141,7 @@ class test_AppConfiguration:
         on_before.assert_called_with(app, signal=app.on_before_configured)
         on_config.assert_called_with(app, app.conf, signal=app.on_configured)
         on_after.assert_called_with(app, signal=app.on_after_configured)
-        assert app.conf.broker == [URL('kafka://foo')]
+        assert app.conf.broker == [URL("kafka://foo")]
         assert app.conf.stream_buffer_maxsize == 1
 
     def test_finalize__no_id(self, *, app):
@@ -1120,19 +1153,20 @@ class test_AppConfiguration:
 
     def test_load_settings_from_source__no_attribute(self, *, app):
         with pytest.raises(AttributeError):
-            app._load_settings_from_source('faust.app.base.NOTEXIST')
-        assert app._load_settings_from_source(
-            'faust.app.base.NOTEXIST', silent=True) == {}
+            app._load_settings_from_source("faust.app.base.NOTEXIST")
+        assert (
+            app._load_settings_from_source("faust.app.base.NOTEXIST", silent=True) == {}
+        )
 
     def test_load_settings_from_source__import_error(self, *, app):
         with pytest.raises(ImportError):
-            app._load_settings_from_source('zxzc')
-        assert app._load_settings_from_source('zxzc', silent=True) == {}
+            app._load_settings_from_source("zxzc")
+        assert app._load_settings_from_source("zxzc", silent=True) == {}
 
     def test_load_settings_with_compat_and_new_settings(self, *, app):
         config = {
-            'client_id': 'foo',
-            'broker_client_id': 'bar',
+            "client_id": "foo",
+            "broker_client_id": "bar",
         }
         with pytest.warns(AlreadyConfiguredWarning):
             with pytest.raises(ImproperlyConfigured):

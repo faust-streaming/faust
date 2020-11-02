@@ -50,8 +50,9 @@ class Router(RouterT):
     def _get_table(self, name: str) -> CollectionT:
         return self.app.tables[name]
 
-    async def route_req(self, table_name: str, key: K, web: Web,
-                        request: Request) -> Response:
+    async def route_req(
+        self, table_name: str, key: K, web: Web, request: Request
+    ) -> Response:
         """Route request to worker having key in table.
 
         Arguments:
@@ -78,6 +79,6 @@ class Router(RouterT):
 
     def _urlident(self, url: URL) -> Tuple[str, int]:
         return (
-            (url.host if url.scheme else url.path) or '',
+            (url.host if url.scheme else url.path) or "",
             int(url.port or 80),
         )

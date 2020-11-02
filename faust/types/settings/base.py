@@ -3,17 +3,24 @@ import typing
 import warnings
 from collections import defaultdict
 from typing import Any, ClassVar, Dict, List, Set, cast
+
 from faust.exceptions import AlreadyConfiguredWarning
+
 from .params import Param
 
 if typing.TYPE_CHECKING:
     from .sections import Section as _Section
     from .settings import Settings as _Settings
 else:
-    class _Section: ...   # noqa: E701
-    class _Settings: ...  # noqa: E701
 
-W_ALREADY_CONFIGURED = '''\
+    class _Section:
+        ...  # noqa: E701
+
+    class _Settings:
+        ...  # noqa: E701
+
+
+W_ALREADY_CONFIGURED = """\
 App is already configured.
 
 Reconfiguring late may mean parts of your program are still
@@ -24,9 +31,9 @@ Code such as:
 app.conf.config_from_object('my.config')
 
 Should appear before calling app.topic/@app.agent/etc.
-'''
+"""
 
-W_ALREADY_CONFIGURED_KEY = '''\
+W_ALREADY_CONFIGURED_KEY = """\
 Setting new value for configuration key {key!r} that was already used.
 
 Reconfiguring late may mean parts of your program are still
@@ -37,7 +44,7 @@ Code such as:
 app.conf.{key} = {value!r}
 
 Should appear before calling app.topic/@app.agent/etc.
-'''
+"""
 
 SettingIndexMapping = Dict[str, Param]
 SettingSectionIndexMapping = Dict[_Section, List[Param]]
@@ -59,7 +66,8 @@ class SettingsRegistry(abc.ABC):
     def setting_names(cls) -> Set[str]:
         """Return set of all active setting names."""
         return {
-            name for name, setting in cls.SETTINGS.items()
+            name
+            for name, setting in cls.SETTINGS.items()
             if setting.active and not setting.deprecated
         }
 
@@ -90,6 +98,7 @@ class SettingsRegistry(abc.ABC):
         # that puts the arguments into kwargs :-)
         def _new_init(self: _Settings, *args: Any, **kwargs: Any) -> None:
             self._init_entrypoint(*args, **kwargs)
+
         cls.__init__ = _new_init  # type: ignore
 
         # For every setting there will be an accessor property
@@ -104,20 +113,18 @@ class SettingsRegistry(abc.ABC):
 
     @classmethod
     def _warn_already_configured(cls) -> None:
-        warnings.warn(AlreadyConfiguredWarning(W_ALREADY_CONFIGURED),
-                      stacklevel=3)
+        warnings.warn(AlreadyConfiguredWarning(W_ALREADY_CONFIGURED), stacklevel=3)
 
     @classmethod
-    def _warn_already_configured_key(cls,
-                                     key: str,
-                                     value: Any,
-                                     old_value: Any) -> None:
+    def _warn_already_configured_key(cls, key: str, value: Any, old_value: Any) -> None:
         warnings.warn(
-            AlreadyConfiguredWarning(W_ALREADY_CONFIGURED_KEY.format(
-                key=key,
-                value=value,
-                old_value=old_value,
-            )),
+            AlreadyConfiguredWarning(
+                W_ALREADY_CONFIGURED_KEY.format(
+                    key=key,
+                    value=value,
+                    old_value=old_value,
+                )
+            ),
             stacklevel=3,
         )
 
@@ -145,7 +152,7 @@ class SettingsRegistry(abc.ABC):
         # we set it to None.
         # After init has set all attributes on_after_init will enable
         # read tracking by initializing this to an empty set.
-        object.__setattr__(self, '_accessed', None)
+        object.__setattr__(self, "_accessed", None)
 
     def _init_settings(self, kwargs: Dict) -> None:
         # called by Settings.__init__(**kwargs) to configure
@@ -165,22 +172,22 @@ class SettingsRegistry(abc.ABC):
                 param.on_init_set_default(conf, provided_value)
 
     def _on_after_init(self) -> None:
-        object.__setattr__(self, '_accessed', set())
-        object.__setattr__(self, '_initializing', False)
+        object.__setattr__(self, "_accessed", set())
+        object.__setattr__(self, "_initializing", False)
 
     def __post_init__(self) -> None:
         ...
 
     def __getattribute__(self, key: str) -> Any:
-        accessed = object.__getattribute__(self, '_accessed')
-        if not key.startswith('_'):
-            if not object.__getattribute__(self, '_initializing'):
+        accessed = object.__getattribute__(self, "_accessed")
+        if not key.startswith("_"):
+            if not object.__getattribute__(self, "_initializing"):
                 accessed.add(key)
         return object.__getattribute__(self, key)
 
     def __setattr__(self, key: str, value: Any) -> None:
-        xsd = object.__getattribute__(self, '_accessed')
-        if xsd is not None and not key.startswith('_') and key in xsd:
+        xsd = object.__getattribute__(self, "_accessed")
+        if xsd is not None and not key.startswith("_") and key in xsd:
             old_value = object.__getattribute__(self, key)
             self._warn_already_configured_key(key, value, old_value)
         object.__setattr__(self, key, value)

@@ -1,14 +1,14 @@
 """LiveCheck - related exceptions."""
 
 __all__ = [
-    'LiveCheckError',
-    'SuiteFailed',
-    'ServiceDown',
-    'SuiteStalled',
-    'TestSkipped',
-    'TestFailed',
-    'TestRaised',
-    'TestTimeout',
+    "LiveCheckError",
+    "SuiteFailed",
+    "ServiceDown",
+    "SuiteStalled",
+    "TestSkipped",
+    "TestFailed",
+    "TestRaised",
+    "TestTimeout",
 ]
 
 

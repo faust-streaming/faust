@@ -4,7 +4,6 @@ import os
 import reprlib
 import typing
 import weakref
-
 from asyncio import CancelledError
 from contextvars import ContextVar
 from typing import (
@@ -31,12 +30,12 @@ from mode import Seconds, Service, get_logger, shortlabel, want_seconds
 from mode.utils.aiter import aenumerate, aiter
 from mode.utils.futures import current_task, maybe_async, notify
 from mode.utils.queues import ThrowableQueue
-from mode.utils.typing import Deque
 from mode.utils.types.trees import NodeT
+from mode.utils.typing import Deque
 
 from . import joins
 from .exceptions import ImproperlyConfigured, Skip
-from .types import AppT, ConsumerT, EventT, K, ModelArg, ModelT, TP, TopicT
+from .types import TP, AppT, ConsumerT, EventT, K, ModelArg, ModelT, TopicT
 from .types.joins import JoinT
 from .types.models import FieldDescriptorT
 from .types.serializers import SchemaT
@@ -52,7 +51,7 @@ from .types.streams import (
 from .types.topics import ChannelT
 from .types.tuples import Message
 
-NO_CYTHON = bool(os.environ.get('NO_CYTHON', False))
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 if not NO_CYTHON:  # pragma: no cover
     try:
@@ -63,15 +62,15 @@ else:  # pragma: no cover
     _CStreamIterator = None
 
 __all__ = [
-    'Stream',
-    'current_event',
+    "Stream",
+    "current_event",
 ]
 
 logger = get_logger(__name__)
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     _current_event: ContextVar[Optional[weakref.ReferenceType[EventT]]]
-_current_event = ContextVar('current_event')
+_current_event = ContextVar("current_event")
 
 
 def current_event() -> Optional[EventT]:
@@ -93,8 +92,8 @@ class _LinkedListDirection(NamedTuple):
     getter: Callable[[StreamT], Optional[StreamT]]
 
 
-_LinkedListDirectionFwd = _LinkedListDirection('_next', lambda n: n._next)
-_LinkedListDirectionBwd = _LinkedListDirection('_prev', lambda n: n._prev)
+_LinkedListDirectionFwd = _LinkedListDirection("_next", lambda n: n._next)
+_LinkedListDirectionBwd = _LinkedListDirection("_prev", lambda n: n._prev)
 
 
 class Stream(StreamT[T_co], Service):
@@ -102,7 +101,7 @@ class Stream(StreamT[T_co], Service):
 
     logger = logger
     # Service starting/stopping logs use severity DEBUG in this class.
-    mundane_level = 'debug'
+    mundane_level = "debug"
 
     #: Number of events processed by this instance so far.
     events_total: int = 0
@@ -113,21 +112,23 @@ class Stream(StreamT[T_co], Service):
     _finalized = False
     _passive_started: asyncio.Event
 
-    def __init__(self,
-                 channel: AsyncIterator[T_co],
-                 *,
-                 app: AppT,
-                 processors: Iterable[Processor[T]] = None,
-                 combined: List[JoinableT] = None,
-                 on_start: Callable = None,
-                 join_strategy: JoinT = None,
-                 beacon: NodeT = None,
-                 concurrency_index: int = None,
-                 prev: StreamT = None,
-                 active_partitions: Set[TP] = None,
-                 enable_acks: bool = True,
-                 prefix: str = '',
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        channel: AsyncIterator[T_co],
+        *,
+        app: AppT,
+        processors: Iterable[Processor[T]] = None,
+        combined: List[JoinableT] = None,
+        on_start: Callable = None,
+        join_strategy: JoinT = None,
+        beacon: NodeT = None,
+        concurrency_index: int = None,
+        prev: StreamT = None,
+        active_partitions: Set[TP] = None,
+        enable_acks: bool = True,
+        prefix: str = "",
+        loop: asyncio.AbstractEventLoop = None,
+    ) -> None:
         Service.__init__(self, loop=loop, beacon=beacon)
         self.app = app
         self.channel = channel
@@ -206,8 +207,7 @@ class Stream(StreamT[T_co], Service):
         seen: Set[StreamT] = set()
         while node:
             if node in seen:
-                raise RuntimeError(
-                    'Loop in Stream.{dir_.attr}: Call support!')
+                raise RuntimeError("Loop in Stream.{dir_.attr}: Call support!")
             seen.add(node)
             yield node
             node = dir_.getter(node)
@@ -233,16 +233,16 @@ class Stream(StreamT[T_co], Service):
         # used by e.g. .clone to reconstruct keyword arguments
         # needed to create a clone of the stream.
         return {
-            'app': self.app,
-            'channel': self.channel,
-            'processors': self._processors,
-            'on_start': self._on_start,
-            'loop': self.loop,
-            'combined': self.combined,
-            'beacon': self.beacon,
-            'concurrency_index': self.concurrency_index,
-            'prev': self._prev,
-            'active_partitions': self.active_partitions,
+            "app": self.app,
+            "channel": self.channel,
+            "processors": self._processors,
+            "on_start": self._on_start,
+            "loop": self.loop,
+            "combined": self.combined,
+            "beacon": self.beacon,
+            "concurrency_index": self.concurrency_index,
+            "prev": self._prev,
+            "active_partitions": self.active_partitions,
         }
 
     def clone(self, **kwargs: Any) -> StreamT:
@@ -269,7 +269,7 @@ class Stream(StreamT[T_co], Service):
         self._processors.clear()
         return new_stream
 
-    def noack(self) -> 'StreamT':
+    def noack(self) -> "StreamT":
         """Create new stream where acks are manual."""
         self._next = new_stream = self.clone(
             enable_acks=False,
@@ -300,8 +300,7 @@ class Stream(StreamT[T_co], Service):
             if self.current_event is not None:
                 yield self.current_event
 
-    async def take(self, max_: int,
-                   within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+    async def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values.
 
         Arguments:
@@ -342,8 +341,7 @@ class Stream(StreamT[T_co], Service):
                 buffer_add(cast(T_co, value))
                 event = self.current_event
                 if event is None:
-                    raise RuntimeError(
-                        'Take buffer found current_event is None')
+                    raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
                 if buffer_size() >= max_:
                     # signal that the buffer is full and should be emptied.
@@ -355,7 +353,7 @@ class Stream(StreamT[T_co], Service):
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
-                self.log.exception('Error adding to take buffer: %r', exc)
+                self.log.exception("Error adding to take buffer: %r", exc)
                 await self.crash(exc)
             return value
 
@@ -432,7 +430,8 @@ class Stream(StreamT[T_co], Service):
             return self
         if self.concurrency_index is not None:
             raise ImproperlyConfigured(
-                'Agent with concurrency>1 cannot use stream.through!')
+                "Agent with concurrency>1 cannot use stream.through!"
+            )
         # ridiculous mypy
         if isinstance(channel, str):
             channelchannel = cast(ChannelT, self.derive_topic(channel))
@@ -441,8 +440,7 @@ class Stream(StreamT[T_co], Service):
 
         channel_it = aiter(channelchannel)
         if self._next is not None:
-            raise ImproperlyConfigured(
-                'Stream is already using group_by/through')
+            raise ImproperlyConfigured("Stream is already using group_by/through")
         through = self._chain(channel=channel_it)
 
         async def forward(value: T) -> T:
@@ -453,14 +451,12 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it), declare=True)
         return through
 
-    def _enable_passive(self, channel: ChannelT, *,
-                        declare: bool = False) -> None:
+    def _enable_passive(self, channel: ChannelT, *, declare: bool = False) -> None:
         if not self._passive:
             self._passive = True
             self.add_future(self._passive_drainer(channel, declare))
 
-    async def _passive_drainer(self, channel: ChannelT,
-                               declare: bool = False) -> None:
+    async def _passive_drainer(self, channel: ChannelT, declare: bool = False) -> None:
         try:
             if declare:
                 await channel.maybe_declare()
@@ -504,12 +500,14 @@ class Stream(StreamT[T_co], Service):
         self.add_processor(echoing)
         return self
 
-    def group_by(self,
-                 key: GroupByKeyArg,
-                 *,
-                 name: str = None,
-                 topic: TopicT = None,
-                 partitions: int = None) -> StreamT:
+    def group_by(
+        self,
+        key: GroupByKeyArg,
+        *,
+        name: str = None,
+        topic: TopicT = None,
+        partitions: int = None,
+    ) -> StreamT:
         """Create new stream that repartitions the stream using a new key.
 
         Arguments:
@@ -565,36 +563,36 @@ class Stream(StreamT[T_co], Service):
         channel: ChannelT
         if self.concurrency_index is not None:
             raise ImproperlyConfigured(
-                'Agent with concurrency>1 cannot use stream.group_by!')
+                "Agent with concurrency>1 cannot use stream.group_by!"
+            )
         if not name:
             if isinstance(key, FieldDescriptorT):
                 name = key.ident
             else:
-                raise TypeError(
-                    'group_by with callback must set name=topic_suffix')
+                raise TypeError("group_by with callback must set name=topic_suffix")
         if topic is not None:
             channel = topic
         else:
 
-            prefix = ''
+            prefix = ""
             if self.prefix and not cast(TopicT, self.channel).has_prefix:
-                prefix = self.prefix + '-'
-            suffix = f'-{name}-repartition'
+                prefix = self.prefix + "-"
+            suffix = f"-{name}-repartition"
             p = partitions if partitions else self.app.conf.topic_partitions
             channel = cast(ChannelT, self.channel).derive(
-                prefix=prefix, suffix=suffix, partitions=p, internal=True)
+                prefix=prefix, suffix=suffix, partitions=p, internal=True
+            )
         format_key = self._format_key
 
         channel_it = aiter(channel)
         if self._next is not None:
-            raise ImproperlyConfigured('Stream already uses group_by/through')
+            raise ImproperlyConfigured("Stream already uses group_by/through")
         grouped = self._chain(channel=channel_it)
 
         async def repartition(value: T) -> T:
             event = self.current_event
             if event is None:
-                raise RuntimeError(
-                    'Cannot repartition stream with non-topic channel')
+                raise RuntimeError("Cannot repartition stream with non-topic channel")
             new_key = await format_key(key, value)
             await event.forward(channel, key=new_key)
             return value
@@ -616,6 +614,7 @@ class Stream(StreamT[T_co], Service):
             >>> async for v in stream.filter(lambda: v > 1000).group_by(...):
             ...     # do something
         """
+
         async def on_value(value: T) -> T:
             if not await maybe_async(fun(value)):
                 raise Skip()
@@ -632,17 +631,19 @@ class Stream(StreamT[T_co], Service):
                 return key.getattr(cast(ModelT, value))
             return await maybe_async(cast(Callable, key)(value))
         except BaseException as exc:
-            self.log.exception('Error in grouping key : %r', exc)
+            self.log.exception("Error in grouping key : %r", exc)
             raise Skip() from exc
 
-    def derive_topic(self,
-                     name: str,
-                     *,
-                     schema: SchemaT = None,
-                     key_type: ModelArg = None,
-                     value_type: ModelArg = None,
-                     prefix: str = '',
-                     suffix: str = '') -> TopicT:
+    def derive_topic(
+        self,
+        name: str,
+        *,
+        schema: SchemaT = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        prefix: str = "",
+        suffix: str = "",
+    ) -> TopicT:
         """Create Topic description derived from the K/V type of this stream.
 
         Arguments:
@@ -665,7 +666,7 @@ class Stream(StreamT[T_co], Service):
                 prefix=prefix,
                 suffix=suffix,
             )
-        raise ValueError('Cannot derive topic from non-topic channel.')
+        raise ValueError("Cannot derive topic from non-topic channel.")
 
     async def throw(self, exc: BaseException) -> None:
         """Send exception to stream iteration."""
@@ -748,7 +749,7 @@ class Stream(StreamT[T_co], Service):
         return self
 
     def __next__(self) -> T:
-        raise NotImplementedError('Streams are asynchronous: use `async for`')
+        raise NotImplementedError("Streams are asynchronous: use `async for`")
 
     def __aiter__(self) -> AsyncIterator[T_co]:  # pragma: no cover
         if _CStreamIterator is not None:
@@ -757,7 +758,7 @@ class Stream(StreamT[T_co], Service):
             return self._py_aiter()
 
     async def _c_aiter(self) -> AsyncIterator[T_co]:  # pragma: no cover
-        self.log.dev('Using Cython optimized __aiter__')
+        self.log.dev("Using Cython optimized __aiter__")
         skipped_value = self._skipped_value
         self._finalized = True
         started_by_aiter = await self.maybe_start()
@@ -881,8 +882,7 @@ class Stream(StreamT[T_co], Service):
                             # XXX ugh this should be in the consumer somehow
 
                         # call Sensors
-                        sensor_state = on_stream_event_in(
-                            tp, offset, self, event)
+                        sensor_state = on_stream_event_in(tp, offset, self, event)
 
                         # set task-local current_event
                         _current_event_contextvar.set(create_ref(event))
@@ -899,7 +899,7 @@ class Stream(StreamT[T_co], Service):
                     # reduce using processors
                     try:
                         for processor in processors:
-                            with trace(f'processor-{_shortlabel(processor)}'):
+                            with trace(f"processor-{_shortlabel(processor)}"):
                                 value = await _maybe_async(processor(value))
                         value = await on_merge(value)
                     except Skip:
@@ -918,8 +918,7 @@ class Stream(StreamT[T_co], Service):
                         message = event.message
                         tp = event.message.tp
                         offset = event.message.offset
-                        on_stream_event_out(
-                            tp, offset, self, event, sensor_state)
+                        on_stream_event_out(tp, offset, self, event, sensor_state)
                         if last_stream_to_ack:
                             on_message_out(tp, offset, message)
         except StopAsyncIteration:
@@ -978,7 +977,7 @@ class Stream(StreamT[T_co], Service):
     @property
     def label(self) -> str:
         """Return description of stream, used in graphs and logs."""
-        return f'{type(self).__name__}: {self._repr_channel()}'
+        return f"{type(self).__name__}: {self._repr_channel()}"
 
     def _repr_channel(self) -> str:
         return reprlib.repr(self.channel)
@@ -992,9 +991,9 @@ class Stream(StreamT[T_co], Service):
         #    "Channel: <ANON>", for channel or
         #    "Topic: withdrawals", for a topic.
         # statsd then uses that as part of the id.
-        return f'Stream: {self._human_channel()}'
+        return f"Stream: {self._human_channel()}"
 
     def _human_channel(self) -> str:
         if self.combined:
-            return '&'.join(s._human_channel() for s in self.combined)
-        return f'{type(self.channel).__name__}: {self.channel}'
+            return "&".join(s._human_channel() for s in self.combined)
+        return f"{type(self.channel).__name__}: {self.channel}"
