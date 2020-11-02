@@ -2,7 +2,6 @@ from faust.windows import HoppingWindow
 
 
 class test_HoppingWindow:
-
     def test_has_ranges_including_the_value(self):
         size = 10
         step = 5
@@ -57,5 +56,5 @@ class test_HoppingWindow:
 
         window = HoppingWindow(size, step, expires=expires)
         for time in range(0, now_timestamp - expires):
-            print(f'TIME: {time} NOW TIMESTAMP: {now_timestamp}')
+            print(f"TIME: {time} NOW TIMESTAMP: {now_timestamp}")
             assert window.stale(time, now_timestamp) is True

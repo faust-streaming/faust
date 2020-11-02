@@ -1,6 +1,6 @@
+import pytest
 from mode import Service, label
 from mode.utils.mocks import AsyncMock, Mock, call
-import pytest
 
 
 class OtherService(Service):
@@ -8,9 +8,8 @@ class OtherService(Service):
 
 
 class test_AppService:
-
     def test_on_init_dependencies(self, *, app):
-        app.boot_strategy = Mock(name='boot_strategy')
+        app.boot_strategy = Mock(name="boot_strategy")
         app.client_only = True
         assert app.on_init_dependencies() == app.boot_strategy.client_only()
 
@@ -39,33 +38,37 @@ class test_AppService:
     def test_components_server(self, *, app):
         components = list(app.boot_strategy.server())
         expected_components = list(app.sensors)
-        expected_components.extend([
-            app.producer,
-            app.cache,
-            app.web,
-            app.consumer,
-            app._leader_assignor,
-            app._reply_consumer,
-        ])
+        expected_components.extend(
+            [
+                app.producer,
+                app.cache,
+                app.web,
+                app.consumer,
+                app._leader_assignor,
+                app._reply_consumer,
+            ]
+        )
         expected_components.extend(list(app.agents.values()))
-        expected_components.extend([
-            app.agents,
-            app.topics,
-            app.tables,
-        ])
+        expected_components.extend(
+            [
+                app.agents,
+                app.topics,
+                app.tables,
+            ]
+        )
         assert components == expected_components
 
     @pytest.mark.asyncio
     async def test_on_first_start(self, *, app):
-        app.agents = Mock(name='agents')
-        app._create_directories = Mock(name='app._create_directories')
+        app.agents = Mock(name="agents")
+        app._create_directories = Mock(name="app._create_directories")
         await app.on_first_start()
 
         app._create_directories.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_on_start(self, *, app):
-        app.finalize = Mock(name='app.finalize')
+        app.finalize = Mock(name="app.finalize")
         await app.on_start()
 
         app.finalize.assert_called_once_with()
@@ -73,8 +76,8 @@ class test_AppService:
     @pytest.mark.asyncio
     async def test_on_started(self, *, app):
         app._wait_for_table_recovery_completed = AsyncMock(return_value=True)
-        app.on_started_init_extra_tasks = AsyncMock(name='osiet')
-        app.on_started_init_extra_services = AsyncMock(name='osies')
+        app.on_started_init_extra_tasks = AsyncMock(name="osiet")
+        app.on_started_init_extra_services = AsyncMock(name="osies")
         app.on_startup_finished = None
         app._wait_for_table_recovery_completed.coro.return_value = True
         await app.on_started()
@@ -85,7 +88,7 @@ class test_AppService:
         app.on_started_init_extra_tasks.assert_called_once_with()
         app.on_started_init_extra_services.assert_called_once_with()
 
-        app.on_startup_finished = AsyncMock(name='on_startup_finished')
+        app.on_startup_finished = AsyncMock(name="on_startup_finished")
         await app.on_started()
 
         app.on_startup_finished.assert_called_once_with()
@@ -100,10 +103,10 @@ class test_AppService:
 
     @pytest.mark.asyncio
     async def test_on_started_init_extra_tasks(self, *, app):
-        app.add_future = Mock(name='add_future')
+        app.add_future = Mock(name="add_future")
 
-        t1_mock = Mock(name='t1_mock')
-        t2_mock = Mock(name='t2_mock')
+        t1_mock = Mock(name="t1_mock")
+        t2_mock = Mock(name="t2_mock")
 
         def t1():
             return t1_mock()
@@ -114,18 +117,20 @@ class test_AppService:
         app._app_tasks = [t1, t2]
         await app.on_started_init_extra_tasks()
 
-        app.add_future.assert_has_calls([
-            call(t1()),
-            call(t2()),
-        ])
+        app.add_future.assert_has_calls(
+            [
+                call(t1()),
+                call(t2()),
+            ]
+        )
 
         t1_mock.assert_called_with()
         t2_mock.assert_called_with(self)
 
     @pytest.mark.asyncio
     async def test_on_started_init_extra_services(self, *, app):
-        app.add_runtime_dependency = AsyncMock(name='add_runtime_dependency')
-        service1 = Mock(name='service1', autospec=Service)
+        app.add_runtime_dependency = AsyncMock(name="add_runtime_dependency")
+        service1 = Mock(name="service1", autospec=Service)
         app._extra_services = [service1]
         app._extra_service_instances = None
         await app.on_started_init_extra_services()

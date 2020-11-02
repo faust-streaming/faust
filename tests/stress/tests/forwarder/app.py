@@ -1,42 +1,44 @@
 import random
 from collections import Counter
+
 from faust import Stream
+
+from ...app import create_stress_app
 from ...reports import checks
 from ...reports.app import SimpleCheck
-from ...app import create_stress_app
 
 counter_received = 0
 found_duplicates = 0
 found_gaps = 0
 
 app = create_stress_app(
-    name='f-stress-dedupe',
+    name="f-stress-dedupe",
     version=7,
-    origin='t.stress.tests.forwarder',
+    origin="t.stress.tests.forwarder",
     broker_commit_every=100,
 )
 
 app.add_system_check(
     checks.Increasing(
-        'counter_received',
+        "counter_received",
         get_value=lambda: counter_received,
     ),
 )
 app.add_system_check(
     checks.Stationary(
-        'duplicates',
+        "duplicates",
         get_value=lambda: found_duplicates,
     ),
 )
 app.add_system_check(
     checks.Stationary(
-        'gaps',
+        "gaps",
         get_value=lambda: found_gaps,
     ),
 )
 
 
-leader_sending = SimpleCheck('leader-sending')
+leader_sending = SimpleCheck("leader-sending")
 
 partitions_sent_counter = Counter()
 
@@ -93,16 +95,20 @@ async def check(forwarded_numbers: Stream[int]) -> None:
                 if number <= previous_number:
                     # number should be larger than the previous number.
                     # if that's not true it means we have a duplicate.
-                    app.log.error('Found duplicate number in %r: %r',
-                                  event.message.tp, number)
+                    app.log.error(
+                        "Found duplicate number in %r: %r", event.message.tp, number
+                    )
                     found_duplicates += 1
                 else:
                     if number != previous_number + 1:
                         # the number should always be exactly one up from the
                         # last, otherwise we dropped a number.
                         app.log.error(
-                            'Sequence gap for tp %r: this=%r previous=%r',
-                            event.message.tp, number, previous_number)
+                            "Sequence gap for tp %r: this=%r previous=%r",
+                            event.message.tp,
+                            number,
+                            previous_number,
+                        )
                         found_gaps += 1
         value_by_partition[partition] = number
         counter_received += 1

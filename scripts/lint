@@ -8,6 +8,6 @@ export SOURCE_FILES="faust tests"
 
 set -x
 
-# ${PREFIX}autoflake --in-place --recursive $SOURCE_FILES
-# ${PREFIX}isort --project=faust $SOURCE_FILES
-# ${PREFIX}black $SOURCE_FILES
+${PREFIX}autoflake --in-place --recursive $SOURCE_FILES
+${PREFIX}isort --project=faust $SOURCE_FILES
+${PREFIX}black $SOURCE_FILES

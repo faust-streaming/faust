@@ -1,11 +1,13 @@
 """Leader assignor."""
 from typing import Any
+
 from mode import Service
 from mode.utils.objects import cached_property
-from faust.types import AppT, TP, TopicT
+
+from faust.types import TP, AppT, TopicT
 from faust.types.assignor import LeaderAssignorT
 
-__all__ = ['LeaderAssignor']
+__all__ = ["LeaderAssignor"]
 
 
 class LeaderAssignor(Service, LeaderAssignorT):
@@ -23,8 +25,7 @@ class LeaderAssignor(Service, LeaderAssignorT):
         leader_topic = self._leader_topic
         await leader_topic.maybe_declare()
         self.app.topics.add(leader_topic)
-        self.app.consumer.randomly_assigned_topics.add(
-            leader_topic.get_topic_name())
+        self.app.consumer.randomly_assigned_topics.add(leader_topic.get_topic_name())
 
     @cached_property
     def _leader_topic(self) -> TopicT:
@@ -37,7 +38,7 @@ class LeaderAssignor(Service, LeaderAssignorT):
 
     @cached_property
     def _leader_topic_name(self) -> str:
-        return f'{self.app.conf.id}-__assignor-__leader'
+        return f"{self.app.conf.id}-__assignor-__leader"
 
     @cached_property
     def _leader_tp(self) -> TP:

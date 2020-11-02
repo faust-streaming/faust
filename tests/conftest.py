@@ -3,18 +3,13 @@ import threading
 import time
 from http import HTTPStatus
 from typing import Any, NamedTuple
+
 import pytest
 from _pytest.assertion.util import _compare_eq_dict, _compare_eq_set
 from aiohttp.client import ClientError, ClientSession
 from aiohttp.web import Response
 from mode.utils.futures import all_tasks
-from mode.utils.mocks import (
-    AsyncContextManagerMock,
-    AsyncMock,
-    MagicMock,
-    Mock,
-    patch,
-)
+from mode.utils.mocks import AsyncContextManagerMock, AsyncMock, MagicMock, Mock, patch
 
 sentinel = object()
 
@@ -49,7 +44,6 @@ def loop(event_loop):
 
 
 class _patching(object):
-
     def __init__(self, monkeypatch, request):
         self.monkeypatch = monkeypatch
         self.request = request
@@ -57,15 +51,14 @@ class _patching(object):
     def __getattr__(self, name):
         return getattr(self.monkeypatch, name)
 
-    def __call__(self, path, value=sentinel, name=None,
-                 new=MagicMock, **kwargs):
+    def __call__(self, path, value=sentinel, name=None, new=MagicMock, **kwargs):
         value = self._value_or_mock(value, new, name, path, **kwargs)
         self.monkeypatch.setattr(path, value)
         return value
 
     def _value_or_mock(self, value, new, name, path, **kwargs):
         if value is sentinel:
-            value = new(name=name or path.rpartition('.')[2])
+            value = new(name=name or path.rpartition(".")[2])
         for k, v in kwargs.items():
             setattr(value, k, v)
         return value
@@ -90,17 +83,18 @@ class TimeMarks(NamedTuple):
 
 @pytest.yield_fixture()
 def freeze_time(event_loop, request):
-    marks = request.node.get_closest_marker('time')
+    marks = request.node.get_closest_marker("time")
     timestamp = time.time()
     monotimestamp = time.monotonic()
 
-    with patch('time.time') as time_:
-        with patch('time.monotonic') as monotonic_:
-            options = TimeMarks(**{
-                **{'time': timestamp,
-                   'monotonic': monotimestamp},
-                **((marks.kwargs or {}) if marks else {}),
-            })
+    with patch("time.time") as time_:
+        with patch("time.monotonic") as monotonic_:
+            options = TimeMarks(
+                **{
+                    **{"time": timestamp, "monotonic": monotimestamp},
+                    **((marks.kwargs or {}) if marks else {}),
+                }
+            )
             time_.return_value = options.time
             monotonic_.return_value = options.monotonic
             yield options
@@ -116,17 +110,19 @@ class SessionMarker(NamedTuple):
 
 @pytest.fixture()
 def mock_http_client(*, app, monkeypatch, request) -> ClientSession:
-    marker = request.node.get_closest_marker('http_session')
-    options = SessionMarker(**{
+    marker = request.node.get_closest_marker("http_session")
+    options = SessionMarker(
         **{
-            'status_code': HTTPStatus.OK,
-            'text': b'',
-            'json': None,
-            'json_iterator': None,
-            'max_failures': None,
-        },
-        **(marker.kwargs or {} if marker else {}),
-    })
+            **{
+                "status_code": HTTPStatus.OK,
+                "text": b"",
+                "json": None,
+                "json_iterator": None,
+                "max_failures": None,
+            },
+            **(marker.kwargs or {} if marker else {}),
+        }
+    )
 
     def raise_for_status():
         if options.max_failures is not None:
@@ -147,7 +143,7 @@ def mock_http_client(*, app, monkeypatch, request) -> ClientSession:
         raise_for_status=raise_for_status,
     )
     session = Mock(
-        name='http_client',
+        name="http_client",
         autospec=ClientSession,
         request=Mock(
             return_value=AsyncContextManagerMock(
@@ -191,11 +187,11 @@ def mock_http_client(*, app, monkeypatch, request) -> ClientSession:
         ),
     )
     session.marks = options
-    monkeypatch.setattr(app, '_http_client', session)
+    monkeypatch.setattr(app, "_http_client", session)
     return session
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def _collected_environ():
     return dict(os.environ)
 
@@ -206,21 +202,22 @@ def _verify_environ(_collected_environ):
         yield
     finally:
         new_environ = dict(os.environ)
-        current_test = new_environ.pop('PYTEST_CURRENT_TEST', None)
+        current_test = new_environ.pop("PYTEST_CURRENT_TEST", None)
         old_environ = dict(_collected_environ)
-        old_environ.pop('PYTEST_CURRENT_TEST', None)
+        old_environ.pop("PYTEST_CURRENT_TEST", None)
         if new_environ != old_environ:
             raise DirtyTest(
-                'Left over environment variables',
+                "Left over environment variables",
                 current_test,
-                _compare_eq_dict(new_environ, old_environ, verbose=2))
+                _compare_eq_dict(new_environ, old_environ, verbose=2),
+            )
 
 
 def alive_threads():
     return {thread for thread in threading.enumerate() if thread.is_alive()}
 
 
-@pytest.fixture(scope='session', autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def _recorded_threads_at_startup(request):
     try:
         request.session._threads_at_startup
@@ -238,9 +235,10 @@ def threads_not_lingering(request):
         if threads_then != threads_now:
             request.session._threads_at_startup = threads_now
             raise DirtyTest(
-                'Left over threads',
-                os.environ.get('PYTEST_CURRENT_TEST'),
-                _compare_eq_set(threads_now, threads_then, verbose=2))
+                "Left over threads",
+                os.environ.get("PYTEST_CURRENT_TEST"),
+                _compare_eq_set(threads_now, threads_then, verbose=2),
+            )
 
 
 @pytest.fixture(autouse=True)
@@ -255,10 +253,10 @@ def _recorded_tasks_at_startup(request, loop):
 def tasks_not_lingering(request, loop, event_loop, _recorded_tasks_at_startup):
     allow_lingering_tasks = False
     allow_count = 0
-    marks = request.node.get_closest_marker('allow_lingering_tasks')
+    marks = request.node.get_closest_marker("allow_lingering_tasks")
     if marks:
         allow_lingering_tasks = True
-        allow_count = marks.kwargs.get('count', 0)
+        allow_count = marks.kwargs.get("count", 0)
     try:
         yield
     finally:
@@ -271,25 +269,26 @@ def tasks_not_lingering(request, loop, event_loop, _recorded_tasks_at_startup):
                 diff = len(pending - tasks_then)
                 if not allow_lingering_tasks or diff > allow_count:
                     raise DirtyTest(
-                        'Left over tasks',
-                        os.environ.get('PYTEST_CURRENT_TEST'),
-                        _compare_eq_set(tasks_now, tasks_then, verbose=2))
+                        "Left over tasks",
+                        os.environ.get("PYTEST_CURRENT_TEST"),
+                        _compare_eq_set(tasks_now, tasks_then, verbose=2),
+                    )
 
 
 def pytest_configure(config):
     config.addinivalue_line(
-        'markers',
-        'allow_lingering_tasks: Allow test to start background tasks',
+        "markers",
+        "allow_lingering_tasks: Allow test to start background tasks",
     )
     config.addinivalue_line(
-        'markers',
-        'allow_lingering_tasks: Allow test to start background tasks',
+        "markers",
+        "allow_lingering_tasks: Allow test to start background tasks",
     )
     config.addinivalue_line(
-        'markers',
-        'time: Set the current time',
+        "markers",
+        "time: Set the current time",
     )
     config.addinivalue_line(
-        'markers',
-        'http_session: Set mock aiohttp session result',
+        "markers",
+        "http_session: Set mock aiohttp session result",
     )

@@ -4,7 +4,6 @@ import gc
 import math
 import shutil
 import typing
-
 from collections import defaultdict
 from contextlib import suppress
 from pathlib import Path
@@ -30,7 +29,7 @@ from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured
 from faust.streams import current_event
-from faust.types import AppT, CollectionT, EventT, TP
+from faust.types import TP, AppT, CollectionT, EventT
 from faust.utils import platforms
 
 from . import base
@@ -54,6 +53,7 @@ except ImportError:  # pragma: no cover
 if typing.TYPE_CHECKING:  # pragma: no cover
     from rocksdb import DB, Options
 else:
+
     class DB:  # noqa
         """Dummy DB."""
 
@@ -85,15 +85,17 @@ class RocksDBOptions:
     bloom_filter_size: int = DEFAULT_BLOOM_FILTER_SIZE
     extra_options: Mapping
 
-    def __init__(self,
-                 max_open_files: int = None,
-                 write_buffer_size: int = None,
-                 max_write_buffer_number: int = None,
-                 target_file_size_base: int = None,
-                 block_cache_size: int = None,
-                 block_cache_compressed_size: int = None,
-                 bloom_filter_size: int = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        max_open_files: int = None,
+        write_buffer_size: int = None,
+        max_write_buffer_number: int = None,
+        target_file_size_base: int = None,
+        block_cache_size: int = None,
+        block_cache_compressed_size: int = None,
+        bloom_filter_size: int = None,
+        **kwargs: Any,
+    ) -> None:
         if max_open_files is not None:
             self.max_open_files = max_open_files
         if write_buffer_size is not None:
@@ -123,19 +125,20 @@ class RocksDBOptions:
             max_write_buffer_number=self.max_write_buffer_number,
             target_file_size_base=self.target_file_size_base,
             table_factory=rocksdb.BlockBasedTableFactory(
-                filter_policy=rocksdb.BloomFilterPolicy(
-                    self.bloom_filter_size),
+                filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
                 block_cache=rocksdb.LRUCache(self.block_cache_size),
                 block_cache_compressed=rocksdb.LRUCache(
-                    self.block_cache_compressed_size),
+                    self.block_cache_compressed_size
+                ),
             ),
-            **self.extra_options)
+            **self.extra_options,
+        )
 
 
 class Store(base.SerializedStore):
     """RocksDB table storage."""
 
-    offset_key = b'__faust\0offset__'
+    offset_key = b"__faust\0offset__"
 
     #: Decides the size of the K=>TopicPartition index (10_000).
     key_index_size: int
@@ -146,17 +149,20 @@ class Store(base.SerializedStore):
     _dbs: MutableMapping[int, DB]
     _key_index: LRUCache[bytes, int]
 
-    def __init__(self,
-                 url: Union[str, URL],
-                 app: AppT,
-                 table: CollectionT,
-                 *,
-                 key_index_size: int = None,
-                 options: Mapping[str, Any] = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        url: Union[str, URL],
+        app: AppT,
+        table: CollectionT,
+        *,
+        key_index_size: int = None,
+        options: Mapping[str, Any] = None,
+        **kwargs: Any,
+    ) -> None:
         if rocksdb is None:
             error = ImproperlyConfigured(
-                'RocksDB bindings not installed? pip install python-rocksdb')
+                "RocksDB bindings not installed? pip install python-rocksdb"
+            )
             try:
                 import rocksdb as _rocksdb  # noqa: F401
             except Exception as exc:  # pragma: no cover
@@ -192,8 +198,7 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        self._db_for_partition(tp.partition).put(
-            self.offset_key, str(offset).encode())
+        self._db_for_partition(tp.partition).put(self.offset_key, str(offset).encode())
 
     async def need_active_standby_for(self, tp: TP) -> bool:
         """Decide if an active standby is needed for this topic partition.
@@ -219,16 +224,18 @@ class Store(base.SerializedStore):
         try:
             self._db_for_partition(tp.partition)
         except rocksdb.errors.RocksIOError as exc:
-            if 'lock' not in repr(exc):
+            if "lock" not in repr(exc):
                 raise
             return False
         else:
             return True
 
-    def apply_changelog_batch(self,
-                              batch: Iterable[EventT],
-                              to_key: Callable[[Any], Any],
-                              to_value: Callable[[Any], Any]) -> None:
+    def apply_changelog_batch(
+        self,
+        batch: Iterable[EventT],
+        to_key: Callable[[Any], Any],
+        to_value: Callable[[Any], Any],
+    ) -> None:
         """Write batch of changelog events to local RocksDB storage.
 
         Arguments:
@@ -244,8 +251,7 @@ class Store(base.SerializedStore):
         for event in batch:
             tp, offset = event.message.tp, event.message.offset
             tp_offsets[tp] = (
-                offset if tp not in tp_offsets
-                else max(offset, tp_offsets[tp])
+                offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
             msg = event.message
             if msg.value is None:
@@ -308,11 +314,13 @@ class Store(base.SerializedStore):
         for db in self._dbs_for_key(key):
             db.delete(key)
 
-    async def on_rebalance(self,
-                           table: CollectionT,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        table: CollectionT,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+    ) -> None:
         """Rebalance occurred.
 
         Arguments:
@@ -338,14 +346,12 @@ class Store(base.SerializedStore):
             if tp.topic in table.changelog_topic.topics:
                 db = self._dbs.pop(tp.partition, None)
                 if db is not None:
-                    del(db)
+                    del db
                     dbs_closed += 1
         if dbs_closed:
             gc.collect()  # XXX RocksDB has no .close() method :X
 
-    async def assign_partitions(self,
-                                table: CollectionT,
-                                tps: Set[TP]) -> None:
+    async def assign_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """Assign partitions to this worker instance.
 
         Arguments:
@@ -360,18 +366,19 @@ class Store(base.SerializedStore):
                 await self._try_open_db_for_partition(tp.partition)
                 await asyncio.sleep(0)
 
-    async def _try_open_db_for_partition(self, partition: int,
-                                         max_retries: int = 5,
-                                         retry_delay: float = 1.0) -> DB:
+    async def _try_open_db_for_partition(
+        self, partition: int, max_retries: int = 5, retry_delay: float = 1.0
+    ) -> DB:
         for i in range(max_retries):
             try:
                 # side effect: opens db and adds to self._dbs.
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
-                if i == max_retries - 1 or 'lock' not in repr(exc):
+                if i == max_retries - 1 or "lock" not in repr(exc):
                     raise
                 self.log.info(
-                    'DB for partition %r is locked! Retry in 1s...', partition)
+                    "DB for partition %r is locked! Retry in 1s...", partition
+                )
                 await self.sleep(retry_delay)
         else:  # pragma: no cover
             ...
@@ -438,7 +445,7 @@ class Store(base.SerializedStore):
             yield from self._visible_items(db)
 
     def _clear(self) -> None:
-        raise NotImplementedError('TODO')  # XXX cannot reset tables
+        raise NotImplementedError("TODO")  # XXX cannot reset tables
 
     def reset_state(self) -> None:
         """Remove all data stored in this table.
@@ -455,12 +462,12 @@ class Store(base.SerializedStore):
     def partition_path(self, partition: int) -> Path:
         """Return :class:`pathlib.Path` to db file of specific partition."""
         p = self.path / self.basename
-        return self._path_with_suffix(p.with_name(f'{p.name}-{partition}'))
+        return self._path_with_suffix(p.with_name(f"{p.name}-{partition}"))
 
-    def _path_with_suffix(self, path: Path, *, suffix: str = '.db') -> Path:
+    def _path_with_suffix(self, path: Path, *, suffix: str = ".db") -> Path:
         # Path.with_suffix should not be used as this will
         # not work if the table name has dots in it (Issue #184).
-        return path.with_name(f'{path.name}{suffix}')
+        return path.with_name(f"{path.name}{suffix}")
 
     @property
     def path(self) -> Path:

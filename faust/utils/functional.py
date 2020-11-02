@@ -1,25 +1,18 @@
 """Functional utilities."""
 from functools import reduce
 from itertools import groupby
-from typing import (
-    Iterable,
-    Iterator,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
+from typing import Iterable, Iterator, Mapping, Optional, Sequence, Tuple, TypeVar
+
 from mode.utils.typing import Deque
 
 __all__ = [
-    'consecutive_numbers',
-    'deque_prune',
-    'deque_pushpopmax',
-    'translate',
+    "consecutive_numbers",
+    "deque_prune",
+    "deque_pushpopmax",
+    "translate",
 ]
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def consecutive_numbers(it: Iterable[int]) -> Iterator[Sequence[int]]:

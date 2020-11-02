@@ -1,7 +1,7 @@
 """Program ``faust reset`` used to delete local table state."""
 from .base import AppCommand
 
-__all__ = ['reset']
+__all__ = ["reset"]
 
 
 class reset(AppCommand):
@@ -29,5 +29,5 @@ class reset(AppCommand):
     async def reset_tables(self) -> None:
         """Reset local state for all tables."""
         for table in self.app.tables.values():
-            self.say(f'Removing database for table {table.name}...')
+            self.say(f"Removing database for table {table.name}...")
             table.reset_state()

@@ -1,8 +1,9 @@
 from typing import Any, AsyncIterator
+
 import faust
 
-app = faust.App('faust.stress')
-rpc_topic = app.topic('faust.stress.rpc')
+app = faust.App("faust.stress")
+rpc_topic = app.topic("faust.stress.rpc")
 
 
 @app.agent(rpc_topic, concurrency=10)

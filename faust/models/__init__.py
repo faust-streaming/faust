@@ -4,11 +4,11 @@ from .fields import FieldDescriptor, StringField
 from .record import Record
 
 __all__ = [
-    'FieldDescriptor',
-    'Model',
-    'ModelOptions',
-    'Record',
-    'StringField',
-    'maybe_model',
-    'registry',
+    "FieldDescriptor",
+    "Model",
+    "ModelOptions",
+    "Record",
+    "StringField",
+    "maybe_model",
+    "registry",
 ]

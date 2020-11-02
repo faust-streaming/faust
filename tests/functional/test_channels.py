@@ -1,11 +1,14 @@
 import asyncio
-import faust
-from faust.types import StreamT, TP
+
+import pytest
 from mode import label
 from mode.utils.aiter import aiter, anext
 from mode.utils.mocks import Mock
 from mode.utils.queues import FlowControlQueue
-import pytest
+
+import faust
+from faust.types import TP, StreamT
+
 from .helpers import channel_empty, message, times_out
 
 
@@ -36,38 +39,38 @@ def test_schema__default(*, channel):
 
 def test_schema__from_schema(*, app):
     schema = faust.Schema(
-        key_type='bytes',
-        value_type='bytes',
-        key_serializer='msgpack',
-        value_serializer='msgpack',
+        key_type="bytes",
+        value_type="bytes",
+        key_serializer="msgpack",
+        value_serializer="msgpack",
     )
     channel = app.channel(schema=schema)
 
-    assert channel.key_type == 'bytes'
-    assert channel.value_type == 'bytes'
+    assert channel.key_type == "bytes"
+    assert channel.value_type == "bytes"
 
     assert channel.schema is schema
     assert channel.schema.key_type == channel.key_type
     assert channel.schema.value_type == channel.value_type
-    assert channel.schema.key_serializer == 'msgpack'
-    assert channel.schema.value_serializer == 'msgpack'
+    assert channel.schema.key_serializer == "msgpack"
+    assert channel.schema.value_serializer == "msgpack"
 
 
 def test_schema__overriding(*, app):
     schema = faust.Schema(
-        key_type='bytes',
-        value_type='bytes',
-        key_serializer='msgpack',
-        value_serializer='msgpack',
+        key_type="bytes",
+        value_type="bytes",
+        key_serializer="msgpack",
+        value_serializer="msgpack",
     )
-    channel = app.channel(schema=schema, key_type='str', value_type='str')
+    channel = app.channel(schema=schema, key_type="str", value_type="str")
 
-    assert channel.key_type == 'str'
-    assert channel.value_type == 'str'
-    assert channel.schema.key_type == 'str'
-    assert channel.schema.value_type == 'str'
-    assert channel.schema.key_serializer == 'msgpack'
-    assert channel.schema.value_serializer == 'msgpack'
+    assert channel.key_type == "str"
+    assert channel.value_type == "str"
+    assert channel.schema.key_type == "str"
+    assert channel.schema.value_type == "str"
+    assert channel.schema.key_serializer == "msgpack"
+    assert channel.schema.value_serializer == "msgpack"
 
 
 def test_repr__active_partitions_empty(*, channel):
@@ -76,7 +79,7 @@ def test_repr__active_partitions_empty(*, channel):
 
 
 def test_repr__with_active_partitions(*, channel):
-    channel.active_partitions = {TP('foo', 0), TP('foo', 1)}
+    channel.active_partitions = {TP("foo", 0), TP("foo", 1)}
     assert repr(channel)
 
 
@@ -90,7 +93,7 @@ def test_str(*, channel):
 
 def test_send_soon(*, channel):
     with pytest.raises(NotImplementedError):
-        channel.send_soon(key=b'k', value=b'val')
+        channel.send_soon(key=b"k", value=b"val")
 
 
 def test_stream(*, channel):
@@ -150,16 +153,16 @@ async def test_send_receive(*, app):
         await channel1.__anext__()
     it1 = aiter(channel1)
     it2 = aiter(channel2)
-    await channel2.put(b'xuzzy')
-    assert await times_out(channel2.put(b'bar'))  # maxsize=1
+    await channel2.put(b"xuzzy")
+    assert await times_out(channel2.put(b"bar"))  # maxsize=1
     assert it1.queue is not channel1.queue
     assert it1._root is channel1
     assert it1 in channel1._subscribers
     assert channel1.subscriber_count == 1
     assert channel1.queue is not channel2.queue
     assert await channel_empty(channel1)
-    await channel1.put(b'foo')
-    assert await anext(it1) == b'foo'
+    await channel1.put(b"foo")
+    assert await anext(it1) == b"foo"
     assert await channel_empty(channel1)
     for i in range(10):
         await channel1.put(i)
@@ -167,7 +170,7 @@ async def test_send_receive(*, app):
     for i in range(10):
         assert await anext(it1) == i
     assert await channel_empty(channel1)
-    assert await anext(it2) == b'xuzzy'
+    assert await anext(it2) == b"xuzzy"
     assert await channel_empty(channel2)
 
     it1_2 = aiter(channel1)
@@ -175,16 +178,16 @@ async def test_send_receive(*, app):
     assert it1_2 in channel1._subscribers
     assert channel1.subscriber_count == 2
 
-    await channel1.put(b'moo')
+    await channel1.put(b"moo")
 
-    assert await anext(it1) == b'moo'
-    assert await anext(it1_2) == b'moo'
+    assert await anext(it1) == b"moo"
+    assert await anext(it1_2) == b"moo"
 
 
 @pytest.mark.asyncio
 async def test_on_key_decode_error(*, app):
     channel = app.channel()
-    await channel.on_key_decode_error(KeyError('foo'), 'msg')
+    await channel.on_key_decode_error(KeyError("foo"), "msg")
     with pytest.raises(KeyError):
         await channel.get()
 
@@ -192,7 +195,7 @@ async def test_on_key_decode_error(*, app):
 @pytest.mark.asyncio
 async def test_on_value_decode_error(*, app):
     channel = app.channel()
-    await channel.on_value_decode_error(KeyError('foo'), 'msg')
+    await channel.on_value_decode_error(KeyError("foo"), "msg")
     with pytest.raises(KeyError):
         await channel.get()
 
@@ -221,7 +224,7 @@ async def test_interface_maybe_declare(*, channel):
 
 @pytest.mark.asyncio
 async def test_decode(*, channel):
-    msg = message(b'key', b'value')
+    msg = message(b"key", b"value")
     event = await channel.decode(msg)
     assert event.message is msg
 
@@ -229,7 +232,7 @@ async def test_decode(*, channel):
 @pytest.mark.asyncio
 async def test_deliver(*, channel, app):
     app.flow_control.resume()
-    msg = message(b'key', b'value')
+    msg = message(b"key", b"value")
     queue = channel.queue
     await channel.deliver(msg)
     event = queue.get_nowait()
@@ -237,11 +240,11 @@ async def test_deliver(*, channel, app):
 
 
 def test_as_future_message__eager_partitioning(*, app):
-    topic = app.topic('foo')
-    app.producer = Mock(name='producer')
+    topic = app.topic("foo")
+    app.producer = Mock(name="producer")
     fut = topic.as_future_message(
-        key=b'foo',
-        value=b'bar',
+        key=b"foo",
+        value=b"bar",
         partition=None,
         eager_partitioning=True,
     )
@@ -249,11 +252,11 @@ def test_as_future_message__eager_partitioning(*, app):
 
 
 def test_as_future_message__eager_partitioning_on_channel(*, channel, app):
-    app.producer = Mock(name='producer')
+    app.producer = Mock(name="producer")
     with pytest.raises(NotImplementedError):
         channel.as_future_message(
-            key=b'foo',
-            value=b'bar',
+            key=b"foo",
+            value=b"bar",
             partition=None,
             eager_partitioning=True,
         )

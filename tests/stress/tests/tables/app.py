@@ -1,18 +1,20 @@
 import random
 from collections import Counter
 from copy import copy
+
 from faust import Stream
-from ...reports import checks
+
 from ...app import create_stress_app
+from ...reports import checks
 
 keys_set = 0
 found_duplicates = 0
 found_gaps = 0
 
 app = create_stress_app(
-    name='f-stress-tables',
+    name="f-stress-tables",
     version=7,
-    origin='t.stress.tests.tables',
+    origin="t.stress.tests.tables",
     broker_commit_every=100,
 )
 
@@ -21,8 +23,8 @@ processed_by_partition = Counter()
 
 
 class PartitionsNotStarved(checks.Check):
-    description = 'fine'
-    negate_description = 'starved'
+    description = "fine"
+    negate_description = "starved"
 
     def compare(self, prev_value, current_value):
         # takes two collections.Counter as argument
@@ -40,7 +42,7 @@ class PartitionsNotStarved(checks.Check):
             self.prev_value_repr = self.current_value_repr
             self.current_value_repr = repr(differing)
             if len(differing) == len(current_value):
-                self.current_value_repr = 'all partitions starved'
+                self.current_value_repr = "all partitions starved"
 
         return bool(differing)
 
@@ -52,24 +54,24 @@ class PartitionsNotStarved(checks.Check):
 
 
 app.add_system_check(
-    PartitionsNotStarved('starved-partitions'),
+    PartitionsNotStarved("starved-partitions"),
 )
 app.add_system_check(
     checks.Stationary(
-        'table-found-double-count',
+        "table-found-double-count",
         get_value=lambda: found_duplicates,
     ),
 )
 app.add_system_check(
     checks.Stationary(
-        'table-found-missing-update',
+        "table-found-missing-update",
         get_value=lambda: found_gaps,
     ),
 )
 
 partitions_sent_counter = Counter()
 
-table = app.Table('counted', key_type=int, value_type=int)
+table = app.Table("counted", key_type=int, value_type=int)
 
 
 @app.task
@@ -117,7 +119,7 @@ async def process(numbers: Stream[int]) -> None:
         previous_number = table.get(partition)
         if processed_total and not processed_total % 30_000:
             with app.system_checks.pause():
-                print('Pausing stream to fill topics')
+                print("Pausing stream to fill topics")
                 await app.sleep(100.0)
 
         if previous_number is not None:
@@ -134,16 +136,20 @@ async def process(numbers: Stream[int]) -> None:
                     # we have missed counting one (the sequence counts
                     # WITH THE OFFSET after all!)
                     # if the number is less than we have a problem.
-                    app.log.error('Found duplicate number in %r: %r',
-                                  event.message.tp, number)
+                    app.log.error(
+                        "Found duplicate number in %r: %r", event.message.tp, number
+                    )
                     found_duplicates += 1
                 else:
                     if number != previous_number + 1:
                         # number should always be one up from the last,
                         # otherwise we dropped a number.
                         app.log.error(
-                            'Sequence gap for tp %r: this=%r previous=%r',
-                            event.message.tp, number, previous_number)
+                            "Sequence gap for tp %r: this=%r previous=%r",
+                            event.message.tp,
+                            number,
+                            previous_number,
+                        )
                         found_gaps += 1
         table[partition] = number
         processed_by_partition[partition] += 1

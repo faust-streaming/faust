@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
+
 import pytest
 from mode.utils.mocks import ContextMock, patch
+
 from faust.livecheck.models import TestExecution
 from faust.livecheck.runners import TestRunner
 
@@ -15,11 +17,11 @@ def execution():
     now = datetime.now().astimezone(timezone.utc)
     expires = now + timedelta(hours=3)
     return TestExecution(
-        id='id',
-        case_name='t.examples.test_foo',
+        id="id",
+        case_name="t.examples.test_foo",
         timestamp=now,
-        test_args=('foo',),
-        test_kwargs={'kw1': 1.03},
+        test_args=("foo",),
+        test_kwargs={"kw1": 1.03},
         expires=expires,
     )
 
@@ -28,11 +30,11 @@ def execution():
 def case(*, livecheck):
     @livecheck.case()
     class test_foo(livecheck.Case):
-
         async def run(self, arg1, kw1=None):
-            assert arg1 == 'foo'
+            assert arg1 == "foo"
             assert kw1 == 1.03
             assert True
+
     return test_foo
 
 
@@ -43,13 +45,13 @@ def runner(*, execution, case):
 
 @pytest.yield_fixture()
 def current_test_stack():
-    with patch('faust.livecheck.case.current_test_stack') as cts:
+    with patch("faust.livecheck.case.current_test_stack") as cts:
         cts.push = ContextMock()
         yield cts
 
 
 @pytest.yield_fixture()
 def current_execution_stack():
-    with patch('faust.livecheck.case.current_execution_stack') as ces:
+    with patch("faust.livecheck.case.current_execution_stack") as ces:
         ces.push = ContextMock()
         yield ces

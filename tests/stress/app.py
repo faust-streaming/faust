@@ -1,13 +1,15 @@
 from typing import Any, Callable, Iterator, List
+
 from mode.utils.objects import cached_property
+
 import faust
 from faust.types import RecordMetadata
-from . import config
-from . import producer
+
+from . import config, producer
 from .reports.checks import Check, SystemChecks
 from .reports.logging import LogHandler, LogPusher
 
-__all__ = ['ProducerFun', 'StressApp', 'create_stress_app']
+__all__ = ["ProducerFun", "StressApp", "create_stress_app"]
 
 ProducerFun = Callable[[int], Iterator[RecordMetadata]]
 
@@ -24,16 +26,17 @@ class StressApp(faust.App):
 
     def __init__(self, *args, **kwargs):
         loghandler = LogHandler(self)
-        kwargs['loghandlers'] = [loghandler]
+        kwargs["loghandlers"] = [loghandler]
         super().__init__(*args, **kwargs)
         self.stress_producers = []
         self.count_received_events = 0
 
     async def on_start(self) -> None:
         from .reports import checks
+
         self.system_checks.add(
             checks.Increasing(
-                'events_total',
+                "events_total",
                 get_value=lambda: self.monitor.events_total,
             ),
         )
@@ -65,7 +68,8 @@ def create_app(name, origin, base=faust.App, **kwargs: Any) -> faust.App:
         topic_partitions=config.topic_partitions,
         loghandlers=config.loghandlers(),
         autodiscover=True,
-        **kwargs)
+        **kwargs
+    )
 
 
 def create_stress_app(name, origin, **kwargs: Any) -> StressApp:

@@ -2,8 +2,8 @@ from faust.web import exceptions
 
 
 def test_WebError():
-    exc = exceptions.WebError(detail='detail', code=400)
-    assert exc.detail == 'detail'
+    exc = exceptions.WebError(detail="detail", code=400)
+    assert exc.detail == "detail"
     assert exc.code == 400
 
 

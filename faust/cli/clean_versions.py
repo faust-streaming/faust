@@ -1,8 +1,9 @@
 """Program ``faust reset`` used to delete local table state."""
 from shutil import rmtree
+
 from .base import AppCommand
 
-__all__ = ['clean_versions']
+__all__ = ["clean_versions"]
 
 
 class clean_versions(AppCommand):
@@ -21,5 +22,5 @@ class clean_versions(AppCommand):
     def remove_old_versiondirs(self) -> None:
         """Remove data from old application versions from data directory."""
         for dir in self.app.conf.find_old_versiondirs():
-            self.say(f'Removing old version directory {dir}...')
+            self.say(f"Removing old version directory {dir}...")
             rmtree(str(dir))

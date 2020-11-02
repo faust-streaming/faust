@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from typing import List
+
 import faust
 
 
@@ -13,8 +14,8 @@ class Arena(faust.Record):
     timestamp: float = None
 
 
-app = faust.App('t-integration', origin='t.integration.app')
-add_topic = app.topic('add-topic')
+app = faust.App("t-integration", origin="t.integration.app")
+add_topic = app.topic("add-topic")
 local_channel = app.channel()
 
 
@@ -39,8 +40,8 @@ async def internal(stream):
 
 @app.command()
 async def error_command():
-    raise Exception('foo')
+    raise Exception("foo")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.main()

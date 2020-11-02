@@ -28,50 +28,60 @@ from .events import EventT
 from .stores import StoreT
 from .streams import JoinableT
 from .topics import TopicT
-from .tuples import FutureMessage, TP
+from .tuples import TP, FutureMessage
 from .windows import WindowT
 
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
-    from .models import FieldDescriptorT as _FieldDescriptorT
-    from .models import ModelArg as _ModelArg
+    from .models import FieldDescriptorT as _FieldDescriptorT, ModelArg as _ModelArg
     from .serializers import SchemaT as _SchemaT
 else:
-    class _AppT: ...  # noqa
-    class _FieldDescriptorT: ...  # noqa
-    class _ModelArg: ...  # noqa
-    class _SchemaT: ...   # noqa
+
+    class _AppT:
+        ...  # noqa
+
+    class _FieldDescriptorT:
+        ...  # noqa
+
+    class _ModelArg:
+        ...  # noqa
+
+    class _SchemaT:
+        ...  # noqa
+
 
 __all__ = [
-    'RecoverCallback',
-    'RelativeArg',
-    'CollectionT',
-    'TableT',
-    'GlobalTableT',
-    'TableManagerT',
-    'WindowCloseCallback',
-    'WindowSetT',
-    'WindowedItemsViewT',
-    'WindowedValuesViewT',
-    'WindowWrapperT',
-    'ChangelogEventCallback',
-    'CollectionTps',
+    "RecoverCallback",
+    "RelativeArg",
+    "CollectionT",
+    "TableT",
+    "GlobalTableT",
+    "TableManagerT",
+    "WindowCloseCallback",
+    "WindowSetT",
+    "WindowedItemsViewT",
+    "WindowedValuesViewT",
+    "WindowWrapperT",
+    "ChangelogEventCallback",
+    "CollectionTps",
 ]
 
 RelativeHandler = Callable[[Optional[EventT]], Union[float, datetime]]
 RecoverCallback = Callable[[], Awaitable[None]]
 ChangelogEventCallback = Callable[[EventT], Awaitable[None]]
 WindowCloseCallback = Callable[[Any, Any], Union[None, Awaitable[None]]]
-RelativeArg = Optional[Union[
-    _FieldDescriptorT,
-    RelativeHandler,
-    datetime,
-    float,
-]]
-CollectionTps = MutableMapping['CollectionT', Set[TP]]
+RelativeArg = Optional[
+    Union[
+        _FieldDescriptorT,
+        RelativeHandler,
+        datetime,
+        float,
+    ]
+]
+CollectionTps = MutableMapping["CollectionT", Set[TP]]
 
-KT = TypeVar('KT')
-VT = TypeVar('VT')
+KT = TypeVar("KT")
+VT = TypeVar("VT")
 
 
 class CollectionT(ServiceT, JoinableT):
@@ -93,28 +103,30 @@ class CollectionT(ServiceT, JoinableT):
     is_global: bool = False
 
     @abc.abstractmethod
-    def __init__(self,
-                 app: _AppT,
-                 *,
-                 name: str = None,
-                 default: Callable[[], Any] = None,
-                 store: Union[str, URL] = None,
-                 schema: _SchemaT = None,
-                 key_type: _ModelArg = None,
-                 value_type: _ModelArg = None,
-                 partitions: int = None,
-                 window: WindowT = None,
-                 changelog_topic: TopicT = None,
-                 help: str = None,
-                 on_recover: RecoverCallback = None,
-                 on_changelog_event: ChangelogEventCallback = None,
-                 recovery_buffer_size: int = 1000,
-                 standby_buffer_size: int = None,
-                 extra_topic_configs: Mapping[str, Any] = None,
-                 options: Mapping[str, Any] = None,
-                 use_partitioner: bool = False,
-                 on_window_close: WindowCloseCallback = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        app: _AppT,
+        *,
+        name: str = None,
+        default: Callable[[], Any] = None,
+        store: Union[str, URL] = None,
+        schema: _SchemaT = None,
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        partitions: int = None,
+        window: WindowT = None,
+        changelog_topic: TopicT = None,
+        help: str = None,
+        on_recover: RecoverCallback = None,
+        on_changelog_event: ChangelogEventCallback = None,
+        recovery_buffer_size: int = 1000,
+        standby_buffer_size: int = None,
+        extra_topic_configs: Mapping[str, Any] = None,
+        options: Mapping[str, Any] = None,
+        use_partitioner: bool = False,
+        on_window_close: WindowCloseCallback = None,
+        **kwargs: Any
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -151,12 +163,14 @@ class CollectionT(ServiceT, JoinableT):
         ...
 
     @abc.abstractmethod
-    def send_changelog(self,
-                       partition: Optional[int],
-                       key: Any,
-                       value: Any,
-                       key_serializer: CodecArg = None,
-                       value_serializer: CodecArg = None) -> FutureMessage:
+    def send_changelog(
+        self,
+        partition: Optional[int],
+        key: Any,
+        value: Any,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+    ) -> FutureMessage:
         ...
 
     @abc.abstractmethod
@@ -168,10 +182,9 @@ class CollectionT(ServiceT, JoinableT):
         ...
 
     @abc.abstractmethod
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -183,9 +196,9 @@ class CollectionT(ServiceT, JoinableT):
         ...
 
     @abc.abstractmethod
-    async def on_recovery_completed(self,
-                                    active_tps: Set[TP],
-                                    standby_tps: Set[TP]) -> None:
+    async def on_recovery_completed(
+        self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -193,20 +206,25 @@ class CollectionT(ServiceT, JoinableT):
         ...
 
     @abc.abstractmethod
-    def using_window(self, window: WindowT, *,
-                     key_index: bool = False) -> 'WindowWrapperT':
+    def using_window(
+        self, window: WindowT, *, key_index: bool = False
+    ) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
-    def hopping(self, size: Seconds, step: Seconds,
-                expires: Seconds = None,
-                key_index: bool = False) -> 'WindowWrapperT':
+    def hopping(
+        self,
+        size: Seconds,
+        step: Seconds,
+        expires: Seconds = None,
+        key_index: bool = False,
+    ) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
-    def tumbling(self, size: Seconds,
-                 expires: Seconds = None,
-                 key_index: bool = False) -> 'WindowWrapperT':
+    def tumbling(
+        self, size: Seconds, expires: Seconds = None, key_index: bool = False
+    ) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
@@ -257,10 +275,7 @@ class TableManagerT(ServiceT, FastUserDict[str, CollectionT]):
         ...
 
     @abc.abstractmethod
-    def persist_offset_on_commit(self,
-                                 store: StoreT,
-                                 tp: TP,
-                                 offset: int) -> None:
+    def persist_offset_on_commit(self, store: StoreT, tp: TP, offset: int) -> None:
         ...
 
     @abc.abstractmethod
@@ -268,10 +283,9 @@ class TableManagerT(ServiceT, FastUserDict[str, CollectionT]):
         ...
 
     @abc.abstractmethod
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -302,18 +316,15 @@ class WindowSetT(FastUserDict[KT, VT]):
     event: Optional[EventT]
 
     @abc.abstractmethod
-    def __init__(self,
-                 key: KT,
-                 table: TableT,
-                 wrapper: 'WindowWrapperT',
-                 event: EventT = None) -> None:
+    def __init__(
+        self, key: KT, table: TableT, wrapper: "WindowWrapperT", event: EventT = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def apply(self,
-              op: Callable[[VT, VT], VT],
-              value: VT,
-              event: EventT = None) -> 'WindowSetT':
+    def apply(
+        self, op: Callable[[VT, VT], VT], value: VT, event: EventT = None
+    ) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
@@ -333,60 +344,57 @@ class WindowSetT(FastUserDict[KT, VT]):
         ...
 
     @abc.abstractmethod
-    def __iadd__(self, other: VT) -> 'WindowSetT':
+    def __iadd__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __isub__(self, other: VT) -> 'WindowSetT':
+    def __isub__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __imul__(self, other: VT) -> 'WindowSetT':
+    def __imul__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __itruediv__(self, other: VT) -> 'WindowSetT':
+    def __itruediv__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __ifloordiv__(self, other: VT) -> 'WindowSetT':
+    def __ifloordiv__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __imod__(self, other: VT) -> 'WindowSetT':
+    def __imod__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __ipow__(self, other: VT) -> 'WindowSetT':
+    def __ipow__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __ilshift__(self, other: VT) -> 'WindowSetT':
+    def __ilshift__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __irshift__(self, other: VT) -> 'WindowSetT':
+    def __irshift__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __iand__(self, other: VT) -> 'WindowSetT':
+    def __iand__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __ixor__(self, other: VT) -> 'WindowSetT':
+    def __ixor__(self, other: VT) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def __ior__(self, other: VT) -> 'WindowSetT':
+    def __ior__(self, other: VT) -> "WindowSetT":
         ...
 
 
 class WindowedItemsViewT(ItemsView):
-
     @abc.abstractmethod
-    def __init__(self,
-                 mapping: 'WindowWrapperT',
-                 event: EventT = None) -> None:
+    def __init__(self, mapping: "WindowWrapperT", event: EventT = None) -> None:
         ...
 
     @abc.abstractmethod
@@ -402,18 +410,13 @@ class WindowedItemsViewT(ItemsView):
         ...
 
     @abc.abstractmethod
-    def delta(self,
-              d: Seconds,
-              event: EventT = None) -> Iterator[Tuple[Any, Any]]:
+    def delta(self, d: Seconds, event: EventT = None) -> Iterator[Tuple[Any, Any]]:
         ...
 
 
 class WindowedValuesViewT(ValuesView):
-
     @abc.abstractmethod
-    def __init__(self,
-                 mapping: 'WindowWrapperT',
-                 event: EventT = None) -> None:
+    def __init__(self, mapping: "WindowWrapperT", event: EventT = None) -> None:
         ...
 
     @abc.abstractmethod
@@ -437,10 +440,14 @@ class WindowWrapperT(MutableMapping):
     table: TableT
 
     @abc.abstractmethod
-    def __init__(self, table: TableT, *,
-                 relative_to: RelativeArg = None,
-                 key_index: bool = False,
-                 key_index_table: TableT = None) -> None:
+    def __init__(
+        self,
+        table: TableT,
+        *,
+        relative_to: RelativeArg = None,
+        key_index: bool = False,
+        key_index_table: TableT = None
+    ) -> None:
         ...
 
     @property
@@ -449,19 +456,19 @@ class WindowWrapperT(MutableMapping):
         ...
 
     @abc.abstractmethod
-    def clone(self, relative_to: RelativeArg) -> 'WindowWrapperT':
+    def clone(self, relative_to: RelativeArg) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
-    def relative_to_now(self) -> 'WindowWrapperT':
+    def relative_to_now(self) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
-    def relative_to_field(self, field: _FieldDescriptorT) -> 'WindowWrapperT':
+    def relative_to_field(self, field: _FieldDescriptorT) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
-    def relative_to_stream(self) -> 'WindowWrapperT':
+    def relative_to_stream(self) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod

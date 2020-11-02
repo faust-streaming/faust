@@ -60,22 +60,22 @@ class Chaos(Service):
     @Service.task
     async def _runs_in_background(self):
         self.log.info("I'm your local friendly chaos monkey tester")
-        self.log.info('Starting signal dispatcher.')
+        self.log.info("Starting signal dispatcher.")
         for current_span in self.iterate_over_scheduled_time():
             if self.should_stop:
                 return
             secs = current_span.seconds_to_sleep()
-            self.log.info('Signal dispatcher sleeping for %r seconds...', secs)
+            self.log.info("Signal dispatcher sleeping for %r seconds...", secs)
             await self.sleep(secs)
             sig = random.choice(current_span.signals)
-            self.log.warning('Signalling all workers on this box with %r', sig)
-            r = envoy.run(f'pkill -{int(sig)} Faust:Worker')
+            self.log.warning("Signalling all workers on this box with %r", sig)
+            r = envoy.run(f"pkill -{int(sig)} Faust:Worker")
             if r.status_code:
                 if r.std_err.strip():
-                    self.log.error('ERROR from pkill: %r', r.std_err)
+                    self.log.error("ERROR from pkill: %r", r.std_err)
                 else:
-                    self.log.info('No processes running, nothing to signal!')
+                    self.log.info("No processes running, nothing to signal!")
 
 
-if __name__ == '__main__':
-    Worker(Chaos(), loglevel='INFO').execute_from_commandline()
+if __name__ == "__main__":
+    Worker(Chaos(), loglevel="INFO").execute_from_commandline()

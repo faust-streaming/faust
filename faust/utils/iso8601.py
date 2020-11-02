@@ -6,4 +6,4 @@ except ImportError:  # pragma: no cover
 else:
     parse = ciso8601.parse_datetime
 
-__all__ = ['parse']
+__all__ = ["parse"]

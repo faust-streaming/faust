@@ -2,7 +2,6 @@
 import asyncio
 import statistics
 import typing
-
 from collections import defaultdict, deque
 from time import monotonic
 from typing import (
@@ -25,7 +24,7 @@ from mode.utils.times import humanize_seconds, humanize_seconds_ago
 from mode.utils.typing import Counter, Deque
 
 from faust.exceptions import ConsistencyError
-from faust.types import AppT, EventT, TP
+from faust.types import TP, AppT, EventT
 from faust.types.tables import CollectionT, TableManagerT
 from faust.types.transports import ConsumerT
 from faust.utils import terminal
@@ -34,18 +33,24 @@ from faust.utils.tracing import finish_span, traced_from_parent_span
 
 if typing.TYPE_CHECKING:
     from faust.app import App as _App
+
     from .manager import TableManager as _TableManager
 else:
-    class _App: ...           # noqa
-    class _TableManager: ...  # noqa
 
-E_PERSISTED_OFFSET = '''\
+    class _App:
+        ...  # noqa
+
+    class _TableManager:
+        ...  # noqa
+
+
+E_PERSISTED_OFFSET = """\
 The persisted offset for changelog topic partition {0} is higher
 than the last offset in that topic (highwater) ({1} > {2}).
 
 Most likely you have removed data from the topics without
 removing the RocksDB database file for this partition.
-'''
+"""
 
 
 class RecoveryStats(NamedTuple):
@@ -155,10 +160,7 @@ class Recovery(Service):
     #: we can give an estimate of time remaining.
     num_samples_required_for_estimate = 1000
 
-    def __init__(self,
-                 app: AppT,
-                 tables: TableManagerT,
-                 **kwargs: Any) -> None:
+    def __init__(self, app: AppT, tables: TableManagerT, **kwargs: Any) -> None:
         self.app = app
         self.tables = cast(_TableManager, tables)
 
@@ -244,10 +246,9 @@ class Recovery(Service):
         T(self.flush_buffers)()
         self.signal_recovery_reset.set()
 
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+    ) -> None:
         """Call when cluster is rebalancing."""
         app = self.app
         assigned_standbys = app.assignor.assigned_standbys()
@@ -287,8 +288,8 @@ class Recovery(Service):
 
         rebalancing_span = cast(_App, self.app)._rebalancing_span
         if app.tracer and rebalancing_span:
-            self._recovery_span = app.tracer.get_tracer('_faust').start_span(
-                'recovery',
+            self._recovery_span = app.tracer.get_tracer("_faust").start_span(
+                "recovery",
                 child_of=rebalancing_span,
             )
             app._span_add_default_tags(self._recovery_span)
@@ -300,24 +301,24 @@ class Recovery(Service):
         consumer = app.consumer
         await app.on_rebalance_complete.send()
         # Resume partitions and start fetching.
-        self.log.info('Resuming flow...')
+        self.log.info("Resuming flow...")
         consumer.resume_flow()
         app.flow_control.resume()
         assignment = consumer.assignment()
         if assignment:
-            self.log.info('Seek stream partitions to committed offsets.')
+            self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(consumer.perform_seek())
-            self.log.dev('Resume stream partitions')
+            self.log.dev("Resume stream partitions")
             consumer.resume_partitions(assignment)
         else:
-            self.log.info('Resuming streams with empty assignment')
+            self.log.info("Resuming streams with empty assignment")
         self.completed.set()
         # finally make sure the fetcher is running.
         await cast(_App, app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
         self.tables.on_standbys_ready()
         app.on_rebalance_end()
-        self.log.info('Worker ready')
+        self.log.info("Worker ready")
 
     @Service.task
     async def _restart_recovery(self) -> None:
@@ -333,7 +334,7 @@ class Recovery(Service):
         active_highwaters = self.active_highwaters
 
         while not self.should_stop:
-            self.log.dev('WAITING FOR NEXT RECOVERY TO START')
+            self.log.dev("WAITING FOR NEXT RECOVERY TO START")
             self.signal_recovery_reset.clear()
             self._set_recovery_ended()
             if await self.wait_for_stopped(self.signal_recovery_start):
@@ -345,11 +346,11 @@ class Recovery(Service):
             spans: list = []
             tracer: Optional[opentracing.Tracer] = None
             if self.app.tracer:
-                tracer = self.app.tracer.get_tracer('_faust')
+                tracer = self.app.tracer.get_tracer("_faust")
             if tracer is not None and self._recovery_span:
                 span = tracer.start_span(
-                    'recovery-thread',
-                    child_of=self._recovery_span)
+                    "recovery-thread", child_of=self._recovery_span
+                )
                 self.app._span_add_default_tags(span)
                 spans.extend([span, self._recovery_span])
             T = traced_from_parent_span(span)
@@ -372,14 +373,19 @@ class Recovery(Service):
                 if producer is not None:
                     await self._wait(T(producer.flush)())
 
-                self.log.dev('Build highwaters for active partitions')
-                await self._wait(T(self._build_highwaters)(
-                    consumer, assigned_active_tps,
-                    active_highwaters, 'active'))
+                self.log.dev("Build highwaters for active partitions")
+                await self._wait(
+                    T(self._build_highwaters)(
+                        consumer, assigned_active_tps, active_highwaters, "active"
+                    )
+                )
 
-                self.log.dev('Build offsets for active partitions')
-                await self._wait(T(self._build_offsets)(
-                    consumer, assigned_active_tps, active_offsets, 'active'))
+                self.log.dev("Build offsets for active partitions")
+                await self._wait(
+                    T(self._build_offsets)(
+                        consumer, assigned_active_tps, active_offsets, "active"
+                    )
+                )
 
                 for tp in assigned_active_tps:
                     if active_offsets[tp] > active_highwaters[tp]:
@@ -391,20 +397,25 @@ class Recovery(Service):
                             ),
                         )
 
-                self.log.dev('Build offsets for standby partitions')
-                await self._wait(T(self._build_offsets)(
-                    consumer, assigned_standby_tps,
-                    standby_offsets, 'standby'))
+                self.log.dev("Build offsets for standby partitions")
+                await self._wait(
+                    T(self._build_offsets)(
+                        consumer, assigned_standby_tps, standby_offsets, "standby"
+                    )
+                )
 
-                self.log.dev('Seek offsets for active partitions')
-                await self._wait(T(self._seek_offsets)(
-                    consumer, assigned_active_tps, active_offsets, 'active'))
+                self.log.dev("Seek offsets for active partitions")
+                await self._wait(
+                    T(self._seek_offsets)(
+                        consumer, assigned_active_tps, active_offsets, "active"
+                    )
+                )
 
                 if self.need_recovery():
-                    self.log.info('Restoring state from changelog topics...')
+                    self.log.info("Restoring state from changelog topics...")
                     T(consumer.resume_partitions)(active_tps)
                     # Resume partitions and start fetching.
-                    self.log.info('Resuming flow...')
+                    self.log.info("Resuming flow...")
                     T(consumer.resume_flow)()
                     await T(cast(_App, self.app)._fetcher.maybe_start)()
                     T(self.app.flow_control.resume)()
@@ -413,9 +424,9 @@ class Recovery(Service):
                     # This signal will be set by _slurp_changelogs
                     if tracer is not None and span:
                         self._actives_span = tracer.start_span(
-                            'recovery-actives',
+                            "recovery-actives",
                             child_of=span,
-                            tags={'Active-Stats': self.active_stats()},
+                            tags={"Active-Stats": self.active_stats()},
                         )
                         self.app._span_add_default_tags(span)
                     try:
@@ -429,33 +440,35 @@ class Recovery(Service):
                         self._actives_span = None
 
                     # recovery done.
-                    self.log.info('Done reading from changelog topics')
+                    self.log.info("Done reading from changelog topics")
                     T(consumer.pause_partitions)(active_tps)
                 else:
-                    self.log.info('Resuming flow...')
+                    self.log.info("Resuming flow...")
                     T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
 
-                self.log.info('Recovery complete')
+                self.log.info("Recovery complete")
                 if span:
-                    span.set_tag('Recovery-Completed', True)
+                    span.set_tag("Recovery-Completed", True)
                 self._set_recovery_ended()
 
                 if standby_tps:
-                    self.log.info('Starting standby partitions...')
+                    self.log.info("Starting standby partitions...")
 
-                    self.log.dev('Seek standby offsets')
+                    self.log.dev("Seek standby offsets")
                     await self._wait(
                         T(self._seek_offsets)(
-                            consumer, standby_tps, standby_offsets, 'standby'))
+                            consumer, standby_tps, standby_offsets, "standby"
+                        )
+                    )
 
-                    self.log.dev('Build standby highwaters')
+                    self.log.dev("Build standby highwaters")
                     await self._wait(
                         T(self._build_highwaters)(
                             consumer,
                             standby_tps,
                             standby_highwaters,
-                            'standby',
+                            "standby",
                         ),
                     )
 
@@ -471,12 +484,12 @@ class Recovery(Service):
 
                     if tracer is not None and span:
                         self._standbys_span = tracer.start_span(
-                            'recovery-standbys',
+                            "recovery-standbys",
                             child_of=span,
-                            tags={'Standby-Stats': self.standby_stats()},
+                            tags={"Standby-Stats": self.standby_stats()},
                         )
                         self.app._span_add_default_tags(span)
-                    self.log.dev('Resume standby partitions')
+                    self.log.dev("Resume standby partitions")
                     T(consumer.resume_partitions)(standby_tps)
 
                 # Pause all our topic partitions,
@@ -484,12 +497,12 @@ class Recovery(Service):
                 await self._wait(asyncio.sleep(0.1))  # still needed?
                 await self._wait(T(self.on_recovery_completed)())
             except RebalanceAgain as exc:
-                self.log.dev('RAISED REBALANCE AGAIN')
+                self.log.dev("RAISED REBALANCE AGAIN")
                 for _span in spans:
                     finish_span(_span, error=exc)
                 continue  # another rebalance started
             except ServiceStopped as exc:
-                self.log.dev('RAISED SERVICE STOPPED')
+                self.log.dev("RAISED SERVICE STOPPED")
                 for _span in spans:
                     finish_span(_span, error=exc)
                 break  # service was stopped
@@ -522,10 +535,9 @@ class Recovery(Service):
 
     def active_remaining_seconds(self, remaining: float) -> str:
         s = self._estimated_active_remaining_secs(remaining)
-        return humanize_seconds(s, now='none') if s else '???'
+        return humanize_seconds(s, now="none") if s else "???"
 
-    def _estimated_active_remaining_secs(
-            self, remaining: float) -> Optional[float]:
+    def _estimated_active_remaining_secs(self, remaining: float) -> Optional[float]:
         processing_times = self._processing_times
         if len(processing_times) >= self.num_samples_required_for_estimate:
             mean_time = statistics.mean(processing_times)
@@ -553,7 +565,7 @@ class Recovery(Service):
     async def on_recovery_completed(self) -> None:
         """Call when active table recovery is completed."""
         consumer = self.app.consumer
-        self.log.info('Restore complete!')
+        self.log.info("Restore complete!")
         await self.app.on_rebalance_complete.send()
         # This needs to happen if all goes well
         callback_coros = [
@@ -567,27 +579,24 @@ class Recovery(Service):
             await asyncio.wait(callback_coros)
         assignment = consumer.assignment()
         if assignment:
-            self.log.info('Seek stream partitions to committed offsets.')
+            self.log.info("Seek stream partitions to committed offsets.")
             await consumer.perform_seek()
         self.completed.set()
-        self.log.dev('Resume stream partitions')
-        consumer.resume_partitions({
-            tp for tp in assignment
-            if not self._is_changelog_tp(tp)
-        })
+        self.log.dev("Resume stream partitions")
+        consumer.resume_partitions(
+            {tp for tp in assignment if not self._is_changelog_tp(tp)}
+        )
         # finally make sure the fetcher is running.
         await cast(_App, self.app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
         if not self.app.assignor.assigned_standbys():
             self.tables.on_standbys_ready()
         self.app.on_rebalance_end()
-        self.log.info('Worker ready')
+        self.log.info("Worker ready")
 
-    async def _build_highwaters(self,
-                                consumer: ConsumerT,
-                                tps: Set[TP],
-                                destination: Counter[TP],
-                                title: str) -> None:
+    async def _build_highwaters(
+        self, consumer: ConsumerT, tps: Set[TP], destination: Counter[TP], title: str
+    ) -> None:
         # -- Build highwater
         highwaters = await consumer.highwaters(*tps)
         highwaters = {
@@ -596,21 +605,21 @@ class Recovery(Service):
             for tp, value in highwaters.items()
         }
         self.log.info(
-            'Highwater for %s changelog partitions:\n%s',
-            title, self._highwater_logtable(highwaters, title=title))
+            "Highwater for %s changelog partitions:\n%s",
+            title,
+            self._highwater_logtable(highwaters, title=title),
+        )
         destination.clear()
         destination.update(highwaters)
 
-    def _highwater_logtable(self, highwaters: Mapping[TP, int], *,
-                            title: str) -> str:
+    def _highwater_logtable(self, highwaters: Mapping[TP, int], *, title: str) -> str:
         table_data = [
-            [k.topic, str(k.partition), str(v)]
-            for k, v in sorted(highwaters.items())
+            [k.topic, str(k.partition), str(v)] for k, v in sorted(highwaters.items())
         ]
         return terminal.logtable(
             list(self._consolidate_table_keys(table_data)),
-            title=f'Highwater - {title.capitalize()}',
-            headers=['topic', 'partition', 'highwater'],
+            title=f"Highwater - {title.capitalize()}",
+            headers=["topic", "partition", "highwater"],
         )
 
     def _consolidate_table_keys(self, data: TableDataT) -> Iterator[List[str]]:
@@ -628,16 +637,14 @@ class Recovery(Service):
         prev_key: Optional[str] = None
         for key, *rest in data:
             if prev_key is not None and prev_key == key:
-                yield ['〃', *rest]  # ditto
+                yield ["〃", *rest]  # ditto
             else:
                 yield [key, *rest]
             prev_key = key
 
-    async def _build_offsets(self,
-                             consumer: ConsumerT,
-                             tps: Set[TP],
-                             destination: Counter[TP],
-                             title: str) -> None:
+    async def _build_offsets(
+        self, consumer: ConsumerT, tps: Set[TP], destination: Counter[TP], title: str
+    ) -> None:
         # -- Update offsets
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
@@ -656,28 +663,24 @@ class Recovery(Service):
 
         if destination:
             self.log.info(
-                '%s offsets at start of reading:\n%s',
+                "%s offsets at start of reading:\n%s",
                 title,
                 self._start_offsets_logtable(destination, title=title),
             )
 
-    def _start_offsets_logtable(self, offsets: Mapping[TP, int], *,
-                                title: str) -> str:
+    def _start_offsets_logtable(self, offsets: Mapping[TP, int], *, title: str) -> str:
         table_data = [
-            [k.topic, str(k.partition), str(v)]
-            for k, v in sorted(offsets.items())
+            [k.topic, str(k.partition), str(v)] for k, v in sorted(offsets.items())
         ]
         return terminal.logtable(
             list(self._consolidate_table_keys(table_data)),
-            title=f'Reading Starts At - {title.capitalize()}',
-            headers=['topic', 'partition', 'offset'],
+            title=f"Reading Starts At - {title.capitalize()}",
+            headers=["topic", "partition", "offset"],
         )
 
-    async def _seek_offsets(self,
-                            consumer: ConsumerT,
-                            tps: Set[TP],
-                            offsets: Counter[TP],
-                            title: str) -> None:
+    async def _seek_offsets(
+        self, consumer: ConsumerT, tps: Set[TP], offsets: Counter[TP], title: str
+    ) -> None:
         # Seek to new offsets
         new_offsets = {}
         for tp in tps:
@@ -710,13 +713,14 @@ class Recovery(Service):
                 self.flush_buffers()
                 self._set_recovery_ended()
                 if self._actives_span is not None:
-                    self._actives_span.set_tag('Actives-Ready', True)
+                    self._actives_span.set_tag("Actives-Ready", True)
                 self.signal_recovery_end.set()
 
         while not self.should_stop:
             try:
                 event: EventT = await asyncio.wait_for(
-                    changelog_queue.get(), timeout=5.0)
+                    changelog_queue.get(), timeout=5.0
+                )
             except asyncio.TimeoutError:
                 if self.should_stop:
                     return
@@ -791,21 +795,25 @@ class Recovery(Service):
         """Return counter of remaining changes by active partition."""
         highwaters = self.active_highwaters
         offsets = self.active_offsets
-        return Counter({
-            tp: highwater - offsets[tp]
-            for tp, highwater in highwaters.items()
-            if highwater is not None and offsets[tp] is not None
-        })
+        return Counter(
+            {
+                tp: highwater - offsets[tp]
+                for tp, highwater in highwaters.items()
+                if highwater is not None and offsets[tp] is not None
+            }
+        )
 
     def standby_remaining(self) -> Counter[TP]:
         """Return counter of remaining changes by standby partition."""
         highwaters = self.standby_highwaters
         offsets = self.standby_offsets
-        return Counter({
-            tp: highwater - offsets[tp]
-            for tp, highwater in highwaters.items()
-            if highwater >= 0 and offsets[tp] >= 0
-        })
+        return Counter(
+            {
+                tp: highwater - offsets[tp]
+                for tp, highwater in highwaters.items()
+                if highwater >= 0 and offsets[tp] >= 0
+            }
+        )
 
     def active_remaining_total(self) -> int:
         """Return number of changes remaining for actives to be up-to-date."""
@@ -819,9 +827,7 @@ class Recovery(Service):
         """Return current active recovery statistics."""
         offsets = self.active_offsets
         return {
-            tp: RecoveryStats(highwater,
-                              offsets[tp],
-                              highwater - offsets[tp])
+            tp: RecoveryStats(highwater, offsets[tp], highwater - offsets[tp])
             for tp, highwater in self.active_highwaters.items()
             if offsets[tp] is not None and highwater - offsets[tp] != 0
         }
@@ -830,36 +836,36 @@ class Recovery(Service):
         """Return current standby recovery statistics."""
         offsets = self.standby_offsets
         return {
-            tp: RecoveryStats(highwater,
-                              offsets[tp],
-                              highwater - offsets[tp])
+            tp: RecoveryStats(highwater, offsets[tp], highwater - offsets[tp])
             for tp, highwater in self.standby_highwaters.items()
             if offsets[tp] is not None and highwater - offsets[tp] != 0
-
         }
 
-    def _stats_to_logtable(
-            self,
-            title: str,
-            stats: RecoveryStatsMapping) -> str:
+    def _stats_to_logtable(self, title: str, stats: RecoveryStatsMapping) -> str:
         table_data = [
-            list(map(str, [
-                tp.topic,
-                tp.partition,
-                s.highwater,
-                s.offset,
-                s.remaining,
-            ])) for tp, s in sorted(stats.items())
+            list(
+                map(
+                    str,
+                    [
+                        tp.topic,
+                        tp.partition,
+                        s.highwater,
+                        s.offset,
+                        s.remaining,
+                    ],
+                )
+            )
+            for tp, s in sorted(stats.items())
         ]
         return terminal.logtable(
             list(self._consolidate_table_keys(table_data)),
             title=title,
             headers=[
-                'topic',
-                'partition',
-                'need offset',
-                'have offset',
-                'remaining',
+                "topic",
+                "partition",
+                "need offset",
+                "have offset",
+                "remaining",
             ],
         )
 
@@ -868,23 +874,20 @@ class Recovery(Service):
         """Emit stats (remaining to fetch) while in active recovery."""
         interval = self.stats_interval
         await self.sleep(interval)
-        async for sleep_time in self.itertimer(
-                interval, name='Recovery.stats'):
+        async for sleep_time in self.itertimer(interval, name="Recovery.stats"):
             if self.in_recovery:
                 now = monotonic()
                 stats = self.active_stats()
                 num_samples = len(self._processing_times)
-                if stats and \
-                        num_samples >= self.num_samples_required_for_estimate:
+                if stats and num_samples >= self.num_samples_required_for_estimate:
                     remaining_total = self.active_remaining_total()
                     self.log.info(
-                        'Still fetching changelog topics for recovery, '
-                        'estimated time remaining %s '
-                        '(total remaining=%r):\n%s',
+                        "Still fetching changelog topics for recovery, "
+                        "estimated time remaining %s "
+                        "(total remaining=%r):\n%s",
                         self.active_remaining_seconds(remaining_total),
                         remaining_total,
-                        self._stats_to_logtable(
-                            'Remaining for active recovery', stats),
+                        self._stats_to_logtable("Remaining for active recovery", stats),
                     )
                 elif stats:
                     await self._verify_remaining(now, stats)
@@ -892,26 +895,24 @@ class Recovery(Service):
                     recovery_started_at = self._recovery_started_at
                     if recovery_started_at is None:
                         self.log.error(
-                            'POSSIBLE INTERNAL ERROR: '
-                            'Recovery marked as started but missing '
-                            'self._recovery_started_at timestamp.')
+                            "POSSIBLE INTERNAL ERROR: "
+                            "Recovery marked as started but missing "
+                            "self._recovery_started_at timestamp."
+                        )
                     else:
                         secs_since_started = now - recovery_started_at
                         if secs_since_started >= 30.0:
                             # This shouldn't happen, but we want to
                             # log an error in case it does.
                             self.log.error(
-                                'POSSIBLE INTERNAL ERROR: '
-                                'Recovery has no remaining offsets to fetch, '
-                                'but we have spent %s waiting for the worker '
-                                'to transition out of recovery state...',
+                                "POSSIBLE INTERNAL ERROR: "
+                                "Recovery has no remaining offsets to fetch, "
+                                "but we have spent %s waiting for the worker "
+                                "to transition out of recovery state...",
                                 humanize_seconds(secs_since_started),
                             )
 
-    async def _verify_remaining(
-            self,
-            now: float,
-            stats: RecoveryStatsMapping) -> None:
+    async def _verify_remaining(self, now: float, stats: RecoveryStatsMapping) -> None:
         consumer = self.app.consumer
         active_events_received_at = self._active_events_received_at
         recovery_started_at = self._recovery_started_at
@@ -923,9 +924,9 @@ class Recovery(Service):
         if last_flush_at is None:
             if secs_since_started >= self.flush_timeout_secs:
                 self.log.warning(
-                    'Recovery has not flushed buffers since '
-                    'recovery startted (started %s). '
-                    'Current total buffer size: %r',
+                    "Recovery has not flushed buffers since "
+                    "recovery startted (started %s). "
+                    "Current total buffer size: %r",
                     humanize_seconds_ago(secs_since_started),
                     self._current_total_buffer_size(),
                 )
@@ -933,9 +934,9 @@ class Recovery(Service):
             secs_since_last_flush = now - last_flush_at
             if secs_since_last_flush >= self.flush_timeout_secs:
                 self.log.warning(
-                    'Recovery has not flushed buffers in the last %r '
-                    'seconds (last flush was %s). '
-                    'Current total buffer size: %r',
+                    "Recovery has not flushed buffers in the last %r "
+                    "seconds (last flush was %s). "
+                    "Current total buffer size: %r",
                     self.flush_timeout_secs,
                     humanize_seconds_ago(secs_since_last_flush),
                     self._current_total_buffer_size(),
@@ -954,18 +955,20 @@ class Recovery(Service):
             if last_event_received is None:
                 if secs_since_started >= self.event_timeout_secs:
                     self.log.warning(
-                        'No event received for active tp %r since recovery '
-                        'start (started %s)',
-                        tp, humanize_seconds_ago(secs_since_started),
+                        "No event received for active tp %r since recovery "
+                        "start (started %s)",
+                        tp,
+                        humanize_seconds_ago(secs_since_started),
                     )
                 continue
 
             secs_since_received = now - last_event_received
             if secs_since_received >= self.event_timeout_secs:
                 self.log.warning(
-                    'No event received for active tp %r in the last %r '
-                    'seconds (last event received %s)',
-                    tp, self.event_timeout_secs,
+                    "No event received for active tp %r in the last %r "
+                    "seconds (last event received %s)",
+                    tp,
+                    self.event_timeout_secs,
                     humanize_seconds_ago(secs_since_received),
                 )
 

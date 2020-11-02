@@ -1,4 +1,5 @@
 import pytest
+
 from faust.agents import current_agent
 
 

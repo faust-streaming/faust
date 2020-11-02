@@ -1,27 +1,28 @@
 import asyncio
+
 import pytest
+from mode.utils.mocks import AsyncMock, Mock, patch
+
 from faust.livecheck.exceptions import TestTimeout
 from faust.livecheck.locals import current_execution_stack, current_test_stack
 from faust.livecheck.models import SignalEvent
 from faust.livecheck.signals import BaseSignal, Signal
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 
 class test_BaseSignal:
-
     @pytest.fixture()
     def signal(self, *, case):
-        return BaseSignal('foo', case, 1)
+        return BaseSignal("foo", case, 1)
 
     @pytest.mark.asyncio
     async def test_send(self, *, signal):
         with pytest.raises(NotImplementedError):
-            await signal.send('v', key='k')
+            await signal.send("v", key="k")
 
     @pytest.mark.asyncio
     async def test_wait(self, *, signal):
         with pytest.raises(NotImplementedError):
-            await signal.wait(key='k', timeout=10.0)
+            await signal.wait(key="k", timeout=10.0)
 
     @pytest.mark.asyncio
     async def test_resolve(self, *, signal):
@@ -29,16 +30,16 @@ class test_BaseSignal:
         signal._wakeup_resolvers = Mock()
 
         event = Mock()
-        await signal.resolve('k', event)
-        signal._set_current_value.assert_called_once_with('k', event)
+        await signal.resolve("k", event)
+        signal._set_current_value.assert_called_once_with("k", event)
         signal._wakeup_resolvers.assert_called_once_with()
 
     def test__set_name__(self, *, signal):
-        signal.name = ''
-        signal.__set_name__(type(signal), 'foo')
-        assert signal.name == 'foo'
-        signal.__set_name__(type(signal), 'bar')
-        assert signal.name == 'foo'
+        signal.name = ""
+        signal.__set_name__(type(signal), "foo")
+        assert signal.name == "foo"
+        signal.__set_name__(type(signal), "bar")
+        assert signal.name == "foo"
 
     def test__wakeup_resolvers(self, *, signal):
         signal.case = Mock()
@@ -50,44 +51,44 @@ class test_BaseSignal:
         signal.case = Mock(app=Mock(wait=AsyncMock()))
         await signal._wait_for_resolved(timeout=3.01)
         signal.case.app.wait.assert_called_once_with(
-            signal.case.app._can_resolve, timeout=3.01)
+            signal.case.app._can_resolve, timeout=3.01
+        )
         signal.case.app._can_resolve.clear.assert_called_once_with()
 
     def test__get_current_value(self, *, signal):
-        signal._set_current_value('k', 'foo')
-        assert signal._get_current_value('k') == 'foo'
+        signal._set_current_value("k", "foo")
+        assert signal._get_current_value("k") == "foo"
 
     def test__index_key(self, *, signal):
-        assert signal._index_key('k') == (signal.name, signal.case.name, 'k')
+        assert signal._index_key("k") == (signal.name, signal.case.name, "k")
 
     def test_repr(self, *, signal):
         assert repr(signal)
 
 
 class test_Signal:
-
     @pytest.fixture()
     def signal(self, *, case):
-        return Signal('foo', case, 1)
+        return Signal("foo", case, 1)
 
     @pytest.mark.asyncio
     async def test_send__no_test(self, *, signal):
         assert current_test_stack.top is None
         signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
-        await signal.send('value', key='k', force=False)
+        await signal.send("value", key="k", force=False)
         signal.case.app.bus.send.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_send__no_test_force(self, *, signal):
         signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
-        await signal.send('value', key='k', force=True)
+        await signal.send("value", key="k", force=True)
         signal.case.app.bus.send.coro.assert_called_once_with(
-            key='k',
+            key="k",
             value=SignalEvent(
                 signal_name=signal.name,
                 case_name=signal.case.name,
-                key='k',
-                value='value',
+                key="k",
+                value="value",
             ),
         )
 
@@ -95,14 +96,14 @@ class test_Signal:
     async def test_send(self, *, signal, execution):
         with current_test_stack.push(execution):
             signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
-            await signal.send('value', key=None, force=True)
+            await signal.send("value", key=None, force=True)
             signal.case.app.bus.send.coro.assert_called_once_with(
                 key=execution.id,
                 value=SignalEvent(
                     signal_name=signal.name,
                     case_name=signal.case.name,
                     key=execution.id,
-                    value='value',
+                    value="value",
                 ),
             )
 
@@ -124,16 +125,16 @@ class test_Signal:
 
     def test__verify_event(self, *, signal):
         ev = Mock()
-        ev.key = 'key'
-        ev.signal_name = 'name'
-        ev.case_name = 'case'
-        signal._verify_event(ev, 'key', 'name', 'case')
+        ev.key = "key"
+        ev.signal_name = "name"
+        ev.case_name = "case"
+        signal._verify_event(ev, "key", "name", "case")
 
     @pytest.mark.asyncio
     async def test__wait_for_message_by_key__already_there(self, *, signal):
-        signal._get_current_value = Mock(return_value='foo')
-        ret = await signal._wait_for_message_by_key('k', timeout=1.0)
-        assert ret == 'foo'
+        signal._get_current_value = Mock(return_value="foo")
+        ret = await signal._wait_for_message_by_key("k", timeout=1.0)
+        assert ret == "foo"
 
     @pytest.mark.asyncio
     async def test__wait_for_message_by_key__should_stop(self, *, signal):
@@ -141,7 +142,7 @@ class test_Signal:
         app = signal.case.app
         app._stopped.set()
         with pytest.raises(asyncio.CancelledError):
-            await signal._wait_for_message_by_key('k', timeout=1.0)
+            await signal._wait_for_message_by_key("k", timeout=1.0)
 
     @pytest.mark.asyncio
     async def test__wait_for_message_by_key(self, *, signal):
@@ -152,8 +153,9 @@ class test_Signal:
             if signal._wait_for_resolved.call_count >= 3:
                 signal._get_current_value.side_effect = None
                 signal._get_current_value.return_value = 30
+
         signal._wait_for_resolved.side_effect = on_resolved
-        res = await signal._wait_for_message_by_key('k', timeout=1.0)
+        res = await signal._wait_for_message_by_key("k", timeout=1.0)
         assert res == 30
 
     @pytest.mark.asyncio
@@ -166,9 +168,10 @@ class test_Signal:
                 signal._get_current_value.side_effect = None
                 signal._get_current_value.return_value = 30
             raise KeyError()
+
         signal._get_current_value.side_effect = on_get_value
 
-        with patch('faust.livecheck.signals.monotonic') as monotonic:
+        with patch("faust.livecheck.signals.monotonic") as monotonic:
             monotonic.return_value = 111.1
             signal._wait_for_resolved = AsyncMock()
 
@@ -178,7 +181,7 @@ class test_Signal:
                     can_return[0] = True
 
             signal._wait_for_resolved.side_effect = on_resolved
-            res = await signal._wait_for_message_by_key('k', timeout=1.0)
+            res = await signal._wait_for_message_by_key("k", timeout=1.0)
             assert res == 30
 
     @pytest.mark.asyncio
@@ -191,9 +194,10 @@ class test_Signal:
                 signal._get_current_value.side_effect = None
                 signal._get_current_value.return_value = 30
             raise KeyError()
+
         signal._get_current_value.side_effect = on_get_value
 
-        with patch('faust.livecheck.signals.monotonic') as monotonic:
+        with patch("faust.livecheck.signals.monotonic") as monotonic:
             monotonic.return_value = 111.1
             signal._wait_for_resolved = AsyncMock()
 
@@ -203,7 +207,7 @@ class test_Signal:
                     can_return[0] = True
 
             signal._wait_for_resolved.side_effect = on_resolved
-            res = await signal._wait_for_message_by_key('k', timeout=None)
+            res = await signal._wait_for_message_by_key("k", timeout=None)
             assert res == 30
 
     @pytest.mark.asyncio
@@ -211,7 +215,7 @@ class test_Signal:
         can_return = [False]
         signal._get_current_value = Mock(side_effect=KeyError())
 
-        with patch('faust.livecheck.signals.monotonic') as monotonic:
+        with patch("faust.livecheck.signals.monotonic") as monotonic:
             monotonic.return_value = 111.1
             signal._wait_for_resolved = AsyncMock()
 
@@ -222,13 +226,13 @@ class test_Signal:
 
             signal._wait_for_resolved.side_effect = on_resolved
             with pytest.raises(TestTimeout):
-                await signal._wait_for_message_by_key('k', timeout=1.0)
+                await signal._wait_for_message_by_key("k", timeout=1.0)
 
     @pytest.mark.asyncio
     async def test__wait_for_message_by_key__app_stopped(self, *, signal):
         signal._get_current_value = Mock(side_effect=KeyError())
 
-        with patch('faust.livecheck.signals.monotonic') as monotonic:
+        with patch("faust.livecheck.signals.monotonic") as monotonic:
             monotonic.return_value = 111.1
             app = signal.case.app
             signal._wait_for_resolved = AsyncMock()
@@ -238,4 +242,4 @@ class test_Signal:
 
             signal._wait_for_resolved.side_effect = on_resolved
             with pytest.raises(asyncio.CancelledError):
-                await signal._wait_for_message_by_key('k', timeout=1.0)
+                await signal._wait_for_message_by_key("k", timeout=1.0)

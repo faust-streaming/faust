@@ -11,7 +11,7 @@ from faust.utils import terminal
 
 from .base import AppCommand, argument
 
-__all__ = ['model']
+__all__ = ["model"]
 
 #: Built-in types show as name only (e.g. str).
 #: Other types will use full `repr()`.
@@ -21,10 +21,10 @@ BUILTIN_TYPES = frozenset({int, float, str, bytes, datetime})
 class model(AppCommand):
     """Show model detail."""
 
-    headers = ['field', 'type', 'default']
+    headers = ["field", "type", "default"]
 
     options = [
-        argument('name'),
+        argument("name"),
     ]
 
     async def run(self, name: str) -> None:
@@ -32,10 +32,10 @@ class model(AppCommand):
         try:
             model = registry[name]
         except KeyError:
-            if '.' in name:
+            if "." in name:
                 raise self._unknown_model(name)
             if self.app.conf.origin:
-                lookup = '.'.join([self.app.conf.origin, name])
+                lookup = ".".join([self.app.conf.origin, name])
             else:
                 lookup = name
             try:
@@ -48,16 +48,17 @@ class model(AppCommand):
                 headers=[self.bold(h) for h in self.headers],
                 title=self._name(model),
                 wrap_last_row=False,
-            ))
+            )
+        )
 
-    def _unknown_model(self, name: str, *,
-                       lookup: str = None) -> click.UsageError:
+    def _unknown_model(self, name: str, *, lookup: str = None) -> click.UsageError:
         lookup = lookup or name
         alt = text.didyoumean(
             registry,
             lookup,
-            fmt_none=f'Please run `{self.prog_name} models` for a list.')
-        return click.UsageError(f'No model {name!r}. {alt}')
+            fmt_none=f"Please run `{self.prog_name} models` for a list.",
+        )
+        return click.UsageError(f"No model {name!r}. {alt}")
 
     def model_fields(self, model: Type[ModelT]) -> terminal.TableDataT:
         """Convert model fields to terminal table rows."""
@@ -68,7 +69,7 @@ class model(AppCommand):
         return [
             field.field,
             self._type(field.type),
-            self.dark('*' if field.required else repr(field.default)),
+            self.dark("*" if field.required else repr(field.default)),
         ]
 
     def _type(self, typ: Any) -> str:
@@ -85,4 +86,4 @@ class model(AppCommand):
         return self.abbreviate_fqdn(model._options.namespace)
 
     def _help(self, model: Type[ModelT]) -> str:
-        return model.__doc__ or '<N/A>'
+        return model.__doc__ or "<N/A>"

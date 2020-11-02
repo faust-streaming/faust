@@ -15,11 +15,18 @@ if typing.TYPE_CHECKING:
     from .models import ModelArg as _ModelArg
     from .serializers import SchemaT as _SchemaT
 else:
-    class _AppT: ...             # noqa
-    class _ModelArg: ...         # noqa
-    class _SchemaT: ...          # noqa
 
-__all__ = ['TopicT']
+    class _AppT:
+        ...  # noqa
+
+    class _ModelArg:
+        ...  # noqa
+
+    class _SchemaT:
+        ...  # noqa
+
+
+__all__ = ["TopicT"]
 
 
 class TopicT(ChannelT):
@@ -56,32 +63,34 @@ class TopicT(ChannelT):
     active_partitions: Optional[Set[TP]]
 
     @abc.abstractmethod
-    def __init__(self,
-                 app: _AppT,
-                 *,
-                 topics: Sequence[str] = None,
-                 pattern: Union[str, Pattern] = None,
-                 schema: _SchemaT = None,
-                 key_type: _ModelArg = None,
-                 value_type: _ModelArg = None,
-                 is_iterator: bool = False,
-                 partitions: int = None,
-                 retention: Seconds = None,
-                 compacting: bool = None,
-                 deleting: bool = None,
-                 replicas: int = None,
-                 acks: bool = True,
-                 internal: bool = False,
-                 config: Mapping[str, Any] = None,
-                 queue: ThrowableQueue = None,
-                 key_serializer: CodecArg = None,
-                 value_serializer: CodecArg = None,
-                 maxsize: int = None,
-                 root: ChannelT = None,
-                 active_partitions: Set[TP] = None,
-                 allow_empty: bool = False,
-                 has_prefix: bool = False,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        app: _AppT,
+        *,
+        topics: Sequence[str] = None,
+        pattern: Union[str, Pattern] = None,
+        schema: _SchemaT = None,
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        is_iterator: bool = False,
+        partitions: int = None,
+        retention: Seconds = None,
+        compacting: bool = None,
+        deleting: bool = None,
+        replicas: int = None,
+        acks: bool = True,
+        internal: bool = False,
+        config: Mapping[str, Any] = None,
+        queue: ThrowableQueue = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        maxsize: int = None,
+        root: ChannelT = None,
+        active_partitions: Set[TP] = None,
+        allow_empty: bool = False,
+        has_prefix: bool = False,
+        loop: asyncio.AbstractEventLoop = None
+    ) -> None:
         ...
 
     @property
@@ -107,19 +116,21 @@ class TopicT(ChannelT):
         ...
 
     @abc.abstractmethod
-    def derive_topic(self,
-                     *,
-                     topics: Sequence[str] = None,
-                     schema: _SchemaT = None,
-                     key_type: _ModelArg = None,
-                     value_type: _ModelArg = None,
-                     partitions: int = None,
-                     retention: Seconds = None,
-                     compacting: bool = None,
-                     deleting: bool = None,
-                     internal: bool = False,
-                     config: Mapping[str, Any] = None,
-                     prefix: str = '',
-                     suffix: str = '',
-                     **kwargs: Any) -> 'TopicT':
+    def derive_topic(
+        self,
+        *,
+        topics: Sequence[str] = None,
+        schema: _SchemaT = None,
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        partitions: int = None,
+        retention: Seconds = None,
+        compacting: bool = None,
+        deleting: bool = None,
+        internal: bool = False,
+        config: Mapping[str, Any] = None,
+        prefix: str = "",
+        suffix: str = "",
+        **kwargs: Any
+    ) -> "TopicT":
         ...

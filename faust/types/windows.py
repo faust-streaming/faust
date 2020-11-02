@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple
 
 from mode import Seconds
 
-__all__ = ['WindowRange', 'WindowT']
+__all__ = ["WindowRange", "WindowT"]
 
 
 WindowRange = Tuple[float, float]

@@ -1,11 +1,13 @@
 import asyncio
 from collections import defaultdict
-import faust
+
 import pytest
-from faust import joins
-from faust.exceptions import Skip
 from mode.utils.contexts import ExitStack
 from mode.utils.mocks import AsyncMock, Mock, patch
+
+import faust
+from faust import joins
+from faust.exceptions import Skip
 from tests.helpers import new_event
 
 
@@ -14,7 +16,6 @@ class Model(faust.Record):
 
 
 class test_Stream:
-
     @pytest.fixture()
     def stream(self, *, app):
         return app.stream(app.channel())
@@ -50,7 +51,7 @@ class test_Stream:
     @pytest.mark.asyncio
     async def test_on_merge__with_join_strategy(self, *, stream):
         join = stream.join_strategy = Mock(process=AsyncMock())
-        assert (await stream.on_merge('v')) is join.process.coro.return_value
+        assert (await stream.on_merge("v")) is join.process.coro.return_value
 
     def test_combine__finalized(self, *, stream):
         stream._finalized = True
@@ -65,14 +66,14 @@ class test_Stream:
         assert stream.through(Mock()) is stream
 
     def test__set_current_event(self, *, stream):
-        with patch('faust.streams._current_event') as ce:
+        with patch("faust.streams._current_event") as ce:
             stream._set_current_event(None)
             assert stream.current_event is None
             ce.set.assert_called_once_with(None)
             ce.set.reset_mock()
 
-            with patch('weakref.ref') as ref:
-                event = Mock(name='event')
+            with patch("weakref.ref") as ref:
+                event = Mock(name="event")
                 stream._set_current_event(event)
                 assert stream.current_event is event
                 ce.set.assert_called_once_with(ref.return_value)
@@ -80,21 +81,22 @@ class test_Stream:
 
     @pytest.mark.asyncio
     async def test__format_key(self, *, stream):
-        value = Model('val')
-        assert (await stream._format_key(Model.foo, value)) == 'val'
+        value = Model("val")
+        assert (await stream._format_key(Model.foo, value)) == "val"
 
     @pytest.mark.asyncio
     async def test__format_key__callable(self, *, stream):
         async def format_key(value):
             return value.foo
-        value = Model('val')
-        assert (await stream._format_key(format_key, value)) == 'val'
+
+        value = Model("val")
+        assert (await stream._format_key(format_key, value)) == "val"
 
     @pytest.mark.asyncio
     async def test_groupby__field_descriptor(self, *, stream, app):
         async with stream:
             channel = app.channel()
-            stream.prefix = 'agent-foo'
+            stream.prefix = "agent-foo"
             s2 = stream.group_by(Model.foo, topic=channel)
 
             assert not s2._processors
@@ -104,27 +106,26 @@ class test_Stream:
 
             stream.current_event = None
             with pytest.raises(RuntimeError):
-                await repartition(Model('foo'))
+                await repartition(Model("foo"))
 
-            stream.current_event = Mock(name='event', forward=AsyncMock())
-            await repartition(Model('foo'))
-            stream.current_event.forward.assert_called_once_with(
-                channel, key='foo')
+            stream.current_event = Mock(name="event", forward=AsyncMock())
+            await repartition(Model("foo"))
+            stream.current_event.forward.assert_called_once_with(channel, key="foo")
 
     @pytest.mark.asyncio
     async def test_echo(self, *, stream, app):
-        channel = Mock(name='channel', send=AsyncMock())
+        channel = Mock(name="channel", send=AsyncMock())
         s2 = stream.echo(channel)
         assert len(s2._processors) == 1
         echoing = s2._processors[0]
 
-        await echoing('val')
-        channel.send.assert_called_once_with(value='val')
+        await echoing("val")
+        channel.send.assert_called_once_with(value="val")
 
     @pytest.mark.asyncio
     @pytest.mark.allow_lingering_tasks(count=1)
     async def test_aiter_tracked(self, *, stream, app):
-        print('TEST AITER TRACKED')
+        print("TEST AITER TRACKED")
         event = await self._assert_stream_aiter(
             stream,
             side_effect=None,
@@ -150,21 +151,19 @@ class test_Stream:
         else:
             event.ack.assert_called_once_with()
 
-    async def _assert_stream_aiter(self, stream,
-                                   side_effect=None,
-                                   raises=None):
+    async def _assert_stream_aiter(self, stream, side_effect=None, raises=None):
         sentinel = object()
         app = stream.app
-        app.consumer = Mock(name='app.consumer')
+        app.consumer = Mock(name="app.consumer")
         app.consumer._committed_offset = defaultdict(lambda: -1)
         app.consumer._acked_index = defaultdict(set)
         app.consumer._acked = defaultdict(list)
         app.consumer._n_acked = 0
         app.flow_control.resume()
-        app.topics._acking_topics.add('foo')
-        event = new_event(app, topic='foo', value=32)
+        app.topics._acking_topics.add("foo")
+        event = new_event(app, topic="foo", value=32)
         event.message.tracked = False
-        event.ack = Mock(name='event.ack')
+        event.ack = Mock(name="event.ack")
         channel = app.channel()
 
         got_sentinel = asyncio.Event()
@@ -187,7 +186,7 @@ class test_Stream:
         async with agent as _agent:
             s = list(_agent._actors)[0].stream.get_active_stream()
             await s.channel.put(event)
-            await s.channel.put(new_event(app, topic='bar', value=sentinel))
+            await s.channel.put(new_event(app, topic="bar", value=sentinel))
             s._on_message_in = Mock()
             await got_sentinel.wait()
             await asyncio.sleep(0)
@@ -221,7 +220,7 @@ class test_Stream:
 
     @pytest.mark.asyncio
     async def test__format_key__callable_raises(self, *, stream):
-        keyfun = Mock(name='keyfun')
+        keyfun = Mock(name="keyfun")
         keyfun.side_effect = KeyboardInterrupt()
 
         with pytest.raises(Skip):

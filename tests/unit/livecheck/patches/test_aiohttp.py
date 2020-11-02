@@ -1,11 +1,10 @@
 from types import SimpleNamespace
+
 import pytest
 from mode.utils.mocks import Mock
+
 from faust.livecheck.locals import current_test_stack
-from faust.livecheck.patches.aiohttp import (
-    LiveCheckMiddleware,
-    patch_aiohttp_session,
-)
+from faust.livecheck.patches.aiohttp import LiveCheckMiddleware, patch_aiohttp_session
 
 
 @pytest.mark.asyncio
@@ -13,6 +12,7 @@ async def test_patch_aiohttp_session(*, execution):
 
     patch_aiohttp_session()
     from aiohttp.client import ClientSession
+
     trace_configs = []
     async with ClientSession(trace_configs=trace_configs):
         assert trace_configs
@@ -31,7 +31,7 @@ async def test_patch_aiohttp_session(*, execution):
         with current_test_stack.push(execution):
             await on_request_start(session, ctx, params)
             assert params.headers
-            assert 'LiveCheck-Test-Id' in params.headers
+            assert "LiveCheck-Test-Id" in params.headers
 
     async with ClientSession(trace_configs=None):
         pass

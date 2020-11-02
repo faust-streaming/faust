@@ -5,12 +5,12 @@ from .manager import TableManager, TableManagerT
 from .table import Table, TableT
 
 __all__ = [
-    'Collection',
-    'CollectionT',
-    'GlobalTable',
-    'GlobalTableT',
-    'TableManager',
-    'TableManagerT',
-    'Table',
-    'TableT',
+    "Collection",
+    "CollectionT",
+    "GlobalTable",
+    "GlobalTableT",
+    "TableManager",
+    "TableManagerT",
+    "Table",
+    "TableT",
 ]

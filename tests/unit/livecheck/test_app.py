@@ -1,8 +1,10 @@
 import asyncio
 from typing import Union
+
 import pytest
 from mode.utils.compat import want_bytes
 from mode.utils.mocks import AsyncMock, Mock, call
+
 from faust.livecheck import LiveCheck
 from faust.livecheck.app import LiveCheckSensor
 from faust.livecheck.exceptions import TestFailed
@@ -12,7 +14,6 @@ from faust.livecheck.signals import BaseSignal
 
 
 class test_LiveCheckSensor:
-
     @pytest.fixture()
     def sensor(self):
         return LiveCheckSensor()
@@ -22,8 +23,8 @@ class test_LiveCheckSensor:
         stream.current_test = None
         event = Mock()
         event.headers = {}
-        state = sensor.on_stream_event_in(('topic', 'foo'), 3, stream, event)
-        sensor.on_stream_event_out(('topic', 'foo'), 3, stream, event, state)
+        state = sensor.on_stream_event_in(("topic", "foo"), 3, stream, event)
+        sensor.on_stream_event_out(("topic", "foo"), 3, stream, event, state)
 
     def test_on_stream_event(self, *, sensor, execution):
         stream = Mock()
@@ -31,26 +32,28 @@ class test_LiveCheckSensor:
         event = Mock()
         event.headers = execution.as_headers()
         assert current_test_stack.top is None
-        state = sensor.on_stream_event_in(('topic', 'foo'), 3, stream, event)
+        state = sensor.on_stream_event_in(("topic", "foo"), 3, stream, event)
         assert current_test_stack.top.id == execution.id
         assert stream.current_test.id == execution.id
-        sensor.on_stream_event_out(('topic', 'foo'), 3, stream, event, state)
+        sensor.on_stream_event_out(("topic", "foo"), 3, stream, event, state)
         assert current_test_stack.top is None
         assert stream.current_test is None
 
 
 class test_LiveCheck:
-
-    @pytest.mark.parametrize('kwarg,value,expected_value', [
-        ('test_topic_name', 'test-topic', 'test-topic'),
-        ('bus_topic_name', 'bus-topic', 'bus-topic'),
-        ('report_topic_name', 'report-topic', 'report-topic'),
-        ('bus_concurrency', 1000, 1000),
-        ('test_concurrency', 1001, 1001),
-        ('send_reports', False, False),
-    ])
+    @pytest.mark.parametrize(
+        "kwarg,value,expected_value",
+        [
+            ("test_topic_name", "test-topic", "test-topic"),
+            ("bus_topic_name", "bus-topic", "bus-topic"),
+            ("report_topic_name", "report-topic", "report-topic"),
+            ("bus_concurrency", 1000, 1000),
+            ("test_concurrency", 1001, 1001),
+            ("send_reports", False, False),
+        ],
+    )
     def test_constructor(self, kwarg, value, expected_value):
-        app = LiveCheck('foo', **{kwarg: value})
+        app = LiveCheck("foo", **{kwarg: value})
         assert getattr(app, kwarg) == value
 
     def test_current_test(self, *, livecheck):
@@ -63,31 +66,29 @@ class test_LiveCheck:
     def test__can_resolve(self, livecheck):
         assert isinstance(livecheck._can_resolve, asyncio.Event)
 
-    def test_on_produce_attach_test_headers(
-            self, *, livecheck, app, execution):
-        headers = [('Foo-Bar-Baz', b'moo')]
+    def test_on_produce_attach_test_headers(self, *, livecheck, app, execution):
+        headers = [("Foo-Bar-Baz", b"moo")]
         original_headers = list(headers)
         with current_test_stack.push(execution):
             livecheck.on_produce_attach_test_headers(
                 sender=app,
-                key=b'k',
-                value=b'v',
+                key=b"k",
+                value=b"v",
                 partition=3,
                 headers=headers,
             )
             kafka_headers = {
                 k: want_bytes(v) for k, v in execution.as_headers().items()
             }
-            assert headers == (
-                original_headers + list(kafka_headers.items()))
+            assert headers == (original_headers + list(kafka_headers.items()))
 
     def test_on_produce_attach_test_headers__no_test(self, *, livecheck, app):
         assert livecheck.current_test is None
         headers = []
         livecheck.on_produce_attach_test_headers(
             sender=app,
-            key=b'k',
-            value=b'v',
+            key=b"k",
+            value=b"v",
             partition=3,
             headers=headers,
         )
@@ -99,14 +100,13 @@ class test_LiveCheck:
             with pytest.raises(TypeError):
                 livecheck.on_produce_attach_test_headers(
                     sender=app,
-                    key=b'k',
-                    value=b'v',
+                    key=b"k",
+                    value=b"v",
                     partition=3,
                     headers=None,
                 )
 
     def test_case_decorator(self, *, livecheck):
-
         class SignalWithNoneOrigin(livecheck.Signal):
             __origin__ = None
 
@@ -146,10 +146,10 @@ class test_LiveCheck:
     async def test_post_report__with_test(self, *, livecheck):
         report = Mock()
         report.test = Mock()
-        report.test.id = 'id'
+        report.test.id = "id"
         livecheck.reports.send = AsyncMock()
         await livecheck.post_report(report)
-        livecheck.reports.send.assert_called_once_with(key='id', value=report)
+        livecheck.reports.send.assert_called_once_with(key="id", value=report)
 
     @pytest.mark.asyncio
     async def test_on_start(self, *, livecheck):
@@ -163,17 +163,19 @@ class test_LiveCheck:
 
     @pytest.mark.asyncio
     async def test_on_started(self, *, livecheck):
-        case1 = Mock(name='case1')
-        case2 = Mock(name='case2')
-        livecheck.cases = {'a': case1, 'b': case2}
+        case1 = Mock(name="case1")
+        case2 = Mock(name="case2")
+        livecheck.cases = {"a": case1, "b": case2}
         livecheck.add_runtime_dependency = AsyncMock()
 
         await livecheck.on_started()
 
-        livecheck.add_runtime_dependency.assert_has_calls([
-            call.coro(case1),
-            call.coro(case2),
-        ])
+        livecheck.add_runtime_dependency.assert_has_calls(
+            [
+                call.coro(case1),
+                call.coro(case2),
+            ]
+        )
 
     def test__install_bus_agent(self, *, livecheck):
         livecheck.agent = Mock()
@@ -197,21 +199,21 @@ class test_LiveCheck:
     async def test__populate_signals(self, *, livecheck, execution):
         events = Mock()
         signal = SignalEvent(
-            signal_name='foo',
+            signal_name="foo",
             case_name=execution.case_name,
-            key=b'k',
-            value=b'v',
+            key=b"k",
+            value=b"v",
         )
         signal2 = SignalEvent(
-            signal_name='foo',
-            case_name='bar',
-            key=b'k2',
-            value=b'v2',
+            signal_name="foo",
+            case_name="bar",
+            key=b"k2",
+            value=b"v2",
         )
         case = livecheck.cases[execution.case_name] = Mock(
             resolve_signal=AsyncMock(),
         )
-        livecheck.cases.pop('bar', None)  # make sure 'bar' is missing
+        livecheck.cases.pop("bar", None)  # make sure 'bar' is missing
 
         async def iterate_events():
             yield execution.id, signal
@@ -220,14 +222,13 @@ class test_LiveCheck:
         events.items.side_effect = iterate_events
 
         await livecheck._populate_signals(events)
-        case.resolve_signal.assert_called_once_with(
-            execution.id, signal)
+        case.resolve_signal.assert_called_once_with(execution.id, signal)
 
     @pytest.mark.asyncio
     async def test__excecute_tests(self, *, livecheck, execution):
         tests = Mock()
 
-        execution2 = execution.derive(case_name='bar')
+        execution2 = execution.derive(case_name="bar")
 
         async def iterate_tests():
             yield execution.id, execution
@@ -238,7 +239,7 @@ class test_LiveCheck:
         case = livecheck.cases[execution.case_name] = Mock(
             execute=AsyncMock(),
         )
-        livecheck.cases.pop('bar', None)  # ensure 'bar' is missing.
+        livecheck.cases.pop("bar", None)  # ensure 'bar' is missing.
 
         await livecheck._execute_tests(tests)
         case.execute.assert_called_once_with(execution)
@@ -259,10 +260,13 @@ class test_LiveCheck:
         await livecheck._execute_tests(tests)
         case.execute.assert_called_once_with(execution)
 
-    @pytest.mark.parametrize('name,origin,expected', [
-        ('__main__.test_foo', 'examples.f.y', 'examples.f.y.test_foo'),
-        ('examples.test_foo', 'examples.f.y', 'examples.test_foo'),
-    ])
+    @pytest.mark.parametrize(
+        "name,origin,expected",
+        [
+            ("__main__.test_foo", "examples.f.y", "examples.f.y.test_foo"),
+            ("examples.test_foo", "examples.f.y", "examples.test_foo"),
+        ],
+    )
     def test_prepare_case_name(self, name, origin, expected, *, livecheck):
         livecheck.conf.origin = origin
         assert livecheck._prepare_case_name(name) == expected
@@ -270,7 +274,7 @@ class test_LiveCheck:
     def test_prepare_case_name__no_origin(self, *, livecheck):
         livecheck.conf.origin = None
         with pytest.raises(RuntimeError):
-            livecheck._prepare_case_name('__main__.test_foo')
+            livecheck._prepare_case_name("__main__.test_foo")
 
     def test_bus(self, *, livecheck):
         livecheck.topic = Mock()
