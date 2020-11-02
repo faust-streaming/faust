@@ -25,7 +25,6 @@ import aiokafka
 import aiokafka.abc
 import opentracing
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
-from aiokafka.consumer.subscription_state import TopicPartitionState
 from aiokafka.errors import (
     CommitFailedError,
     ConsumerStoppedError,
