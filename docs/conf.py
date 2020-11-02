@@ -53,7 +53,6 @@ globals().update(conf.build_config(
         'faust.cli',
         'faust.models',
         'faust.serializers',
-        'faust.transport.drivers.confluent',
         'faust.types',
         'faust.types._env',
         'faust.utils',
