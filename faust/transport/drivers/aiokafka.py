@@ -34,6 +34,7 @@ from aiokafka.errors import (
 )
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
+from kafka import TopicPartition
 from kafka.errors import (
     NotControllerError,
     TopicAlreadyExistsError as TopicExistsError,
@@ -616,51 +617,37 @@ class AIOKafkaConsumerThread(ConsumerThread):
 
         Returns :const:`True` if any error was logged.
         """
-        # TODO: What is this?
-        # parent = cast(Consumer, self.consumer)
-        # consumer = self._ensure_consumer()
-        # secs_since_started = now - self.time_started
-        # aiotp = parent._new_topicpartition(tp.topic, tp.partition)
+        consumer = self._ensure_consumer()
+        secs_since_started = now - self.time_started
+        aiotp = TopicPartition(tp.topic, tp.partition)
+        assignment = consumer._fetcher._subscriptions.subscription.assignment
+        if not assignment and not assignment.active:
+            self.log.error(f"No active partitions for {tp}")
+            return True
+        poll_at = None
+        aiotp_state = assignment.state_value(aiotp)
+        if aiotp_state:
+            poll_at = aiotp_state.timestamp / 1000
+        if poll_at is None:
+            if secs_since_started >= self.tp_fetch_request_timeout_secs:
+                # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
+                self.log.error(
+                    SLOW_PROCESSING_NO_FETCH_SINCE_START,
+                    tp,
+                    humanize_seconds_ago(secs_since_started),
+                )
+            return True
 
-        # request_at = consumer._fetcher.records_last_request.get(aiotp)
-        # if request_at is None:
-        #     if secs_since_started >= self.tp_fetch_request_timeout_secs:
-        #         # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
-        #         self.log.error(
-        #             SLOW_PROCESSING_NO_FETCH_SINCE_START,
-        #             tp, humanize_seconds_ago(secs_since_started),
-        #         )
-        #     return True
-        #
-        # response_at = consumer.records_last_response.get(aiotp)
-        # if response_at is None:
-        #     if secs_since_started >= self.tp_fetch_response_timeout_secs:
-        #         # NO FETCH RESPONSE RECEIVED AT ALL SINCE WORKER START
-        #         self.log.error(
-        #             SLOW_PROCESSING_NO_RESPONSE_SINCE_START,
-        #             tp, humanize_seconds_ago(secs_since_started),
-        #         )
-        #     return True
-        #
-        # secs_since_request = now - request_at
-        # if secs_since_request >= self.tp_fetch_request_timeout_secs:
-        #     # NO REQUEST SENT BY AIOKAFKA IN THE LAST n SECONDS
-        #     self.log.error(
-        #         SLOW_PROCESSING_NO_RECENT_FETCH,
-        #         tp,
-        #         humanize_seconds_ago(secs_since_request),
-        #     )
-        #     return True
-        #
-        # secs_since_response = now - response_at
-        # if secs_since_response >= self.tp_fetch_response_timeout_secs:
-        #     # NO RESPONSE RECEIVED FROM KAKFA IN THE LAST n SECONDS
-        #     self.log.error(
-        #         SLOW_PROCESSING_NO_RECENT_RESPONSE,
-        #         tp,
-        #         humanize_seconds_ago(secs_since_response),
-        #     )
-        #     return True
+        secs_since_request = now - poll_at
+        if secs_since_request >= self.tp_fetch_request_timeout_secs:
+            # NO REQUEST SENT BY AIOKAFKA IN THE LAST n SECONDS
+            self.log.error(
+                SLOW_PROCESSING_NO_RECENT_FETCH,
+                tp,
+                humanize_seconds_ago(secs_since_request),
+            )
+            return True
+
         return False
 
     def _log_slow_processing_stream(self, msg: str, *args: Any) -> None:
