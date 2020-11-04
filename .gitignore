@@ -49,3 +49,4 @@ faust/transport/_cython/*.c
 
 # coverage
 .coverage
+coverage.xml
