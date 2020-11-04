@@ -175,15 +175,8 @@ def extras_require():
     return {x: extras(x + ".txt") for x in BUNDLES}
 
 
-# -*- Long Description -*-
-
-
-if README.exists():
-    long_description = README.read_text(encoding="utf-8")
-else:
-    long_description = "See http://pypi.org/project/{}".format(NAME)
-
-# -*- %%% -*-
+with open("README.md") as readme_file:
+    long_description = readme_file.read()
 
 
 def do_setup(**kwargs):
