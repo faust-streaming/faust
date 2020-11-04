@@ -10,3 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - First release of faust fork
+- Replaced robinhood-aiokafka with aiokafka
+- Implemented transaction support with aiokafka instead of using the
+  the MultiTXNProducer in the robinhood-aiokafka version. Note that this new transaction
+  implementation will create a producer for each kafka group/partition pair
