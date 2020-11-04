@@ -14,7 +14,7 @@
 
 ## Why the fork
 
-We have decided to fork the original `Faust` project because there is a critical process of releasing new versions which causes incertenty in the community. Everybody is welcome to contribute to this `fork`, and you can be added as a manitainer.
+We have decided to fork the original `Faust` project because there is a critical process of releasing new versions which causes uncertainty in the community. Everybody is welcome to contribute to this `fork`, and you can be added as a manitainer.
 
 We want to:
 
