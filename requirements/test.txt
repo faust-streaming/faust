@@ -17,6 +17,8 @@ python-dateutil>=2.8
 pytz>=2018.7
 codecov
 bandit==1.6.2
+twine
+wheel
 -r requirements.txt
 -r extras/datadog.txt
 -r extras/redis.txt
