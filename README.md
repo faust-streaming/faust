@@ -171,6 +171,14 @@ resource for learning the implementation of `Kafka Streams`.
 - `RocksDB`: http://rocksdb.org
 - `Apache Kafka`: https://kafka.apache.org
 
+## Local development
+
+1. Clone the project
+2. Create a virtualenv: `python3.7 -m venv venv && source venv/bin/activate`
+3. Install the requirements: `./scripts/install`
+4. Run lint: `./scripts/lint`
+5. Run tests: `./scripts/tests`
+
 ## Faust key points
 
 ### Simple
@@ -324,16 +332,15 @@ pip install https://github.com/robinhood/faust/zipball/master#egg=faust
 
 ## FAQ
 
-### Can I use Faust with Django/Flask/etc.?
+### Can I use Faust with Django/Flask/etc
 
 Yes! Use ``eventlet`` as a bridge to integrate with ``asyncio``.
 
-### Using ``eventlet``
+### Using eventlet
 
-This approach works with any blocking Python library that can work with
-``eventlet``.
+This approach works with any blocking Python library that can work with `eventlet`
 
-Using ``eventlet`` requires you to install the ``aioeventlet`` module,
+Using `eventlet` requires you to install the `aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
@@ -363,7 +370,7 @@ Yes! Use the `tornado.platform.asyncio` [bridge](http://www.tornadoweb.org/en/st
 
 ### Can I use Faust with Twisted
 
-Yes! Use the ``asyncio`` reactor implementation: https://twistedmatrix.com/documents/17.1.0/api/twisted.internet.asyncioreactor.html
+Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documents/17.1.0/api/twisted internet.asyncioreactor.html
 
 ### Will you support Python 2.7 or Python 3.5
 
@@ -373,8 +380,7 @@ introduced in Python 3.6 (`async`, `await`, variable type annotations).
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this
 
 You may need to increase the limit for the maximum number of open files. The
-following post explains how to do so on OS X:
-https://blog.dekstroza.io/ulimit-shenanigans-on-osx-el-capitan/
+following post explains how to do so on OS X: https://blog.dekstroza.io/ulimit-shenanigans-on-osx-el-capitan/
 
 ### What kafka versions faust supports
 
@@ -384,8 +390,7 @@ Faust supports kafka with version >= 0.10.
 
 ### Slack
 
-For discussions about the usage, development, and future of Faust,
-please join the `fauststream`_ Slack.
+For discussions about the usage, development, and future of Faust, please join the `fauststream` Slack.
 
 - https://fauststream.slack.com
 - Sign-up: https://join.slack.com/t/fauststream/shared_invite/enQtNDEzMTIyMTUyNzU2LTIyMjNjY2M2YzA2OWFhMDlmMzVkODk3YTBlYThlYmZiNTUwZDJlYWZiZTdkN2Q4ZGU4NWM4YWMyNTM5MGQ5OTg
