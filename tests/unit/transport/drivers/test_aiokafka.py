@@ -918,8 +918,8 @@ class test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     def test_close(self, *, cthread, _consumer):
         cthread._consumer = _consumer
         cthread.close()
-        _consumer.set_close.assert_called_once_with()
-        _consumer._coordinator.set_close.assert_called_once_with()
+        _consumer._closed is True
+        _consumer._coordinator.close.assert_called_once_with()
 
     def test_close__no_consumer(self, *, cthread):
         cthread._consumer = None
