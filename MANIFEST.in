@@ -1,5 +1,5 @@
-include AUTHORS.rst
-include CODE_OF_CONDUCT.rst
+include AUTHORS.md
+include CODE_OF_CONDUCT.md
 include CHANGELOG.md
 include LICENSE
 include README.md

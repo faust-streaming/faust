@@ -206,8 +206,8 @@ def do_setup(**kwargs):
             ],
         },
         project_urls={
-            "Bug Reports": "https://github.com/robinhood/faust/issues",
-            "Source": "https://github.com/robinhood/faust",
+            "Bug Reports": "https://github.com/faust-streaming/faust/issues",
+            "Source": "https://github.com/faust-streaming/faust",
             "Documentation": "https://faust.readthedocs.io/",
         },
         keywords=[

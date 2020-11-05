@@ -25,8 +25,8 @@ from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 __version__ = "0.1.0"
 __author__ = "Robinhood Markets, Inc."
-__contact__ = "contact@fauststream.com"
-__homepage__ = "http://faust.readthedocs.io/"
+__contact__ = "schrohm@gmail.com, vpatki@wayfair.com"
+__homepage__ = "https://github.com/faust-streaming/faust"
 __docformat__ = "markdown"
 
 # -eof meta-
