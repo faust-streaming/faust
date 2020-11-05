@@ -488,8 +488,12 @@ class AIOKafkaConsumerThread(ConsumerThread):
         """Close consumer for graceful shutdown."""
         if self._consumer is not None:
             self._consumer._closed = True
-            await self._consumer._client.close()
-            await self._consumer._coordinator.close()
+            asyncio.run_coroutine_threadsafe(
+                self._consumer._client.close(), self.app.loop
+            )
+            asyncio.run_coroutine_threadsafe(
+                self._consumer._coordinator.close(), self.app.loop
+            )
 
     async def subscribe(self, topics: Iterable[str]) -> None:
         """Reset subscription (requires rebalance)."""
