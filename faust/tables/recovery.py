@@ -17,7 +17,7 @@ from typing import (
 )
 
 import opentracing
-from mode import Service
+from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.locks import Event
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
@@ -51,6 +51,7 @@ than the last offset in that topic (highwater) ({1} > {2}).
 Most likely you have removed data from the topics without
 removing the RocksDB database file for this partition.
 """
+logger = get_logger(__name__)
 
 
 class RecoveryStats(NamedTuple):
@@ -716,17 +717,26 @@ class Recovery(Service):
                     self._actives_span.set_tag("Actives-Ready", True)
                 self.signal_recovery_end.set()
 
+        timeout_counter: int = 0
         while not self.should_stop:
             try:
                 event: EventT = await asyncio.wait_for(
                     changelog_queue.get(), timeout=5.0
                 )
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError as ex:
                 if self.should_stop:
                     return
                 _maybe_signal_recovery_end()
-                continue
-
+                if self.in_recovery and self.active_remaining_total():
+                    timeout_counter += 1
+                    if timeout_counter == 24:
+                        logger.warning(
+                            f"Recovery timed out waiting for changelog streams"
+                        )
+                        await self.app.crash(ex)
+                else:
+                    continue
+            timeout_counter = 0
             now = monotonic()
             message = event.message
             tp = message.tp
