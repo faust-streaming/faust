@@ -731,7 +731,7 @@ class Recovery(Service):
                     timeout_counter += 1
                     if timeout_counter == 24:
                         logger.warning(
-                            f"Recovery timed out waiting for changelog streams"
+                            "Recovery timed out waiting for changelog streams"
                         )
                         await self.app.crash(ex)
                 else:
