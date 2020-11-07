@@ -246,6 +246,7 @@ class Recovery(Service):
         T = traced_from_parent_span()
         T(self.flush_buffers)()
         self.signal_recovery_reset.set()
+        self.signal_recovery_start.set()
 
     async def on_rebalance(
         self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
@@ -294,7 +295,7 @@ class Recovery(Service):
                 child_of=rebalancing_span,
             )
             app._span_add_default_tags(self._recovery_span)
-        self.signal_recovery_reset.clear()
+        self.signal_recovery_reset.set()
         self.signal_recovery_start.set()
 
     async def _resume_streams(self) -> None:
