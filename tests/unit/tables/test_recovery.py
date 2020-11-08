@@ -31,7 +31,6 @@ class test_Recovery:
         assert recovery.tables is tables
         assert recovery.signal_recovery_start
         assert recovery.signal_recovery_end
-        assert recovery.signal_recovery_reset
 
     @pytest.mark.asyncio
     async def test_on_stop(self, *, recovery):
@@ -58,17 +57,14 @@ class test_Recovery:
         assert TP1 not in recovery.standby_offsets
 
     def test_on_partitions_revoked(self, *, recovery):
-        recovery.signal_recovery_reset.clear()
         recovery.flush_buffers = Mock()
 
         recovery.on_partitions_revoked({TP1})
 
         recovery.flush_buffers.assert_called_once_with()
-        assert recovery.signal_recovery_reset.is_set()
 
     @pytest.mark.asyncio
     async def test_on_rebalance(self, *, recovery, app, tables):
-        recovery.signal_recovery_reset.set()
         app.assignor = Mock()
         app.assignor.assigned_standbys.return_value = {TP1}
         app.assignor.assigned_actives.return_value = {TP2}
@@ -78,7 +74,6 @@ class test_Recovery:
         }
         await recovery.on_rebalance({TP1, TP2, TP3}, {TP4}, {TP3})
         assert recovery.signal_recovery_start.is_set()
-        assert not recovery.signal_recovery_reset.is_set()
 
         assert TP1 in recovery.standby_tps
         assert TP2 in recovery.active_tps
@@ -133,13 +128,6 @@ class test_Recovery:
                 recovery, stopped=False, done=recovery.signal_recovery_start
             )
 
-    @pytest.mark.asyncio
-    async def test__wait__recovery_reset(self, *, recovery):
-        with pytest.raises(RebalanceAgain):
-            await self.assert_wait(
-                recovery, stopped=False, done=recovery.signal_recovery_reset
-            )
-
     async def assert_wait(self, recovery, stopped=False, done=None):
         coro = Mock()
         recovery.wait_first = AsyncMock()
@@ -149,7 +137,6 @@ class test_Recovery:
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(
             coro,
-            recovery.signal_recovery_reset,
             recovery.signal_recovery_start,
         )
         return ret

@@ -245,8 +245,8 @@ class Recovery(Service):
         """Call when rebalancing and partitions are revoked."""
         T = traced_from_parent_span()
         T(self.flush_buffers)()
-        self.signal_recovery_reset.set()
-        self.signal_recovery_start.set()
+        # self.signal_recovery_reset.set()
+        # self.signal_recovery_start.set()
 
     async def on_rebalance(
         self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
@@ -295,8 +295,8 @@ class Recovery(Service):
                 child_of=rebalancing_span,
             )
             app._span_add_default_tags(self._recovery_span)
-        self.signal_recovery_reset.set()
         self.signal_recovery_start.set()
+        # self.signal_recovery_reset.set()
 
     async def _resume_streams(self) -> None:
         app = self.app
@@ -337,7 +337,6 @@ class Recovery(Service):
 
         while not self.should_stop:
             self.log.dev("WAITING FOR NEXT RECOVERY TO START")
-            self.signal_recovery_reset.clear()
             self._set_recovery_ended()
             if await self.wait_for_stopped(self.signal_recovery_start):
                 self.signal_recovery_start.clear()
@@ -550,7 +549,6 @@ class Recovery(Service):
     async def _wait(self, coro: WaitArgT) -> None:
         wait_result = await self.wait_first(
             coro,
-            self.signal_recovery_reset,
             self.signal_recovery_start,
         )
         if wait_result.stopped:
@@ -558,8 +556,6 @@ class Recovery(Service):
             raise ServiceStopped()
         elif self.signal_recovery_start in wait_result.done:
             # another rebalance started
-            raise RebalanceAgain()
-        elif self.signal_recovery_reset in wait_result.done:
             raise RebalanceAgain()
         else:
             return None
