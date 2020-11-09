@@ -714,12 +714,11 @@ class Recovery(Service):
                 event: EventT = await asyncio.wait_for(
                     changelog_queue.get(), timeout=5.0
                 )
-            except asyncio.TimeoutError as ex:
+            except asyncio.TimeoutError:
                 if self.should_stop:
                     return
                 _maybe_signal_recovery_end()
                 continue
-            timeout_counter = 0
             now = monotonic()
             message = event.message
             tp = message.tp
