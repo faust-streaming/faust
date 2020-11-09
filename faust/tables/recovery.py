@@ -2,6 +2,7 @@
 import asyncio
 import statistics
 import typing
+from asyncio import Event
 from collections import defaultdict, deque
 from time import monotonic
 from typing import (
@@ -19,7 +20,6 @@ from typing import (
 import opentracing
 from mode import Service, get_logger
 from mode.services import WaitArgT
-from mode.utils.locks import Event
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
 from mode.utils.typing import Counter, Deque
 
@@ -245,8 +245,7 @@ class Recovery(Service):
         """Call when rebalancing and partitions are revoked."""
         T = traced_from_parent_span()
         T(self.flush_buffers)()
-        # self.signal_recovery_reset.set()
-        # self.signal_recovery_start.set()
+        self.signal_recovery_start.set()
 
     async def on_rebalance(
         self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
@@ -296,7 +295,6 @@ class Recovery(Service):
             )
             app._span_add_default_tags(self._recovery_span)
         self.signal_recovery_start.set()
-        # self.signal_recovery_reset.set()
 
     async def _resume_streams(self) -> None:
         app = self.app
@@ -549,7 +547,7 @@ class Recovery(Service):
     async def _wait(self, coro: WaitArgT) -> None:
         wait_result = await self.wait_first(
             coro,
-            self.signal_recovery_start,
+            self.signal_recovery_start
         )
         if wait_result.stopped:
             # service was stopped.
@@ -557,8 +555,8 @@ class Recovery(Service):
         elif self.signal_recovery_start in wait_result.done:
             # another rebalance started
             raise RebalanceAgain()
-        else:
-            return None
+
+        return None
 
     async def on_recovery_completed(self) -> None:
         """Call when active table recovery is completed."""
@@ -714,7 +712,6 @@ class Recovery(Service):
                     self._actives_span.set_tag("Actives-Ready", True)
                 self.signal_recovery_end.set()
 
-        timeout_counter: int = 0
         while not self.should_stop:
             try:
                 event: EventT = await asyncio.wait_for(
@@ -724,15 +721,7 @@ class Recovery(Service):
                 if self.should_stop:
                     return
                 _maybe_signal_recovery_end()
-                if self.in_recovery and self.active_remaining_total():
-                    timeout_counter += 1
-                    if timeout_counter == 24:
-                        logger.warning(
-                            "Recovery timed out waiting for changelog streams"
-                        )
-                        await self.app.crash(ex)
-                else:
-                    continue
+                continue
             timeout_counter = 0
             now = monotonic()
             message = event.message

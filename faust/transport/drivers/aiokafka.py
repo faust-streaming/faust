@@ -631,7 +631,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             return True
         poll_at = None
         aiotp_state = assignment.state_value(aiotp)
-        if aiotp_state:
+        if aiotp_state and aiotp_state.timestamp:
             poll_at = aiotp_state.timestamp / 1000
         if poll_at is None:
             if secs_since_started >= self.tp_fetch_request_timeout_secs:
