@@ -823,6 +823,7 @@ class Recovery(Service):
         """Return number of changes remaining for actives to be up-to-date."""
         var = sum(self.active_remaining().values())
         logger.info(f"Recovery still need {var} offsets")
+        return var
 
     def standby_remaining_total(self) -> int:
         """Return number of changes remaining for standbys to be up-to-date."""
