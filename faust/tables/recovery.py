@@ -329,7 +329,6 @@ class Recovery(Service):
 
         while not self.should_stop:
             self.log.dev("WAITING FOR NEXT RECOVERY TO START")
-            self._set_recovery_ended()
             if await self.wait_for_stopped(self.signal_recovery_start):
                 self.signal_recovery_start.clear()
                 break  # service was stopped
@@ -386,14 +385,15 @@ class Recovery(Service):
                 )
 
                 for tp in assigned_active_tps:
-                    if active_offsets[tp] > active_highwaters[tp]:
-                        raise ConsistencyError(
-                            E_PERSISTED_OFFSET.format(
-                                tp,
-                                active_offsets[tp],
-                                active_highwaters[tp],
-                            ),
-                        )
+                    if active_offsets[tp] and active_highwaters[tp]:
+                        if active_offsets[tp] > active_highwaters[tp]:
+                            raise ConsistencyError(
+                                E_PERSISTED_OFFSET.format(
+                                    tp,
+                                    active_offsets[tp],
+                                    active_highwaters[tp],
+                                ),
+                            )
 
                 self.log.dev("Build offsets for standby partitions")
                 await self._wait(
@@ -415,6 +415,7 @@ class Recovery(Service):
                     continue
 
                 if self.need_recovery():
+                    self._set_recovery_started()
                     self.log.info("Restoring state from changelog topics...")
                     T(consumer.resume_partitions)(active_tps)
                     # Resume partitions and start fetching.
@@ -452,7 +453,6 @@ class Recovery(Service):
                 self.log.info("Recovery complete")
                 if span:
                     span.set_tag("Recovery-Completed", True)
-                self._set_recovery_ended()
 
                 if standby_tps:
                     self.log.info("Starting standby partitions...")
@@ -515,7 +515,6 @@ class Recovery(Service):
                 for _span in spans:
                     finish_span(_span)
             # restart - wait for next rebalance.
-        self._set_recovery_ended()
 
     def _set_recovery_started(self) -> None:
         self.in_recovery = True
@@ -704,7 +703,7 @@ class Recovery(Service):
         processing_times = self._processing_times
 
         def _maybe_signal_recovery_end() -> None:
-            if self.active_remaining_total():
+            if self.in_recovery and not self.active_remaining_total():
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()
