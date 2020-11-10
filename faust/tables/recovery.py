@@ -548,7 +548,7 @@ class Recovery(Service):
 
     async def _wait(self, coro: WaitArgT, timeout=None) -> None:
         wait_result = await self.wait_first(
-            coro, self.signal_recovery_start, timeout=timeout
+            coro, self.signal_recovery_start.wait, timeout=timeout
         )
         if wait_result.stopped:
             # service was stopped.
@@ -705,7 +705,9 @@ class Recovery(Service):
         processing_times = self._processing_times
 
         def _maybe_signal_recovery_end() -> None:
-            if self.in_recovery and not self.active_remaining_total():
+            if self.signal_recovery_start.is_set() or (
+                self.in_recovery and not self.active_remaining_total()
+            ):
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()
@@ -822,7 +824,8 @@ class Recovery(Service):
 
     def active_remaining_total(self) -> int:
         """Return number of changes remaining for actives to be up-to-date."""
-        return sum(self.active_remaining().values())
+        var = sum(self.active_remaining().values())
+        logger.info(f"Recovery still need {var} offsets")
 
     def standby_remaining_total(self) -> int:
         """Return number of changes remaining for standbys to be up-to-date."""
