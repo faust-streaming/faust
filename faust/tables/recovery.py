@@ -728,13 +728,16 @@ class Recovery(Service):
             now = monotonic()
             message = event.message
             tp = message.tp
-            logger.info(f"Processing changelog event on {tp}")
             offset = message.offset
+            logger.info(f"Processing changelog event on {tp} offset {offset}")
 
             offsets: Counter[TP]
             bufsize = buffer_sizes.get(tp)
             is_active = False
             if tp in active_tps:
+                logger.info(
+                    f"Processing changelog active event on {tp} offset {offset}"
+                )
                 is_active = True
                 table = tp_to_table[tp]
                 offsets = active_offsets
@@ -742,6 +745,9 @@ class Recovery(Service):
                     bufsize = buffer_sizes[tp] = table.recovery_buffer_size
                 active_events_received_at[tp] = now
             elif tp in standby_tps:
+                logger.info(
+                    f"Processing changelog standby event on {tp} offset {offset}"
+                )
                 table = tp_to_table[tp]
                 offsets = standby_offsets
                 if bufsize is None:
