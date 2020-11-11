@@ -416,6 +416,7 @@ class Recovery(Service):
 
                 if self.need_recovery():
                     self._set_recovery_started()
+                    self.standbys_pending = True
                     self.log.info("Restoring state from changelog topics...")
                     T(consumer.resume_partitions)(active_tps)
                     # Resume partitions and start fetching.
@@ -461,7 +462,8 @@ class Recovery(Service):
                     await self._wait(
                         T(self._seek_offsets)(
                             consumer, standby_tps, standby_offsets, "standby"
-                        )
+                        ),
+                        timeout=self.app.conf.broker_request_timeout,
                     )
 
                     self.log.dev("Build standby highwaters")
@@ -472,17 +474,19 @@ class Recovery(Service):
                             standby_highwaters,
                             "standby",
                         ),
+                        timeout=self.app.conf.broker_request_timeout,
                     )
 
                     for tp in standby_tps:
-                        if standby_offsets[tp] > standby_highwaters[tp]:
-                            raise ConsistencyError(
-                                E_PERSISTED_OFFSET.format(
-                                    tp,
-                                    standby_offsets[tp],
-                                    standby_highwaters[tp],
-                                ),
-                            )
+                        if standby_offsets[tp] and standby_highwaters[tp]:
+                            if standby_offsets[tp] > standby_highwaters[tp]:
+                                raise ConsistencyError(
+                                    E_PERSISTED_OFFSET.format(
+                                        tp,
+                                        standby_offsets[tp],
+                                        standby_highwaters[tp],
+                                    ),
+                                )
 
                     if tracer is not None and span:
                         self._standbys_span = tracer.start_span(
@@ -777,7 +781,8 @@ class Recovery(Service):
 
             _maybe_signal_recovery_end()
 
-            if self.standbys_pending and not self.standby_remaining_total():
+            if not self.standby_remaining_total():
+                logger.info('Completed standby partition fetch')
                 if self._standbys_span:
                     finish_span(self._standbys_span)
                     self._standbys_span = None
@@ -821,12 +826,14 @@ class Recovery(Service):
     def active_remaining_total(self) -> int:
         """Return number of changes remaining for actives to be up-to-date."""
         var = sum(self.active_remaining().values())
-        logger.info(f"Recovery still need {var} offsets")
+        logger.debug(f"Recovery still need {var} active offsets")
         return var
 
     def standby_remaining_total(self) -> int:
         """Return number of changes remaining for standbys to be up-to-date."""
-        return sum(self.standby_remaining().values())
+        var = sum(self.standby_remaining().values())
+        logger.debug(f"Recovery still need {var} standby offsets")
+        return var
 
     def active_stats(self) -> RecoveryStatsMapping:
         """Return current active recovery statistics."""
