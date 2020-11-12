@@ -384,7 +384,7 @@ class Recovery(Service):
                         and active_highwaters[tp]
                         and active_offsets[tp] > active_highwaters[tp]
                     ):
-                        raise ConsistencyError(
+                        raise RebalanceAgain(
                             E_PERSISTED_OFFSET.format(
                                 tp,
                                 active_offsets[tp],
@@ -480,7 +480,7 @@ class Recovery(Service):
                             and standby_highwaters[tp]
                             and standby_offsets[tp] > standby_highwaters[tp]
                         ):
-                            raise ConsistencyError(
+                            raise RebalanceAgain(
                                 E_PERSISTED_OFFSET.format(
                                     tp,
                                     standby_offsets[tp],
