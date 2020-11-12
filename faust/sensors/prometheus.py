@@ -119,17 +119,17 @@ class PrometheusMonitor(Monitor):
         )
         self.assign_latency = Histogram("assign_latency", "Assignment latency in ms")
 
-        # Revalances
+        # Rebalances
         self.total_rebalances = Gauge("total_rebalances", "Total rebalances")
         self.total_rebalances_recovering = Gauge(
             "total_rebalances_recovering", "Total rebalances recovering"
         )
-        self.revalance_done_consumer_latency = Histogram(
-            "revalance_done_consumer_latency",
+        self.rebalance_done_consumer_latency = Histogram(
+            "rebalance_done_consumer_latency",
             "Consumer replying that rebalance is done to broker in ms",
         )
-        self.revalance_done_latency = Histogram(
-            "revalance_done_latency", "Revalance finished latency in ms"
+        self.rebalance_done_latency = Histogram(
+            "rebalance_done_latency", "Rebalance finished latency in ms"
         )
 
         # Count Metrics by name
@@ -296,7 +296,7 @@ class PrometheusMonitor(Monitor):
         super().on_rebalance_return(app, state)
         self.total_rebalances.dec()
         self.total_rebalances_recovering.inc()
-        self.revalance_done_consumer_latency.observe(
+        self.rebalance_done_consumer_latency.observe(
             self.ms_since(state["time_return"])
         )
 
@@ -304,7 +304,7 @@ class PrometheusMonitor(Monitor):
         """Cluster rebalance fully completed (including recovery)."""
         super().on_rebalance_end(app, state)
         self.total_rebalances_recovering.dec()
-        self.revalance_done_latency.observe(self.ms_since(state["time_end"]))
+        self.rebalance_done_latency.observe(self.ms_since(state["time_end"]))
 
     def count(self, metric_name: str, count: int = 1) -> None:
         """Count metric by name."""
