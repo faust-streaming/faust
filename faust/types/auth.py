@@ -23,6 +23,8 @@ class AuthProtocol(Enum):
 class SASLMechanism(Enum):
     PLAIN = "PLAIN"
     GSSAPI = "GSSAPI"
+    SCRAM_SHA_256 = "SCRAM-SHA-256"
+    SCRAM_SHA_512 = "SCRAM-SHA-512"
 
 
 AUTH_PROTOCOLS_SSL = {AuthProtocol.SSL, AuthProtocol.SASL_SSL}

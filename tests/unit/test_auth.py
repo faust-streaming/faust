@@ -45,6 +45,15 @@ class test_SASLCredentials:
                     "protocol": AuthProtocol.SASL_SSL,
                 },
             ),
+            pytest.param(
+                "SCRAM-SHA-512 supported",
+                SASLCredentials(
+                    username="george",
+                    password="pw1",
+                    mechanism=SASLMechanism.SCRAM_SHA_512,
+                ),
+                {"mechanism": SASLMechanism.SCRAM_SHA_512},
+            ),
         ],
     )
     def test_constructor(self, credentials, expected_fields, reason):
