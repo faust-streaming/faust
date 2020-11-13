@@ -200,13 +200,13 @@ class test_PrometheusMonitor:
         client.on_rebalance_return(app, state)
         client.total_rebalances.dec.assert_called_once()
         client.total_rebalances_recovering.inc.assert_called()
-        client.revalance_done_consumer_latency.observe.assert_called_once_with(
+        client.rebalance_done_consumer_latency.observe.assert_called_once_with(
             client.ms_since(state["time_return"])
         )
 
         client.on_rebalance_end(app, state)
         client.total_rebalances_recovering.dec.assert_called()
-        client.revalance_done_latency.observe(client.ms_since(state["time_end"]))
+        client.rebalance_done_latency.observe(client.ms_since(state["time_end"]))
 
     def test_on_web_request(self, request, response, view):
         response.status = 404
