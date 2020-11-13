@@ -2,8 +2,8 @@
 
 # Python Stream Processing Fork
 
-![python versions](https://img.shields.io/badge/python-37%2037%2038-blue)
-![version](https://img.shields.io/badge/version-0.1.0-green)
+![python versions](https://img.shields.io/badge/python-3.6%203.7%203.8-blue)
+![version](https://img.shields.io/badge/version-0.2.1-green)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
 
 ## Installation
