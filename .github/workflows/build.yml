@@ -2,7 +2,7 @@ name: Build
 
 on: [push, pull_request]
 env:
-  CIBW_BEFORE_BUILD: bash scripts/install
+  CIBW_BEFORE_BUILD: pip install cython
   CIBW_SKIP: cp27-* cp35-* cp36-*
   CIBW_BUILD: cp3?-*
 jobs:
