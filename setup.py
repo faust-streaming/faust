@@ -19,6 +19,7 @@ else:
 if os.environ.get("NO_CYTHON"):
     USE_CYTHON = False
 
+USE_CYTHON = True
 
 NAME = "faust"
 BUNDLES = {
