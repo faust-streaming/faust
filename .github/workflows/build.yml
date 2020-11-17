@@ -29,6 +29,9 @@ jobs:
           choco install vcpython27 -f -y
 
       - name: Build wheels
+        env:
+ 	  CIBW_BEFORE_BUILD: pip install -r requirements/test.txt
+  	  CIBW_BUILD: cp38-*
         run: |
           python -m cibuildwheel --output-dir wheelhouse
 
