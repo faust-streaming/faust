@@ -2,9 +2,9 @@ name: Build
 
 on: [push, pull_request]
 env:
-  CIBW_BEFORE_BUILD: pip install cython
-  CIBW_SKIP: cp27-* cp35-* cp36-*
-  CIBW_BUILD: cp3?-*
+  CIBW_BUILD_VERBOSITY=1
+  CIBW_BEFORE_BUILD: bash scripts/install 
+  CIBW_BUILD: cp38-*
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
