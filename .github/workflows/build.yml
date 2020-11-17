@@ -1,9 +1,6 @@
 name: Build
 
 on: [push, pull_request]
-env:
-  CIBW_BEFORE_BUILD: bash scripts/install 
-  CIBW_BUILD: cp38-*
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
