@@ -30,7 +30,7 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BEFORE_BUILD: python -m pip install -r requirements/test.txt
-          CIBW_BEFORE_BUILD: yum install libz-dev
+                             yum install libz-dev
           CIBW_BUILD_VERBOSITY: 1
         run: |
           python -m pip install cython
