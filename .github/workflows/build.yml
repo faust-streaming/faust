@@ -1,5 +1,6 @@
 name: Build
-
+env:
+  CIBW_BUILD: cp38-*
 on: [push, pull_request]
 jobs:
   build_wheels:
@@ -27,9 +28,8 @@ jobs:
 
       - name: Build wheels
         env:
- 	  CIBW_BEFORE_BUILD: pip install cython
-  	  CIBW_BUILD: cp38-*
         run: |
+          python -m pip install cython
           python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v2
