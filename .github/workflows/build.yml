@@ -29,10 +29,9 @@ jobs:
       - name: Build wheels
         env:
           CIBW_BEFORE_BUILD: python -m pip install -r requirements/test.txt
-          CIBW_BEFORE_ALL: yum install zlib-devel
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_BUILD_VERBOSITY: 1
         run: |
-          python -m pip install cython
           python -m cibuildwheel --output-dir wheelhouse
 
       - uses: actions/upload-artifact@v2
