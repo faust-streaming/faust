@@ -173,8 +173,11 @@ class Fetcher(Service):
         try:
             consumer = cast(Consumer, self.app.consumer)
             await consumer._drain_messages(self)
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            if self.app.rebalancing:
+                self.log.info("Restarting on rebalance")
+                await self.crash(exc)
+                self.supervisor.wakeup()
         finally:
             self.set_shutdown()
 
