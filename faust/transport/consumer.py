@@ -1028,7 +1028,7 @@ class Consumer(Service, ConsumerT):
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
             # remove them from the list to clean up.
-            acked[: len(batch) - 1] = []
+            acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
             return batch[-1] + 1
