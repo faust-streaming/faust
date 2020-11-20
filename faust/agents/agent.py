@@ -669,9 +669,14 @@ class Agent(AgentT, Service):
         _current_agent.set(self)
         try:
             await coro
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as exc:
             if self.should_stop:
                 raise
+            else:
+                self.log.info("Restarting on rebalance")
+                await aref.crash(exc)
+                self.supervisor.wakeup()
+
         except Exception as exc:
             if self._on_error is not None:
                 await self._on_error(self, exc)

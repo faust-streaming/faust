@@ -173,8 +173,11 @@ class Fetcher(Service):
         try:
             consumer = cast(Consumer, self.app.consumer)
             await consumer._drain_messages(self)
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            if self.app.rebalancing:
+                self.log.info("Restarting on rebalance")
+                await self.crash(exc)
+                self.supervisor.wakeup()
         finally:
             self.set_shutdown()
 
@@ -1025,7 +1028,7 @@ class Consumer(Service, ConsumerT):
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
             # remove them from the list to clean up.
-            acked[: len(batch) - 1] = []
+            acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
             return batch[-1] + 1
