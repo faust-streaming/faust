@@ -820,7 +820,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
                     max_records=max_records,
                 )
             finally:
-                fetcher._fetch_waiters.clear()
+                pass
 
     async def create_topic(
         self,

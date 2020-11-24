@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.2.2
 ### Fixed
 - Consumer offsets not progressing for certain partitions
-- Agent dies silenty when mode cancels pending tasks
+- Agent dies silenty when mode cancels pending tasks [678](https://github.com/robinhood/faust/issues/678)
 
 ## 0.2.1
 

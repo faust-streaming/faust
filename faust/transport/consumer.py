@@ -1031,7 +1031,7 @@ class Consumer(Service, ConsumerT):
             acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
-            return batch[-1] + 1
+            return batch[-1]
         return None
 
     async def on_task_error(self, exc: BaseException) -> None:
