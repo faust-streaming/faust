@@ -273,6 +273,8 @@ class AIOKafkaConsumerThreadFixtures:
             commit=AsyncMock(),
             position=AsyncMock(),
             end_offsets=AsyncMock(),
+            _client=Mock(name="Client", close=AsyncMock()),
+            _coordinator=Mock(name="Coordinator", close=AsyncMock()),
         )
 
     @pytest.fixture()
@@ -743,7 +745,7 @@ class test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
                 api_version=app.conf.consumer_api_version,
                 client_id=conf.broker_client_id,
                 group_id=conf.id,
-                group_instance_id=conf.consumer_group_instance_id,
+                # group_instance_id=conf.consumer_group_instance_id,
                 bootstrap_servers=server_list(transport.url, transport.default_port),
                 partition_assignment_strategy=[cthread._assignor],
                 enable_auto_commit=False,
@@ -758,11 +760,11 @@ class test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
                 session_timeout_ms=int(conf.broker_session_timeout * 1000.0),
                 heartbeat_interval_ms=int(conf.broker_heartbeat_interval * 1000.0),
                 isolation_level=isolation_level,
-                traced_from_parent_span=cthread.traced_from_parent_span,
-                start_rebalancing_span=cthread.start_rebalancing_span,
-                start_coordinator_span=cthread.start_coordinator_span,
-                on_generation_id_known=cthread.on_generation_id_known,
-                flush_spans=cthread.flush_spans,
+                # traced_from_parent_span=cthread.traced_from_parent_span,
+                # start_rebalancing_span=cthread.start_rebalancing_span,
+                # start_coordinator_span=cthread.start_coordinator_span,
+                # on_generation_id_known=cthread.on_generation_id_known,
+                # flush_spans=cthread.flush_spans,
                 **auth_settings,
             )
 
@@ -968,8 +970,10 @@ class test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread._consumer = _consumer
         exc = _consumer.commit.side_effect = CommitFailedError("xx")
         cthread.crash = AsyncMock()
+        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
+        cthread.supervisor.wakeup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test__commit__IllegalStateError(self, *, cthread, _consumer):
@@ -977,8 +981,10 @@ class test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread.assignment = Mock()
         exc = _consumer.commit.side_effect = IllegalStateError("xx")
         cthread.crash = AsyncMock()
+        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
+        cthread.supervisor.wakeup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_position(self, *, cthread, _consumer):
@@ -1306,7 +1312,7 @@ class test_Producer:
 
     def test__settings_extra(self, *, producer, app):
         app.in_transaction = True
-        assert producer._settings_extra() == {"acks": "all"}
+        assert producer._settings_extra() == {"acks": "all", "enable_idempotence": True}
         app.in_transaction = False
         assert producer._settings_extra() == {}
 
@@ -1397,7 +1403,8 @@ class test_Producer:
                 security_protocol=security_protocol,
                 loop=producer.loop,
                 partitioner=producer.partitioner,
-                on_irrecoverable_error=producer._on_irrecoverable_error,
+                transactional_id=None,
+                # on_irrecoverable_error=producer._on_irrecoverable_error,
                 **kwargs,
             )
 
