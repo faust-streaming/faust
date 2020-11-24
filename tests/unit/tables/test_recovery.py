@@ -100,7 +100,9 @@ class test_Recovery:
         app.on_rebalance_complete.send.assert_called_once_with()
         consumer.resume_flow.assert_called_once_with()
         app.flow_control.resume.assert_called_once_with()
-        recovery._wait.assert_called_once_with(consumer.perform_seek())
+        recovery._wait.assert_called_once_with(
+            consumer.perform_seek(), timeout=app.conf.broker_request_timeout
+        )
         consumer.resume_partitions.assert_called_once_with(consumer.assignment())
 
         assert recovery.completed.is_set()
@@ -136,8 +138,7 @@ class test_Recovery:
 
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(
-            coro,
-            recovery.signal_recovery_start,
+            coro, recovery.signal_recovery_start, timeout=None
         )
         return ret
 
