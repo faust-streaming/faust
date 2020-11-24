@@ -36,7 +36,7 @@ CONFIG_DICT = {
     "broker": "kafka://foo",
     "stream_buffer_maxsize": 1,
 }
-CONFIG_PATH = "t.unit.app.test_base.ConfigClass"
+CONFIG_PATH = "tests.unit.app.test_base.ConfigClass"
 
 TP1 = TP("foo", 0)
 TP2 = TP("bar", 1)
