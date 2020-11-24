@@ -552,7 +552,7 @@ class Recovery(Service):
             return None
 
     async def _wait(self, coro: WaitArgT, timeout: int = None) -> None:
-        signal = self.signal_recovery_start.wait()
+        signal = self.signal_recovery_start
         wait_result = await self.wait_first(coro, signal, timeout=timeout)
         if wait_result.stopped:
             # service was stopped.
@@ -737,7 +737,7 @@ class Recovery(Service):
             message = event.message
             tp = message.tp
             offset = message.offset
-
+            logger.debug(f"Recovery message topic {tp} offset {offset}")
             offsets: Counter[TP]
             bufsize = buffer_sizes.get(tp)
             is_active = False
@@ -755,9 +755,12 @@ class Recovery(Service):
                     bufsize = buffer_sizes[tp] = table.standby_buffer_size
                     standby_events_received_at[tp] = now
             else:
-                continue
+                logger.warning(f"recovery unknown topic {tp} offset {offset}")
 
             seen_offset = offsets.get(tp, None)
+            logger.debug(
+                f"seen offset for {tp} is {seen_offset} message offset {offset}"
+            )
             if seen_offset is None or offset > seen_offset:
                 offsets[tp] = offset
                 buf = buffers[table]
