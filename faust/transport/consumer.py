@@ -71,6 +71,7 @@ from typing import (
 )
 from weakref import WeakSet
 
+from aiokafka.errors import ProducerFenced
 from mode import Service, ServiceT, flight_recorder, get_logger
 from mode.threads import MethodQueue, QueueServiceThread
 from mode.utils.futures import notify
@@ -334,11 +335,15 @@ class TransactionManager(Service, TransactionManagerT):
             by_transactional_id[transactional_id][tp] = offset
 
         if by_transactional_id:
-            await producer.commit_transactions(
-                by_transactional_id,
-                group_id,
-                start_new_transaction=start_new_transaction,
-            )
+            try:
+                await producer.commit_transactions(
+                    by_transactional_id,
+                    group_id,
+                    start_new_transaction=start_new_transaction,
+                )
+            except ProducerFenced as pf:
+                logger.warning(f"ProducerFenced {pf}")
+                await self.app.crash(pf)
         return True
 
     def key_partition(self, topic: str, key: bytes) -> TP:
@@ -1031,7 +1036,7 @@ class Consumer(Service, ConsumerT):
             acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
-            return batch[-1]
+            return batch[-1] + 1
         return None
 
     async def on_task_error(self, exc: BaseException) -> None:
