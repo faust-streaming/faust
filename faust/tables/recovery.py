@@ -713,8 +713,9 @@ class Recovery(Service):
         processing_times = self._processing_times
 
         async def _maybe_signal_recovery_end(timeout=False, timeout_count=0) -> None:
-            # lets wait at least 2 consecutive cycles for the queue to be empty to avoid race conditions
-            # between the aiokafka consumer position and draining of the queue
+            # lets wait at least 2 consecutive cycles for the queue to be
+            # empty to avoid race conditions between
+            # the aiokafka consumer position and draining of the queue
             if timeout and self.app.in_transaction and timeout_count > 1:
                 await detect_aborted_tx()
             if not self.active_remaining_total():
