@@ -552,7 +552,7 @@ class Recovery(Service):
             return None
 
     async def _wait(self, coro: WaitArgT, timeout: int = None) -> None:
-        signal = self.signal_recovery_start.wait()
+        signal = self.signal_recovery_start
         wait_result = await self.wait_first(coro, signal, timeout=timeout)
         if wait_result.stopped:
             # service was stopped.
@@ -712,7 +712,12 @@ class Recovery(Service):
         buffer_sizes = self.buffer_sizes
         processing_times = self._processing_times
 
-        def _maybe_signal_recovery_end() -> None:
+        async def _maybe_signal_recovery_end(timeout=False, timeout_count=0) -> None:
+            # lets wait at least 2 consecutive cycles for the queue to be
+            # empty to avoid race conditions between
+            # the aiokafka consumer position and draining of the queue
+            if timeout and self.app.in_transaction and timeout_count > 1:
+                await detect_aborted_tx()
             if not self.active_remaining_total():
                 # apply anything stuck in the buffers
                 self.flush_buffers()
@@ -722,6 +727,20 @@ class Recovery(Service):
                 logger.debug("Setting recovery end")
                 self.signal_recovery_end.set()
 
+        async def detect_aborted_tx():
+            highwaters = self.active_highwaters
+            offsets = self.active_offsets
+            for tp, highwater in highwaters.items():
+                if (
+                    highwater is not None
+                    and offsets[tp] is not None
+                    and offsets[tp] < highwater
+                ):
+                    if await self.app.consumer.position(tp) >= highwater:
+                        logger.info(f"Aborted tx until highwater for {tp}")
+                        offsets[tp] = highwater
+
+        timeout_count = 0
         while not self.should_stop:
             self.signal_recovery_end.clear()
             try:
@@ -729,15 +748,19 @@ class Recovery(Service):
                     changelog_queue.get(), timeout=5.0
                 )
             except asyncio.TimeoutError:
+                timeout_count += 1
                 if self.should_stop:
                     return
-                _maybe_signal_recovery_end()
+                await _maybe_signal_recovery_end(
+                    timeout=True, timeout_count=timeout_count
+                )
                 continue
             now = monotonic()
+            timeout_count = 0
             message = event.message
             tp = message.tp
             offset = message.offset
-
+            logger.debug(f"Recovery message topic {tp} offset {offset}")
             offsets: Counter[TP]
             bufsize = buffer_sizes.get(tp)
             is_active = False
@@ -755,9 +778,12 @@ class Recovery(Service):
                     bufsize = buffer_sizes[tp] = table.standby_buffer_size
                     standby_events_received_at[tp] = now
             else:
-                continue
+                logger.warning(f"recovery unknown topic {tp} offset {offset}")
 
             seen_offset = offsets.get(tp, None)
+            logger.debug(
+                f"seen offset for {tp} is {seen_offset} message offset {offset}"
+            )
             if seen_offset is None or offset > seen_offset:
                 offsets[tp] = offset
                 buf = buffers[table]
@@ -778,7 +804,7 @@ class Recovery(Service):
                             processing_times.popleft()
                     self._last_active_event_processed_at = now_after
 
-            _maybe_signal_recovery_end()
+            await _maybe_signal_recovery_end()
 
             if not self.standby_remaining_total():
                 logger.debug("Completed standby partition fetch")

@@ -71,6 +71,7 @@ from typing import (
 )
 from weakref import WeakSet
 
+from aiokafka.errors import ProducerFenced
 from mode import Service, ServiceT, flight_recorder, get_logger
 from mode.threads import MethodQueue, QueueServiceThread
 from mode.utils.futures import notify
@@ -173,8 +174,11 @@ class Fetcher(Service):
         try:
             consumer = cast(Consumer, self.app.consumer)
             await consumer._drain_messages(self)
-        except asyncio.CancelledError:
-            pass
+        except asyncio.CancelledError as exc:
+            if self.app.rebalancing:
+                self.log.info("Restarting on rebalance")
+                await self.crash(exc)
+                self.supervisor.wakeup()
         finally:
             self.set_shutdown()
 
@@ -331,11 +335,15 @@ class TransactionManager(Service, TransactionManagerT):
             by_transactional_id[transactional_id][tp] = offset
 
         if by_transactional_id:
-            await producer.commit_transactions(
-                by_transactional_id,
-                group_id,
-                start_new_transaction=start_new_transaction,
-            )
+            try:
+                await producer.commit_transactions(
+                    by_transactional_id,
+                    group_id,
+                    start_new_transaction=start_new_transaction,
+                )
+            except ProducerFenced as pf:
+                logger.warning(f"ProducerFenced {pf}")
+                await self.app.crash(pf)
         return True
 
     def key_partition(self, topic: str, key: bytes) -> TP:
@@ -1025,7 +1033,7 @@ class Consumer(Service, ConsumerT):
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
             # remove them from the list to clean up.
-            acked[: len(batch) - 1] = []
+            acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
             return batch[-1] + 1

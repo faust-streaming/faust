@@ -122,7 +122,7 @@ cdef class StreamIterator:
                     if self.acks_enabled_for(message.topic):
                         committed = consumer._committed_offset[tp]
                         try:
-                            if committed is None or offset > committed:
+                            if committed is None or offset >= committed:
                                 acked_index = consumer._acked_index[tp]
                                 if offset not in acked_index:
                                     self.unacked.discard(message)

@@ -1,7 +1,9 @@
+from pytest import approx
+
 from faust.windows import HoppingWindow
 
 
-class test_HoppingWindow:
+class Test_HoppingWindow:
     def test_has_ranges_including_the_value(self):
         size = 10
         step = 5
@@ -58,3 +60,19 @@ class test_HoppingWindow:
         for time in range(0, now_timestamp - expires):
             print(f"TIME: {time} NOW TIMESTAMP: {now_timestamp}")
             assert window.stale(time, now_timestamp) is True
+
+    def test_ranges_types(self):
+        size = 60
+        step = 60
+        window = HoppingWindow(size, step)
+
+        # There's nothing special about this timestamp,
+        # it was simply when the test was created
+        timestamp = 1603122451.544989
+        window_ranges = window.ranges(timestamp)
+
+        assert len(window_ranges) == 1
+        assert type(window_ranges[0][0]) == float
+        assert type(window_ranges[0][1]) == float
+        assert window_ranges[0][0] == approx(1603122420.0)
+        assert window_ranges[0][1] == approx(1603122479.9)
