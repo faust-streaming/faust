@@ -4,9 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## 0.3.1
+### Fixed
+-Updating opentracing dependency[50](https://github.com/faust-streaming/faust/issues/50)
+-New-offset is off between 0.2.0 and 0.3.0, resulting in reprocessing last record (or many records) on worker restart
+ [48](https://github.com/faust-streaming/faust/issues/48)
+-Worker fails to recover table with exactly_once guarantee [47](https://github.com/faust-streaming/faust/issues/47)
+
 ## 0.3.0
 ### Fixed
-
 Recovery Crash [44](https://github.com/faust-streaming/faust/issues/44)
 [37](https://github.com/faust-streaming/faust/issues/37)
 ## 0.2.2
