@@ -18,6 +18,7 @@ from typing import (
 )
 
 import opentracing
+from kafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
@@ -504,6 +505,11 @@ class Recovery(Service):
                 # to make sure we don't fetch any more records from them.
                 await self._wait(T(self.on_recovery_completed)())
             except RebalanceAgain as exc:
+                self.log.dev("RAISED REBALANCE AGAIN")
+                for _span in spans:
+                    finish_span(_span, error=exc)
+                continue  # another rebalance started
+            except IllegalStateError as exc:
                 self.log.dev("RAISED REBALANCE AGAIN")
                 for _span in spans:
                     finish_span(_span, error=exc)
