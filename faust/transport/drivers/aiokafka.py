@@ -526,21 +526,18 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 return False
             self.log.exception("Committing raised exception: %r", exc)
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         except IllegalStateError as exc:
             self.log.exception(
                 "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         except Exception as exc:
             self.log.exception(
                 "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         return True
 
