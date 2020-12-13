@@ -137,7 +137,11 @@ class ConductorCompiler:  # pragma: no cover
                             if queue.full():
                                 full.append((event, chan))
                                 continue
-                            queue.put_nowait(event)
+                            queue.put_nowait_enhanced(
+                                event,
+                                on_pressure_high=on_pressure_high,
+                                on_pressure_drop=on_pressure_drop,
+                            )
                         else:
                             # subsequent channels may have a different
                             # key/value type pair, meaning they all can
@@ -153,7 +157,11 @@ class ConductorCompiler:  # pragma: no cover
                             if queue.full():
                                 full.append((dest_event, chan))
                                 continue
-                            queue.put_nowait(dest_event)
+                            queue.put_nowait_enhanced(
+                                dest_event,
+                                on_pressure_high=on_pressure_high,
+                                on_pressure_drop=on_pressure_drop,
+                            )
                         delivered.add(chan)
                     if full:
                         for _, dest_chan in full:
@@ -165,6 +173,7 @@ class ConductorCompiler:  # pragma: no cover
                             ],
                             return_when=asyncio.ALL_COMPLETED,
                         )
+
                 except KeyDecodeError as exc:
                     remaining = channels - delivered
                     message.ack(app.consumer, n=len(remaining))
