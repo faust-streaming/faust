@@ -518,9 +518,11 @@ class Consumer(Service, ConsumerT):
         return xtps
 
     def on_buffer_full(self, tp: TP) -> None:
-        active_partitions = self._get_active_partitions()
-        active_partitions.discard(tp)
-        self._buffered_partitions.add(tp)
+        # do not remove the partition when in recovery
+        if not self.app.rebalancing:
+            active_partitions = self._get_active_partitions()
+            active_partitions.discard(tp)
+            self._buffered_partitions.add(tp)
 
     def on_buffer_drop(self, tp: TP) -> None:
         buffered_partitions = self._buffered_partitions
