@@ -1157,7 +1157,8 @@ class Producer(base.Producer):
                         ),
                     )
             else:
-                return cast(
+                start_time = self.app.loop.time()
+                fut = cast(
                     Awaitable[RecordMetadata],
                     await transaction_producer.send(
                         topic,
@@ -1168,6 +1169,10 @@ class Producer(base.Producer):
                         headers=headers,
                     ),
                 )
+                end_time = self.app.loop.time() - start_time
+                if getattr(self.app, 'dd_sensor', None) :
+                    self.app.dd_sensor.client.histogram(metric="fos.producer.send", value=end_time)
+                return fut
 
         except KafkaError as exc:
             raise ProducerSendError(f"Error while sending: {exc!r}") from exc

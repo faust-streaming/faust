@@ -7,21 +7,23 @@ The Producer is responsible for:
    - Sending messages.
 """
 import asyncio
+import time
 from asyncio import QueueEmpty
 from typing import Any, Awaitable, Mapping, Optional, cast
 
-from mode import Seconds, Service
+from mode import Seconds, Service, get_logger
 
 from faust.types import AppT, HeadersArg
 from faust.types.transports import ProducerBufferT, ProducerT, TransportT
 from faust.types.tuples import TP, FutureMessage, RecordMetadata
 
 __all__ = ["Producer"]
+logger = get_logger(__name__)
 
 
 class ProducerBuffer(Service, ProducerBufferT):
-
-    max_messages = 100
+    app: AppT = None
+    max_messages = 100000
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
@@ -85,15 +87,23 @@ class ProducerBuffer(Service, ProducerBufferT):
         is of an acceptable size before resuming stream processing flow.
         """
         if self.size > self.max_messages:
+            logger.warning(f'producer buffer full size {self.size}')
+            start_time = time.time()
             await self.flush_atmost(self.max_messages)
+            end_time = time.time()
+            logger.info(f'producer flush took {end_time-start_time}')
 
     @Service.task
     async def _handle_pending(self) -> None:
         get_pending = self.pending.get
         send_pending = self._send_pending
         while not self.should_stop:
+            if getattr(self.app, 'dd_sensor', None) :
+                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self.size)
             msg = await get_pending()
             await send_pending(msg)
+
+
 
     @property
     def size(self) -> int:
@@ -136,6 +146,7 @@ class Producer(Service, ProducerT):
         super().__init__(loop=loop or self.transport.loop, **kwargs)
 
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
+        self.buffer.app = self.app
 
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)
