@@ -3,6 +3,8 @@ import asyncio
 import typing
 from asyncio import Lock
 from collections import deque
+from functools import partial
+from queue import Queue
 from time import monotonic
 from typing import (
     Any,
@@ -44,6 +46,7 @@ from kafka.partitioner import murmur2
 from kafka.partitioner.default import DefaultPartitioner
 from kafka.protocol.metadata import MetadataRequest_v1
 from mode import Service, get_logger
+from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
@@ -66,7 +69,7 @@ from faust.transport.consumer import (
     ThreadDelegateConsumer,
     ensure_TPset,
 )
-from faust.types import TP, ConsumerMessage, HeadersArg, RecordMetadata
+from faust.types import TP, ConsumerMessage, HeadersArg, RecordMetadata, FutureMessage, PendingMessage
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
 from faust.utils.kafka.protocol.admin import CreateTopicsRequest
@@ -248,6 +251,115 @@ class Consumer(ThreadDelegateConsumer):
         await super().on_stop()
         transport = cast(Transport, self.transport)
         transport._topic_waiters.clear()
+
+class ChangelogProducerThread(ServiceThread):
+    _producer: Optional[aiokafka.AIOKafkaProducer] = None
+    _event_queue: Queue = None
+    _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    app: None
+
+    def __init__(self, queue, default_producer, app,  *, executor: Any = None, loop: asyncio.AbstractEventLoop = None,
+                 thread_loop: asyncio.AbstractEventLoop = None, Worker: Type[WorkerThread] = None,
+                 **kwargs: Any) -> None :
+        super().__init__(executor=executor, loop=loop, thread_loop=thread_loop, Worker=Worker, **kwargs)
+        self._event_queue = queue
+        self._default_producer = default_producer
+        self.app = app
+
+
+
+
+    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+        return aiokafka.AIOKafkaProducer(
+            loop=self.thread_loop,
+            **{
+                **self._default_producer._settings_default(),
+                **self._default_producer._settings_auth(),
+                **self._default_producer._settings_extra(),
+            },
+            transactional_id=transactional_id,
+        )
+
+
+    async def on_thread_started(self) -> None :
+        producer = self._producer = self._new_producer()
+        await producer.start()
+        asyncio.create_task(self.push_events())
+
+
+    async def push_events(self):
+        while True:
+            if getattr(self.app, 'dd_sensor', None) :
+                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self._event_queue.qsize())
+            event = self._event_queue.get(block=True)
+            await self.publish_message(event)
+
+    async def publish_message(
+        self, fut: FutureMessage, wait: bool = False
+    ) -> Awaitable[RecordMetadata]:
+        """Fulfill promise to publish message to topic."""
+        message: PendingMessage = fut.message
+        topic = message.channel.get_topic_name()
+        key: bytes = cast(bytes, message.key)
+        value: bytes = cast(bytes, message.value)
+        partition: Optional[int] = message.partition
+        timestamp: float = cast(float, message.timestamp)
+        headers: Optional[HeadersArg] = message.headers
+        logger.debug(
+            "send: topic=%r k=%r v=%r timestamp=%r partition=%r",
+            topic,
+            key,
+            value,
+            timestamp,
+            partition,
+        )
+        assert topic is not None
+        producer =  self._producer
+        state = self.app.sensors.on_send_initiated(
+            producer,
+            topic,
+            message=message,
+            keysize=len(key) if key else 0,
+            valsize=len(value) if value else 0,
+        )
+        timestamp_ms = int(timestamp * 1000.0) if timestamp else timestamp
+        if headers is not None:
+            if isinstance(headers, Mapping):
+                headers = list(headers.items())
+        if wait:
+            ret: RecordMetadata = await producer.send_and_wait(
+                topic,
+                key,
+                value,
+                partition=partition,
+                timestamp_ms=timestamp_ms,
+                headers=headers,
+            )
+            return await self._finalize_message(fut, ret)
+        else:
+            fut2 = cast(
+                asyncio.Future,
+                await producer.send(
+                    topic,
+                    key,
+                    value,
+                    partition=partition,
+                    timestamp_ms=timestamp_ms,
+                    headers=headers,
+                ),
+            )
+            callback = partial(
+                fut.message.channel._on_published,
+                message=fut,
+                state=state,
+                producer=producer,
+            )
+            fut2.add_done_callback(cast(Callable, callback))
+            met = RecordMetadata(topic=topic, partition=partition, topic_partition=TP(topic=topic, partition=partition), offset=0)
+
+            return fut2
+
+
 
 
 class AIOKafkaConsumerThread(ConsumerThread):
@@ -883,6 +995,9 @@ class Producer(base.Producer):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
     _trn_locks: typing.Dict[str, Lock] = {}
+
+    def create_changelog_producer(self):
+        return ChangelogProducerThread(queue=self.buffer.queue, default_producer=self, app=self.app)
 
     def __post_init__(self) -> None:
         self._send_on_produce_message = self.app.on_produce_message.send

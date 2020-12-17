@@ -9,9 +9,11 @@ The Producer is responsible for:
 import asyncio
 import time
 from asyncio import QueueEmpty
+from queue import Queue
 from typing import Any, Awaitable, Mapping, Optional, cast
 
 from mode import Seconds, Service, get_logger
+from mode.threads import ServiceThread
 
 from faust.types import AppT, HeadersArg
 from faust.types.transports import ProducerBufferT, ProducerT, TransportT
@@ -24,6 +26,7 @@ logger = get_logger(__name__)
 class ProducerBuffer(Service, ProducerBufferT):
     app: AppT = None
     max_messages = 100000
+    queue: Queue = None
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
@@ -34,7 +37,7 @@ class ProducerBuffer(Service, ProducerBufferT):
         The message will be eventually produced, you can await
         the future to wait for that to happen.
         """
-        self.pending.put_nowait(fut)
+        self.queue.put_nowait(fut)
 
     async def on_stop(self) -> None:
         await self.flush()
@@ -93,7 +96,6 @@ class ProducerBuffer(Service, ProducerBufferT):
             end_time = time.time()
             logger.info(f'producer flush took {end_time-start_time}')
 
-    @Service.task
     async def _handle_pending(self) -> None:
         get_pending = self.pending.get
         send_pending = self._send_pending
@@ -121,6 +123,7 @@ class Producer(Service, ProducerT):
     app: AppT
 
     _api_version: str
+    changelog_producer: Optional[ServiceThread] = None
 
     def __init__(
         self,
@@ -147,6 +150,8 @@ class Producer(Service, ProducerT):
 
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
         self.buffer.app = self.app
+        self.buffer.queue = Queue()
+        self.changelog_producer = self.create_changelog_producer()
 
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)
@@ -239,3 +244,6 @@ class Producer(Service, ProducerT):
     def supports_headers(self) -> bool:
         """Return :const:`True` if headers are supported by this transport."""
         return False
+
+
+
