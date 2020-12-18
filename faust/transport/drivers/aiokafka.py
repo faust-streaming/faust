@@ -314,7 +314,6 @@ class ChangelogProducerThread(ServiceThread):
             timestamp,
             partition,
         )
-        assert topic is not None
         producer =  self._producer
         state = self.app.sensors.on_send_initiated(
             producer,

@@ -271,7 +271,7 @@ class Store(base.SerializedStore):
         partition = event.message.partition
         db = self._db_for_partition(partition)
         self._key_index[key] = partition
-        db.put(key, value, sync=False, disable_wal=True)
+        db.put(key, value)
 
     def _db_for_partition(self, partition: int) -> DB:
         try:
@@ -312,7 +312,7 @@ class Store(base.SerializedStore):
 
     def _del(self, key: bytes) -> None:
         for db in self._dbs_for_key(key):
-            db.delete(key, sync=False, disable_wal=True)
+            db.delete(key)
 
     async def on_rebalance(
         self,
