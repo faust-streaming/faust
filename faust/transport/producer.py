@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 class ProducerBuffer(Service, ProducerBufferT):
     app: AppT = None
-    max_messages = 100000
+    max_messages = 100
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
