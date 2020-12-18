@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+##0.4.0
+### Fixed
+- Prevent stream buffer overflow by lowering the rate of incoming partitions
+[53](https://github.com/faust-streaming/faust/issues/53)
+-Recovery thread updating standby partition writes in single writes instead of using writeBatch
+[51](https://github.com/faust-streaming/faust/issues/51)
+- IllegalStateException on seek to offset of a partition that was removed by a rebalance
+[54](https://github.com/faust-streaming/faust/issues/54)
+
+
 ## 0.3.1
 ### Fixed
 -Updating opentracing dependency[50](https://github.com/faust-streaming/faust/issues/50)
