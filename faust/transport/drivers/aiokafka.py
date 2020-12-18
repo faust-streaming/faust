@@ -295,9 +295,10 @@ class ChangelogProducerThread(ServiceThread):
             await self.publish_message(event)
 
     async def publish_message(
-        self, fut: FutureMessage, wait: bool = False
+        self, fut_other: FutureMessage, wait: bool = False
     ) -> Awaitable[RecordMetadata]:
         """Fulfill promise to publish message to topic."""
+        fut = FutureMessage(fut_other.message)
         message: PendingMessage = fut.message
         topic = message.channel.get_topic_name()
         key: bytes = cast(bytes, message.key)
@@ -328,9 +329,9 @@ class ChangelogProducerThread(ServiceThread):
                 headers = list(headers.items())
         if wait:
             ret: RecordMetadata = await producer.send_and_wait(
-                topic,
-                key,
-                value,
+                topic=topic,
+                key=key,
+                value=value,
                 partition=partition,
                 timestamp_ms=timestamp_ms,
                 headers=headers,
@@ -340,9 +341,9 @@ class ChangelogProducerThread(ServiceThread):
             fut2 = cast(
                 asyncio.Future,
                 await producer.send(
-                    topic,
-                    key,
-                    value,
+                    topic=topic,
+                    key=key,
+                    value=value,
                     partition=partition,
                     timestamp_ms=timestamp_ms,
                     headers=headers,
@@ -355,8 +356,6 @@ class ChangelogProducerThread(ServiceThread):
                 producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
-            met = RecordMetadata(topic=topic, partition=partition, topic_partition=TP(topic=topic, partition=partition), offset=0)
-
             return fut2
 
 
