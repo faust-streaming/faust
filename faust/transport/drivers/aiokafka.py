@@ -254,15 +254,14 @@ class Consumer(ThreadDelegateConsumer):
 
 class ChangelogProducerThread(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
-    _event_queue: Queue = None
+    event_queue: asyncio.Queue = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
     app: None
 
-    def __init__(self, queue, default_producer, app,  *, executor: Any = None, loop: asyncio.AbstractEventLoop = None,
+    def __init__(self, default_producer, app,  *, executor: Any = None, loop: asyncio.AbstractEventLoop = None,
                  thread_loop: asyncio.AbstractEventLoop = None, Worker: Type[WorkerThread] = None,
                  **kwargs: Any) -> None :
         super().__init__(executor=executor, loop=loop, thread_loop=thread_loop, Worker=Worker, **kwargs)
-        self._event_queue = queue
         self._default_producer = default_producer
         self.app = app
 
@@ -280,8 +279,8 @@ class ChangelogProducerThread(ServiceThread):
             transactional_id=transactional_id,
         )
 
-
-    async def on_thread_started(self) -> None :
+    async def on_start(self) -> None :
+        self.event_queue = asyncio.Queue()
         producer = self._producer = self._new_producer()
         await producer.start()
         asyncio.create_task(self.push_events())
@@ -291,7 +290,7 @@ class ChangelogProducerThread(ServiceThread):
         while True:
             if getattr(self.app, 'dd_sensor', None) :
                 self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self._event_queue.qsize())
-            event = self._event_queue.get(block=True)
+            event = await self.event_queue.get()
             await self.publish_message(event)
 
     async def publish_message(
@@ -995,7 +994,7 @@ class Producer(base.Producer):
     _trn_locks: typing.Dict[str, Lock] = {}
 
     def create_changelog_producer(self):
-        return ChangelogProducerThread(queue=self.buffer.queue, default_producer=self, app=self.app)
+        return ChangelogProducerThread(default_producer=self, app=self.app)
 
     def __post_init__(self) -> None:
         self._send_on_produce_message = self.app.on_produce_message.send

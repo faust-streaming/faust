@@ -25,8 +25,8 @@ logger = get_logger(__name__)
 
 class ProducerBuffer(Service, ProducerBufferT):
     app: AppT = None
-    max_messages = 100000
-    queue: Queue = None
+    max_messages = 100
+    queue: asyncio.Queue = None
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
@@ -37,7 +37,9 @@ class ProducerBuffer(Service, ProducerBufferT):
         The message will be eventually produced, you can await
         the future to wait for that to happen.
         """
-        self.queue.put_nowait(fut)
+        if not self.queue:
+            self.queue = self.changelog_producer.event_queue
+        asyncio.run_coroutine_threadsafe(self.queue.put(fut), self.changelog_producer.thread_loop)
 
     async def on_stop(self) -> None:
         await self.flush()
@@ -150,8 +152,8 @@ class Producer(Service, ProducerT):
 
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
         self.buffer.app = self.app
-        self.buffer.queue = Queue()
         self.changelog_producer = self.create_changelog_producer()
+        self.buffer.changelog_producer = self.changelog_producer
 
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)
