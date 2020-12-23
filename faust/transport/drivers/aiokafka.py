@@ -336,6 +336,7 @@ class ChangelogProducerThread(ServiceThread):
             )
             return await self._finalize_message(fut, ret)
         else:
+            start_time = self.thread_loop.time()
             fut2 = cast(
                 asyncio.Future,
                 await producer.send(
@@ -347,6 +348,9 @@ class ChangelogProducerThread(ServiceThread):
                     headers=headers,
                 ),
             )
+            end_time = self.thread_loop.time() - start_time
+            if getattr(self.app, 'dd_sensor', None) :
+                self.app.dd_sensor.client.histogram(metric="fos.producer.send", value=end_time)
             callback = partial(
                 fut.message.channel._on_published,
                 message=fut,
