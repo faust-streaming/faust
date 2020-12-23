@@ -289,7 +289,7 @@ class ChangelogProducerThread(ServiceThread):
     async def push_events(self):
         while True:
             if getattr(self.app, 'dd_sensor', None) :
-                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self._event_queue.qsize())
+                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self.event_queue.qsize())
             event = await self.event_queue.get()
             await self.publish_message(event)
 
