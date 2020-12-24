@@ -658,7 +658,11 @@ class Agent(AgentT, Service):
         else:
             # agent yields and is an AsyncIterator so we have to consume it.
             coro = self._slurp(aref, aiter(aref))
-        task = asyncio.Task(self._execute_actor(coro, aref), loop=self.loop, name=f'{str(aref)}-{self.channel.get_topic_name()}')
+        task = asyncio.Task(
+            self._execute_actor(coro, aref),
+            loop=self.loop,
+            name=f"{str(aref)}-{self.channel.get_topic_name()}",
+        )
         task._beacon = beacon  # type: ignore
         aref.actor_task = task
         self._actors.add(aref)

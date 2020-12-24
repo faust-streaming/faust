@@ -442,7 +442,12 @@ class Topic(SerializedChannel, TopicT):
                 producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
-            met = RecordMetadata(topic=topic, partition=partition, topic_partition=TP(topic=topic, partition=partition), offset=0)
+            met = RecordMetadata(
+                topic=topic,
+                partition=partition,
+                topic_partition=TP(topic=topic, partition=partition),
+                offset=0,
+            )
 
             app.sensors.on_send_completed(producer, state, met)
             return fut2

@@ -9,12 +9,10 @@ The Producer is responsible for:
 import asyncio
 import time
 from asyncio import QueueEmpty
-from queue import Queue
 from typing import Any, Awaitable, Mapping, Optional, cast
 
 from mode import Seconds, Service, get_logger
 from mode.threads import ServiceThread
-from mode import Seconds, Service, get_logger
 
 from faust.types import AppT, HeadersArg
 from faust.types.transports import ProducerBufferT, ProducerT, TransportT
@@ -40,7 +38,9 @@ class ProducerBuffer(Service, ProducerBufferT):
         """
         if not self.queue:
             self.queue = self.changelog_producer.event_queue
-        asyncio.run_coroutine_threadsafe(self.queue.put(fut), self.changelog_producer.thread_loop)
+        asyncio.run_coroutine_threadsafe(
+            self.queue.put(fut), self.changelog_producer.thread_loop
+        )
 
     async def on_stop(self) -> None:
         await self.flush()
@@ -93,22 +93,22 @@ class ProducerBuffer(Service, ProducerBufferT):
         is of an acceptable size before resuming stream processing flow.
         """
         if self.size > self.max_messages:
-            logger.warning(f'producer buffer full size {self.size}')
+            logger.warning(f"producer buffer full size {self.size}")
             start_time = time.time()
             await self.flush_atmost(self.max_messages)
             end_time = time.time()
-            logger.info(f'producer flush took {end_time-start_time}')
+            logger.info(f"producer flush took {end_time-start_time}")
 
     async def _handle_pending(self) -> None:
         get_pending = self.pending.get
         send_pending = self._send_pending
         while not self.should_stop:
-            if getattr(self.app, 'dd_sensor', None) :
-                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self.size)
+            if getattr(self.app, "dd_sensor", None):
+                self.app.dd_sensor.client.gauge(
+                    metric="fos.producer.buffer", value=self.size
+                )
             msg = await get_pending()
             await send_pending(msg)
-
-
 
     @property
     def size(self) -> int:
@@ -132,7 +132,7 @@ class Producer(Service, ProducerT):
         self,
         transport: TransportT,
         loop: asyncio.AbstractEventLoop = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.transport = transport
         self.app = self.transport.app
@@ -168,7 +168,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: str = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         raise NotImplementedError()
@@ -185,7 +185,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: str = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         raise NotImplementedError()
@@ -206,7 +206,7 @@ class Producer(Service, ProducerT):
         retention: Seconds = None,
         compacting: bool = None,
         deleting: bool = None,
-        ensure_created: bool = False
+        ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
         raise NotImplementedError()
@@ -247,6 +247,3 @@ class Producer(Service, ProducerT):
     def supports_headers(self) -> bool:
         """Return :const:`True` if headers are supported by this transport."""
         return False
-
-
-

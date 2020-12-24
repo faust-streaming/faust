@@ -830,7 +830,9 @@ class Consumer(Service, ConsumerT):
         await self.sleep(interval)
         async for sleep_time in self.itertimer(interval, name="livelock"):
             if not self.app.rebalancing:
-                await self.app.loop.run_in_executor(None, self.verify_all_partitions_active)
+                await self.app.loop.run_in_executor(
+                    None, self.verify_all_partitions_active
+                )
 
     def verify_all_partitions_active(self) -> None:
         now = monotonic()

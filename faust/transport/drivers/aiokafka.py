@@ -1,10 +1,9 @@
 """Message transport using :pypi:`aiokafka`."""
 import asyncio
 import typing
-from asyncio import Lock
+from asyncio import Lock, QueueEmpty
 from collections import deque
 from functools import partial
-from queue import Queue
 from time import monotonic
 from typing import (
     Any,
@@ -69,7 +68,14 @@ from faust.transport.consumer import (
     ThreadDelegateConsumer,
     ensure_TPset,
 )
-from faust.types import TP, ConsumerMessage, HeadersArg, RecordMetadata, FutureMessage, PendingMessage
+from faust.types import (
+    TP,
+    ConsumerMessage,
+    FutureMessage,
+    HeadersArg,
+    PendingMessage,
+    RecordMetadata,
+)
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
 from faust.utils.kafka.protocol.admin import CreateTopicsRequest
@@ -252,21 +258,45 @@ class Consumer(ThreadDelegateConsumer):
         transport = cast(Transport, self.transport)
         transport._topic_waiters.clear()
 
+
 class ChangelogProducerThread(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: asyncio.Queue = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
     app: None
 
-    def __init__(self, default_producer, app,  *, executor: Any = None, loop: asyncio.AbstractEventLoop = None,
-                 thread_loop: asyncio.AbstractEventLoop = None, Worker: Type[WorkerThread] = None,
-                 **kwargs: Any) -> None :
-        super().__init__(executor=executor, loop=loop, thread_loop=thread_loop, Worker=Worker, **kwargs)
+    def __init__(
+        self,
+        default_producer,
+        app,
+        *,
+        executor: Any = None,
+        loop: asyncio.AbstractEventLoop = None,
+        thread_loop: asyncio.AbstractEventLoop = None,
+        Worker: Type[WorkerThread] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            executor=executor,
+            loop=loop,
+            thread_loop=thread_loop,
+            Worker=Worker,
+            **kwargs,
+        )
         self._default_producer = default_producer
         self.app = app
 
-
-
+    async def flush(self) -> None:
+        """Wait for producer to finish transmitting all buffered messages."""
+        while True:
+            try:
+                msg = self.event_queue.get_nowait()
+            except QueueEmpty:
+                break
+            else:
+                await self.publish_message(msg)
+        if self._producer is not None:
+            await self._producer.flush()
 
     def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
         return aiokafka.AIOKafkaProducer(
@@ -279,17 +309,27 @@ class ChangelogProducerThread(ServiceThread):
             transactional_id=transactional_id,
         )
 
-    async def on_start(self) -> None :
+    async def on_start(self) -> None:
         self.event_queue = asyncio.Queue()
         producer = self._producer = self._new_producer()
         await producer.start()
         asyncio.create_task(self.push_events())
 
+    async def on_thread_stop(self) -> None:
+        """Call when producer thread is stopping."""
+        logger.info("Stopping producer thread")
+        await super().on_thread_stop()
+        # when method queue is stopped, we can stop the consumer
+        if self._producer is not None:
+            await self.flush()
+            await self._producer.stop()
 
     async def push_events(self):
         while True:
-            if getattr(self.app, 'dd_sensor', None) :
-                self.app.dd_sensor.client.gauge(metric="fos.producer.buffer", value=self.event_queue.qsize())
+            if getattr(self.app, "dd_sensor", None):
+                self.app.dd_sensor.client.gauge(
+                    metric="fos.producer.buffer", value=self.event_queue.qsize()
+                )
             event = await self.event_queue.get()
             await self.publish_message(event)
 
@@ -313,7 +353,7 @@ class ChangelogProducerThread(ServiceThread):
             timestamp,
             partition,
         )
-        producer =  self._producer
+        producer = self._producer
         state = self.app.sensors.on_send_initiated(
             producer,
             topic,
@@ -349,8 +389,10 @@ class ChangelogProducerThread(ServiceThread):
                 ),
             )
             end_time = self.thread_loop.time() - start_time
-            if getattr(self.app, 'dd_sensor', None) :
-                self.app.dd_sensor.client.histogram(metric="fos.producer.send", value=end_time)
+            if getattr(self.app, "dd_sensor", None):
+                self.app.dd_sensor.client.histogram(
+                    metric="fos.producer.send", value=end_time
+                )
             callback = partial(
                 fut.message.channel._on_published,
                 message=fut,
@@ -359,8 +401,6 @@ class ChangelogProducerThread(ServiceThread):
             )
             fut2.add_done_callback(cast(Callable, callback))
             return fut2
-
-
 
 
 class AIOKafkaConsumerThread(ConsumerThread):
@@ -1286,8 +1326,10 @@ class Producer(base.Producer):
                     ),
                 )
                 end_time = self.app.loop.time() - start_time
-                if getattr(self.app, 'dd_sensor', None) :
-                    self.app.dd_sensor.client.histogram(metric="fos.producer.send", value=end_time)
+                if getattr(self.app, "dd_sensor", None):
+                    self.app.dd_sensor.client.histogram(
+                        metric="fos.producer.send", value=end_time
+                    )
                 return fut
 
         except KafkaError as exc:
