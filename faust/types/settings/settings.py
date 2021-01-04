@@ -159,6 +159,7 @@ class Settings(base.SettingsRegistry):
         web_host: str = None,
         web_in_thread: bool = None,
         web_port: int = None,
+        web_ssl_context: ssl.SSLContext = None,
         web_transport: URLArg = None,
         # Worker settings:
         worker_redirect_stdouts: bool = None,
@@ -1795,6 +1796,17 @@ class Settings(base.SettingsRegistry):
 
         This option is usually set by :option:`faust worker --web-port`,
         not by passing it as a keyword argument to :class:`app`.
+        """
+
+    @sections.WebServer.setting(
+        params.SSLContext,
+        version_introduced="0.5.0",
+        default=None,
+    )
+    def web_ssl_context(self) -> ssl.SSLContext:
+        """Web server SSL configuration.
+
+        See :setting:`credentials`.
         """
 
     @sections.WebServer.setting(

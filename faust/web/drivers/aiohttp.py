@@ -292,6 +292,7 @@ class Web(base.Web):
             self._runner,
             self.app.conf.web_bind,
             self.app.conf.web_port,
+            ssl_context=self.app.conf.web_ssl_context,
         )
 
     def _new_transport_unix(self) -> BaseSite:
