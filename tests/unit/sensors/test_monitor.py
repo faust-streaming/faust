@@ -332,6 +332,30 @@ class TestMonitor:
         assert state["time_end"] == time()
         assert state["latency_end"] == time() - other_time
 
+    @pytest.mark.xfail(strict=True)
+    def test_topic_related_sensors_are_cleared_after_rebalance(
+        self, *, mon, app, message, stream, event
+    ):
+        mon.on_message_in(TP1, 11, message)
+        mon.on_stream_event_in(TP, 11, stream, event)
+        mon.on_tp_commit({TP1: 10})
+        mon.track_tp_end_offset(TP1, 12)
+        mon.on_topic_buffer_full(TP1)
+        assert len(mon.tp_committed_offsets) > 0
+        assert len(mon.tp_read_offsets) > 0
+        assert len(mon.tp_end_offsets) > 0
+        assert len(mon.topic_buffer_full) > 0
+        assert len(mon.stream_inbound_time) > 0
+
+        state = mon.on_rebalance_start(app)
+        mon.on_rebalance_end(app, state)
+
+        assert len(mon.tp_committed_offsets) == 0
+        assert len(mon.tp_read_offsets) == 0
+        assert len(mon.tp_end_offsets) == 0
+        assert len(mon.topic_buffer_full) == 0
+        assert len(mon.stream_inbound_time) == 0
+
     def test_on_web_request_start(self, *, mon, time, app):
         request = Mock(name="request")
         view = Mock(name="view")
