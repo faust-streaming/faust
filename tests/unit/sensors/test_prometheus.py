@@ -11,7 +11,7 @@ from faust.types import TP
 TP1 = TP("foo", 3)
 
 
-class test_PrometheusMonitor:
+class TestPrometheusMonitor:
     def time(self):
         timefun = Mock(name="time()")
         timefun.return_value = 101.1

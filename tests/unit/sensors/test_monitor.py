@@ -15,7 +15,7 @@ from faust.types import TP, Message
 TP1 = TP("foo", 0)
 
 
-class test_Monitor:
+class TestMonitor:
     @pytest.fixture
     def time(self):
         timefun = Mock(name="time()")

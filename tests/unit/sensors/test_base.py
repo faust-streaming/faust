@@ -66,7 +66,7 @@ def response():
     return Mock(name="response", autospec=web.Response)
 
 
-class test_Sensor:
+class TestSensor:
     @pytest.fixture
     def sensor(self, *, app):
         return Sensor()
@@ -135,7 +135,7 @@ class test_Sensor:
         assert sensor.asdict() == {}
 
 
-class test_SensorDelegate:
+class TestSensorDelegate:
     @pytest.fixture
     def sensor(self):
         return Mock(name="sensor", autospec=Sensor)
