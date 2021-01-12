@@ -332,7 +332,6 @@ class TestMonitor:
         assert state["time_end"] == time()
         assert state["latency_end"] == time() - other_time
 
-    @pytest.mark.xfail(strict=True)
     def test_topic_related_sensors_are_cleared_after_rebalance(
         self, *, mon, app, message, stream, event
     ):
