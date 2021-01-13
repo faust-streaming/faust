@@ -136,7 +136,6 @@ class TestPrometheusMonitor:
             n_events - 1,
         )
 
-    @pytest.mark.xfail(strict=True)
     def test_on_stream_event_out_does_not_measure_latency_without_state(
         self,
         monitor: PrometheusMonitor,

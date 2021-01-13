@@ -352,9 +352,10 @@ class PrometheusMonitor(Monitor):
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
         self._metrics.total_active_events.dec()
-        self._metrics.events_runtime_latency.observe(
-            self.secs_to_ms(self.events_runtime[-1])
-        )
+        if state is not None:
+            self._metrics.events_runtime_latency.observe(
+                self.secs_to_ms(self.events_runtime[-1])
+            )
 
     def on_message_out(self, tp: TP, offset: int, message: Message) -> None:
         """Call when message is fully acknowledged and can be committed."""
