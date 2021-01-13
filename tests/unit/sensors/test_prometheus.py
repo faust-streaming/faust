@@ -430,7 +430,6 @@ class TestPrometheusMonitor:
             4004,
         )
 
-    @pytest.mark.xfail(strict=True)
     def test_old_labels_are_removed_from_registry_after_rebalance(
         self,
         monitor: PrometheusMonitor,

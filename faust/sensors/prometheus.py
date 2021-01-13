@@ -252,6 +252,36 @@ class FaustMetrics(NamedTuple):
             consumer_commit_latency=consumer_commit_latency,
         )
 
+    def clear_topic_related_metrics(self) -> None:
+        self._clear_topic_partition_related_metrics()
+        self._clear_topic_related_metrics()
+
+    def _clear_topic_partition_related_metrics(self) -> None:
+        metrics = [
+            self.messages_received_per_topics_partition,
+            self.topic_partition_end_offset,
+            self.topic_partition_offset_commited,
+        ]
+        for metric in metrics:
+            topics_partitions = frozenset(
+                (sample.labels["topic"], sample.labels["partition"])
+                for sample in metric.collect()[0].samples
+            )
+            for topic, partition in topics_partitions:
+                metric.remove(topic, partition)
+
+    def _clear_topic_related_metrics(self) -> None:
+        metrics = [
+            self.messages_received_per_topics,
+            self.topic_messages_sent,
+        ]
+        for metric in metrics:
+            topics = frozenset(
+                sample.labels["topic"] for sample in metric.collect()[0].samples
+            )
+            for topic in topics:
+                metric.remove(topic)
+
 
 class PrometheusMonitor(Monitor):
     """
@@ -413,6 +443,7 @@ class PrometheusMonitor(Monitor):
     def on_rebalance_start(self, app: AppT) -> typing.Dict:
         """Cluster rebalance in progress."""
         state = super().on_rebalance_start(app)
+        self._clear_partition_related_metrics()
         self._metrics.total_rebalances.inc()
 
         return state
@@ -429,6 +460,7 @@ class PrometheusMonitor(Monitor):
     def on_rebalance_end(self, app: AppT, state: typing.Dict) -> None:
         """Cluster rebalance fully completed (including recovery)."""
         super().on_rebalance_end(app, state)
+        self._clear_partition_related_metrics()
         self._metrics.total_rebalances_recovering.dec()
         self._metrics.rebalance_done_latency.observe(self.ms_since(state["time_end"]))
 
@@ -466,3 +498,9 @@ class PrometheusMonitor(Monitor):
         status_code = int(state["status_code"])
         self._metrics.http_status_codes.labels(status_code=status_code).inc()
         self._metrics.http_latency.observe(self.ms_since(state["time_end"]))
+
+    def _clear_partition_related_metrics(self) -> None:
+        self._metrics.clear_topic_related_metrics()
+        self.tp_committed_offsets.clear()
+        self.tp_read_offsets.clear()
+        self.tp_end_offsets.clear()
