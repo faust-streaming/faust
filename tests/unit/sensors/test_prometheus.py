@@ -430,6 +430,49 @@ class TestPrometheusMonitor:
             4004,
         )
 
+    @pytest.mark.xfail(strict=True)
+    def test_old_labels_are_removed_from_registry_after_rebalance(
+        self,
+        monitor: PrometheusMonitor,
+        metrics: FaustMetrics,
+        registry: CollectorRegistry,
+        stream: StreamT,
+        event: EventT,
+        app: AppT,
+    ) -> None:
+        self._handle_event(
+            monitor=monitor,
+            topic_partition=TP1,
+            stream=stream,
+            event=event,
+            offset=10,
+        )
+
+        monitor.on_rebalance_start(app)
+        monitor.on_rebalance_end(app, state={"time_start": monitor.time()})
+        self._handle_event(
+            monitor=monitor,
+            topic_partition=TP2,
+            stream=stream,
+            event=event,
+            offset=11,
+        )
+
+        collected_topics = frozenset(
+            sample.labels["topic"]
+            for metric in registry.collect()
+            if metric.name == "messages_received_per_topic"
+            for sample in metric.samples
+        )
+        assert collected_topics == frozenset([TP2.topic])
+        collected_partitions = frozenset(
+            (sample.labels["topic"], sample.labels["partition"])
+            for metric in registry.collect()
+            if metric.name == "messages_received_per_topics_partition"
+            for sample in metric.samples
+        )
+        assert collected_partitions == frozenset([(TP2.topic, str(TP2.partition))])
+
     def assert_has_sample_value(
         self, metric: Metric, name: str, labels: Dict[str, str], value: int
     ) -> None:
@@ -446,3 +489,16 @@ class TestPrometheusMonitor:
             sample for sample in metric.collect()[0].samples if sample.name == name
         ]
         assert samples == []
+
+    def _handle_event(
+        self,
+        monitor: PrometheusMonitor,
+        topic_partition: TP,
+        stream: StreamT,
+        event: EventT,
+        offset: int,
+    ) -> None:
+        monitor.track_tp_end_offset(topic_partition, offset + 5)
+        monitor.on_message_in(topic_partition, offset, event.message)
+        monitor.on_stream_event_in(topic_partition, offset, stream, event)
+        monitor.on_tp_commit({topic_partition: offset})
