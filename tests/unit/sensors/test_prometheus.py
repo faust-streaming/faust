@@ -136,6 +136,20 @@ class TestPrometheusMonitor:
             n_events - 1,
         )
 
+    @pytest.mark.xfail(strict=True)
+    def test_on_stream_event_out_does_not_measure_latency_without_state(
+        self,
+        monitor: PrometheusMonitor,
+        metrics: FaustMetrics,
+        stream: StreamT,
+        event: EventT,
+    ) -> None:
+        monitor.on_stream_event_out(TP1, 401, stream, event, state=None)
+
+        self.assert_doesnt_have_sample_values(
+            metrics.events_runtime_latency, "events_runtime_latency_total", {}
+        )
+
     def test_on_table_get(
         self, monitor: PrometheusMonitor, metrics: FaustMetrics, table: TableT
     ) -> None:
