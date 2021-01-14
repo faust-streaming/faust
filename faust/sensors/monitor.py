@@ -571,6 +571,7 @@ class Monitor(Sensor, KeywordReduce):
     def on_rebalance_start(self, app: AppT) -> Dict:
         """Cluster rebalance in progress."""
         self.rebalances = app.rebalancing_count
+        self._clear_topic_related_sensors()
         return {"time_start": self.time()}
 
     def on_rebalance_return(self, app: AppT, state: Dict) -> None:
@@ -596,6 +597,7 @@ class Monitor(Sensor, KeywordReduce):
             latency_end=latency_end,
         )
         deque_pushpopmax(self.rebalance_end_latency, latency_end, self.max_avg_history)
+        self._clear_topic_related_sensors()
 
     def on_web_request_start(
         self, app: AppT, request: web.Request, *, view: web.View = None
@@ -633,3 +635,10 @@ class Monitor(Sensor, KeywordReduce):
         substitution: str = RE_NORMALIZE_SUBSTITUTION
     ) -> str:
         return pattern.sub(substitution, name)
+
+    def _clear_topic_related_sensors(self) -> None:
+        self.tp_committed_offsets.clear()
+        self.tp_read_offsets.clear()
+        self.tp_end_offsets.clear()
+        self.topic_buffer_full.clear()
+        self.stream_inbound_time.clear()

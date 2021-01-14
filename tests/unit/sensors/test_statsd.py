@@ -9,7 +9,7 @@ from faust.types import TP
 TP1 = TP("foo", 3)
 
 
-class test_StatsdMonitor:
+class TestStatsdMonitor:
     @pytest.fixture
     def time(self):
         timefun = Mock(name="time()")
