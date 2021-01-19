@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 class ProducerBuffer(Service, ProducerBufferT):
     app: AppT = None
     max_messages = 100
-    queue: asyncio.Queue = None
+    queue: Optional[asyncio.Queue] = None
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
@@ -36,11 +36,14 @@ class ProducerBuffer(Service, ProducerBufferT):
         The message will be eventually produced, you can await
         the future to wait for that to happen.
         """
-        if not self.queue:
-            self.queue = self.changelog_producer.event_queue
-        asyncio.run_coroutine_threadsafe(
-            self.queue.put(fut), self.changelog_producer.thread_loop
-        )
+        if self.app.conf.producer_threaded:
+            if not self.queue:
+                self.queue = self.threaded_producer.event_queue
+            asyncio.run_coroutine_threadsafe(
+                self.queue.put(fut), self.threaded_producer.thread_loop
+            )
+        else:
+            self.pending.put_nowait(fut)
 
     async def on_stop(self) -> None:
         await self.flush()
@@ -99,14 +102,11 @@ class ProducerBuffer(Service, ProducerBufferT):
             end_time = time.time()
             logger.info(f"producer flush took {end_time-start_time}")
 
+    @Service.task
     async def _handle_pending(self) -> None:
         get_pending = self.pending.get
         send_pending = self._send_pending
         while not self.should_stop:
-            if getattr(self.app, "dd_sensor", None):
-                self.app.dd_sensor.client.gauge(
-                    metric="fos.producer.buffer", value=self.size
-                )
             msg = await get_pending()
             await send_pending(msg)
 
@@ -126,7 +126,7 @@ class Producer(Service, ProducerT):
     app: AppT
 
     _api_version: str
-    changelog_producer: Optional[ServiceThread] = None
+    threaded_producer: Optional[ServiceThread] = None
 
     def __init__(
         self,
@@ -150,11 +150,11 @@ class Producer(Service, ProducerT):
         api_version = self._api_version = conf.producer_api_version
         assert api_version is not None
         super().__init__(loop=loop or self.transport.loop, **kwargs)
-
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
+        if conf.producer_threaded:
+            self.threaded_producer = self.create_threaded_producer()
+            self.buffer.threaded_producer = self.threaded_producer
         self.buffer.app = self.app
-        self.changelog_producer = self.create_changelog_producer()
-        self.buffer.changelog_producer = self.changelog_producer
 
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)

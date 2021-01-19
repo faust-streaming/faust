@@ -259,9 +259,9 @@ class Consumer(ThreadDelegateConsumer):
         transport._topic_waiters.clear()
 
 
-class ChangelogProducerThread(ServiceThread):
+class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
-    event_queue: asyncio.Queue = None
+    event_queue: Optional[asyncio.Queue] = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
     app: None
 
@@ -326,10 +326,6 @@ class ChangelogProducerThread(ServiceThread):
 
     async def push_events(self):
         while True:
-            if getattr(self.app, "dd_sensor", None):
-                self.app.dd_sensor.client.gauge(
-                    metric="fos.producer.buffer", value=self.event_queue.qsize()
-                )
             event = await self.event_queue.get()
             await self.publish_message(event)
 
@@ -376,7 +372,6 @@ class ChangelogProducerThread(ServiceThread):
             )
             return await self._finalize_message(fut, ret)
         else:
-            start_time = self.thread_loop.time()
             fut2 = cast(
                 asyncio.Future,
                 await producer.send(
@@ -388,11 +383,6 @@ class ChangelogProducerThread(ServiceThread):
                     headers=headers,
                 ),
             )
-            end_time = self.thread_loop.time() - start_time
-            if getattr(self.app, "dd_sensor", None):
-                self.app.dd_sensor.client.histogram(
-                    metric="fos.producer.send", value=end_time
-                )
             callback = partial(
                 fut.message.channel._on_published,
                 message=fut,
@@ -1038,8 +1028,8 @@ class Producer(base.Producer):
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
     _trn_locks: typing.Dict[str, Lock] = {}
 
-    def create_changelog_producer(self):
-        return ChangelogProducerThread(default_producer=self, app=self.app)
+    def create_threaded_producer(self):
+        return ThreadedProducer(default_producer=self, app=self.app)
 
     def __post_init__(self) -> None:
         self._send_on_produce_message = self.app.on_produce_message.send
@@ -1314,8 +1304,7 @@ class Producer(base.Producer):
                         ),
                     )
             else:
-                start_time = self.app.loop.time()
-                fut = cast(
+                return cast(
                     Awaitable[RecordMetadata],
                     await transaction_producer.send(
                         topic,
@@ -1326,12 +1315,6 @@ class Producer(base.Producer):
                         headers=headers,
                     ),
                 )
-                end_time = self.app.loop.time() - start_time
-                if getattr(self.app, "dd_sensor", None):
-                    self.app.dd_sensor.client.histogram(
-                        metric="fos.producer.send", value=end_time
-                    )
-                return fut
 
         except KafkaError as exc:
             raise ProducerSendError(f"Error while sending: {exc!r}") from exc
