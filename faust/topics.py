@@ -448,8 +448,6 @@ class Topic(SerializedChannel, TopicT):
                 topic_partition=TP(topic=topic, partition=partition),
                 offset=0,
             )
-
-            app.sensors.on_send_completed(producer, state, met)
             return fut2
 
     def _topic_name_or_default(self, obj: Optional[Union[str, ChannelT]]) -> str:
@@ -476,7 +474,7 @@ class Topic(SerializedChannel, TopicT):
             message.set_result(res)
             if message.message.callback:
                 message.message.callback(message)
-            # self.app.sensors.on_send_completed(producer, state, res)
+            self.app.sensors.on_send_completed(producer, state, res)
 
     @stampede
     async def maybe_declare(self) -> None:

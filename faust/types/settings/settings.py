@@ -1329,11 +1329,11 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Bool,
-        version_introduced="1.3.1",
+        version_introduced="0.5.0",
         env_name="PRODUCER_THREADED",
         default=False,
     )
-    def producer_threaded(self) -> float:
+    def producer_threaded(self) -> bool:
         """Thread separate producer for send_soon.
 
         If True, spin up a different producer in a different thread
