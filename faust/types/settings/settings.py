@@ -127,6 +127,7 @@ class Settings(base.SettingsRegistry):
         producer_max_request_size: int = None,
         producer_partitioner: SymbolArg[PartitionerT] = None,
         producer_request_timeout: Seconds = None,
+        producer_threaded: bool = False,
         # RPC settings:
         reply_create_topic: bool = None,
         reply_expires: Seconds = None,
@@ -1324,6 +1325,20 @@ class Settings(base.SettingsRegistry):
         Timeout for producer operations.
         This is set high by default, as this is also the time when
         producer batches expire and will no longer be retried.
+        """
+
+    @sections.Producer.setting(
+        params.Bool,
+        version_introduced="0.5.0",
+        env_name="PRODUCER_THREADED",
+        default=False,
+    )
+    def producer_threaded(self) -> bool:
+        """Thread separate producer for send_soon.
+
+        If True, spin up a different producer in a different thread
+        to be used for messages buffered up for producing via
+        send_soon function.
         """
 
     @sections.RPC.setting(

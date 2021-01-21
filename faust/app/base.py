@@ -310,9 +310,12 @@ class BootStrategy(BootStrategyT):
 
     def kafka_producer(self) -> Iterable[ServiceT]:
         """Return list of services required to start Kafka producer."""
+        producers = []
         if self._should_enable_kafka_producer():
-            return [self.app.producer]
-        return []
+            producers.append(self.app.producer)
+            if self.app.conf.producer_threaded:
+                producers.append(self.app.producer.threaded_producer)
+        return producers
 
     def _should_enable_kafka_producer(self) -> bool:
         if self.enable_kafka_producer is None:

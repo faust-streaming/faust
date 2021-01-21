@@ -367,7 +367,7 @@ class Store(base.SerializedStore):
                 await asyncio.sleep(0)
 
     async def _try_open_db_for_partition(
-        self, partition: int, max_retries: int = 5, retry_delay: float = 1.0
+        self, partition: int, max_retries: int = 60, retry_delay: float = 1.0
     ) -> DB:
         for i in range(max_retries):
             try:
