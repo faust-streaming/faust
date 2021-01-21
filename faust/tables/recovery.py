@@ -530,6 +530,7 @@ class Recovery(Service):
 
     def _set_recovery_started(self) -> None:
         self.in_recovery = True
+        self.app.in_recovery = True
         self._recovery_ended = None
         self._recovery_started_at = monotonic()
         self._active_events_received_at.clear()
@@ -539,6 +540,7 @@ class Recovery(Service):
 
     def _set_recovery_ended(self) -> None:
         self.in_recovery = False
+        self.app.in_recovery = False
         self._recovery_ended_at = monotonic()
         self._active_events_received_at.clear()
         self._standby_events_received_at.clear()

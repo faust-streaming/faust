@@ -519,7 +519,7 @@ class Consumer(Service, ConsumerT):
 
     def on_buffer_full(self, tp: TP) -> None:
         # do not remove the partition when in recovery
-        if not self.app.rebalancing:
+        if not self.app.in_recovery:
             active_partitions = self._get_active_partitions()
             active_partitions.discard(tp)
             self._buffered_partitions.add(tp)

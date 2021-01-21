@@ -15,7 +15,7 @@ from faust.types import TP, Message
 TP1 = TP("foo", 0)
 
 
-class test_Monitor:
+class TestMonitor:
     @pytest.fixture
     def time(self):
         timefun = Mock(name="time()")
@@ -331,6 +331,29 @@ class test_Monitor:
         assert mon.rebalance_end_latency[-1] == time() - other_time
         assert state["time_end"] == time()
         assert state["latency_end"] == time() - other_time
+
+    def test_topic_related_sensors_are_cleared_after_rebalance(
+        self, *, mon, app, message, stream, event
+    ):
+        mon.on_message_in(TP1, 11, message)
+        mon.on_stream_event_in(TP, 11, stream, event)
+        mon.on_tp_commit({TP1: 10})
+        mon.track_tp_end_offset(TP1, 12)
+        mon.on_topic_buffer_full(TP1)
+        assert len(mon.tp_committed_offsets) > 0
+        assert len(mon.tp_read_offsets) > 0
+        assert len(mon.tp_end_offsets) > 0
+        assert len(mon.topic_buffer_full) > 0
+        assert len(mon.stream_inbound_time) > 0
+
+        state = mon.on_rebalance_start(app)
+        mon.on_rebalance_end(app, state)
+
+        assert len(mon.tp_committed_offsets) == 0
+        assert len(mon.tp_read_offsets) == 0
+        assert len(mon.tp_end_offsets) == 0
+        assert len(mon.topic_buffer_full) == 0
+        assert len(mon.stream_inbound_time) == 0
 
     def test_on_web_request_start(self, *, mon, time, app):
         request = Mock(name="request")

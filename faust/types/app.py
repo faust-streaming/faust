@@ -179,6 +179,8 @@ class AppT(ServiceT):
     #: Set to true if the worker is currently rebalancing.
     rebalancing: bool = False
     rebalancing_count: int = 0
+    #: Set to true when the worker is in recovery
+    in_recovery: bool = False
 
     #: Set to true if the assignment is empty
     # This flag is set by App._on_partitions_assigned
