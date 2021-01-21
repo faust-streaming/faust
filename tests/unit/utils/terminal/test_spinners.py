@@ -11,7 +11,7 @@ def spinner(file=None, isatty=True):
     return Spinner(file)
 
 
-class test_Spinner:
+class Test_Spinner:
     def spinner(self, file=None, isatty=True):
         return spinner(file=file, isatty=isatty)
 

@@ -12,7 +12,7 @@ from faust.livecheck.exceptions import SuiteFailed
 from faust.livecheck.models import State, TestReport
 
 
-class test_Case:
+class TestCase:
     @pytest.mark.parametrize(
         "arg,value,expected",
         [
@@ -156,7 +156,7 @@ class test_Case:
             assert case.frequency_history[-1] == time_since
             assert len(case.frequency_history) == case.max_history
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def frozen_monotonic(self):
         with self._patch_monotonic() as monotonic:
             yield monotonic

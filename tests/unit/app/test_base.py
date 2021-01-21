@@ -36,7 +36,7 @@ CONFIG_DICT = {
     "broker": "kafka://foo",
     "stream_buffer_maxsize": 1,
 }
-CONFIG_PATH = "t.unit.app.test_base.ConfigClass"
+CONFIG_PATH = "tests.unit.app.test_base.ConfigClass"
 
 TP1 = TP("foo", 0)
 TP2 = TP("bar", 1)
@@ -104,7 +104,7 @@ async def test_send_str(app):
     await app.send("foo", Value(amount=0.0))
 
 
-class test_App:
+class Test_App:
     def test_stream(self, *, app):
         s = app.topic(TEST_TOPIC).stream()
         assert s.channel.topics == (TEST_TOPIC,)
@@ -1093,7 +1093,7 @@ class test_App:
         assert leader_assignor.beacon.parent is app.beacon
 
 
-class test_AppConfiguration:
+class TestAppConfiguration:
     def test_conf__before_finalized(self, *, monkeypatch, app):
         app.finalized = False
         monkeypatch.setattr("faust.app.base.STRICT", False)

@@ -45,7 +45,7 @@ def event():
     )
 
 
-class test_Table:
+class Test_Table:
     @pytest.fixture
     def table(self, *, app):
         return self.create_table(app, name="foo", default=int)

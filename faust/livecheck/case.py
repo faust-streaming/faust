@@ -376,9 +376,9 @@ class Case(Service):
             self.last_fail = monotonic()
 
     def _maybe_recover_from_failed_state(self) -> None:
-        if self.status != State.PASS:
+        if self.status != State.DO_NOT_SHARE:
             if self._failed_longer_than(self.state_transition_delay):
-                self._set_pass_state(State.PASS)
+                self._set_pass_state(State.DO_NOT_SHARE)
 
     def _failed_longer_than(self, secs: float) -> bool:
         secs_since_fail = self.seconds_since_last_fail

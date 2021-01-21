@@ -258,7 +258,7 @@ def assert_events_acked(events):
         raise
 
 
-class test_chained_streams:
+class Test_chained_streams:
     def _chain(self, app):
         root = new_stream(app)
         root._next = s1 = new_stream(app, prev=root)

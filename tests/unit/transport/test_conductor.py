@@ -14,7 +14,7 @@ TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)
 
 
-class test_Conductor:
+class Test_Conductor:
     @pytest.fixture
     def con(self, *, app):
         return Conductor(app)

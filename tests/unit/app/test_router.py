@@ -7,7 +7,7 @@ from faust.exceptions import SameNode
 from faust.web.exceptions import ServiceUnavailable
 
 
-class test_Router:
+class Test_Router:
     @pytest.fixture()
     def assignor(self, *, app):
         assignor = app.assignor = Mock(name="assignor")

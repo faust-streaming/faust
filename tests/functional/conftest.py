@@ -27,7 +27,7 @@ def create_appmarks(name="funtest", store="memory://", cache="memory://", **rest
     return options, rest
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def app(event_loop, request):
     os.environ.pop("F_DATADIR", None)
     os.environ.pop("FAUST_DATADIR", None)
@@ -61,7 +61,7 @@ class LoggingMarks(NamedTuple):
     logging_config: Dict = None
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def logging(request):
     marks = request.node.get_closest_marker("logging")
     options = LoggingMarks(

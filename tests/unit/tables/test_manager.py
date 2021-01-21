@@ -9,7 +9,7 @@ TP2 = TP("bar", 4)
 TP3 = TP("baz", 5)
 
 
-class test_Manager:
+class Test_Manager:
     @pytest.fixture()
     def tables(self, *, app):
         return app.tables

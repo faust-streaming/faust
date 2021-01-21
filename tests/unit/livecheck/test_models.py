@@ -3,10 +3,10 @@ from datetime import timedelta, timezone
 from faust.livecheck.models import State
 
 
-class test_State:
+class TestState:
     def test_is_ok(self):
         assert State.INIT.is_ok()
-        assert State.PASS.is_ok()
+        assert State.DO_NOT_SHARE.is_ok()
         assert State.SKIP.is_ok()
         assert not State.FAIL.is_ok()
         assert not State.ERROR.is_ok()
@@ -14,7 +14,7 @@ class test_State:
         assert not State.STALL.is_ok()
 
 
-class test_TestExecution:
+class TestTestExecution:
     def test_ident(self, *, execution):
         assert execution.ident
 

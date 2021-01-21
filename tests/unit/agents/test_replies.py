@@ -21,7 +21,7 @@ def test_ReplyPromise():
         r._verify_correlation_id(None)
 
 
-class test_BarrierState:
+class Test_BarrierState:
     @pytest.mark.asyncio
     async def test_parallel_join(self):
         p = BarrierState(reply_to="rt")
@@ -143,7 +143,7 @@ class test_BarrierState:
             assert value == str(i)
 
 
-class test_ReplyConsumer:
+class Test_ReplyConsumer:
     @pytest.fixture()
     def c(self, *, app):
         return ReplyConsumer(app)
