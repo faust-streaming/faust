@@ -4,7 +4,7 @@ from mode.utils.mocks import Mock
 from faust.exceptions import SameNode
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def web_client(loop, aiohttp_client, web):
     try:
         yield aiohttp_client(web.web_app)

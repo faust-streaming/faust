@@ -22,7 +22,7 @@ class CoroEq:
         return other.cr_code.co_name == self.coro.__name__
 
 
-class test_Worker:
+class Test_Worker:
     @pytest.fixture
     def worker(self, app):
         return Worker(app)

@@ -1,4 +1,4 @@
-class test_Arena:
+class Test_Arena:
     def test_json(self, faust_json):
         exitcode, model, stderr = faust_json("model", "app.Arena")
         assert not exitcode
@@ -18,7 +18,7 @@ class test_Arena:
         assert b"typing.List" in stdout
 
 
-class test_Point:
+class Test_Point:
     def test_json(self, faust_json):
         exitcode, model, stderr = faust_json("model", "app.Point")
         assert not exitcode

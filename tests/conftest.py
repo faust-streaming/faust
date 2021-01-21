@@ -81,7 +81,7 @@ class TimeMarks(NamedTuple):
     monotonic: float = None
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def freeze_time(event_loop, request):
     marks = request.node.get_closest_marker("time")
     timestamp = time.time()
@@ -196,7 +196,7 @@ def _collected_environ():
     return dict(os.environ)
 
 
-@pytest.yield_fixture(autouse=True)
+@pytest.fixture(autouse=True)
 def _verify_environ(_collected_environ):
     try:
         yield

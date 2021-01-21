@@ -12,7 +12,7 @@ from faust.web.base import (
 )
 
 
-class test_BlueprintManager:
+class Test_BlueprintManager:
     @pytest.fixture()
     def manager(self):
         return BlueprintManager()
@@ -84,7 +84,7 @@ class MyWeb(Web):
         ...
 
 
-class test_Web:
+class Test_Web:
     @pytest.fixture()
     def web(self, *, app):
         return MyWeb(app)

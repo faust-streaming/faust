@@ -6,7 +6,7 @@ from faust.stores.memory import Store
 from faust.types import TP
 
 
-class test_Store:
+class Test_Store:
     @pytest.fixture
     def store(self, *, app):
         return Store(url="memory://", app=app, table=Mock(name="table"))

@@ -75,7 +75,7 @@ def test__prepare_cors_options():
     assert x2.allow_methods == {"POST"}
 
 
-class test_ServerThread:
+class Test_ServerThread:
     def test_constructor(self, *, thread, web):
         assert thread.web is web
 
@@ -108,7 +108,7 @@ class test_ServerThread:
         thread.web.stop_server.assert_called_once()
 
 
-class test_Server:
+class Test_Server:
     def test_constructor(self, *, server, web):
         assert server.web is web
 
@@ -125,7 +125,7 @@ class test_Server:
         web.stop_server.assert_called_once_with()
 
 
-class test_Web:
+class Test_Web:
     def test_cors(self, *, web):
         assert web.cors is web.cors
         assert isinstance(web.cors, aiohttp_cors.CorsConfig)
@@ -336,6 +336,7 @@ class test_Web:
                 web._runner,
                 app.conf.web_bind,
                 app.conf.web_port,
+                ssl_context=None,
             )
             assert ret is TCPSite()
 

@@ -4,7 +4,7 @@ from mode.utils.mocks import AsyncMock, Mock
 from faust import Event
 
 
-class test_Event:
+class Test_Event:
     @pytest.fixture
     def key(self):
         return Mock(name="key")
