@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+##0.5.0
+### Features
+- New threaded producer for applications using send_soon for sending messages
+
+##0.4.1
+### Fixed
+- Adding Prometheus Sensor
+- Stability fixes for table recovery when the stream buffer is full
+
 ##0.4.0
 ### Fixed
 - Prevent stream buffer overflow by lowering the rate of incoming partitions
