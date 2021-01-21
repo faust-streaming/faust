@@ -59,7 +59,7 @@ def same(a, b):
     return sorted(a) == sorted(b)
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def current_event(*, freeze_time):
     with patch("faust.tables.wrappers.current_event") as current_event:
         with patch("faust.tables.base.current_event", current_event):
@@ -67,7 +67,7 @@ def current_event(*, freeze_time):
             yield current_event
 
 
-class test_WindowSet:
+class Test_WindowSet:
     @pytest.fixture
     def wset(self, *, wtable, event):
         return WindowSet("k", wtable.table, wtable, event)
@@ -235,7 +235,7 @@ class test_WindowSet:
         assert repr(wset)
 
 
-class test_WindowWrapper:
+class Test_WindowWrapper:
     def test_name(self, *, wtable):
         assert wtable.name == wtable.table.name
 
@@ -357,7 +357,7 @@ class test_WindowWrapper:
             wtable._relative_handler(object())
 
 
-class test_WindowWrapper_using_key_index:
+class Test_WindowWrapper_using_key_index:
     TABLE_DATA = {
         "foobar": "AUNIQSTR",
         "xuzzy": "BUNIQSTR",

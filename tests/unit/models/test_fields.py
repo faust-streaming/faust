@@ -12,7 +12,7 @@ class X(Record):
     foo: str
 
 
-class test_ValidationError:
+class Test_ValidationError:
     @pytest.fixture()
     def field(self):
         return DecimalField(model=X, field="foo")
@@ -28,13 +28,13 @@ class test_ValidationError:
         assert str(error)
 
 
-class test_FieldDescriptor:
+class Test_FieldDescriptor:
     def test_validate(self):
         f = FieldDescriptor()
         assert list(f.validate("foo")) == []
 
 
-class test_BooleanField:
+class Test_BooleanField:
     @pytest.fixture()
     def model(self):
         model = Mock(name="model")
@@ -102,7 +102,7 @@ class test_BooleanField:
         assert field.prepare_value(None, coerce=False) is None
 
 
-class test_DecimalField:
+class Test_DecimalField:
     def test_init_options(self):
         assert DecimalField(max_digits=3).max_digits == 3
         assert DecimalField(max_decimal_places=4).max_decimal_places == 4
@@ -183,7 +183,7 @@ class test_DecimalField:
             raise next(f.validate(value))
 
 
-class test_BytesField:
+class Test_BytesField:
     def test_init_options(self):
         assert BytesField(encoding="latin1").encoding == "latin1"
         assert BytesField(errors="replace").errors == "replace"

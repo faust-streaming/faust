@@ -12,7 +12,13 @@ from mode.utils.typing import NoReturn
 
 from faust.models import maybe_model
 
-from .exceptions import LiveCheckError, TestFailed, TestRaised, TestSkipped, TestTimeout
+from .exceptions import (
+    LiveCheckError,
+    LiveCheckTestFailed,
+    LiveCheckTestRaised,
+    LiveCheckTestSkipped,
+    LiveCheckTestTimeout,
+)
 from .locals import current_test_stack
 from .models import State, TestExecution, TestReport
 from .signals import BaseSignal
@@ -74,35 +80,33 @@ class TestRunner:
                 await self.case.run(*args, **kwargs)
             except asyncio.CancelledError:
                 pass
-            except TestSkipped as exc:
+            except LiveCheckTestSkipped as exc:
                 await self.on_skipped(exc)
                 raise
-            except TestTimeout as exc:
+            except LiveCheckTestTimeout as exc:
                 await self.on_timeout(exc)
                 raise
             except AssertionError as exc:
                 await self.on_failed(exc)
-                raise TestFailed(exc) from exc
+                raise LiveCheckTestFailed(exc) from exc
             except LiveCheckError as exc:
                 await self.on_error(exc)
                 raise
             except Exception as exc:
                 await self.on_error(exc)
-                raise TestRaised(exc) from exc
+                raise LiveCheckTestRaised(exc) from exc
             else:
                 await self.on_pass()
 
     async def skip(self, reason: str) -> NoReturn:
         """Skip this test execution."""
-        exc = TestSkipped(f"Test {self.test.ident} skipped: {reason}")
+        exc = LiveCheckTestSkipped(f"Test {self.test.ident} skipped: {reason}")
         try:
             raise exc
-        except TestSkipped as exc:
+        except LiveCheckTestSkipped as exc:
             # save with traceback
             await self.on_skipped(exc)
             raise
-        else:  # pragma: no cover
-            assert False  # can not get here
 
     def _prepare_args(self, args: Iterable) -> Tuple:
         to_value = self._prepare_val
@@ -118,7 +122,7 @@ class TestRunner:
     def _format_log(self, severity: int, msg: str, *args: Any, **kwargs: Any) -> str:
         return f"[{self.test.shortident}] {msg}"
 
-    async def on_skipped(self, exc: TestSkipped) -> None:
+    async def on_skipped(self, exc: LiveCheckTestSkipped) -> None:
         """Call when a test execution was skipped."""
         self.state = State.SKIP
         self.log.info(
@@ -183,7 +187,7 @@ class TestRunner:
         """Call when test execution returns successfully."""
         self.end()
         self.error = None
-        self.state = State.PASS
+        self.state = State.DO_NOT_SHARE
         human_secs = humanize_seconds(
             self.runtime or 0.0,
             microseconds=True,

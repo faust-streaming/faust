@@ -211,6 +211,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
             raise
         except Exception as exc:
             self.app.sensors.on_assignment_error(self, sensor_state, exc)
+            raise
         else:
             self.app.sensors.on_assignment_completed(self, sensor_state)
         return assignment

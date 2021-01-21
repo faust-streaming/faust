@@ -662,10 +662,14 @@ class Agent(AgentT, Service):
         req_version = (3, 8)
         cur_version = sys.version_info
         if cur_version >= req_version:
+            if isinstance(self.channel, TopicT):
+                name = self.channel.get_topic_name()
+            else:
+                name = "channel"
             task = asyncio.Task(
                 self._execute_actor(coro, aref),
                 loop=self.loop,
-                name=f"{str(aref)}-{self.channel.get_topic_name()}",
+                name=f"{str(aref)}-{name}",
             )
         else:
             task = asyncio.Task(

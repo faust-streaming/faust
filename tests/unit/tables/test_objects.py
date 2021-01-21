@@ -24,7 +24,7 @@ def table():
     )
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def current_event():
     with patch("faust.tables.objects.current_event") as current_event:
         yield current_event
@@ -47,7 +47,7 @@ class ValueType:
         self.changes.append((operation, value))
 
 
-class test_ChangeloggedObjectManager:
+class Test_ChangeloggedObjectManager:
     @pytest.fixture()
     def man(self, *, table):
         man = ChangeloggedObjectManager(table)

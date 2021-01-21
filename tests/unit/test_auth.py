@@ -7,7 +7,7 @@ from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
 from faust.types.auth import AuthProtocol, SASLMechanism
 
 
-class test_SASLCredentials:
+class Test_SASLCredentials:
     @pytest.mark.parametrize(
         "reason,credentials,expected_fields",
         [
@@ -62,7 +62,7 @@ class test_SASLCredentials:
             assert getattr(credentials, field) == value, reason
 
 
-class test_GSSAPICredentials:
+class Test_GSSAPICredentials:
     @pytest.mark.parametrize(
         "reason,credentials,expected_fields",
         [
@@ -118,7 +118,7 @@ class test_GSSAPICredentials:
             assert getattr(credentials, field) == value, reason
 
 
-class test_SSLCredentials:
+class Test_SSLCredentials:
     def test_constructor(self):
         with patch("faust.auth.ssl.create_default_context") as cdc:
             c = SSLCredentials(
