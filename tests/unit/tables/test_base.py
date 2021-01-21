@@ -50,7 +50,7 @@ class MyTable(Collection):
         raise NotImplementedError()
 
 
-class test_Collection:
+class Test_Collection:
     @pytest.fixture
     def table(self, *, app):
         return MyTable(app, name="name")

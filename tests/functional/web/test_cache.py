@@ -448,7 +448,7 @@ def bp(app):
     blueprint.register(app, url_prefix="/test/")
 
 
-class test_RedisScheme:
+class Test_RedisScheme:
     def test_single_client(self, app):
         url = "redis://123.123.123.123:3636//1"
         Backend = backends.by_url(url)

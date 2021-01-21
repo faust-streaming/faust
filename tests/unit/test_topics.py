@@ -14,7 +14,7 @@ class Dummy(Record):
     foo: int
 
 
-class test_Topic:
+class Test_Topic:
     @pytest.fixture
     def topic(self, *, app):
         return app.topic("foo")

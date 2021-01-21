@@ -15,7 +15,7 @@ class Model(faust.Record):
     foo: str
 
 
-class test_Stream:
+class Test_Stream:
     @pytest.fixture()
     def stream(self, *, app):
         return app.stream(app.channel())

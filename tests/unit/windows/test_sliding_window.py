@@ -1,7 +1,7 @@
 from faust.windows import SlidingWindow
 
 
-class test_SlidingWindow:
+class Test_SlidingWindow:
     def test_constructor(self):
         x = SlidingWindow(10.1, 20.2, 30.3)
         assert x.before == 10.1
