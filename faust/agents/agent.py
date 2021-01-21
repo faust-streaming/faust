@@ -1,5 +1,6 @@
 """Agent implementation."""
 import asyncio
+import sys
 import typing
 from contextlib import suppress
 from contextvars import ContextVar
@@ -658,11 +659,19 @@ class Agent(AgentT, Service):
         else:
             # agent yields and is an AsyncIterator so we have to consume it.
             coro = self._slurp(aref, aiter(aref))
-        task = asyncio.Task(
-            self._execute_actor(coro, aref),
-            loop=self.loop,
-            name=f"{str(aref)}-{self.channel.get_topic_name()}",
-        )
+        req_version = (3, 8)
+        cur_version = sys.version_info
+        if cur_version >= req_version:
+            task = asyncio.Task(
+                self._execute_actor(coro, aref),
+                loop=self.loop,
+                name=f"{str(aref)}-{self.channel.get_topic_name()}",
+            )
+        else:
+            task = asyncio.Task(
+                self._execute_actor(coro, aref),
+                loop=self.loop,
+            )
         task._beacon = beacon  # type: ignore
         aref.actor_task = task
         self._actors.add(aref)
