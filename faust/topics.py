@@ -442,12 +442,6 @@ class Topic(SerializedChannel, TopicT):
                 producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
-            met = RecordMetadata(
-                topic=topic,
-                partition=partition,
-                topic_partition=TP(topic=topic, partition=partition),
-                offset=0,
-            )
             return fut2
 
     def _topic_name_or_default(self, obj: Optional[Union[str, ChannelT]]) -> str:
