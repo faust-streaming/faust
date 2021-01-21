@@ -7,7 +7,7 @@ from mode.utils.mocks import AsyncMock, Mock
 from faust.types import TP
 
 
-class test_AgentManager:
+class Test_AgentManager:
     def create_agent(self, name, topic_names=None):
         agent = Mock(
             name=name,

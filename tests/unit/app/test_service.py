@@ -7,7 +7,7 @@ class OtherService(Service):
     ...
 
 
-class test_AppService:
+class Test_AppService:
     def test_on_init_dependencies(self, *, app):
         app.boot_strategy = Mock(name="boot_strategy")
         app.client_only = True

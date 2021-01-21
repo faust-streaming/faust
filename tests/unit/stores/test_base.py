@@ -30,7 +30,7 @@ class MyStore(Store):
         ...
 
 
-class test_Store:
+class Test_Store:
     @pytest.fixture
     def store(self, *, app):
         return MyStore(
@@ -121,7 +121,7 @@ class MySerializedStore(SerializedStore):
         ...
 
 
-class test_SerializedStore:
+class Test_SerializedStore:
     @pytest.fixture
     def store(self, *, app):
         return MySerializedStore(

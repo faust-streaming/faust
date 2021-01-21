@@ -3,13 +3,13 @@ import asyncio
 import pytest
 from mode.utils.mocks import AsyncMock, Mock, patch
 
-from faust.livecheck.exceptions import TestTimeout
+from faust.livecheck.exceptions import LiveCheckTestTimeout
 from faust.livecheck.locals import current_execution_stack, current_test_stack
 from faust.livecheck.models import SignalEvent
 from faust.livecheck.signals import BaseSignal, Signal
 
 
-class test_BaseSignal:
+class Test_BaseSignal:
     @pytest.fixture()
     def signal(self, *, case):
         return BaseSignal("foo", case, 1)
@@ -66,7 +66,7 @@ class test_BaseSignal:
         assert repr(signal)
 
 
-class test_Signal:
+class Test_Signal:
     @pytest.fixture()
     def signal(self, *, case):
         return Signal("foo", case, 1)
@@ -225,7 +225,7 @@ class test_Signal:
                     can_return[0] = True
 
             signal._wait_for_resolved.side_effect = on_resolved
-            with pytest.raises(TestTimeout):
+            with pytest.raises(LiveCheckTestTimeout):
                 await signal._wait_for_message_by_key("k", timeout=1.0)
 
     @pytest.mark.asyncio

@@ -629,7 +629,7 @@ def test_json():
     assert User.from_data(deser) == user
 
 
-class test_FieldDescriptor:
+class Test_FieldDescriptor:
     def test_getattr(self):
         u = User(id=1, username=2, account=Account(id=3, name=4))
 

@@ -15,7 +15,7 @@ BUF4 = [11, 12, 13]
 BUF5 = [14, 15]
 
 
-class test_TopicBuffer:
+class Test_TopicBuffer:
     def test_iter(self):
         buffer = TopicBuffer()
         buffer.add(TP1, BUF1)

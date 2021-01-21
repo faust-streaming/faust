@@ -7,13 +7,13 @@ from mode.utils.mocks import AsyncMock, Mock, call
 
 from faust.livecheck import LiveCheck
 from faust.livecheck.app import LiveCheckSensor
-from faust.livecheck.exceptions import TestFailed
+from faust.livecheck.exceptions import LiveCheckTestFailed
 from faust.livecheck.locals import current_test_stack
 from faust.livecheck.models import SignalEvent, TestExecution, TestReport
 from faust.livecheck.signals import BaseSignal
 
 
-class test_LiveCheckSensor:
+class TestLiveCheckSensor:
     @pytest.fixture()
     def sensor(self):
         return LiveCheckSensor()
@@ -40,7 +40,7 @@ class test_LiveCheckSensor:
         assert stream.current_test is None
 
 
-class test_LiveCheck:
+class Test_LiveCheck:
     @pytest.mark.parametrize(
         "kwarg,value,expected_value",
         [
@@ -111,7 +111,7 @@ class test_LiveCheck:
             __origin__ = None
 
         @livecheck.case()
-        class test_foo:
+        class Test_foo:
 
             signal1: livecheck.Signal
             signal2: SignalWithNoneOrigin
@@ -119,15 +119,15 @@ class test_LiveCheck:
             foo: Union[str, int]
             bar: str
 
-        assert isinstance(test_foo.signal1, BaseSignal)
-        assert isinstance(test_foo.signal2, SignalWithNoneOrigin)
-        assert isinstance(test_foo.signal3, BaseSignal)
+        assert isinstance(Test_foo.signal1, BaseSignal)
+        assert isinstance(Test_foo.signal2, SignalWithNoneOrigin)
+        assert isinstance(Test_foo.signal3, BaseSignal)
 
-        assert test_foo.signal1.case is test_foo
-        assert test_foo.signal2.case is test_foo
-        assert test_foo.signal1.index == 1
-        assert test_foo.signal2.index == 2
-        assert test_foo.signal3.index == 3
+        assert Test_foo.signal1.case is Test_foo
+        assert Test_foo.signal2.case is Test_foo
+        assert Test_foo.signal1.index == 1
+        assert Test_foo.signal2.index == 2
+        assert Test_foo.signal3.index == 3
 
     def test_add_case(self, *, livecheck):
         case = Mock()
@@ -254,7 +254,7 @@ class test_LiveCheck:
         tests.items.side_effect = iterate_tests
 
         case = livecheck.cases[execution.case_name] = Mock(
-            execute=AsyncMock(side_effect=TestFailed()),
+            execute=AsyncMock(side_effect=LiveCheckTestFailed()),
         )
 
         await livecheck._execute_tests(tests)
@@ -263,8 +263,8 @@ class test_LiveCheck:
     @pytest.mark.parametrize(
         "name,origin,expected",
         [
-            ("__main__.test_foo", "examples.f.y", "examples.f.y.test_foo"),
-            ("examples.test_foo", "examples.f.y", "examples.test_foo"),
+            ("__main__.Test_foo", "examples.f.y", "examples.f.y.Test_foo"),
+            ("examples.Test_foo", "examples.f.y", "examples.Test_foo"),
         ],
     )
     def test_prepare_case_name(self, name, origin, expected, *, livecheck):
@@ -274,7 +274,7 @@ class test_LiveCheck:
     def test_prepare_case_name__no_origin(self, *, livecheck):
         livecheck.conf.origin = None
         with pytest.raises(RuntimeError):
-            livecheck._prepare_case_name("__main__.test_foo")
+            livecheck._prepare_case_name("__main__.Test_foo")
 
     def test_bus(self, *, livecheck):
         livecheck.topic = Mock()
