@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Adding Prometheus Sensor
 - Stability fixes for table recovery when the stream buffer is full
+[75](https://github.com/faust-streaming/faust/pull/75)
 
 ##0.4.0
 ### Fixed
