@@ -332,7 +332,7 @@ class Store(base.SerializedStore):
         self.revoke_partitions(table, revoked)
         await self.assign_partitions(table, newly_assigned)
 
-    async def stop(self) -> None :
+    async def stop(self) -> None:
         for db in self._dbs.values():
             db.close()
 

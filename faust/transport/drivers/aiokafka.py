@@ -390,7 +390,6 @@ class ThreadedProducer(ServiceThread):
                 producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
-            await fut2
             return fut2
 
 
