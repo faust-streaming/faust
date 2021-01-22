@@ -317,5 +317,9 @@ class SensorDelegate(SensorDelegateT):
         for sensor in self._sensors:
             sensor.on_web_request_end(app, request, response, state[sensor], view=view)
 
+    def on_threaded_producer_buffer_processed(self, app: AppT) -> None:
+        for sensor in self._sensors:
+            sensor.on_threaded_producer_buffer_processed(app=app)
+
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self._sensors!r}>"
