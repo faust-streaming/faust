@@ -143,6 +143,9 @@ class Sensor(SensorT, Service):
         """Web server finished working on request."""
         ...
 
+    def on_threaded_producer_buffer_processed(self, app: AppT) -> None:
+        ...
+
     def asdict(self) -> Mapping:
         """Convert sensor state to dictionary."""
         return {}
