@@ -627,7 +627,7 @@ class Monitor(Sensor, KeywordReduce):
         deque_pushpopmax(self.http_response_latency, latency_end, self.max_avg_history)
         self.http_response_codes[status_code] += 1
 
-    def on_threaded_producer_buffer_processed(self, app: AppT) -> None:
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
         pass
 
     def _normalize(

@@ -143,7 +143,7 @@ class Sensor(SensorT, Service):
         """Web server finished working on request."""
         ...
 
-    def on_threaded_producer_buffer_processed(self, app: AppT) -> None:
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
         ...
 
     def asdict(self) -> Mapping:
@@ -320,9 +320,9 @@ class SensorDelegate(SensorDelegateT):
         for sensor in self._sensors:
             sensor.on_web_request_end(app, request, response, state[sensor], view=view)
 
-    def on_threaded_producer_buffer_processed(self, app: AppT) -> None:
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
         for sensor in self._sensors:
-            sensor.on_threaded_producer_buffer_processed(app=app)
+            sensor.on_threaded_producer_buffer_processed(app=app, size=size)
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self._sensors!r}>"
