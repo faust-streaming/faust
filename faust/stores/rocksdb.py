@@ -392,11 +392,21 @@ class Store(base.SerializedStore):
             ...
 
     def _contains(self, key: bytes) -> bool:
-        for db in self._dbs_for_key(key):
-            # bloom filter: false positives possible, but not false negatives
-            if db.key_may_exist(key)[0] and db.get(key) is not None:
+        event = current_event()
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
                 return True
-        return False
+            else:
+                return False
+        else:
+            for db in self._dbs_for_key(key):
+                # bloom filter: false positives possible, but not false negatives
+                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                    return True
+            return False
 
     def _dbs_for_key(self, key: bytes) -> Iterable[DB]:
         # Returns cached db if key is in index, otherwise all dbs
