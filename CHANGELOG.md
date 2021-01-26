@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 - New Sensor Support to monitor ThreadedProducer
 [84](https://github.com/faust-streaming/faust/issues/84)
+- Support for new rocksdb library faust-streaming-rocksdb
+[85](https://github.com/faust-streaming/faust/issues/85)
 
 ##0.4.2
 ### Features
