@@ -288,7 +288,7 @@ class Store(base.SerializedStore):
             partition = event.message.partition
             db = self._db_for_partition(partition)
             value = db.get(key)
-            if value is not None :
+            if value is not None:
                 self._key_index[key] = partition
             return value
         else:
