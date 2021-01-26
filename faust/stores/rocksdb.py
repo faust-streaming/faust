@@ -283,15 +283,24 @@ class Store(base.SerializedStore):
         return self.rocksdb_options.open(self.partition_path(partition))
 
     def _get(self, key: bytes) -> Optional[bytes]:
-        dbvalue = self._get_bucket_for_key(key)
-        if dbvalue is None:
-            return None
-        db, value = dbvalue
+        event = current_event()
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None :
+                self._key_index[key] = partition
+            return value
+        else:
+            dbvalue = self._get_bucket_for_key(key)
+            if dbvalue is None:
+                return None
+            db, value = dbvalue
 
-        if value is None:
-            if db.key_may_exist(key)[0]:
-                return db.get(key)
-        return value
+            if value is None:
+                if db.key_may_exist(key)[0]:
+                    return db.get(key)
+            return value
 
     def _get_bucket_for_key(self, key: bytes) -> Optional[_DBValueTuple]:
         dbs: Iterable[PartitionDB]
