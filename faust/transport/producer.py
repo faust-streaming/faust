@@ -113,7 +113,12 @@ class ProducerBuffer(Service, ProducerBufferT):
     @property
     def size(self) -> int:
         """Current buffer size (messages waiting to be produced)."""
-        queue_items = self.pending._queue  # type: ignore
+        if self.app.conf.producer_threaded:
+            if not self.queue:
+                return 0
+            queue_items = self.queue._queue  # type: ignore
+        else:
+            queue_items = self.pending._queue
         queue_items = cast(list, queue_items)
         return len(queue_items)
 
