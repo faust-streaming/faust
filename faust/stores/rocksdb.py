@@ -383,6 +383,8 @@ class Store(base.SerializedStore):
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
                 if i == max_retries - 1 or "lock" not in repr(exc):
+                    # release all the locks and crash
+                    await self.stop()
                     raise
                 self.log.info(
                     "DB for partition %r is locked! Retry in 1s...", partition
