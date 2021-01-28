@@ -1,6 +1,5 @@
 """RocksDB storage."""
 import asyncio
-import gc
 import math
 import shutil
 import typing
@@ -284,15 +283,24 @@ class Store(base.SerializedStore):
         return self.rocksdb_options.open(self.partition_path(partition))
 
     def _get(self, key: bytes) -> Optional[bytes]:
-        dbvalue = self._get_bucket_for_key(key)
-        if dbvalue is None:
-            return None
-        db, value = dbvalue
+        event = current_event()
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
+                self._key_index[key] = partition
+            return value
+        else:
+            dbvalue = self._get_bucket_for_key(key)
+            if dbvalue is None:
+                return None
+            db, value = dbvalue
 
-        if value is None:
-            if db.key_may_exist(key)[0]:
-                return db.get(key)
-        return value
+            if value is None:
+                if db.key_may_exist(key)[0]:
+                    return db.get(key)
+            return value
 
     def _get_bucket_for_key(self, key: bytes) -> Optional[_DBValueTuple]:
         dbs: Iterable[PartitionDB]
@@ -333,6 +341,10 @@ class Store(base.SerializedStore):
         self.revoke_partitions(table, revoked)
         await self.assign_partitions(table, newly_assigned)
 
+    async def stop(self) -> None:
+        for db in self._dbs.values():
+            db.close()
+
     def revoke_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """De-assign partitions used on this worker instance.
 
@@ -341,15 +353,11 @@ class Store(base.SerializedStore):
             tps: Set of topic partitions that we should no longer
                 be serving data for.
         """
-        dbs_closed = 0
         for tp in tps:
             if tp.topic in table.changelog_topic.topics:
                 db = self._dbs.pop(tp.partition, None)
                 if db is not None:
-                    del db
-                    dbs_closed += 1
-        if dbs_closed:
-            gc.collect()  # XXX RocksDB has no .close() method :X
+                    db.close()
 
     async def assign_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """Assign partitions to this worker instance.
@@ -375,6 +383,8 @@ class Store(base.SerializedStore):
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
                 if i == max_retries - 1 or "lock" not in repr(exc):
+                    # release all the locks and crash
+                    await self.stop()
                     raise
                 self.log.info(
                     "DB for partition %r is locked! Retry in 1s...", partition
@@ -384,11 +394,21 @@ class Store(base.SerializedStore):
             ...
 
     def _contains(self, key: bytes) -> bool:
-        for db in self._dbs_for_key(key):
-            # bloom filter: false positives possible, but not false negatives
-            if db.key_may_exist(key)[0] and db.get(key) is not None:
+        event = current_event()
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
                 return True
-        return False
+            else:
+                return False
+        else:
+            for db in self._dbs_for_key(key):
+                # bloom filter: false positives possible, but not false negatives
+                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                    return True
+            return False
 
     def _dbs_for_key(self, key: bytes) -> Iterable[DB]:
         # Returns cached db if key is in index, otherwise all dbs

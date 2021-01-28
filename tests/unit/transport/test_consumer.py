@@ -416,7 +416,7 @@ class MyConsumer(MockedConsumerAbstractMethods, Consumer):
         super().__init__(*args, **kwargs)
 
 
-class Test_Consumer:
+class TestConsumer:
     @pytest.fixture
     def callback(self):
         return Mock(name="callback")
@@ -526,6 +526,38 @@ class Test_Consumer:
         ]
 
     @pytest.mark.asyncio
+    async def test_getmany_buffered(self, *, consumer):
+        def to_message(tp, record):
+            return record
+
+        consumer._to_message = to_message
+        self._setup_records(
+            consumer,
+            active_partitions={TP1},
+            buffered_partitions={TP2},
+            records={
+                TP1: ["A", "B", "C"],
+                TP2: ["D", "E", "F", "G"],
+                TP3: ["H", "I", "J"],
+            },
+        )
+        assert not consumer.should_stop
+        consumer.flow_active = False
+        consumer.can_resume_flow.set()
+        assert [a async for a in consumer.getmany(1.0)] == []
+        assert not consumer.should_stop
+        consumer.flow_active = True
+        assert [a async for a in consumer.getmany(1.0)] == [
+            (TP1, "A"),
+            (TP2, "D"),
+            (TP1, "B"),
+            (TP2, "E"),
+            (TP1, "C"),
+            (TP2, "F"),
+            (TP2, "G"),
+        ]
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "client_only",
         [
@@ -563,10 +595,16 @@ class Test_Consumer:
         assert ret == ({}, set())
 
     def _setup_records(
-        self, consumer, active_partitions, records=None, flow_active=True
+        self,
+        consumer,
+        active_partitions,
+        records=None,
+        flow_active=True,
+        buffered_partitions=None,
     ):
         consumer.flow_active = flow_active
         consumer._active_partitions = active_partitions
+        consumer._buffered_partitions = buffered_partitions or set()
         consumer._getmany = AsyncMock(
             return_value={} if records is None else records,
         )
