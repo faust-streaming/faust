@@ -335,6 +335,9 @@ class DatadogMonitor(Monitor):
         self.client.increment(f"http_status_code.{status_code}")
         self.client.timing("http_response_latency", self.ms_since(state["time_end"]))
 
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
+        self.client.gauge(metric="threaded_producer_buffer", value=size)
+
     def _format_label(
         self,
         tp: Optional[TP] = None,

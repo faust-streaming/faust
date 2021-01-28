@@ -327,6 +327,9 @@ class ThreadedProducer(ServiceThread):
     async def push_events(self):
         while True:
             event = await self.event_queue.get()
+            self.app.sensors.on_threaded_producer_buffer_processed(
+                app=self.app, size=self.event_queue.qsize()
+            )
             await self.publish_message(event)
 
     async def publish_message(
@@ -390,7 +393,6 @@ class ThreadedProducer(ServiceThread):
                 producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
-            await fut2
             return fut2
 
 

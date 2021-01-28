@@ -137,6 +137,10 @@ class SensorInterfaceT(abc.ABC):
     ) -> None:
         ...
 
+    @abc.abstractmethod
+    def on_threaded_producer_buffer_processed(self, app: _AppT, size: int) -> None:
+        ...
+
 
 class SensorT(SensorInterfaceT, ServiceT):
     ...
