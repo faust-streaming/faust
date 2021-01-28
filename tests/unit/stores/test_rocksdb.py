@@ -330,11 +330,8 @@ class Test_Store:
         table.changelog_topic.topics = {TP1.topic, TP3.topic}
         store._dbs[TP3.partition] = Mock(name="db")
 
-        with patch("gc.collect") as collect:
-            store.revoke_partitions(table, {TP1, TP2, TP3, TP4})
-            assert not store._dbs
-
-            collect.assert_called_once_with()
+        store.revoke_partitions(table, {TP1, TP2, TP3, TP4})
+        assert not store._dbs
 
     @pytest.mark.asyncio
     async def test_assign_partitions(self, *, store, app, table):
