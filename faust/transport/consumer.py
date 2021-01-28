@@ -692,7 +692,11 @@ class Consumer(Service, ConsumerT):
             for tp, record in records_it:
                 if not self.flow_active:
                     break
-                if active_partitions is None or tp in active_partitions:
+                if (
+                    active_partitions is None
+                    or tp in active_partitions
+                    or tp in self._buffered_partitions
+                ):
                     highwater_mark = self.highwater(tp)
                     self.app.monitor.track_tp_end_offset(tp, highwater_mark)
                     # convert timestamp to seconds from int milliseconds.
