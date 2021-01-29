@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+##0.4.6
+### Bug Fixes
+- Fix for [85](https://github.com/faust-streaming/faust/issues/85)
+- Fix for [88](https://github.com/faust-streaming/faust/issues/88)
+- Fix for [91](https://github.com/faust-streaming/faust/issues/91)
+- Enabled Tests [79](https://github.com/faust-streaming/faust/issues/79)
+- Fix for [84](https://github.com/faust-streaming/faust/issues/84)
+
 ##0.4.5
 ### Features
 - Peformance improvements in rocksdb by ignore bloom filters within an event context
