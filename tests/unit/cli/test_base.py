@@ -23,12 +23,12 @@ from faust.cli.base import (
 from faust.types._env import CONSOLE_PORT
 
 
-class test_argument:
+class Test_argument:
     def test_repr(self):
         assert repr(argument(default=1))
 
 
-class test_option:
+class Test_option:
     def test_repr(self):
         assert repr(option("--foo", "--bar", default=1))
 
@@ -135,7 +135,7 @@ def test_find_app__app_is_module_but_has_app():
         prepare_app.assert_called_once_with(imp.return_value.app, "foo")
 
 
-class test_Group:
+class Test_Group:
     @pytest.fixture()
     def group(self):
         return _Group()
@@ -185,7 +185,7 @@ class test_Group:
             group._maybe_import_app(["--foo", "--app"])
 
 
-def test__prepare_cli():
+def Test__prepare_cli():
     ctx = Mock(name="context")
     state = ctx.ensure_object.return_value = Mock(name="state")
     root = ctx.find_root.return_value = Mock(name="root")
@@ -276,7 +276,7 @@ def test__prepare_cli():
         os.environ.pop("F_WORKDIR", None)
 
 
-class test_Command:
+class Test_Command:
     class TestCommand(Command):
         options = [click.option("--quiet/--no-quiet")]
 
@@ -488,7 +488,7 @@ class test_Command:
         assert command.console_port == CONSOLE_PORT
 
 
-class test_AppCommand:
+class Test_AppCommand:
     @pytest.fixture()
     def ctx(self):
         return Mock(name="ctx")

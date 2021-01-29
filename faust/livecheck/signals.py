@@ -8,7 +8,7 @@ from mode import Seconds, want_seconds
 
 from faust.models import maybe_model
 
-from .exceptions import TestTimeout
+from .exceptions import LiveCheckTestTimeout
 from .locals import current_test_stack
 from .models import SignalEvent
 
@@ -170,7 +170,7 @@ class Signal(BaseSignal[VT]):
                 await self._wait_for_resolved(timeout=max_wait)
             except asyncio.TimeoutError:
                 msg = f"Timed out waiting for signal {self.name} ({timeout})"
-                raise TestTimeout(msg) from None
+                raise LiveCheckTestTimeout(msg) from None
             if app.should_stop:
                 break
             try:

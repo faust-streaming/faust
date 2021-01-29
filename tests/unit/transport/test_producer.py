@@ -4,10 +4,12 @@ from mode.utils.mocks import AsyncMock, Mock, call
 from faust.transport.producer import Producer, ProducerBuffer
 
 
-class test_ProducerBuffer:
+class TestProducerBuffer:
     @pytest.fixture()
-    def buf(self):
-        return ProducerBuffer()
+    def buf(self, app):
+        producer = ProducerBuffer()
+        producer.app = app
+        return producer
 
     def test_put(self, *, buf):
         fut = Mock(name="future_message")
@@ -165,7 +167,7 @@ class ProducerTests:
         assert not producer.supports_headers()
 
 
-class test_Producer(ProducerTests):
+class Test_Producer(ProducerTests):
     @pytest.fixture
     def producer(self, *, app):
         return Producer(app.transport)

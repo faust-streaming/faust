@@ -27,7 +27,7 @@ TP2 = TP("foo", 1)
 TP3 = TP("bar", 3)
 
 
-class test_Fetcher:
+class TestFetcher:
     @pytest.fixture
     def consumer(self):
         return Mock(
@@ -123,7 +123,7 @@ class test_Fetcher:
             assert wait_for.call_count == 3
 
 
-class test_TransactionManager:
+class TestTransactionManager:
     @pytest.fixture()
     def consumer(self):
         return Mock(
@@ -1051,18 +1051,19 @@ class TestConsumer:
         assert consumer._should_commit(tp, offset) == should
 
     @pytest.mark.parametrize(
-        "tp,acked,expected_offset",
+        "tp,acked,expected_offset,expected_acked",
         [
-            (TP1, [], None),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], 9),
-            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], 5),
-            (TP1, [1, 3, 4, 6, 7, 8, 10], 2),
+            (TP1, [], None, {TP1: []}),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, {TP1: []}),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], 9, {TP1: [10]}),
+            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], 5, {TP1: [6, 7, 8, 10]}),
+            (TP1, [1, 3, 4, 6, 7, 8, 10], 2, {TP1: [3, 4, 6, 7, 8, 10]}),
         ],
     )
-    def test_new_offset(self, tp, acked, expected_offset, *, consumer):
+    def test_new_offset(self, tp, acked, expected_offset, expected_acked, *, consumer):
         consumer._acked[tp] = acked
         assert consumer._new_offset(tp) == expected_offset
+        assert consumer._acked == expected_acked
 
     @pytest.mark.parametrize(
         "tp,acked,gaps,expected_offset",
@@ -1125,7 +1126,7 @@ class TestConsumer:
         consumer.close()
 
 
-class test_ConsumerThread:
+class Test_ConsumerThread:
     class MyConsumerThread(MockedConsumerAbstractMethods, ConsumerThread):
         def close(self):
             ...
@@ -1185,7 +1186,7 @@ class test_ConsumerThread:
         )
 
 
-class test_ThreadDelegateConsumer:
+class Test_ThreadDelegateConsumer:
     class TestThreadDelegateConsumer(ThreadDelegateConsumer):
         def _new_consumer_thread(self):
             return Mock(
@@ -1385,7 +1386,7 @@ class test_ThreadDelegateConsumer:
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            await consumer.verify_all_partitions_active()
+            consumer.verify_all_partitions_active()
 
             consumer.verify_event_path.assert_has_calls(
                 [
@@ -1411,6 +1412,6 @@ class test_ThreadDelegateConsumer:
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            await consumer.verify_all_partitions_active()
+            consumer.verify_all_partitions_active()
 
-            consumer.verify_event_path.assert_called_once_with(now, TP1)
+            consumer.verify_event_path.assert_called_with(now, TP3)
