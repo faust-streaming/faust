@@ -181,6 +181,7 @@ class Store(base.SerializedStore):
         self._dbs = {}
         self._key_index = LRUCache(limit=self.key_index_size)
         self.db_lock = asyncio.Lock()
+        self.rebalance_ack = False
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
