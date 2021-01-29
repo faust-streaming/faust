@@ -147,6 +147,8 @@ class Store(base.SerializedStore):
 
     _dbs: MutableMapping[int, DB]
     _key_index: LRUCache[bytes, int]
+    rebalance_ack: bool
+    db_lock: asyncio.Lock
 
     def __init__(
         self,
@@ -178,6 +180,8 @@ class Store(base.SerializedStore):
         self.key_index_size = key_index_size
         self._dbs = {}
         self._key_index = LRUCache(limit=self.key_index_size)
+        self.db_lock = asyncio.Lock()
+        self.rebalance_ack = False
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
@@ -338,8 +342,10 @@ class Store(base.SerializedStore):
             newly_assigned: Set of newly assigned topic partitions,
                 for which we were not assigned the last time.
         """
-        self.revoke_partitions(table, revoked)
-        await self.assign_partitions(table, newly_assigned)
+        self.rebalance_ack = False
+        async with self.db_lock:
+            self.revoke_partitions(table, revoked)
+            await self.assign_partitions(table, newly_assigned)
 
     async def stop(self) -> None:
         for db in self._dbs.values():
@@ -366,16 +372,16 @@ class Store(base.SerializedStore):
             table: The table that we store data for.
             tps: Set of topic partitions we have been assigned.
         """
+        self.rebalance_ack = True
         standby_tps = self.app.assignor.assigned_standbys()
         my_topics = table.changelog_topic.topics
-
         for tp in tps:
-            if tp.topic in my_topics and tp not in standby_tps:
+            if tp.topic in my_topics and tp not in standby_tps and self.rebalance_ack:
                 await self._try_open_db_for_partition(tp.partition)
                 await asyncio.sleep(0)
 
     async def _try_open_db_for_partition(
-        self, partition: int, max_retries: int = 60, retry_delay: float = 1.0
+        self, partition: int, max_retries: int = 30, retry_delay: float = 1.0
     ) -> DB:
         for i in range(max_retries):
             try:
@@ -389,6 +395,9 @@ class Store(base.SerializedStore):
                 self.log.info(
                     "DB for partition %r is locked! Retry in 1s...", partition
                 )
+                if not self.rebalance_ack:
+                    self.log.info("Rebalanced again giving up partition", partition)
+                    return
                 await self.sleep(retry_delay)
         else:  # pragma: no cover
             ...
