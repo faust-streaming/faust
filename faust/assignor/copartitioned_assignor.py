@@ -149,9 +149,7 @@ class CopartitionedAssignor:
         return assignemnt.num_assigned(active) == client_limit
 
     def _find_promotable_standby(
-        self,
-        partition: int,
-        candidates: Iterator[CopartitionedAssignment],
+        self, partition: int, candidates: Iterator[CopartitionedAssignment]
     ) -> Optional[CopartitionedAssignment]:
         # Round robin to find standby until we make a full cycle
         for _ in range(self._num_clients):
@@ -189,11 +187,23 @@ class CopartitionedAssignor:
         # - This guarantees eventual assignment of all partitions
         client_limit = self._get_client_limit(active)
         if active:
-            candidates = cycle(iter(sorted(list(self._client_assignments.values()),
-                                           key=lambda x: len(x.actives))))
+            candidates = cycle(
+                iter(
+                    sorted(
+                        list(self._client_assignments.values()),
+                        key=lambda x: len(x.actives),
+                    )
+                )
+            )
         else:
-            candidates = cycle(iter(sorted(list(self._client_assignments.values()),
-                                           key=lambda x: len(x.standbys))))
+            candidates = cycle(
+                iter(
+                    sorted(
+                        list(self._client_assignments.values()),
+                        key=lambda x: len(x.standbys),
+                    )
+                )
+            )
         unassigned = list(unassigned)
         while unassigned:
             partition = unassigned.pop(0)
