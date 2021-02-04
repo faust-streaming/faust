@@ -157,7 +157,7 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
     valid_assignment = CopartitionedAssignor(
         _topics, client_assignments, partitions, replicas=replicas
     ).get_assignment()
-    old_assignments = copy.deepcopy(valid_assignment)
+    # old_assignments = copy.deepcopy(valid_assignment)
 
     # adding fresh clients
     for client in range(num_clients - num_removal_clients, num_clients):
