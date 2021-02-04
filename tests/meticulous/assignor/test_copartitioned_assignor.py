@@ -120,7 +120,7 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
     valid_assignment = CopartitionedAssignor(
         _topics, client_assignments, partitions, replicas=replicas
     ).get_assignment()
-    old_assignments = copy.deepcopy(valid_assignment)
+    # old_assignments = copy.deepcopy(valid_assignment)
 
     # adding fresh clients
     for client in range(num_clients, num_clients + num_additional_clients):
