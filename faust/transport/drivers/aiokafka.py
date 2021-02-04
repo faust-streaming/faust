@@ -664,8 +664,9 @@ class AIOKafkaConsumerThread(ConsumerThread):
         try:
             aiokafka_offsets = {
                 tp: OffsetAndMetadata(offset, "") for tp, offset in offsets.items()
+                if tp in self.assignment()
             }
-            self.tp_last_committed_at.update({tp: now for tp in offsets})
+            self.tp_last_committed_at.update({tp: now for tp in aiokafka_offsets})
             await consumer.commit(aiokafka_offsets)
         except CommitFailedError as exc:
             if "already rebalanced" in str(exc):
