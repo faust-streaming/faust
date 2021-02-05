@@ -613,6 +613,14 @@ class Consumer(Service, ConsumerT):
             if self._active_partitions is not None:
                 self._active_partitions.difference_update(revoked)
             self._paused_partitions.difference_update(revoked)
+            # Remove the revoked partitions from local data structures
+            for tp in revoked:
+                self._gap.pop(tp, None)
+                self._acked.pop(tp, None)
+                self._acked_index.pop(tp, None)
+                self._read_offset.pop(tp, None)
+                self._committed_offset.pop(tp, None)
+
             await T(self._on_partitions_revoked, partitions=revoked)(revoked)
 
     @Service.transitions_to(CONSUMER_PARTITIONS_ASSIGNED)
@@ -1019,11 +1027,11 @@ class Consumer(Service, ConsumerT):
         # then return the offset before that.
         # For example if acked[tp] is:
         #   1 2 3 4 5 6 7 8 9
-        # the return value will be: 9
+        # the return value will be: 10
         # If acked[tp] is:
         #  34 35 36 40 41 42 43 44
         #          ^--- gap
-        # the return value will be: 36
+        # the return value will be: 37
         if acked:
             max_offset = max(acked)
             gap_for_tp = self._gap[tp]
