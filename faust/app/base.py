@@ -1561,6 +1561,7 @@ class App(AppT, Service):
                     self.flow_control.clear()
                     await self._stop_fetcher()
                     await self._consumer_wait_empty(consumer, self.log)
+                    await self.tables.stop()
 
     async def _consumer_wait_empty(self, consumer: ConsumerT, logger: Any) -> None:
         if self.conf.stream_wait_empty:
@@ -1604,7 +1605,7 @@ class App(AppT, Service):
         try:
             if not sensor_state:
                 self.log.warning(
-                    "Missing sensor state for rebalance #%s", self.rebalancing_count
+                    "Missing sensor state for rebalance end #%s", self.rebalancing_count
                 )
             else:
                 self.sensors.on_rebalance_end(self, sensor_state)
@@ -1671,7 +1672,9 @@ class App(AppT, Service):
     def _on_rebalance_when_stopped(self) -> None:
         self.consumer.close()
 
-    async def _on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def _on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Handle new topic partition assignment.
 
         This is called during a rebalance after :meth:`on_partitions_revoked`.
@@ -1687,10 +1690,9 @@ class App(AppT, Service):
         # (Kafka does not send error, it just logs)
         session_timeout = self.conf.broker_session_timeout * 0.95
         self.unassigned = not assigned
-
+        logger.info("Executing _on_partitions_assigned")
         revoked, newly_assigned = self._update_assignment(assigned)
         await asyncio.sleep(0)
-
         with flight_recorder(self.log, timeout=session_timeout) as on_timeout:
             consumer = self.consumer
             try:
@@ -1715,7 +1717,9 @@ class App(AppT, Service):
                     )
                 on_timeout.info("tables.on_rebalance()")
                 await asyncio.sleep(0)
-                await T(self.tables.on_rebalance)(assigned, revoked, newly_assigned)
+                await T(self.tables.on_rebalance)(
+                    assigned, revoked, newly_assigned, generation_id
+                )
                 on_timeout.info("+send signal: on_partitions_assigned")
                 await T(self.on_partitions_assigned.send)(assigned)
                 on_timeout.info("-send signal: on_partitions_assigned")

@@ -182,6 +182,8 @@ class AppT(ServiceT):
     #: Set to true when the worker is in recovery
     in_recovery: bool = False
 
+    consumer_generation_id: int = 0
+
     #: Set to true if the assignment is empty
     # This flag is set by App._on_partitions_assigned
     unassigned: bool = False

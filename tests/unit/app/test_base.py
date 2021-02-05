@@ -197,6 +197,7 @@ class Test_App:
         app.tables = Mock()
         app.flow_control = Mock()
         app._stop_fetcher = AsyncMock()
+        app.tables.stop = AsyncMock()
         await app._stop_consumer()
 
         consumer.assignment.side_effect = ConsumerNotStarted()
@@ -211,6 +212,7 @@ class Test_App:
         consumer.stop_flow.assert_called_once_with()
         app.flow_control.suspend.assert_called_once_with()
         app._stop_fetcher.assert_called_once_with()
+        app.tables.stop.assert_called_once_with()
 
     def test_on_rebalance_start__existing_state(self, *, app):
         app._rebalancing_sensor_state = {"foo": "bar"}
@@ -392,9 +394,10 @@ class Test_App:
         assigned = {TP("foo", 1), TP("baz", 3)}
         revoked = {TP("bar", 2)}
         newly_assigned = {TP("baz", 3)}
-
+        generation_id = 1
+        app.consumer_generation_id = 1
         app.in_transaction = False
-        await app._on_partitions_assigned(assigned)
+        await app._on_partitions_assigned(assigned, generation_id=generation_id)
 
         app.agents.on_rebalance.assert_called_once_with(revoked, newly_assigned)
         app.topics.maybe_wait_for_subscriptions.assert_called_once_with()
@@ -402,7 +405,7 @@ class Test_App:
         app.topics.on_partitions_assigned.assert_called_once_with(assigned)
         app.consumer.transactions.on_rebalance.assert_not_called()
         app.tables.on_rebalance.assert_called_once_with(
-            assigned, revoked, newly_assigned
+            assigned, revoked, newly_assigned, generation_id
         )
         app.on_partitions_assigned.send.assert_called_once_with(assigned)
 

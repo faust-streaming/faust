@@ -742,9 +742,10 @@ class TestConsumer:
     async def test_on_partitions_assigned(self, *, consumer):
         consumer._on_partitions_assigned = AsyncMock(name="opa")
         tps = {TP("foo", 0), TP("bar", 2)}
-        await consumer.on_partitions_assigned(tps)
+        gen_id = 1
+        await consumer.on_partitions_assigned(tps, generation_id=gen_id)
 
-        consumer._on_partitions_assigned.assert_called_once_with(tps)
+        consumer._on_partitions_assigned.assert_called_once_with(tps, gen_id)
 
     def test_track_message(self, *, consumer, message):
         consumer._on_message_in = Mock(name="omin")
@@ -1179,10 +1180,10 @@ class Test_ConsumerThread:
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned(self, *, thread, consumer):
-        await thread.on_partitions_assigned({TP1, TP2})
+        gen_id = 1
+        await thread.on_partitions_assigned({TP1, TP2}, gen_id)
         consumer.threadsafe_partitions_assigned.assert_called_once_with(
-            thread.thread_loop,
-            {TP1, TP2},
+            thread.thread_loop, {TP1, TP2}, gen_id
         )
 
 
@@ -1266,12 +1267,11 @@ class Test_ThreadDelegateConsumer:
     @pytest.mark.asyncio
     async def test_threadsafe_partitions_assigned(self, *, consumer):
         loop = Mock(name="loop")
-        await consumer.threadsafe_partitions_assigned(loop, {})
+        gen_id = 1
+        await consumer.threadsafe_partitions_assigned(loop, {}, generation_id=gen_id)
         loop.create_future.assert_called_once_with()
         consumer._method_queue._call.assert_called_once_with(
-            loop.create_future(),
-            consumer.on_partitions_assigned,
-            {},
+            loop.create_future(), consumer.on_partitions_assigned, {}, gen_id
         )
 
     @pytest.mark.asyncio

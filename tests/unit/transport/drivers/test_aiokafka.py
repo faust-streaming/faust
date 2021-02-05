@@ -103,17 +103,19 @@ class TestConsumerRebalanceListener:
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned(self, *, handler, thread):
+        thread._ensure_consumer()._coordinator.generation = 1
         await handler.on_partitions_assigned(
             [
                 TopicPartition("A", 0),
                 TopicPartition("B", 3),
-            ]
+            ],
         )
         thread.on_partitions_assigned.assert_called_once_with(
             {
                 TP("A", 0),
                 TP("B", 3),
-            }
+            },
+            1,
         )
 
 

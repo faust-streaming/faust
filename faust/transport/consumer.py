@@ -624,7 +624,9 @@ class Consumer(Service, ConsumerT):
             await T(self._on_partitions_revoked, partitions=revoked)(revoked)
 
     @Service.transitions_to(CONSUMER_PARTITIONS_ASSIGNED)
-    async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Call during rebalancing when partitions are being assigned."""
         span = self.app._start_span_from_rebalancing("on_partitions_assigned")
         T = traced_from_parent_span(span)
@@ -636,7 +638,11 @@ class Consumer(Service, ConsumerT):
             # start callback chain of assigned callbacks.
             #   need to copy set at this point, since we cannot have
             #   the callbacks mutate our active list.
-            await T(self._on_partitions_assigned, partitions=assigned)(assigned)
+            await T(
+                self._on_partitions_assigned,
+                partitions=assigned,
+                generation_id=generation_id,
+            )(assigned, generation_id)
         self.app.on_rebalance_return()
 
     @abc.abstractmethod
@@ -1259,9 +1265,13 @@ class ConsumerThread(QueueServiceThread):
         """Call on rebalance when partitions are being revoked."""
         await self.consumer.threadsafe_partitions_revoked(self.thread_loop, revoked)
 
-    async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Call on rebalance when partitions are being assigned."""
-        await self.consumer.threadsafe_partitions_assigned(self.thread_loop, assigned)
+        await self.consumer.threadsafe_partitions_assigned(
+            self.thread_loop, assigned, generation_id
+        )
 
     @abc.abstractmethod
     def key_partition(
@@ -1310,13 +1320,17 @@ class ThreadDelegateConsumer(Consumer):
         await promise
 
     async def threadsafe_partitions_assigned(
-        self, receiver_loop: asyncio.AbstractEventLoop, assigned: Set[TP]
+        self,
+        receiver_loop: asyncio.AbstractEventLoop,
+        assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Call rebalancing callback in a thread-safe manner."""
         promise = await self._method_queue.call(
             receiver_loop.create_future(),
             self.on_partitions_assigned,
             assigned,
+            generation_id,
         )
         # wait for main-thread to finish processing request
         await promise
