@@ -1,4 +1,4 @@
-# import copy
+import copy
 from collections import Counter
 from typing import MutableMapping
 
@@ -50,20 +50,6 @@ def client_addition_sticky(
         for client in old
         for partition in new[client].actives
     )
-    return True
-
-
-def client_balanced(
-    new: MutableMapping[str, CopartitionedAssignment],
-    num_clients: int,
-    partitions: int,
-) -> bool:
-    if partitions >= num_clients and partitions >= len(new):
-        assert all(
-            new[client].actives
-            for client in new
-            if any(new[client].actives for client in new)
-        )
     return True
 
 
@@ -120,7 +106,7 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
     valid_assignment = CopartitionedAssignor(
         _topics, client_assignments, partitions, replicas=replicas
     ).get_assignment()
-    # old_assignments = copy.deepcopy(valid_assignment)
+    old_assignments = copy.deepcopy(valid_assignment)
 
     # adding fresh clients
     for client in range(num_clients, num_clients + num_additional_clients):
@@ -134,8 +120,7 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)
-    # assert client_balanced(new_assignments, num_clients, partitions)
-    # assert client_addition_sticky(old_assignments, new_assignments)
+    assert client_addition_sticky(old_assignments, new_assignments)
 
 
 @given(
@@ -157,7 +142,7 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
     valid_assignment = CopartitionedAssignor(
         _topics, client_assignments, partitions, replicas=replicas
     ).get_assignment()
-    # old_assignments = copy.deepcopy(valid_assignment)
+    old_assignments = copy.deepcopy(valid_assignment)
 
     # adding fresh clients
     for client in range(num_clients - num_removal_clients, num_clients):
@@ -171,4 +156,4 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)
-    # assert client_removal_sticky(old_assignments, new_assignments)
+    assert client_removal_sticky(old_assignments, new_assignments)

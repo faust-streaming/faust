@@ -1,6 +1,6 @@
 """Copartitioned Assignor."""
 from itertools import cycle
-from math import ceil, floor
+from math import ceil
 from typing import Iterable, Iterator, MutableMapping, Optional, Sequence, Set
 
 from mode.utils.typing import Counter
@@ -17,12 +17,12 @@ class CopartitionedAssignor:
 
     The assignment is sticky which uses the following heuristics:
 
-    - Maintain existing assignments as long as within max_capacity for each client
-    - Assign actives to standbys when possible (within max_capacity)
-    - Assign in order to fill max_capacity of the clients
+    - Maintain existing assignments as long as within capacity for each client
+    - Assign actives to standbys when possible (within capacity)
+    - Assign in order to fill capacity of the clients
 
     We optimize for not over utilizing resources instead of under-utilizing
-    resources. This results in a balanced assignment when max_capacity is the
+    resources. This results in a balanced assignment when capacity is the
     default value which is ``ceil(num partitions / num clients)``
 
     Notes:
@@ -30,8 +30,7 @@ class CopartitionedAssignor:
         for the desired `replication`.
     """
 
-    max_capacity: int
-    min_capacity: int
+    capacity: int
     num_partitions: int
     replicas: int
     topics: Set[str]
@@ -51,27 +50,22 @@ class CopartitionedAssignor:
         assert self._num_clients, "Should assign to at least 1 client"
         self.num_partitions = num_partitions
         self.replicas = min(replicas, self._num_clients - 1)
-        self.max_capacity = (
+        self.capacity = (
             int(ceil(float(self.num_partitions) / self._num_clients))
-            if capacity is None
-            else capacity
-        )
-        self.min_capacity = (
-            int(floor(float(self.num_partitions) / self._num_clients))
             if capacity is None
             else capacity
         )
         self.topics = set(topics)
 
         assert (
-            self.max_capacity * self._num_clients >= self.num_partitions
-        ), "Not enough max_capacity"
+            self.capacity * self._num_clients >= self.num_partitions
+        ), "Not enough capacity"
 
         self._client_assignments = cluster_asgn
 
     def get_assignment(self) -> MutableMapping[str, CopartitionedAssignment]:
         for copartitioned in self._client_assignments.values():
-            copartitioned.unassign_extras(self.min_capacity, self.replicas)
+            copartitioned.unassign_extras(self.capacity, self.replicas)
         self._assign(active=True)
         self._assign(active=False)
         return self._client_assignments
@@ -98,7 +92,7 @@ class CopartitionedAssignor:
         )
 
     def _get_client_limit(self, active: bool) -> int:
-        return self.max_capacity * self._total_assigns_per_partition(active)
+        return self.capacity * self._total_assigns_per_partition(active)
 
     def _total_assigns_per_partition(self, active: bool) -> int:
         return 1 if active else self.replicas
@@ -149,7 +143,9 @@ class CopartitionedAssignor:
         return assignemnt.num_assigned(active) == client_limit
 
     def _find_promotable_standby(
-        self, partition: int, candidates: Iterator[CopartitionedAssignment]
+        self,
+        partition: int,
+        candidates: Iterator[CopartitionedAssignment],
     ) -> Optional[CopartitionedAssignment]:
         # Round robin to find standby until we make a full cycle
         for _ in range(self._num_clients):
@@ -186,24 +182,7 @@ class CopartitionedAssignor:
         # filled assignment such that the partition can be assigned to it
         # - This guarantees eventual assignment of all partitions
         client_limit = self._get_client_limit(active)
-        if active:
-            candidates = cycle(
-                iter(
-                    sorted(
-                        list(self._client_assignments.values()),
-                        key=lambda x: len(x.actives),
-                    )
-                )
-            )
-        else:
-            candidates = cycle(
-                iter(
-                    sorted(
-                        list(self._client_assignments.values()),
-                        key=lambda x: len(x.standbys),
-                    )
-                )
-            )
+        candidates = cycle(self._client_assignments.values())
         unassigned = list(unassigned)
         while unassigned:
             partition = unassigned.pop(0)
