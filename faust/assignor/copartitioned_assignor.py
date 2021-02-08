@@ -1,6 +1,6 @@
 """Copartitioned Assignor."""
 from itertools import cycle
-from math import ceil
+from math import ceil, floor
 from typing import Iterable, Iterator, MutableMapping, Optional, Sequence, Set
 
 from mode.utils.typing import Counter
@@ -17,12 +17,12 @@ class CopartitionedAssignor:
 
     The assignment is sticky which uses the following heuristics:
 
-    - Maintain existing assignments as long as within capacity for each client
-    - Assign actives to standbys when possible (within capacity)
-    - Assign in order to fill capacity of the clients
+    - Maintain existing assignments as long as within max_capacity for each client
+    - Assign actives to standbys when possible (within max_capacity)
+    - Assign in order to fill max_capacity of the clients
 
     We optimize for not over utilizing resources instead of under-utilizing
-    resources. This results in a balanced assignment when capacity is the
+    resources. This results in a balanced assignment when max_capacity is the
     default value which is ``ceil(num partitions / num clients)``
 
     Notes:
@@ -30,7 +30,8 @@ class CopartitionedAssignor:
         for the desired `replication`.
     """
 
-    capacity: int
+    max_capacity: int
+    min_capacity: int
     num_partitions: int
     replicas: int
     topics: Set[str]
@@ -50,22 +51,31 @@ class CopartitionedAssignor:
         assert self._num_clients, "Should assign to at least 1 client"
         self.num_partitions = num_partitions
         self.replicas = min(replicas, self._num_clients - 1)
-        self.capacity = (
+        self.max_capacity = (
             int(ceil(float(self.num_partitions) / self._num_clients))
+            if capacity is None
+            else capacity
+        )
+        self.min_capacity = (
+            int(floor(float(self.num_partitions) / self._num_clients))
             if capacity is None
             else capacity
         )
         self.topics = set(topics)
 
         assert (
-            self.capacity * self._num_clients >= self.num_partitions
-        ), "Not enough capacity"
+            self.max_capacity * self._num_clients >= self.num_partitions
+        ), "Not enough max_capacity"
 
         self._client_assignments = cluster_asgn
 
     def get_assignment(self) -> MutableMapping[str, CopartitionedAssignment]:
+        # If there are no replicas required, try to ensure a balanced distribution with
+        # at least one partition per client by removing partitions down to the
+        # min_capacity for each client
+        capacity = self.min_capacity if self.replicas == 0 else self.max_capacity
         for copartitioned in self._client_assignments.values():
-            copartitioned.unassign_extras(self.capacity, self.replicas)
+            copartitioned.unassign_extras(capacity, self.replicas)
         self._assign(active=True)
         self._assign(active=False)
         return self._client_assignments
@@ -92,7 +102,7 @@ class CopartitionedAssignor:
         )
 
     def _get_client_limit(self, active: bool) -> int:
-        return self.capacity * self._total_assigns_per_partition(active)
+        return self.max_capacity * self._total_assigns_per_partition(active)
 
     def _total_assigns_per_partition(self, active: bool) -> int:
         return 1 if active else self.replicas
@@ -172,17 +182,28 @@ class CopartitionedAssignor:
 
     def _assign_round_robin(self, unassigned: Iterable[int], active: bool) -> None:
         # We do round robin assignment as follows:
+        # - Sort the candidate clients by the number of partitions already assigned,
+        #   to improve the overall balance of the assignment process
         # - For actives, we first try to assign to a standby
         # - For standby, we offset the start for round robin to evenly
         # distribute standbys for colocated actives
-        # - We do round robin
+        # - We do round robin over the sorted clients
         # - If no assignment found, it must be a standby and the only unfilled
         # client(s) must be actives/standbys for the partition
         # - If no assignment found, we unassign and arbitrary partition from a
         # filled assignment such that the partition can be assigned to it
         # - This guarantees eventual assignment of all partitions
         client_limit = self._get_client_limit(active)
-        candidates = cycle(self._client_assignments.values())
+        if active:
+            candidates_list = sorted(
+                list(self._client_assignments.values()), key=lambda x: len(x.actives)
+            )
+        else:
+            candidates_list = sorted(
+                list(self._client_assignments.values()), key=lambda x: len(x.standbys)
+            )
+
+        candidates = cycle(iter(candidates_list))
         unassigned = list(unassigned)
         while unassigned:
             partition = unassigned.pop(0)
