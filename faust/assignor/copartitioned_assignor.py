@@ -73,7 +73,15 @@ class CopartitionedAssignor:
         # If there are no replicas required, try to ensure a balanced distribution with
         # at least one partition per client by removing partitions down to the
         # min_capacity for each client
-        capacity = self.min_capacity if self.replicas == 0 else self.max_capacity
+        capacity = (
+            self.min_capacity
+            if (
+                self.replicas == 0
+                and self.num_partitions > 0
+                and self.num_partitions >= self._num_clients
+            )
+            else self.max_capacity
+        )
         for copartitioned in self._client_assignments.values():
             copartitioned.unassign_extras(capacity, self.replicas)
         self._assign(active=True)
