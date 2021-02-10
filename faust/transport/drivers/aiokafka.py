@@ -159,10 +159,24 @@ Has not committed %r (last commit %s).
 """.strip()
 
 
+def __canon_host(host, default):
+    """Ensure host is correctly formatted for aiokafka. That means IPv6
+    addresses must enclosed in squared brackets.
+    """
+    if not host:
+        return default
+    if ":" in host:
+        return f"[{host}]"
+    return host
+
+
 def server_list(urls: List[URL], default_port: int) -> List[str]:
     """Convert list of urls to list of servers accepted by :pypi:`aiokafka`."""
     default_host = "127.0.0.1"
-    return [f"{u.host or default_host}:{u.port or default_port}" for u in urls]
+    # Yarl strips [] from IPv6 adresses, and aiokafka expects them.
+    return [
+        f"{__canon_host(u.host, default_host)}:{u.port or default_port}" for u in urls
+    ]
 
 
 class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type: ignore
@@ -185,7 +199,10 @@ class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type
 
     async def on_partitions_assigned(self, assigned: Iterable[_TopicPartition]) -> None:
         """Call when partitions are being assigned."""
-        await self._thread.on_partitions_assigned(ensure_TPset(assigned))
+        generation = self._thread._ensure_consumer()._coordinator.generation
+        # set the generation on the app
+        self._thread.app.consumer_generation_id = generation
+        await self._thread.on_partitions_assigned(ensure_TPset(assigned), generation)
 
 
 class Consumer(ThreadDelegateConsumer):

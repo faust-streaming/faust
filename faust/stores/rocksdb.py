@@ -1,5 +1,6 @@
 """RocksDB storage."""
 import asyncio
+import gc
 import math
 import shutil
 import typing
@@ -332,6 +333,7 @@ class Store(base.SerializedStore):
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Rebalance occurred.
 
@@ -345,11 +347,14 @@ class Store(base.SerializedStore):
         self.rebalance_ack = False
         async with self.db_lock:
             self.revoke_partitions(table, revoked)
-            await self.assign_partitions(table, newly_assigned)
+            await self.assign_partitions(table, newly_assigned, generation_id)
 
     async def stop(self) -> None:
-        for db in self._dbs.values():
-            db.close()
+        self.logger.info("Closing rocksdb on stop")
+        # for db in self._dbs.values():
+        #     db.close()
+        self._dbs.clear()
+        gc.collect()
 
     def revoke_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """De-assign partitions used on this worker instance.
@@ -363,9 +368,13 @@ class Store(base.SerializedStore):
             if tp.topic in table.changelog_topic.topics:
                 db = self._dbs.pop(tp.partition, None)
                 if db is not None:
-                    db.close()
+                    self.logger.info(f"closing db {tp.topic} partition {tp.partition}")
+                    # db.close()
+        gc.collect()
 
-    async def assign_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
+    async def assign_partitions(
+        self, table: CollectionT, tps: Set[TP], generation_id: int = 0
+    ) -> None:
         """Assign partitions to this worker instance.
 
         Arguments:
@@ -377,26 +386,42 @@ class Store(base.SerializedStore):
         my_topics = table.changelog_topic.topics
         for tp in tps:
             if tp.topic in my_topics and tp not in standby_tps and self.rebalance_ack:
-                await self._try_open_db_for_partition(tp.partition)
+                await self._try_open_db_for_partition(
+                    tp.partition, generation_id=generation_id
+                )
                 await asyncio.sleep(0)
 
     async def _try_open_db_for_partition(
-        self, partition: int, max_retries: int = 30, retry_delay: float = 1.0
+        self,
+        partition: int,
+        max_retries: int = 30,
+        retry_delay: float = 1.0,
+        generation_id: int = 0,
     ) -> DB:
         for i in range(max_retries):
             try:
                 # side effect: opens db and adds to self._dbs.
+                self.logger.info(
+                    f"opening partition {partition} for gen id "
+                    f"{generation_id} app id {self.app.consumer_generation_id}"
+                )
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
                 if i == max_retries - 1 or "lock" not in repr(exc):
                     # release all the locks and crash
+                    self.log.warning(
+                        "DB for partition %r retries timed out ", partition
+                    )
                     await self.stop()
                     raise
                 self.log.info(
                     "DB for partition %r is locked! Retry in 1s...", partition
                 )
-                if not self.rebalance_ack:
-                    self.log.info("Rebalanced again giving up partition", partition)
+                if generation_id != self.app.consumer_generation_id:
+                    self.log.info(
+                        f"Rebalanced again giving up partition {partition} gen id"
+                        f" {generation_id} app {self.app.consumer_generation_id}"
+                    )
                     return
                 await self.sleep(retry_delay)
         else:  # pragma: no cover

@@ -93,6 +93,7 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         ...
 

@@ -561,10 +561,16 @@ class Collection(Service, CollectionT):
         )
 
     async def on_rebalance(
-        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Call when cluster is rebalancing."""
-        await self.data.on_rebalance(self, assigned, revoked, newly_assigned)
+        await self.data.on_rebalance(
+            self, assigned, revoked, newly_assigned, generation_id
+        )
 
     async def on_recovery_completed(
         self, active_tps: Set[TP], standby_tps: Set[TP]
