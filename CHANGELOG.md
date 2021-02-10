@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+##0.4.7
+### Bug Fixes
+- Allow multiple workers to share rocksdb data dir[98](https://github.com/faust-streaming/faust/issues/98)
+- Fix rebalance and recovery issues [83](https://github.com/faust-streaming/faust/issues/83)
+-[92](https://github.com/faust-streaming/faust/issues/92)
+
 ##0.4.6
 ### Bug Fixes
 - Fix for [85](https://github.com/faust-streaming/faust/issues/85)
