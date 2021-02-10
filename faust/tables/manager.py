@@ -181,18 +181,26 @@ class TableManager(Service, TableManagerT):
         T(self.recovery.on_partitions_revoked)(revoked)
 
     async def on_rebalance(
-        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Call when the cluster is rebalancing."""
         self._recovery_started.set()  # cannot add more tables.
         T = traced_from_parent_span()
         for table in self.values():
-            await T(table.on_rebalance)(assigned, revoked, newly_assigned)
+            await T(table.on_rebalance)(
+                assigned, revoked, newly_assigned, generation_id
+            )
 
         await asyncio.sleep(0)
         await T(self._update_channels)()
         await asyncio.sleep(0)
-        await T(self.recovery.on_rebalance)(assigned, revoked, newly_assigned)
+        await T(self.recovery.on_rebalance)(
+            assigned, revoked, newly_assigned, generation_id
+        )
 
     async def wait_until_recovery_completed(self) -> bool:
         if (

@@ -1329,7 +1329,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Bool,
-        version_introduced="0.5.0",
+        version_introduced="0.4.5",
         env_name="PRODUCER_THREADED",
         default=False,
     )
@@ -1339,6 +1339,19 @@ class Settings(base.SettingsRegistry):
         If True, spin up a different producer in a different thread
         to be used for messages buffered up for producing via
         send_soon function.
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.4.7",
+        env_name="RECOVERY_CONSISTENCY_CHECK",
+        default=True,
+    )
+    def recovery_consistency_check(self) -> bool:
+        """Check Kafka and local offsets for consistency.
+
+        If True, assert that Kafka highwater offsets >= local offset
+        in the rocksdb state storee
         """
 
     @sections.RPC.setting(

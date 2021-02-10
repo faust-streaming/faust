@@ -556,8 +556,11 @@ class Test_Collection:
             autospec=Store,
             on_rebalance=AsyncMock(),
         )
-        await table.on_rebalance({TP1}, set(), set())
-        table._data.on_rebalance.assert_called_once_with(table, {TP1}, set(), set())
+        generation_id = 1
+        await table.on_rebalance({TP1}, set(), set(), generation_id)
+        table._data.on_rebalance.assert_called_once_with(
+            table, {TP1}, set(), set(), generation_id
+        )
 
     @pytest.mark.asyncio
     async def test_on_changelog_event(self, *, table):

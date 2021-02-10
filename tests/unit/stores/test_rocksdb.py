@@ -321,10 +321,15 @@ class Test_Store:
         assigned = {TP1, TP2}
         revoked = {TP3}
         newly_assigned = {TP2}
-        await store.on_rebalance(table, assigned, revoked, newly_assigned)
+        generation_id = 1
+        await store.on_rebalance(
+            table, assigned, revoked, newly_assigned, generation_id=generation_id
+        )
 
         store.revoke_partitions.assert_called_once_with(table, revoked)
-        store.assign_partitions.assert_called_once_with(table, newly_assigned)
+        store.assign_partitions.assert_called_once_with(
+            table, newly_assigned, generation_id
+        )
 
     def test_revoke_partitions(self, *, store, table):
         table.changelog_topic.topics = {TP1.topic, TP3.topic}
@@ -339,13 +344,14 @@ class Test_Store:
         table.changelog_topic.topics = list({tp.topic for tp in (TP1, TP2, TP4)})
 
         store._try_open_db_for_partition = AsyncMock()
-        await store.assign_partitions(table, {TP1, TP2, TP3, TP4})
+        generation_id = 1
+        await store.assign_partitions(table, {TP1, TP2, TP3, TP4}, generation_id)
         store._try_open_db_for_partition.assert_has_calls(
             [
-                call(TP2.partition),
-                call.coro(TP2.partition),
-                call(TP1.partition),
-                call.coro(TP1.partition),
+                call(TP2.partition, generation_id=generation_id),
+                call.coro(TP2.partition, generation_id=generation_id),
+                call(TP1.partition, generation_id=generation_id),
+                call.coro(TP1.partition, generation_id=generation_id),
             ],
             any_order=True,
         )

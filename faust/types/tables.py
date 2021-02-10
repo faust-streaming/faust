@@ -183,7 +183,11 @@ class CollectionT(ServiceT, JoinableT):
 
     @abc.abstractmethod
     async def on_rebalance(
-        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         ...
 
@@ -284,7 +288,11 @@ class TableManagerT(ServiceT, FastUserDict[str, CollectionT]):
 
     @abc.abstractmethod
     async def on_rebalance(
-        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         ...
 

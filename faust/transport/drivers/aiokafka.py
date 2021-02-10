@@ -199,7 +199,10 @@ class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type
 
     async def on_partitions_assigned(self, assigned: Iterable[_TopicPartition]) -> None:
         """Call when partitions are being assigned."""
-        await self._thread.on_partitions_assigned(ensure_TPset(assigned))
+        generation = self._thread._ensure_consumer()._coordinator.generation
+        # set the generation on the app
+        self._thread.app.consumer_generation_id = generation
+        await self._thread.on_partitions_assigned(ensure_TPset(assigned), generation)
 
 
 class Consumer(ThreadDelegateConsumer):
