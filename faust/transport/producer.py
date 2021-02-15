@@ -56,10 +56,11 @@ class ProducerBuffer(Service, ProducerBufferT):
         """Flush at most ``n`` messages."""
         flushed_messages = 0
         while True:
-            if self.state != 'running' and self.size:
-                raise RuntimeError('Cannot flush: Producer not Running')
-            if self.size != 0 and \
-                    (max_messages is None or flushed_messages < max_messages):
+            if self.state != "running" and self.size:
+                raise RuntimeError("Cannot flush: Producer not Running")
+            if self.size != 0 and (
+                (max_messages is None or flushed_messages < max_messages)
+            ):
                 self.message_sent.clear()
                 await self.message_sent.wait()
                 flushed_messages += 1
