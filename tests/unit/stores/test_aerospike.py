@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import faust
-from faust.stores.aerospike import AeroSpikeStore, RecordNotFound
+from faust.stores.aerospike import AeroSpikeStore
 
 
 class TestAerospikeStore:
@@ -92,7 +92,6 @@ class TestAerospikeStore:
         store.client.put = MagicMock(side_effect=Exception)
         key = b"key"
         value = b"value"
-        vt = {store.BIN_KEY: value}
         with pytest.raises(Exception):
             store._set(key, value)
 
@@ -109,7 +108,6 @@ class TestAerospikeStore:
 
     def test_del_exception(self, store):
         key = b"key"
-        del_key = (store.namespace, store.table_name, key)
         store.client.remove = MagicMock(side_effect=Exception)
         with pytest.raises(KeyError):
             store._del(key)
