@@ -427,7 +427,7 @@ class Test_Store:
         assert list(store._dbs_for_key(b"key")) == [dbs[2]]
 
     def test__dbs_for_actives(self, *, store, table):
-        table._changelog_topic_name.return_value = "clog"
+        table.changelog_topic_name = "clog"
         store.app.assignor.assigned_actives = Mock(
             return_value=[
                 TP("clog", 1),
