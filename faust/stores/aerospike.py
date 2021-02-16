@@ -1,23 +1,33 @@
 import typing
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
-# try:  # pragma: no cover
-#     import aerospike
-# except ImportError:  # pragma: no cover
-#     aerospike = None  # noqa
-import aerospike
-from aerospike import Client
+try:  # pragma: no cover
+    import aerospike
+except ImportError:  # pragma: no cover
+    aerospike = None  # noqa
+
 from yarl import URL
 
 from faust.stores import base
 from faust.types import TP, AppT, CollectionT
 
-# if typing.TYPE_CHECKING:  # pragma: no cover
-#     from aerospike import Client
-# else:
-#
-#     class Client:  # noqa
-#         """Dummy Client."""
+if typing.TYPE_CHECKING:  # pragma: no cover
+    from aerospike import SCAN_PRIORITY_MEDIUM, TTL_NEVER_EXPIRE, Client
+else:
+
+    class Client:  # noqa
+        """Dummy Client."""
+
+    TTL_NEVER_EXPIRE = -1
+    SCAN_PRIORITY_MEDIUM = 2
+
+
+if typing.TYPE_CHECKING:  # pragma: no cover
+    import aerospike.exception.RecordNotFound
+else:
+
+    class RecordNotFound:  # noqa
+        """Dummy Client."""
 
 
 aerospike_client: Client = None
@@ -35,13 +45,12 @@ class AeroSpikeStore(base.SerializedStore):
         url: Union[str, URL],
         app: AppT,
         table: CollectionT,
-        namespace: str,
-        aerospike_config: Dict[str, Any],
+        options: typing.Mapping[str, Any] = None,
         **kwargs: Any,
     ) -> None:
         try:
-            self.client = AeroSpikeStore.get_aerospike_client(aerospike_config)
-            self.namespace = namespace
+            self.client = AeroSpikeStore.get_aerospike_client(options)
+            self.namespace = options.get("namespace", "")
         except Exception as ex:
             self.logger.error(f"Error configuring aerospike client {ex}")
             raise ex
@@ -110,7 +119,7 @@ class AeroSpikeStore(base.SerializedStore):
             scan_opts = {
                 "concurrent": True,
                 "nobins": True,
-                "priority": aerospike.SCAN_PRIORITY_MEDIUM,
+                "priority": 2,
             }
             for result in scan.results(policy=scan_opts):
                 yield result[0][2]
