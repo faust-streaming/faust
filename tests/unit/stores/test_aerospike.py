@@ -45,10 +45,19 @@ class TestAerospikeStore:
 
     @pytest.fixture()
     def store(self):
-        store = AeroSpikeStore("aerospike://", MagicMock(), MagicMock(), MagicMock())
-        store.namespace = "test_ns"
-        store.client = MagicMock()
-        return store
+        with patch("faust.stores.aerospike.aerospike", MagicMock()):
+            options = dict()
+            options[AeroSpikeStore.HOSTS_KEY] = "localhost"
+            options[AeroSpikeStore.USERNAME_KEY] = "USERNAME"
+            options[AeroSpikeStore.PASSWORD_KEY] = "PASSWORD"
+            options[AeroSpikeStore.TTL_KEY] = -1
+            options[AeroSpikeStore.POLICIES_KEY] = {}
+            store = AeroSpikeStore(
+                "aerospike://", MagicMock(), MagicMock(), options=options
+            )
+            store.namespace = "test_ns"
+            store.client = MagicMock()
+            return store
 
     def test_get_correct_value(self, store):
         bin = {"value_key": "value"}
@@ -81,7 +90,7 @@ class TestAerospikeStore:
             store.client.put.assert_called_with(
                 key=putkey,
                 bins=vt,
-                meta={"ttl": aero.TTL_NEVER_EXPIRE},
+                meta={"ttl": store.ttl},
                 policy={
                     "exists": aero.POLICY_EXISTS_IGNORE,
                     "key": aero.POLICY_KEY_SEND,

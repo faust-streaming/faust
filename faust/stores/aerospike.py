@@ -37,8 +37,15 @@ class AeroSpikeStore(base.SerializedStore):
     """Aerospike table storage."""
 
     client: Client
+    ttl: int
+    policies: typing.Mapping[str, Any]
     BIN_KEY = "value_key"
-    namespace: str = ""
+    USERNAME_KEY = "username"
+    HOSTS_KEY = "hosts"
+    PASSWORD_KEY = "password"
+    NAMESPACE_KEY = "namespace"
+    TTL_KEY = "ttl"
+    POLICIES_KEY = "policies"
 
     def __init__(
         self,
@@ -50,7 +57,9 @@ class AeroSpikeStore(base.SerializedStore):
     ) -> None:
         try:
             self.client = AeroSpikeStore.get_aerospike_client(options)
-            self.namespace = options.get("namespace", "")
+            self.namespace = options.get(self.NAMESPACE_KEY, "")
+            self.ttl = options.get(self.TTL_KEY, aerospike.TTL_NEVER_EXPIRE)
+            self.policies = options.get(self.POLICIES_KEY, None)
         except Exception as ex:
             self.logger.error(f"Error configuring aerospike client {ex}")
             raise ex
@@ -62,9 +71,12 @@ class AeroSpikeStore(base.SerializedStore):
         if aerospike_client:
             return aerospike_client
         else:
-            client = aerospike.client(aerospike_config)
+            client = aerospike.client(aerospike_config.get(AeroSpikeStore.HOSTS_KEY))
             try:
-                client.connect(None, None)
+                client.connect(
+                    aerospike_config.get(AeroSpikeStore.USERNAME_KEY),
+                    aerospike_config.get(AeroSpikeStore.PASSWORD_KEY),
+                )
                 aerospike_client = client
                 return client
             except Exception as e:
@@ -91,7 +103,7 @@ class AeroSpikeStore(base.SerializedStore):
             self.client.put(
                 key=key,
                 bins=vt,
-                meta={"ttl": aerospike.TTL_NEVER_EXPIRE},
+                meta={"ttl": self.ttl},
                 policy={
                     "exists": aerospike.POLICY_EXISTS_IGNORE,
                     "key": aerospike.POLICY_KEY_SEND,
