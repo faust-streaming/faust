@@ -72,6 +72,7 @@ class Store(StoreT[KT, VT], Service):
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Handle rebalancing of the cluster."""
         ...
