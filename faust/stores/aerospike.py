@@ -46,6 +46,7 @@ class AeroSpikeStore(base.SerializedStore):
     NAMESPACE_KEY = "namespace"
     TTL_KEY = "ttl"
     POLICIES_KEY = "policies"
+    CLIENT_OPTIONS_KEY = "client"
 
     def __init__(
         self,
@@ -71,7 +72,9 @@ class AeroSpikeStore(base.SerializedStore):
         if aerospike_client:
             return aerospike_client
         else:
-            client = aerospike.client(aerospike_config.get(AeroSpikeStore.HOSTS_KEY))
+            client = aerospike.client(
+                aerospike_config.get(AeroSpikeStore.CLIENT_OPTIONS_KEY)
+            )
             try:
                 client.connect(
                     aerospike_config.get(AeroSpikeStore.USERNAME_KEY),
