@@ -559,7 +559,7 @@ class Test_Collection:
         generation_id = 1
         await table.on_rebalance({TP1}, set(), set(), generation_id)
         table._data.on_rebalance.assert_called_once_with(
-            table, {TP1}, set(), set(), generation_id
+            {TP1}, set(), set(), generation_id
         )
 
     @pytest.mark.asyncio
