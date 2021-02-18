@@ -1113,7 +1113,7 @@ class Producer(base.Producer):
                 transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     await transaction_producer.commit_transaction()
-                    logger.info(f"Done committing transaction {transactional_id}")
+                    logger.debug(f"Done committing transaction {transactional_id}")
                 else:
                     logger.warning(
                         f"Commit invoked for unknown transaction {transactional_id}"
@@ -1183,11 +1183,11 @@ class Producer(base.Producer):
                         offsets, group_id
                     )
                     await transaction_producer.commit_transaction()
-                    logger.info(f"Done committing transaction {transactional_id}")
+                    logger.debug(f"Done committing transaction {transactional_id}")
                     if start_new_transaction:
-                        logger.info(f"Starting transaction {transactional_id}")
+                        logger.debug(f"Starting transaction {transactional_id}")
                         await transaction_producer.begin_transaction()
-                        logger.info(f"Started transaction {transactional_id}")
+                        logger.debug(f"Started transaction {transactional_id}")
 
                 else:
                     logger.warning(
