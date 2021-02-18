@@ -42,7 +42,7 @@ class AeroSpikeStore(base.SerializedStore):
     BIN_KEY = "value_key"
     USERNAME_KEY = "username"
     HOSTS_KEY = "hosts"
-    PASSWORD_KEY = "password"
+    PASSWORD_KEY = "password"  # nosec
     NAMESPACE_KEY = "namespace"
     TTL_KEY = "ttl"
     POLICIES_KEY = "policies"
