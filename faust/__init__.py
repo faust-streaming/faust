@@ -23,7 +23,7 @@ import sys
 import typing
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
 
-__version__ = "0.5.0"
+__version__ = "0.5.1"
 __author__ = "Robinhood Markets, Inc."
 __contact__ = "schrohm@gmail.com, vpatki@wayfair.com"
 __homepage__ = "https://github.com/faust-streaming/faust"
