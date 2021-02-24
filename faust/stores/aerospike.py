@@ -187,12 +187,15 @@ class AeroSpikeStore(base.SerializedStore):
 
     def _contains(self, key: bytes) -> bool:
         try:
-            key = (self.namespace, self.table_name, key)
-            (key, meta) = self.client.exists(key=key)
-            if meta:
-                return True
+            if self.app.conf.store_check_exists:
+                key = (self.namespace, self.table_name, key)
+                (key, meta) = self.client.exists(key=key)
+                if meta:
+                    return True
+                else:
+                    return False
             else:
-                return False
+                return True
         except Exception as ex:
             self.log.error(
                 f"Error in _contains for table {self.table_name} exception {ex}"
