@@ -68,7 +68,6 @@ class Store(StoreT[KT, VT], Service):
 
     async def on_rebalance(
         self,
-        table: CollectionT,
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
