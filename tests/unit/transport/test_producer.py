@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 from mode.utils.mocks import AsyncMock, Mock, call
 
@@ -57,7 +59,22 @@ class TestProducerBuffer:
     @pytest.mark.asyncio
     async def test_wait_until_ebb(self, *, buf):
         buf.max_messages = 10
-        buf._send_pending = AsyncMock()
+
+        def create_send_pending_mock(max_messages):
+            sent_messages = 0
+
+            async def _inner():
+                nonlocal sent_messages
+                if sent_messages < max_messages:
+                    sent_messages += 1
+                    return
+                else:
+                    await asyncio.Future()
+
+        return create_send_pending_mock
+
+        buf._send_pending = create_send_pending_mock(10)
+        await buf.start()
         self._put(buf, range(20))
         assert buf.size == 20
 
@@ -71,7 +88,22 @@ class TestProducerBuffer:
 
     @pytest.mark.asyncio
     async def test_flush(self, *, buf):
-        buf._send_pending = AsyncMock()
+        def create_send_pending_mock(max_messages):
+            sent_messages = 0
+
+            async def _inner():
+                nonlocal sent_messages
+                if sent_messages < max_messages:
+                    sent_messages += 1
+                    return
+                else:
+                    await asyncio.Future()
+
+        return create_send_pending_mock
+
+        buf._send_pending = create_send_pending_mock(10)
+        await buf.start()
+
         assert not buf.size
         await buf.flush()
 
@@ -87,7 +119,19 @@ class TestProducerBuffer:
 
     @pytest.mark.asyncio
     async def test_flush_atmost(self, *, buf):
-        buf._send_pending = AsyncMock()
+        def create_send_pending_mock(max_messages):
+            sent_messages = 0
+
+            async def _inner():
+                nonlocal sent_messages
+                if sent_messages < max_messages:
+                    sent_messages += 1
+                    return
+                else:
+                    await asyncio.Future()
+
+        return create_send_pending_mock
+
         assert await buf.flush_atmost(10) == 0
 
         self._put(buf, range(3))
