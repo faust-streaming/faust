@@ -120,11 +120,15 @@ class AeroSpikeStore(base.SerializedStore):
         try:
             key = (self.namespace, self.table_name, key)
             self.client.remove(key=key)
+        except aerospike.exception.RecordNotFound as ex:
+            self.log.error(
+                f"Error in delete for table {self.table_name} exception {ex}"
+            )
         except Exception as ex:
             self.log.error(
                 f"Error in delete for table {self.table_name} exception {ex}"
             )
-            raise KeyError(ex)
+            raise ex
 
     def _iterkeys(self) -> Iterator[bytes]:
         try:

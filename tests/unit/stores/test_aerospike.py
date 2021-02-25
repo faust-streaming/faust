@@ -118,7 +118,7 @@ class TestAerospikeStore:
     def test_del_exception(self, store):
         key = b"key"
         store.client.remove = MagicMock(side_effect=Exception)
-        with pytest.raises(KeyError):
+        with pytest.raises(Exception):
             store._del(key)
 
     def test_iterkeys_error(self, store):
