@@ -23,6 +23,7 @@ from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
 from mode.utils.typing import Counter, Deque
+from yarl import URL
 
 from faust.exceptions import ConsistencyError
 from faust.types import TP, AppT, EventT
@@ -317,7 +318,9 @@ class Recovery(Service):
                 consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
             )
             self.log.dev("Resume stream partitions")
-            consumer.resume_partitions(assignment)
+            consumer.resume_partitions(
+                {tp for tp in assignment if not self._is_changelog_tp(tp)}
+            )
         else:
             self.log.info("Resuming streams with empty assignment")
         self.completed.set()
@@ -363,7 +366,7 @@ class Recovery(Service):
             try:
                 await self._wait(T(asyncio.sleep)(self.recovery_delay))
 
-                if not self.tables:
+                if not self.tables or self.app.conf.store == URL("aerospike:"):
                     # If there are no tables -- simply resume streams
                     await T(self._resume_streams)(generation_id=generation_id)
                     for _span in spans:

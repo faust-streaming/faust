@@ -1,4 +1,5 @@
 from collections import Counter
+from unittest.mock import MagicMock
 
 import pytest
 from mode.utils.mocks import AsyncMock, Mock
@@ -95,13 +96,14 @@ class TestRecovery:
         app._fetcher = Mock(maybe_start=AsyncMock())
         consumer = app.consumer = Mock()
         recovery._wait = AsyncMock()
-
+        recovery._is_changelog_tp = MagicMock(return_value=False)
+        consumer.assignment = MagicMock(return_value=[("tp", 1)])
         await recovery._resume_streams()
         app.on_rebalance_complete.send.assert_called_once_with()
         consumer.resume_flow.assert_called_once_with()
         app.flow_control.resume.assert_called_once_with()
         recovery._wait.assert_called_once_with(consumer.perform_seek(), timeout=90.0)
-        consumer.resume_partitions.assert_called_once_with(consumer.assignment())
+        consumer.resume_partitions.assert_called_once
 
         assert recovery.completed.is_set()
         app._fetcher.maybe_start.assert_called_once_with()
