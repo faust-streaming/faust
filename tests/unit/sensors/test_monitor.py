@@ -1,4 +1,3 @@
-from collections import deque
 from http import HTTPStatus
 from statistics import median
 from typing import Any
@@ -446,10 +445,10 @@ class TestMonitor:
         prev_message_total = 0
         mon.events_runtime = []
         mon._sample(prev_event_total, prev_message_total)
-        mon.events_runtime = deque(range(100))
-        mon.rebalance_return_latency = deque(range(100))
-        mon.rebalance_end_latency = deque(range(100))
-        mon.http_response_latency = deque(range(100))
+        mon.events_runtime.extend(range(100))
+        mon.rebalance_return_latency.extend(range(100))
+        mon.rebalance_end_latency.extend(range(100))
+        mon.http_response_latency.extend(range(100))
         prev_event_total = 0
         prev_message_total = 0
         mon._sample(prev_event_total, prev_message_total)

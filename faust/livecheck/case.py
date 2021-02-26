@@ -18,7 +18,6 @@ from mode.utils.typing import AsyncGenerator, Counter, Deque
 from yarl import URL
 
 from faust.utils import uuid
-from faust.utils.functional import deque_pushpopmax
 
 from .exceptions import ServiceDown, SuiteFailed, SuiteStalled
 from .locals import current_execution_stack, current_test_stack
@@ -166,9 +165,9 @@ class Case(Service):
         if url_error_delay_max is not None:
             self.url_error_delay_max = url_error_delay_max
 
-        self.frequency_history = deque()
-        self.latency_history = deque()
-        self.runtime_history = deque()
+        self.frequency_history = deque(maxlen=self.max_history)
+        self.latency_history = deque(maxlen=self.max_history)
+        self.runtime_history = deque(maxlen=self.max_history)
 
         self.total_by_state = Counter()
 
@@ -252,8 +251,8 @@ class Case(Service):
             wanted_frequency = self.frequency
             if wanted_frequency:
                 latency = time_since - wanted_frequency
-                deque_pushpopmax(self.latency_history, latency, self.max_history)
-            deque_pushpopmax(self.frequency_history, time_since, self.max_history)
+                self.latency_history.append(latency)
+            self.frequency_history.append(time_since)
 
     async def on_test_skipped(self, runner: TestRunner) -> None:
         """Call when a test is skipped."""
@@ -299,7 +298,7 @@ class Case(Service):
         """Call when a test execution passes."""
         test = runner.test
         runtime: float = runner.runtime or 0.0
-        deque_pushpopmax(self.runtime_history, runtime, self.max_history)
+        self.runtime_history.append(runtime)
         ts = test.timestamp.timestamp()
         last_fail = self.last_fail
         if last_fail is None or ts > last_fail:

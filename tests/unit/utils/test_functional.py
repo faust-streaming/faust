@@ -1,8 +1,6 @@
-from collections import deque
-
 import pytest
 
-from faust.utils.functional import consecutive_numbers, deque_pushpopmax
+from faust.utils.functional import consecutive_numbers
 
 
 @pytest.mark.parametrize(
@@ -16,18 +14,3 @@ from faust.utils.functional import consecutive_numbers, deque_pushpopmax
 )
 def test_consecutive_numbers(numbers, expected):
     assert next(consecutive_numbers(numbers), None) == expected
-
-
-def test_deque_pushpop_max():
-    d = deque([])
-    deque_pushpopmax(d, 1, max=None)
-    assert d == deque([1])
-    deque_pushpopmax(d, 2, max=3)
-    assert d == deque([1, 2])
-    deque_pushpopmax(d, 3, max=3)
-    assert d == deque([1, 2, 3])
-    deque_pushpopmax(d, 4, max=3)
-    assert d == deque([2, 3, 4])
-    for i in range(5, 100):
-        deque_pushpopmax(d, i, max=3)
-        assert d == deque([i - 2, i - 1, i])
