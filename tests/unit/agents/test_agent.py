@@ -1,5 +1,4 @@
 import asyncio
-import sys
 
 import pytest
 from mode import SupervisorStrategy, label
@@ -404,14 +403,7 @@ class Test_Agent:
             agent._slurp.assert_called()
             coro = agent._slurp()
             agent._execute_actor.assert_called_once_with(coro, aref)
-            if sys.version_info >= (3, 8):
-                Task.assert_called_once_with(
-                    agent._execute_actor(),
-                    loop=agent.loop,
-                    name=f"{ret}-testid-tests.unit.agents.test_agent.myagent",
-                )
-            else:
-                Task.assert_called_once_with(agent._execute_actor(), loop=agent.loop)
+            Task.assert_called_once_with(agent._execute_actor(), loop=agent.loop)
             task = Task()
             assert task._beacon is beacon
             assert aref.actor_task is task
@@ -423,6 +415,24 @@ class Test_Agent:
         aref = agent2(index=0, active_partitions=None)
         asyncio.ensure_future(aref.it).cancel()  # silence warning
         return
+        with patch("asyncio.Task") as Task:
+            agent2._execute_actor = Mock(name="_execute_actor")
+            beacon = Mock(name="beacon", autospec=Node)
+            ret = await agent2._prepare_actor(aref, beacon)
+            coro = aref
+            agent2._execute_actor.assert_called_once_with(coro, aref)
+            Task.assert_called_once_with(agent2._execute_actor(), loop=agent2.loop)
+            task = Task()
+            assert task._beacon is beacon
+            assert aref.actor_task is task
+            assert aref in agent2._actors
+            assert ret is aref
+
+    @pytest.mark.asyncio
+    async def test_prepare_actor__Awaitable_with_multiple_topics(self, *, agent2):
+        aref = agent2(index=0, active_partitions=None)
+        asyncio.ensure_future(aref.it).cancel()  # silence warning
+        agent2.channel.topics = ["foo", "bar"]
         with patch("asyncio.Task") as Task:
             agent2._execute_actor = Mock(name="_execute_actor")
             beacon = Mock(name="beacon", autospec=Node)
