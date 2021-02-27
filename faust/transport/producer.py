@@ -8,7 +8,6 @@ The Producer is responsible for:
 """
 import asyncio
 import time
-from asyncio import QueueEmpty
 from typing import Any, Awaitable, Mapping, Optional, cast
 
 from mode import Seconds, Service, get_logger
@@ -29,6 +28,7 @@ class ProducerBuffer(Service, ProducerBufferT):
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
+        self.message_sent = asyncio.Event()
 
     def put(self, fut: FutureMessage) -> None:
         """Add message to buffer.
@@ -50,34 +50,22 @@ class ProducerBuffer(Service, ProducerBufferT):
 
     async def flush(self) -> None:
         """Flush all messages (draining the buffer)."""
-        get_pending = self.pending.get_nowait
-        send_pending = self._send_pending
+        await self.flush_atmost(None)
 
-        if self.size:
-            while True:
-                try:
-                    msg = get_pending()
-                except QueueEmpty:
-                    break
-                else:
-                    await send_pending(msg)
-
-    async def flush_atmost(self, n: int) -> int:
+    async def flush_atmost(self, max_messages: Optional[int]) -> int:
         """Flush at most ``n`` messages."""
-        get_pending = self.pending.get_nowait
-        send_pending = self._send_pending
-
-        if self.size:
-            for i in range(n):
-                try:
-                    msg = get_pending()
-                except QueueEmpty:
-                    return i
-                else:
-                    await send_pending(msg)
-            return n
-        else:
-            return 0
+        flushed_messages = 0
+        while True:
+            if self.state != "running" and self.size:
+                raise RuntimeError("Cannot flush: Producer not Running")
+            if self.size != 0 and (
+                (max_messages is None or flushed_messages < max_messages)
+            ):
+                self.message_sent.clear()
+                await self.message_sent.wait()
+                flushed_messages += 1
+            else:
+                return flushed_messages
 
     async def _send_pending(self, fut: FutureMessage) -> None:
         await fut.message.channel.publish_message(fut, wait=False)
@@ -109,6 +97,7 @@ class ProducerBuffer(Service, ProducerBufferT):
         while not self.should_stop:
             msg = await get_pending()
             await send_pending(msg)
+            self.message_sent.set()
 
     @property
     def size(self) -> int:
