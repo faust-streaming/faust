@@ -1,4 +1,3 @@
-from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from statistics import median
@@ -139,8 +138,8 @@ class TestCase:
     async def test_on_test_start(
         self, started, last_received, frequency, *, case, runner
     ):
-        case.latency_history = deque([0.03] * case.max_history)
-        case.frequency_history = deque([0.04] * case.max_history)
+        case.latency_history.extend([0.03] * case.max_history)
+        case.frequency_history.extend([0.04] * case.max_history)
         runner.started = started
         case.frequency = frequency
         case.last_test_received = last_received
@@ -229,7 +228,7 @@ class TestCase:
         assert runner.test is execution
         runner.test.timestamp = Mock()
         runner.test.timestamp.timestamp.return_value = ts
-        case.runtime_history = deque([3.03] * case.max_history)
+        case.runtime_history.extend([3.03] * case.max_history)
         runner.runtime = 300.0
         with self.seconds_since_last_fail(case, now=now, failed=failed):
             case.status = initial_state
