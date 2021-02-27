@@ -323,7 +323,7 @@ class Test_Store:
         newly_assigned = {TP2}
         generation_id = 1
         await store.on_rebalance(
-            table, assigned, revoked, newly_assigned, generation_id=generation_id
+            assigned, revoked, newly_assigned, generation_id=generation_id
         )
 
         store.revoke_partitions.assert_called_once_with(table, revoked)

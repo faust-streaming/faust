@@ -1354,6 +1354,19 @@ class Settings(base.SettingsRegistry):
         in the rocksdb state storee
         """
 
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.0",
+        env_name="STORE_CHECK_EXISTS",
+        default=True,
+    )
+    def store_check_exists(self) -> bool:
+        """Execute exists on the underlying store.
+
+        If True, executes exists on the underlying store. If False
+        client has to catch KeyError
+        """
+
     @sections.RPC.setting(
         params.Bool,
         env_name="APP_REPLY_CREATE_TOPIC",

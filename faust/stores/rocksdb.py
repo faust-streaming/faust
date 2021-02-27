@@ -329,7 +329,6 @@ class Store(base.SerializedStore):
 
     async def on_rebalance(
         self,
-        table: CollectionT,
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
@@ -338,16 +337,16 @@ class Store(base.SerializedStore):
         """Rebalance occurred.
 
         Arguments:
-            table: The table that we store data for.
             assigned: Set of all assigned topic partitions.
             revoked: Set of newly revoked topic partitions.
             newly_assigned: Set of newly assigned topic partitions,
                 for which we were not assigned the last time.
+            generation_id: the metadata generation identifier for the re-balance
         """
         self.rebalance_ack = False
         async with self.db_lock:
-            self.revoke_partitions(table, revoked)
-            await self.assign_partitions(table, newly_assigned, generation_id)
+            self.revoke_partitions(self.table, revoked)
+            await self.assign_partitions(self.table, newly_assigned, generation_id)
 
     async def stop(self) -> None:
         self.logger.info("Closing rocksdb on stop")
