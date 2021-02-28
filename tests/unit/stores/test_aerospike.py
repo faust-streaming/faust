@@ -131,11 +131,6 @@ class TestAerospikeStore:
     def test_iterkeys_success(self, store):
         scan = MagicMock()
         store.client.scan = MagicMock(return_value=scan)
-        scan_opts = {
-            "concurrent": True,
-            "nobins": True,
-            "priority": 2,
-        }
         scan_result = {
             (("UUID1", "t1", "key1"), MagicMock(), MagicMock()),
             (("UUID2", "t2", "key2"), MagicMock(), MagicMock()),
@@ -144,16 +139,15 @@ class TestAerospikeStore:
         a = {"key1", "key2"}
         result = a - set(store._iterkeys())
         assert len(result) == 0
-        scan.results.assert_called_with(policy=scan_opts)
+        assert scan.results.called
         store.client.scan.assert_called_with(
             namespace=store.namespace, set=store.table_name
         )
 
     def test_itervalues_success(self, store):
-        with patch("faust.stores.aerospike.aerospike", MagicMock()) as aero:
+        with patch("faust.stores.aerospike.aerospike", MagicMock()):
             scan = MagicMock()
             store.client.scan = MagicMock(return_value=scan)
-            scan_opts = {"concurrent": True, "priority": aero.SCAN_PRIORITY_MEDIUM}
             scan_result = [
                 (MagicMock(), {"ttl": 4294967295, "gen": 4}, {"value_key": "value1"}),
                 (MagicMock(), {"ttl": 4294967295, "gen": 4}, None),
@@ -162,7 +156,7 @@ class TestAerospikeStore:
             a = {None, "value1"}
             result = a - set(store._itervalues())
             assert len(result) == 0
-            scan.results.assert_called_with(policy=scan_opts)
+            scan.results.assert_called_with()
             store.client.scan.assert_called_with(
                 namespace=store.namespace, set=store.table_name
             )
@@ -178,11 +172,10 @@ class TestAerospikeStore:
             set(store._iteritems())
 
     def test_iteritems_success(self, store):
-        with patch("faust.stores.aerospike.aerospike", MagicMock()) as aero:
+        with patch("faust.stores.aerospike.aerospike", MagicMock()):
 
             scan = MagicMock()
             store.client.scan = MagicMock(return_value=scan)
-            scan_opts = {"concurrent": True, "priority": aero.SCAN_PRIORITY_MEDIUM}
             scan_result = [
                 (
                     ("UUID1", "t1", MagicMock(), "key1"),
@@ -199,7 +192,7 @@ class TestAerospikeStore:
             a = {("key1", "value1"), ("key2", "value2")}
             result = a - set(store._iteritems())
             assert len(result) == 0
-            scan.results.assert_called_with(policy=scan_opts)
+            assert scan.results.assert_called
             store.client.scan.assert_called_with(
                 namespace=store.namespace, set=store.table_name
             )
