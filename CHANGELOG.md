@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+##0.6.1
+### Bug Fixes
+- fix agents with multiple topics[116](https://github.com/faust-streaming/faust/pull/116)
+-Simplify the code by getting rid of deque_pushpopmax in favour of using maxlen= parameter of deque[115](https://github.com/faust-streaming/faust/pull/115)
+-fixes a race condition in writing messages to topics that resulted in a violation of the ordering guarantee (especially changelog topics)[112](https://github.com/faust-streaming/faust/pull/112)
 ##0.6.0
 ### Bug Fixes
 -Adding support for aerospike [114](https://github.com/faust-streaming/faust/issues/114)
