@@ -135,12 +135,7 @@ class AeroSpikeStore(base.SerializedStore):
             scan: aerospike.Scan = self.client.scan(
                 namespace=self.namespace, set=self.table_name
             )
-            scan_opts = {
-                "concurrent": True,
-                "nobins": True,
-                "priority": 2,
-            }
-            for result in scan.results(policy=scan_opts):
+            for result in scan.results():
                 yield result[0][2]
         except Exception as ex:
             self.log.error(
@@ -150,11 +145,10 @@ class AeroSpikeStore(base.SerializedStore):
 
     def _itervalues(self) -> Iterator[bytes]:
         try:
-            scan_opts = {"concurrent": True, "priority": aerospike.SCAN_PRIORITY_MEDIUM}
             scan: aerospike.Scan = self.client.scan(
                 namespace=self.namespace, set=self.table_name
             )
-            for result in scan.results(policy=scan_opts):
+            for result in scan.results():
                 (key, meta, bins) = result
                 if bins:
                     yield bins[self.BIN_KEY]
@@ -168,12 +162,11 @@ class AeroSpikeStore(base.SerializedStore):
 
     def _iteritems(self) -> Iterator[Tuple[bytes, bytes]]:
         try:
-            scan_opts = {"concurrent": True, "priority": aerospike.SCAN_PRIORITY_MEDIUM}
 
             scan: aerospike.Scan = self.client.scan(
                 namespace=self.namespace, set=self.table_name
             )
-            for result in scan.results(policy=scan_opts):
+            for result in scan.results():
                 (key_data, meta, bins) = result
                 (ns, set, policy, key) = key_data
 
