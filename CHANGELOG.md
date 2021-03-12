@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+##0.6.2
+### Bug Fixes
+- Add app_name to prometheus sensors[120](https://github.com/faust-streaming/faust/pull/120)
+-DatadogMonitor - IndexError: deque index out of range[113](https://github.com/faust-streaming/faust/issues/113)
+
 ##0.6.1
 ### Bug Fixes
 - fix agents with multiple topics[116](https://github.com/faust-streaming/faust/pull/116)
