@@ -26,7 +26,7 @@ class TestPrometheusMonitor:
 
     @pytest.fixture
     def metrics(self, registry: CollectorRegistry) -> FaustMetrics:
-        return FaustMetrics.create(registry)
+        return FaustMetrics.create(registry, "test")
 
     @pytest.fixture
     def app(self) -> AppT:
@@ -67,18 +67,20 @@ class TestPrometheusMonitor:
         monitor.on_message_in(TP1, 400, message)
 
         self.assert_has_sample_value(
-            metrics.messages_received, "messages_received_total", {}, 1
+            metrics.messages_received, "test_messages_received_total", {}, 1
         )
-        self.assert_has_sample_value(metrics.active_messages, "active_messages", {}, 1)
+        self.assert_has_sample_value(
+            metrics.active_messages, "test_active_messages", {}, 1
+        )
         self.assert_has_sample_value(
             metrics.messages_received_per_topics,
-            "messages_received_per_topic_total",
+            "test_messages_received_per_topic_total",
             {"topic": "foo"},
             1,
         )
         self.assert_has_sample_value(
             metrics.messages_received_per_topics_partition,
-            "messages_received_per_topics_partition",
+            "test_messages_received_per_topics_partition",
             {"topic": "foo", "partition": "3"},
             400,
         )
@@ -93,7 +95,7 @@ class TestPrometheusMonitor:
         monitor.on_message_out(TP1, 400, message)
 
         self.assert_has_sample_value(
-            metrics.active_messages, "active_messages", {}, n_messages - 1
+            metrics.active_messages, "test_active_messages", {}, n_messages - 1
         )
 
     def test_on_stream_event_in(
@@ -105,13 +107,15 @@ class TestPrometheusMonitor:
     ) -> None:
         monitor.on_stream_event_in(TP1, 401, stream, event)
 
-        self.assert_has_sample_value(metrics.total_events, "total_events_total", {}, 1)
         self.assert_has_sample_value(
-            metrics.total_active_events, "total_active_events", {}, 1
+            metrics.total_events, "test_total_events_total", {}, 1
+        )
+        self.assert_has_sample_value(
+            metrics.total_active_events, "test_total_active_events", {}, 1
         )
         self.assert_has_sample_value(
             metrics.total_events_per_stream,
-            "total_events_per_stream_total",
+            "test_total_events_per_stream_total",
             {"stream": "stream.topic_foo.events"},
             1,
         )
@@ -131,7 +135,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.total_active_events,
-            "total_active_events",
+            "test_total_active_events",
             {},
             n_events - 1,
         )
@@ -146,7 +150,7 @@ class TestPrometheusMonitor:
         monitor.on_stream_event_out(TP1, 401, stream, event, state=None)
 
         self.assert_doesnt_have_sample_values(
-            metrics.events_runtime_latency, "events_runtime_latency_total", {}
+            metrics.events_runtime_latency, "test_events_runtime_latency_total", {}
         )
 
     def test_on_table_get(
@@ -156,7 +160,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.table_operations,
-            "table_operations_total",
+            "test_table_operations_total",
             {"table": f"table.{table.name}", "operation": "keys_retrieved"},
             1,
         )
@@ -168,7 +172,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.table_operations,
-            "table_operations_total",
+            "test_table_operations_total",
             {"table": f"table.{table.name}", "operation": "keys_updated"},
             1,
         )
@@ -180,7 +184,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.table_operations,
-            "table_operations_total",
+            "test_table_operations_total",
             {"table": f"table.{table.name}", "operation": "keys_deleted"},
             1,
         )
@@ -195,7 +199,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.consumer_commit_latency,
-            "consumer_commit_latency_sum",
+            "test_consumer_commit_latency_sum",
             {},
             monitor.ms_since(float(state)),
         )
@@ -209,17 +213,17 @@ class TestPrometheusMonitor:
         monitor.on_send_completed(producer, state, Mock(name="metadata"))
 
         self.assert_has_sample_value(
-            metrics.total_sent_messages, "total_sent_messages_total", {}, 1
+            metrics.total_sent_messages, "test_total_sent_messages_total", {}, 1
         )
         self.assert_has_sample_value(
             metrics.topic_messages_sent,
-            "topic_messages_sent_total",
+            "test_topic_messages_sent_total",
             {"topic": "topic.topic1"},
             1,
         )
         self.assert_has_sample_value(
             metrics.producer_send_latency,
-            "producer_send_latency_sum",
+            "test_producer_send_latency_sum",
             {},
             monitor.ms_since(float(state)),
         )
@@ -234,13 +238,13 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.total_error_messages_sent,
-            "total_error_messages_sent_total",
+            "test_total_error_messages_sent_total",
             {},
             1,
         )
         self.assert_has_sample_value(
             metrics.producer_error_send_latency,
-            "producer_error_send_latency_sum",
+            "test_producer_error_send_latency_sum",
             {},
             monitor.ms_since(timestamp),
         )
@@ -255,13 +259,13 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.assignment_operations,
-            "assignment_operations_total",
+            "test_assignment_operations_total",
             {"operation": monitor.COMPLETED},
             1,
         )
         self.assert_has_sample_value(
             metrics.assign_latency,
-            "assign_latency_sum",
+            "test_assign_latency_sum",
             {},
             monitor.ms_since(state["time_start"]),
         )
@@ -276,13 +280,13 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.assignment_operations,
-            "assignment_operations_total",
+            "test_assignment_operations_total",
             {"operation": monitor.ERROR},
             1,
         )
         self.assert_has_sample_value(
             metrics.assign_latency,
-            "assign_latency_sum",
+            "test_assign_latency_sum",
             {},
             monitor.ms_since(state["time_start"]),
         )
@@ -293,7 +297,7 @@ class TestPrometheusMonitor:
         monitor.on_rebalance_start(app)
 
         self.assert_has_sample_value(
-            metrics.total_rebalances, "total_rebalances", {}, 1
+            metrics.total_rebalances, "test_total_rebalances", {}, 1
         )
 
     def test_on_rebalance_return(
@@ -306,17 +310,17 @@ class TestPrometheusMonitor:
         monitor.on_rebalance_return(app, state)
 
         self.assert_has_sample_value(
-            metrics.total_rebalances, "total_rebalances", {}, n_rebalances - 1
+            metrics.total_rebalances, "test_total_rebalances", {}, n_rebalances - 1
         )
         self.assert_has_sample_value(
             metrics.total_rebalances_recovering,
-            "total_rebalances_recovering",
+            "test_total_rebalances_recovering",
             {},
             1,
         )
         self.assert_has_sample_value(
             metrics.rebalance_done_consumer_latency,
-            "rebalance_done_consumer_latency_sum",
+            "test_rebalance_done_consumer_latency_sum",
             {},
             monitor.ms_since(state["time_return"]),
         )
@@ -332,13 +336,13 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.total_rebalances_recovering,
-            "total_rebalances_recovering",
+            "test_total_rebalances_recovering",
             {},
             n_rebalances - 1,
         )
         self.assert_has_sample_value(
             metrics.rebalance_done_latency,
-            "rebalance_done_latency_sum",
+            "test_rebalance_done_latency_sum",
             {},
             monitor.ms_since(state["time_end"]),
         )
@@ -384,13 +388,13 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.http_status_codes,
-            "http_status_codes_total",
+            "test_http_status_codes_total",
             {"status_code": str(expected_status)},
             1,
         )
         self.assert_has_sample_value(
             metrics.http_latency,
-            "http_latency_sum",
+            "test_http_latency_sum",
             {},
             monitor.ms_since(state["time_end"]),
         )
@@ -400,7 +404,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.count_metrics_by_name,
-            "metrics_by_name",
+            "test_metrics_by_name",
             {"metric": "metric_name"},
             3,
         )
@@ -414,19 +418,19 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.topic_partition_offset_commited,
-            "topic_partition_offset_commited",
+            "test_topic_partition_offset_commited",
             {"topic": "foo", "partition": "0"},
             1001,
         )
         self.assert_has_sample_value(
             metrics.topic_partition_offset_commited,
-            "topic_partition_offset_commited",
+            "test_topic_partition_offset_commited",
             {"topic": "foo", "partition": "1"},
             2002,
         )
         self.assert_has_sample_value(
             metrics.topic_partition_offset_commited,
-            "topic_partition_offset_commited",
+            "test_topic_partition_offset_commited",
             {"topic": "bar", "partition": "3"},
             3003,
         )
@@ -438,7 +442,7 @@ class TestPrometheusMonitor:
 
         self.assert_has_sample_value(
             metrics.topic_partition_end_offset,
-            "topic_partition_end_offset",
+            "test_topic_partition_end_offset",
             {"topic": "foo", "partition": "0"},
             4004,
         )
@@ -473,14 +477,14 @@ class TestPrometheusMonitor:
         collected_topics = frozenset(
             sample.labels["topic"]
             for metric in registry.collect()
-            if metric.name == "messages_received_per_topic"
+            if metric.name == "test_messages_received_per_topic"
             for sample in metric.samples
         )
         assert collected_topics == frozenset([TP2.topic])
         collected_partitions = frozenset(
             (sample.labels["topic"], sample.labels["partition"])
             for metric in registry.collect()
-            if metric.name == "messages_received_per_topics_partition"
+            if metric.name == "test_messages_received_per_topics_partition"
             for sample in metric.samples
         )
         assert collected_partitions == frozenset([(TP2.topic, str(TP2.partition))])
