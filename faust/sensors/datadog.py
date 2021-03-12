@@ -181,11 +181,12 @@ class DatadogMonitor(Monitor):
         super().on_stream_event_out(tp, offset, stream, event, state)
         labels = self._format_label(tp, stream)
         self.client.decrement("events_active", labels=labels)
-        self.client.timing(
-            "events_runtime",
-            self.secs_to_ms(self.events_runtime[-1]),
-            labels=labels,
-        )
+        if state is not None:
+            self.client.timing(
+                "events_runtime",
+                self.secs_to_ms(self.events_runtime[-1]),
+                labels=labels,
+            )
 
     def on_message_out(self, tp: TP, offset: int, message: Message) -> None:
         """Call when message is fully acknowledged and can be committed."""
