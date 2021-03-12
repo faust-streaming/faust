@@ -61,6 +61,7 @@ class AeroSpikeStore(base.SerializedStore):
             self.namespace = options.get(self.NAMESPACE_KEY, "")
             self.ttl = options.get(self.TTL_KEY, aerospike.TTL_NEVER_EXPIRE)
             self.policies = options.get(self.POLICIES_KEY, None)
+            table.use_partitioner = True
         except Exception as ex:
             self.logger.error(f"Error configuring aerospike client {ex}")
             raise ex
