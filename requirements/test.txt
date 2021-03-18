@@ -1,7 +1,5 @@
-black
-isort
-autoflake
-flake8
+# Test
+# ------------------------------------------------------------------------------
 hypothesis>=3.31
 freezegun>=0.3.11
 pytest-aiofiles>=0.2.0
@@ -10,16 +8,40 @@ pytest-asyncio
 pytest-forked
 pytest-openfiles>=0.2.0
 pytest-picked
-pytest-cov
 pytest-random-order>=0.5.4
 pytest>=5.4.0
 python-dateutil>=2.8
 pytz>=2018.7
-codecov
 bandit==1.6.2
+
+# Code quality
+# ------------------------------------------------------------------------------
+black
+isort
+autoflake
+flake8
+
+# Coverage
+#-------------------------------------------------------------------------------
+codecov
+pytest-cov
+
+# Build and release
+#-------------------------------------------------------------------------------
 twine
 wheel
+
+# Docs
+# ------------------------------------------------------------------------------
+mkdocs
+mkdocs-material
+
+# Base
+# ------------------------------------------------------------------------------
 -r requirements.txt
+
+# Extras
+# ------------------------------------------------------------------------------
 -r extras/datadog.txt
 -r extras/redis.txt
 -r extras/statsd.txt

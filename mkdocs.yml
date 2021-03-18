@@ -1,0 +1,33 @@
+site_name: Faust Streaming
+site_description: streaing, kafka, python, asyncio, 
+
+theme:
+    name: 'material'
+
+repo_name: faust-streaming/faust
+repo_url: https://github.com/faust-streaming/faust
+
+nav:
+    - Introduction: 'index.md'
+    - Application: 'application.md'
+    - Agents: 'agents.md'
+    - Streams: 'streams.md'
+    - Channels and Topics: 'channels_and_topics.md'
+    - Models: 'models.md'
+    - Tables and Windowing: 'tables_and_windowing.md'
+    - Tasks, Timers, Cron Jobs and CLI Commands: 'tasks.md'
+    - Web Views: 'web_views.md'
+    - Command-line Interface: 'cli.md'
+    - Sensors: 'sensors.md'
+    - Testing: 'testing.md'
+    - Configuration: 'configuration.md'
+    - Developer guide: 'developer_guide.md'
+    - Examples: 'examples.md'
+    - Deployment: 'deployment.md'
+
+markdown_extensions:
+  - markdown.extensions.codehilite:
+      guess_lang: false
+  - admonition
+  - codehilite
+  - extra
