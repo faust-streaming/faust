@@ -1,7 +1,7 @@
 aiohttp>=3.5.2,<4.0
 aiohttp_cors>=0.7,<2.0
 #aiokafka==0.7.0
-git+https://github.com/smaxtec/aiokafka-1@0.7.1#egg=aiokafka
+git+https://github.com/smaxtec/aiokafka-1@v0.7.1#egg=aiokafka
 click>=6.7,<8.0
 colorclass>=2.2,<3.0
 mode-streaming==0.1.0
