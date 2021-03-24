@@ -173,6 +173,7 @@ resource for learning the implementation of `Kafka Streams`.
 - `Samza`: http://samza.apache.org
 - `Flink`: http://flink.apache.org
 - `RocksDB`: http://rocksdb.org
+- `Aerospike`: https://www.aerospike.com/
 - `Apache Kafka`: https://kafka.apache.org
 
 ## Local development
@@ -265,7 +266,7 @@ command-line by using brackets. Separate multiple bundles using the comma:
 ```sh
 pip install "faust[rocksdb]"
 
-pip install "faust[rocksdb,uvloop,fast,redis]"
+pip install "faust[rocksdb,uvloop,fast,redis, aerospike]"
 ```
 
 The following bundles are available:
@@ -275,6 +276,29 @@ The following bundles are available:
 ### Stores
 
 `pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
+
+`pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+
+####Aerospike Configuration
+Aerospike can be enabled as the state store by specifying
+`store="aerospik://"`
+
+By default all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
+to a state store backed by RocksDB.
+The following configuration options should be passed in as keys to the options parameter in [Table](https://faust.readthedocs.io/en/latest/reference/faust.tables.html)
+`namespace` : aerospike namespace
+
+`ttl`: TTL for all KV's in the table
+
+`username`: username to connect to the Aerospike cluster
+
+`password`: password to connect to the Aerospike cluster
+
+`hosts` : the hosts parameter as specified in the [aerospike client](https://www.aerospike.com/apidocs/python/aerospike.html)
+
+`policies`: the different policies for read/write/scans [policies](https://www.aerospike.com/apidocs/python/aerospike.html)
+
+`client`: a dict of `host` and `policies` defined above
 
 ### Caching
 
