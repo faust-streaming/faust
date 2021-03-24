@@ -279,7 +279,7 @@ The following bundles are available:
 
 `pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
-###Aerospike Configuration
+### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
 `store="aerospike://"`
 
