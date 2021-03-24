@@ -279,9 +279,9 @@ The following bundles are available:
 
 `pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
-####Aerospike Configuration
+###Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
-`store="aerospik://"`
+`store="aerospike://"`
 
 By default all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
 to a state store backed by RocksDB.
