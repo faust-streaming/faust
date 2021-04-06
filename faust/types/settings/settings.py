@@ -1367,6 +1367,19 @@ class Settings(base.SettingsRegistry):
         client has to catch KeyError
         """
 
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.3",
+        env_name="CRASH_APP_ON_AEROSPIKE_EXCEPTION",
+        default=True,
+    )
+    def crash_app_on_aerospike_exception(self) -> bool:
+        """Crashes the app on an aerospike Exceptions.
+
+        If True, crashes the app and prevents the commit offset on progressing. If False
+        client has to catch the Error and implement a dead letter queue
+        """
+
     @sections.RPC.setting(
         params.Bool,
         env_name="APP_REPLY_CREATE_TOPIC",
