@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+##0.6.3
+### Bug Fixes
+- Fix for [126](https://github.com/faust-streaming/faust/issues/126)
 ##0.6.2
 ### Bug Fixes
 - Add app_name to prometheus sensors[120](https://github.com/faust-streaming/faust/pull/120)
