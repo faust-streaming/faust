@@ -224,7 +224,8 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"Error in _contains for table {self.table_name} exception {ex} key {key}"
+                f"Error in _contains for table {self.table_name} exception "
+                f"{ex} key {key}"
             )
             if self.app.conf.crash_app_on_aerospike_exception:
                 self.app._crash(
