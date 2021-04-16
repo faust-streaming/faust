@@ -290,9 +290,9 @@ class Store(base.SerializedStore):
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()
         partition_from_message = (
-            event is not None and
-            not self.table.is_global and
-            not self.table.use_partitioner
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
         )
         if partition_from_message:
             partition = event.message.partition
