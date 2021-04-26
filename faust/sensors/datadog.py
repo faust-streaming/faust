@@ -181,11 +181,12 @@ class DatadogMonitor(Monitor):
         super().on_stream_event_out(tp, offset, stream, event, state)
         labels = self._format_label(tp, stream)
         self.client.decrement("events_active", labels=labels)
-        self.client.timing(
-            "events_runtime",
-            self.secs_to_ms(self.events_runtime[-1]),
-            labels=labels,
-        )
+        if state is not None:
+            self.client.timing(
+                "events_runtime",
+                self.secs_to_ms(self.events_runtime[-1]),
+                labels=labels,
+            )
 
     def on_message_out(self, tp: TP, offset: int, message: Message) -> None:
         """Call when message is fully acknowledged and can be committed."""
@@ -334,6 +335,9 @@ class DatadogMonitor(Monitor):
         status_code = int(state["status_code"])
         self.client.increment(f"http_status_code.{status_code}")
         self.client.timing("http_response_latency", self.ms_since(state["time_end"]))
+
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
+        self.client.gauge(metric="threaded_producer_buffer", value=size)
 
     def _format_label(
         self,

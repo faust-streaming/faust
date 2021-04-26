@@ -25,7 +25,7 @@ def table():
     return Mock(name="table")
 
 
-class test_SetWindowSet:
+class Test_SetWindowSet:
     @pytest.fixture()
     def wrapper(self):
         return Mock(name="wrapper")
@@ -74,7 +74,7 @@ class test_SetWindowSet:
         )
 
 
-class test_ChangeloggedSet:
+class Test_ChangeloggedSet:
     @pytest.fixture()
     def manager(self):
         return Mock(name="manager")
@@ -156,7 +156,7 @@ def test_ChangeloggedSetManager():
     assert ChangeloggedSetManager.ValueType is ChangeloggedSet
 
 
-class test_SetTableManager:
+class Test_SetTableManager:
     @pytest.fixture()
     def stable(self, *, app):
         return app.SetTable("name", start_manager=True)
@@ -421,7 +421,7 @@ class test_SetTableManager:
         man.set_table["k8"].clear.assert_called_once_with()
 
 
-class test_SetTable:
+class Test_SetTable:
     @pytest.fixture()
     def stable(self, *, app):
         return app.SetTable("name")

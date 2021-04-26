@@ -49,7 +49,7 @@ class EnvCase(NamedTuple):
     expected_value: Any
 
 
-class test_settings:
+class Test_settings:
     def App(self, id="myid", **kwargs):
         app = App(id, **kwargs)
         app.finalize()
@@ -914,7 +914,7 @@ class test_settings:
         assert app.conf.producer_api_version == expected_broker_version
 
 
-class test_BootStrategy:
+class Test_BootStrategy:
     def test_init(self, *, app):
         assert not BootStrategy(app, enable_web=False).enable_web
         assert BootStrategy(app, enable_web=True).enable_web

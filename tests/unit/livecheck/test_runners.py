@@ -5,34 +5,34 @@ from mode.utils.mocks import ANY, AsyncMock, Mock, patch
 
 from faust.livecheck.exceptions import (
     LiveCheckError,
-    TestFailed,
-    TestRaised,
-    TestSkipped,
-    TestTimeout,
+    LiveCheckTestFailed,
+    LiveCheckTestRaised,
+    LiveCheckTestSkipped,
+    LiveCheckTestTimeout,
 )
 from faust.livecheck.models import State
 
 
-class test_TestRunner:
+class TestTestRunner:
     @pytest.mark.asyncio
     async def test_execute__case_inactive(self, *, runner, execution):
-        with pytest.raises(TestSkipped):
+        with pytest.raises(LiveCheckTestSkipped):
             await self._do_execute(runner, execution, active=False)
 
     @pytest.mark.asyncio
     async def test_execute__test_expired(self, *, runner, execution):
-        with pytest.raises(TestSkipped):
+        with pytest.raises(LiveCheckTestSkipped):
             await self._do_execute(runner, execution, expired=True)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "exc,raises,callback",
         [
-            (TestSkipped("foo"), None, "on_skipped"),
-            (TestTimeout("bar"), None, "on_timeout"),
-            (AssertionError("baz"), TestFailed, "on_failed"),
+            (LiveCheckTestSkipped("foo"), None, "on_skipped"),
+            (LiveCheckTestTimeout("bar"), None, "on_timeout"),
+            (AssertionError("baz"), LiveCheckTestFailed, "on_failed"),
             (LiveCheckError("xuz"), None, "on_error"),
-            (KeyError("muz"), TestRaised, "on_error"),
+            (KeyError("muz"), LiveCheckTestRaised, "on_error"),
         ],
     )
     async def test_execute__error_callbacks(
@@ -79,7 +79,7 @@ class test_TestRunner:
 
     @pytest.mark.asyncio
     async def test_skip(self, runner):
-        with pytest.raises(TestSkipped):
+        with pytest.raises(LiveCheckTestSkipped):
             runner.on_skipped = AsyncMock()
             await runner.skip("broken")
             runner.on_skipped.coro.assert_called_once_with(ANY)
@@ -99,8 +99,8 @@ class test_TestRunner:
     @pytest.mark.asyncio
     async def test_on_skipped(self, *, runner):
         runner.case.on_test_skipped = AsyncMock()
-        runner.state = State.PASS
-        exc = TestSkipped()
+        runner.state = State.DO_NOT_SHARE
+        exc = LiveCheckTestSkipped()
         await runner.on_skipped(exc)
         assert runner.state == State.SKIP
         runner.case.on_test_skipped.assert_called_once_with(runner)
@@ -131,7 +131,7 @@ class test_TestRunner:
         runner.case.on_test_failed = AsyncMock()
         runner._finalize_report = AsyncMock()
 
-        exc = TestFailed("foo the bar")
+        exc = LiveCheckTestFailed("foo the bar")
         await runner.on_failed(exc)
 
         assert runner.error is exc
@@ -145,7 +145,7 @@ class test_TestRunner:
         runner.case.on_test_error = AsyncMock()
         runner._finalize_report = AsyncMock()
 
-        exc = TestRaised("foo the bar")
+        exc = LiveCheckTestRaised("foo the bar")
         await runner.on_error(exc)
 
         assert runner.error is exc
@@ -174,7 +174,7 @@ class test_TestRunner:
         runner._finalize_report = AsyncMock()
         await runner.on_pass()
 
-        assert runner.state == State.PASS
+        assert runner.state == State.DO_NOT_SHARE
         assert runner.error is None
 
         runner.case.on_test_pass.coro.assert_called_once_with(runner)

@@ -1,4 +1,3 @@
-from collections import deque
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from statistics import median
@@ -12,7 +11,7 @@ from faust.livecheck.exceptions import SuiteFailed
 from faust.livecheck.models import State, TestReport
 
 
-class test_Case:
+class TestCase:
     @pytest.mark.parametrize(
         "arg,value,expected",
         [
@@ -139,8 +138,8 @@ class test_Case:
     async def test_on_test_start(
         self, started, last_received, frequency, *, case, runner
     ):
-        case.latency_history = deque([0.03] * case.max_history)
-        case.frequency_history = deque([0.04] * case.max_history)
+        case.latency_history.extend([0.03] * case.max_history)
+        case.frequency_history.extend([0.04] * case.max_history)
         runner.started = started
         case.frequency = frequency
         case.last_test_received = last_received
@@ -156,7 +155,7 @@ class test_Case:
             assert case.frequency_history[-1] == time_since
             assert len(case.frequency_history) == case.max_history
 
-    @pytest.yield_fixture()
+    @pytest.fixture()
     def frozen_monotonic(self):
         with self._patch_monotonic() as monotonic:
             yield monotonic
@@ -229,7 +228,7 @@ class test_Case:
         assert runner.test is execution
         runner.test.timestamp = Mock()
         runner.test.timestamp.timestamp.return_value = ts
-        case.runtime_history = deque([3.03] * case.max_history)
+        case.runtime_history.extend([3.03] * case.max_history)
         runner.runtime = 300.0
         with self.seconds_since_last_fail(case, now=now, failed=failed):
             case.status = initial_state

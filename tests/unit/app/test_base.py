@@ -36,7 +36,7 @@ CONFIG_DICT = {
     "broker": "kafka://foo",
     "stream_buffer_maxsize": 1,
 }
-CONFIG_PATH = "t.unit.app.test_base.ConfigClass"
+CONFIG_PATH = "tests.unit.app.test_base.ConfigClass"
 
 TP1 = TP("foo", 0)
 TP2 = TP("bar", 1)
@@ -104,7 +104,7 @@ async def test_send_str(app):
     await app.send("foo", Value(amount=0.0))
 
 
-class test_App:
+class Test_App:
     def test_stream(self, *, app):
         s = app.topic(TEST_TOPIC).stream()
         assert s.channel.topics == (TEST_TOPIC,)
@@ -197,6 +197,7 @@ class test_App:
         app.tables = Mock()
         app.flow_control = Mock()
         app._stop_fetcher = AsyncMock()
+        app.tables.stop = AsyncMock()
         await app._stop_consumer()
 
         consumer.assignment.side_effect = ConsumerNotStarted()
@@ -211,6 +212,7 @@ class test_App:
         consumer.stop_flow.assert_called_once_with()
         app.flow_control.suspend.assert_called_once_with()
         app._stop_fetcher.assert_called_once_with()
+        app.tables.stop.assert_called_once_with()
 
     def test_on_rebalance_start__existing_state(self, *, app):
         app._rebalancing_sensor_state = {"foo": "bar"}
@@ -392,9 +394,10 @@ class test_App:
         assigned = {TP("foo", 1), TP("baz", 3)}
         revoked = {TP("bar", 2)}
         newly_assigned = {TP("baz", 3)}
-
+        generation_id = 1
+        app.consumer_generation_id = 1
         app.in_transaction = False
-        await app._on_partitions_assigned(assigned)
+        await app._on_partitions_assigned(assigned, generation_id=generation_id)
 
         app.agents.on_rebalance.assert_called_once_with(revoked, newly_assigned)
         app.topics.maybe_wait_for_subscriptions.assert_called_once_with()
@@ -402,7 +405,7 @@ class test_App:
         app.topics.on_partitions_assigned.assert_called_once_with(assigned)
         app.consumer.transactions.on_rebalance.assert_not_called()
         app.tables.on_rebalance.assert_called_once_with(
-            assigned, revoked, newly_assigned
+            assigned, revoked, newly_assigned, generation_id
         )
         app.on_partitions_assigned.send.assert_called_once_with(assigned)
 
@@ -1093,7 +1096,7 @@ class test_App:
         assert leader_assignor.beacon.parent is app.beacon
 
 
-class test_AppConfiguration:
+class TestAppConfiguration:
     def test_conf__before_finalized(self, *, monkeypatch, app):
         app.finalized = False
         monkeypatch.setattr("faust.app.base.STRICT", False)

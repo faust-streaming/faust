@@ -6,7 +6,7 @@ from mode.utils.mocks import Mock, call, patch
 from faust.cli.clean_versions import clean_versions
 
 
-class test_clean_versions:
+class Test_clean_versions:
     @pytest.fixture()
     def command(self, *, context):
         return clean_versions(context)

@@ -127,6 +127,7 @@ class Settings(base.SettingsRegistry):
         producer_max_request_size: int = None,
         producer_partitioner: SymbolArg[PartitionerT] = None,
         producer_request_timeout: Seconds = None,
+        producer_threaded: bool = False,
         # RPC settings:
         reply_create_topic: bool = None,
         reply_expires: Seconds = None,
@@ -159,6 +160,7 @@ class Settings(base.SettingsRegistry):
         web_host: str = None,
         web_in_thread: bool = None,
         web_port: int = None,
+        web_ssl_context: ssl.SSLContext = None,
         web_transport: URLArg = None,
         # Worker settings:
         worker_redirect_stdouts: bool = None,
@@ -1325,6 +1327,59 @@ class Settings(base.SettingsRegistry):
         producer batches expire and will no longer be retried.
         """
 
+    @sections.Producer.setting(
+        params.Bool,
+        version_introduced="0.4.5",
+        env_name="PRODUCER_THREADED",
+        default=False,
+    )
+    def producer_threaded(self) -> bool:
+        """Thread separate producer for send_soon.
+
+        If True, spin up a different producer in a different thread
+        to be used for messages buffered up for producing via
+        send_soon function.
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.4.7",
+        env_name="RECOVERY_CONSISTENCY_CHECK",
+        default=True,
+    )
+    def recovery_consistency_check(self) -> bool:
+        """Check Kafka and local offsets for consistency.
+
+        If True, assert that Kafka highwater offsets >= local offset
+        in the rocksdb state storee
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.0",
+        env_name="STORE_CHECK_EXISTS",
+        default=True,
+    )
+    def store_check_exists(self) -> bool:
+        """Execute exists on the underlying store.
+
+        If True, executes exists on the underlying store. If False
+        client has to catch KeyError
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.3",
+        env_name="CRASH_APP_ON_AEROSPIKE_EXCEPTION",
+        default=True,
+    )
+    def crash_app_on_aerospike_exception(self) -> bool:
+        """Crashes the app on an aerospike Exceptions.
+
+        If True, crashes the app and prevents the commit offset on progressing. If False
+        client has to catch the Error and implement a dead letter queue
+        """
+
     @sections.RPC.setting(
         params.Bool,
         env_name="APP_REPLY_CREATE_TOPIC",
@@ -1795,6 +1850,17 @@ class Settings(base.SettingsRegistry):
 
         This option is usually set by :option:`faust worker --web-port`,
         not by passing it as a keyword argument to :class:`app`.
+        """
+
+    @sections.WebServer.setting(
+        params.SSLContext,
+        version_introduced="0.5.0",
+        default=None,
+    )
+    def web_ssl_context(self) -> ssl.SSLContext:
+        """Web server SSL configuration.
+
+        See :setting:`credentials`.
         """
 
     @sections.WebServer.setting(

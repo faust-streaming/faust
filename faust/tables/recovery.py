@@ -23,6 +23,7 @@ from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
 from mode.utils.typing import Counter, Deque
+from yarl import URL
 
 from faust.exceptions import ConsistencyError
 from faust.types import TP, AppT, EventT
@@ -160,6 +161,7 @@ class Recovery(Service):
     #: Number of entries in _processing_times before
     #: we can give an estimate of time remaining.
     num_samples_required_for_estimate = 1000
+    _generation_id: int = 0
 
     def __init__(self, app: AppT, tables: TableManagerT, **kwargs: Any) -> None:
         self.app = app
@@ -238,14 +240,28 @@ class Recovery(Service):
         """Call when rebalancing and partitions are revoked."""
         T = traced_from_parent_span()
         T(self.flush_buffers)()
-        self.signal_recovery_start.set()
 
     async def on_rebalance(
-        self, assigned: Set[TP], revoked: Set[TP], newly_assigned: Set[TP]
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Call when cluster is rebalancing."""
         # removing all the sleeps so control does not go back to the loop
         app = self.app
+        logger.info(
+            f"generation id {generation_id} "
+            f"app consumers id {app.consumer_generation_id}"
+        )
+
+        if generation_id != app.consumer_generation_id:
+            logger.warning(
+                f"rebalance again generation id "
+                f"{generation_id} app consumers id {app.consumer_generation_id}"
+            )
+            return
         assigned_standbys = app.assignor.assigned_standbys()
         assigned_actives = app.assignor.assigned_actives()
 
@@ -282,8 +298,9 @@ class Recovery(Service):
             )
             app._span_add_default_tags(self._recovery_span)
         self.signal_recovery_start.set()
+        self._generation_id = generation_id
 
-    async def _resume_streams(self) -> None:
+    async def _resume_streams(self, generation_id: int = 0) -> None:
         app = self.app
         consumer = app.consumer
         await app.on_rebalance_complete.send()
@@ -292,13 +309,18 @@ class Recovery(Service):
         consumer.resume_flow()
         app.flow_control.resume()
         assignment = consumer.assignment()
+        if self.app.consumer_generation_id != generation_id:
+            self.log.warning("Recovery rebalancing again")
+            return
         if assignment:
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
                 consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
             )
             self.log.dev("Resume stream partitions")
-            consumer.resume_partitions(assignment)
+            consumer.resume_partitions(
+                {tp for tp in assignment if not self._is_changelog_tp(tp)}
+            )
         else:
             self.log.info("Resuming streams with empty assignment")
         self.completed.set()
@@ -321,14 +343,13 @@ class Recovery(Service):
         active_offsets = self.active_offsets
         standby_offsets = self.standby_offsets
         active_highwaters = self.active_highwaters
-
         while not self.should_stop:
             self.log.dev("WAITING FOR NEXT RECOVERY TO START")
             if await self.wait_for_stopped(self.signal_recovery_start):
                 self.signal_recovery_start.clear()
                 break  # service was stopped
             self.signal_recovery_start.clear()
-
+            generation_id = self._generation_id
             span: Any = None
             spans: list = []
             tracer: Optional[opentracing.Tracer] = None
@@ -345,9 +366,9 @@ class Recovery(Service):
             try:
                 await self._wait(T(asyncio.sleep)(self.recovery_delay))
 
-                if not self.tables:
+                if not self.tables or self.app.conf.store == URL("aerospike:"):
                     # If there are no tables -- simply resume streams
-                    await T(self._resume_streams)()
+                    await T(self._resume_streams)(generation_id=generation_id)
                     for _span in spans:
                         finish_span(_span)
                     continue
@@ -378,20 +399,20 @@ class Recovery(Service):
                     ),
                     timeout=self.app.conf.broker_request_timeout,
                 )
-
-                for tp in assigned_active_tps:
-                    if (
-                        active_offsets[tp]
-                        and active_highwaters[tp]
-                        and active_offsets[tp] > active_highwaters[tp]
-                    ):
-                        raise ConsistencyError(
-                            E_PERSISTED_OFFSET.format(
-                                tp,
-                                active_offsets[tp],
-                                active_highwaters[tp],
-                            ),
-                        )
+                if self.app.conf.recovery_consistency_check:
+                    for tp in assigned_active_tps:
+                        if (
+                            active_offsets[tp]
+                            and active_highwaters[tp]
+                            and active_offsets[tp] > active_highwaters[tp]
+                        ):
+                            raise ConsistencyError(
+                                E_PERSISTED_OFFSET.format(
+                                    tp,
+                                    active_offsets[tp],
+                                    active_highwaters[tp],
+                                ),
+                            )
 
                 self.log.dev("Build offsets for standby partitions")
                 await self._wait(
@@ -448,7 +469,7 @@ class Recovery(Service):
                     self.log.info("Resuming flow...")
                     T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
-
+                    self._set_recovery_ended()
                 self.log.info("Recovery complete")
                 if span:
                     span.set_tag("Recovery-Completed", True)
@@ -474,20 +495,20 @@ class Recovery(Service):
                         ),
                         timeout=self.app.conf.broker_request_timeout,
                     )
-
-                    for tp in standby_tps:
-                        if (
-                            standby_offsets[tp]
-                            and standby_highwaters[tp]
-                            and standby_offsets[tp] > standby_highwaters[tp]
-                        ):
-                            raise ConsistencyError(
-                                E_PERSISTED_OFFSET.format(
-                                    tp,
-                                    standby_offsets[tp],
-                                    standby_highwaters[tp],
-                                ),
-                            )
+                    if self.app.conf.recovery_consistency_check:
+                        for tp in standby_tps:
+                            if (
+                                standby_offsets[tp]
+                                and standby_highwaters[tp]
+                                and standby_offsets[tp] > standby_highwaters[tp]
+                            ):
+                                raise ConsistencyError(
+                                    E_PERSISTED_OFFSET.format(
+                                        tp,
+                                        standby_offsets[tp],
+                                        standby_highwaters[tp],
+                                    ),
+                                )
 
                     if tracer is not None and span:
                         self._standbys_span = tracer.start_span(
@@ -503,7 +524,7 @@ class Recovery(Service):
 
                 # Pause all our topic partitions,
                 # to make sure we don't fetch any more records from them.
-                await self._wait(T(self.on_recovery_completed)())
+                await self._wait(T(self.on_recovery_completed)(generation_id))
             except RebalanceAgain as exc:
                 self.log.dev("RAISED REBALANCE AGAIN")
                 for _span in spans:
@@ -530,6 +551,7 @@ class Recovery(Service):
 
     def _set_recovery_started(self) -> None:
         self.in_recovery = True
+        self.app.in_recovery = True
         self._recovery_ended = None
         self._recovery_started_at = monotonic()
         self._active_events_received_at.clear()
@@ -539,6 +561,7 @@ class Recovery(Service):
 
     def _set_recovery_ended(self) -> None:
         self.in_recovery = False
+        self.app.in_recovery = False
         self._recovery_ended_at = monotonic()
         self._active_events_received_at.clear()
         self._standby_events_received_at.clear()
@@ -569,11 +592,12 @@ class Recovery(Service):
 
         return None
 
-    async def on_recovery_completed(self) -> None:
+    async def on_recovery_completed(self, generation_id: int = 0) -> None:
         """Call when active table recovery is completed."""
         consumer = self.app.consumer
         self.log.info("Restore complete!")
         await self.app.on_rebalance_complete.send()
+        self._set_recovery_ended()
         # This needs to happen if all goes well
         callback_coros = [
             table.on_recovery_completed(
@@ -585,6 +609,12 @@ class Recovery(Service):
         if callback_coros:
             await asyncio.wait(callback_coros)
         assignment = consumer.assignment()
+        if self.app.consumer_generation_id != generation_id:
+            self.log.warning(
+                f"Recovery rebalancing again app id "
+                f"{self.app.consumer_generation_id} param {generation_id}"
+            )
+            return
         if assignment:
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
@@ -724,7 +754,7 @@ class Recovery(Service):
             # the aiokafka consumer position and draining of the queue
             if timeout and self.app.in_transaction and timeout_count > 1:
                 await detect_aborted_tx()
-            if not self.active_remaining_total():
+            if not self.need_recovery() and self.in_recovery:
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()
@@ -748,76 +778,79 @@ class Recovery(Service):
 
         timeout_count = 0
         while not self.should_stop:
-            self.signal_recovery_end.clear()
             try:
-                event: EventT = await asyncio.wait_for(
-                    changelog_queue.get(), timeout=5.0
+                self.signal_recovery_end.clear()
+                try:
+                    event: EventT = await asyncio.wait_for(
+                        changelog_queue.get(), timeout=5.0
+                    )
+                except asyncio.TimeoutError:
+                    timeout_count += 1
+                    if self.should_stop:
+                        return
+                    await _maybe_signal_recovery_end(
+                        timeout=True, timeout_count=timeout_count
+                    )
+                    continue
+                now = monotonic()
+                timeout_count = 0
+                message = event.message
+                tp = message.tp
+                offset = message.offset
+                logger.debug(f"Recovery message topic {tp} offset {offset}")
+                offsets: Counter[TP]
+                bufsize = buffer_sizes.get(tp)
+                is_active = False
+                if tp in active_tps:
+                    is_active = True
+                    table = tp_to_table[tp]
+                    offsets = active_offsets
+                    if bufsize is None:
+                        bufsize = buffer_sizes[tp] = table.recovery_buffer_size
+                    active_events_received_at[tp] = now
+                elif tp in standby_tps:
+                    table = tp_to_table[tp]
+                    offsets = standby_offsets
+                    if bufsize is None:
+                        bufsize = buffer_sizes[tp] = table.standby_buffer_size
+                        standby_events_received_at[tp] = now
+                else:
+                    logger.warning(f"recovery unknown topic {tp} offset {offset}")
+
+                seen_offset = offsets.get(tp, None)
+                logger.debug(
+                    f"seen offset for {tp} is {seen_offset} message offset {offset}"
                 )
-            except asyncio.TimeoutError:
-                timeout_count += 1
-                if self.should_stop:
-                    return
-                await _maybe_signal_recovery_end(
-                    timeout=True, timeout_count=timeout_count
-                )
-                continue
-            now = monotonic()
-            timeout_count = 0
-            message = event.message
-            tp = message.tp
-            offset = message.offset
-            logger.debug(f"Recovery message topic {tp} offset {offset}")
-            offsets: Counter[TP]
-            bufsize = buffer_sizes.get(tp)
-            is_active = False
-            if tp in active_tps:
-                is_active = True
-                table = tp_to_table[tp]
-                offsets = active_offsets
-                if bufsize is None:
-                    bufsize = buffer_sizes[tp] = table.recovery_buffer_size
-                active_events_received_at[tp] = now
-            elif tp in standby_tps:
-                table = tp_to_table[tp]
-                offsets = standby_offsets
-                if bufsize is None:
-                    bufsize = buffer_sizes[tp] = table.standby_buffer_size
-                    standby_events_received_at[tp] = now
-            else:
-                logger.warning(f"recovery unknown topic {tp} offset {offset}")
+                if seen_offset is None or offset > seen_offset:
+                    offsets[tp] = offset
+                    buf = buffers[table]
+                    buf.append(event)
+                    await table.on_changelog_event(event)
+                    if len(buf) >= bufsize:
+                        table.apply_changelog_batch(buf)
+                        buf.clear()
+                        self._last_flush_at = now
+                    now_after = monotonic()
 
-            seen_offset = offsets.get(tp, None)
-            logger.debug(
-                f"seen offset for {tp} is {seen_offset} message offset {offset}"
-            )
-            if seen_offset is None or offset > seen_offset:
-                offsets[tp] = offset
-                buf = buffers[table]
-                buf.append(event)
-                await table.on_changelog_event(event)
-                if len(buf) >= bufsize:
-                    table.apply_changelog_batch(buf)
-                    buf.clear()
-                    self._last_flush_at = now
-                now_after = monotonic()
+                    if is_active:
+                        last_processed_at = self._last_active_event_processed_at
+                        if last_processed_at is not None:
+                            processing_times.append(now_after - last_processed_at)
+                            max_samples = self.num_samples_required_for_estimate
+                            if len(processing_times) > max_samples:
+                                processing_times.popleft()
+                        self._last_active_event_processed_at = now_after
 
-                if is_active:
-                    last_processed_at = self._last_active_event_processed_at
-                    if last_processed_at is not None:
-                        processing_times.append(now_after - last_processed_at)
-                        max_samples = self.num_samples_required_for_estimate
-                        if len(processing_times) > max_samples:
-                            processing_times.popleft()
-                    self._last_active_event_processed_at = now_after
+                await _maybe_signal_recovery_end()
 
-            await _maybe_signal_recovery_end()
-
-            if not self.standby_remaining_total():
-                logger.debug("Completed standby partition fetch")
-                if self._standbys_span:
-                    finish_span(self._standbys_span)
-                    self._standbys_span = None
-                self.tables.on_standbys_ready()
+                if not self.standby_remaining_total():
+                    logger.debug("Completed standby partition fetch")
+                    if self._standbys_span:
+                        finish_span(self._standbys_span)
+                        self._standbys_span = None
+                    self.tables.on_standbys_ready()
+            except Exception as ex:
+                logger.warning(f"Error in recovery {ex}")
 
     def flush_buffers(self) -> None:
         """Flush changelog buffers."""
@@ -828,7 +861,7 @@ class Recovery(Service):
 
     def need_recovery(self) -> bool:
         """Return :const:`True` if recovery is required."""
-        return any(v for v in self.active_remaining().values())
+        return any(v > 0 for v in self.active_remaining().values())
 
     def active_remaining(self) -> Counter[TP]:
         """Return counter of remaining changes by active partition."""

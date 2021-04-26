@@ -7,24 +7,28 @@ The Producer is responsible for:
    - Sending messages.
 """
 import asyncio
-from asyncio import QueueEmpty
+import time
 from typing import Any, Awaitable, Mapping, Optional, cast
 
-from mode import Seconds, Service
+from mode import Seconds, Service, get_logger
+from mode.threads import ServiceThread
 
 from faust.types import AppT, HeadersArg
 from faust.types.transports import ProducerBufferT, ProducerT, TransportT
 from faust.types.tuples import TP, FutureMessage, RecordMetadata
 
 __all__ = ["Producer"]
+logger = get_logger(__name__)
 
 
 class ProducerBuffer(Service, ProducerBufferT):
-
+    app: AppT = None
     max_messages = 100
+    queue: Optional[asyncio.Queue] = None
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
+        self.message_sent = asyncio.Event()
 
     def put(self, fut: FutureMessage) -> None:
         """Add message to buffer.
@@ -32,41 +36,36 @@ class ProducerBuffer(Service, ProducerBufferT):
         The message will be eventually produced, you can await
         the future to wait for that to happen.
         """
-        self.pending.put_nowait(fut)
+        if self.app.conf.producer_threaded:
+            if not self.queue:
+                self.queue = self.threaded_producer.event_queue
+            asyncio.run_coroutine_threadsafe(
+                self.queue.put(fut), self.threaded_producer.thread_loop
+            )
+        else:
+            self.pending.put_nowait(fut)
 
     async def on_stop(self) -> None:
         await self.flush()
 
     async def flush(self) -> None:
         """Flush all messages (draining the buffer)."""
-        get_pending = self.pending.get_nowait
-        send_pending = self._send_pending
+        await self.flush_atmost(None)
 
-        if self.size:
-            while True:
-                try:
-                    msg = get_pending()
-                except QueueEmpty:
-                    break
-                else:
-                    await send_pending(msg)
-
-    async def flush_atmost(self, n: int) -> int:
+    async def flush_atmost(self, max_messages: Optional[int]) -> int:
         """Flush at most ``n`` messages."""
-        get_pending = self.pending.get_nowait
-        send_pending = self._send_pending
-
-        if self.size:
-            for i in range(n):
-                try:
-                    msg = get_pending()
-                except QueueEmpty:
-                    return i
-                else:
-                    await send_pending(msg)
-            return n
-        else:
-            return 0
+        flushed_messages = 0
+        while True:
+            if self.state != "running" and self.size:
+                raise RuntimeError("Cannot flush: Producer not Running")
+            if self.size != 0 and (
+                (max_messages is None or flushed_messages < max_messages)
+            ):
+                self.message_sent.clear()
+                await self.message_sent.wait()
+                flushed_messages += 1
+            else:
+                return flushed_messages
 
     async def _send_pending(self, fut: FutureMessage) -> None:
         await fut.message.channel.publish_message(fut, wait=False)
@@ -85,7 +84,11 @@ class ProducerBuffer(Service, ProducerBufferT):
         is of an acceptable size before resuming stream processing flow.
         """
         if self.size > self.max_messages:
+            logger.warning(f"producer buffer full size {self.size}")
+            start_time = time.time()
             await self.flush_atmost(self.max_messages)
+            end_time = time.time()
+            logger.info(f"producer flush took {end_time-start_time}")
 
     @Service.task
     async def _handle_pending(self) -> None:
@@ -94,11 +97,17 @@ class ProducerBuffer(Service, ProducerBufferT):
         while not self.should_stop:
             msg = await get_pending()
             await send_pending(msg)
+            self.message_sent.set()
 
     @property
     def size(self) -> int:
         """Current buffer size (messages waiting to be produced)."""
-        queue_items = self.pending._queue  # type: ignore
+        if self.app.conf.producer_threaded:
+            if not self.queue:
+                return 0
+            queue_items = self.queue._queue  # type: ignore
+        else:
+            queue_items = self.pending._queue
         queue_items = cast(list, queue_items)
         return len(queue_items)
 
@@ -111,12 +120,13 @@ class Producer(Service, ProducerT):
     app: AppT
 
     _api_version: str
+    threaded_producer: Optional[ServiceThread] = None
 
     def __init__(
         self,
         transport: TransportT,
         loop: asyncio.AbstractEventLoop = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.transport = transport
         self.app = self.transport.app
@@ -134,8 +144,11 @@ class Producer(Service, ProducerT):
         api_version = self._api_version = conf.producer_api_version
         assert api_version is not None
         super().__init__(loop=loop or self.transport.loop, **kwargs)
-
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
+        if conf.producer_threaded:
+            self.threaded_producer = self.create_threaded_producer()
+            self.buffer.threaded_producer = self.threaded_producer
+        self.buffer.app = self.app
 
     async def on_start(self) -> None:
         await self.add_runtime_dependency(self.buffer)
@@ -149,7 +162,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: str = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         raise NotImplementedError()
@@ -166,7 +179,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: str = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         raise NotImplementedError()
@@ -187,7 +200,7 @@ class Producer(Service, ProducerT):
         retention: Seconds = None,
         compacting: bool = None,
         deleting: bool = None,
-        ensure_created: bool = False
+        ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
         raise NotImplementedError()

@@ -148,6 +148,8 @@ class Store(base.SerializedStore):
 
     _dbs: MutableMapping[int, DB]
     _key_index: LRUCache[bytes, int]
+    rebalance_ack: bool
+    db_lock: asyncio.Lock
 
     def __init__(
         self,
@@ -179,6 +181,8 @@ class Store(base.SerializedStore):
         self.key_index_size = key_index_size
         self._dbs = {}
         self._key_index = LRUCache(limit=self.key_index_size)
+        self.db_lock = asyncio.Lock()
+        self.rebalance_ack = False
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
@@ -284,15 +288,29 @@ class Store(base.SerializedStore):
         return self.rocksdb_options.open(self.partition_path(partition))
 
     def _get(self, key: bytes) -> Optional[bytes]:
-        dbvalue = self._get_bucket_for_key(key)
-        if dbvalue is None:
-            return None
-        db, value = dbvalue
+        event = current_event()
+        partition_from_message = (
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
+        )
+        if partition_from_message:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
+                self._key_index[key] = partition
+            return value
+        else:
+            dbvalue = self._get_bucket_for_key(key)
+            if dbvalue is None:
+                return None
+            db, value = dbvalue
 
-        if value is None:
-            if db.key_may_exist(key)[0]:
-                return db.get(key)
-        return value
+            if value is None:
+                if db.key_may_exist(key)[0]:
+                    return db.get(key)
+            return value
 
     def _get_bucket_for_key(self, key: bytes) -> Optional[_DBValueTuple]:
         dbs: Iterable[PartitionDB]
@@ -316,22 +334,31 @@ class Store(base.SerializedStore):
 
     async def on_rebalance(
         self,
-        table: CollectionT,
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Rebalance occurred.
 
         Arguments:
-            table: The table that we store data for.
             assigned: Set of all assigned topic partitions.
             revoked: Set of newly revoked topic partitions.
             newly_assigned: Set of newly assigned topic partitions,
                 for which we were not assigned the last time.
+            generation_id: the metadata generation identifier for the re-balance
         """
-        self.revoke_partitions(table, revoked)
-        await self.assign_partitions(table, newly_assigned)
+        self.rebalance_ack = False
+        async with self.db_lock:
+            self.revoke_partitions(self.table, revoked)
+            await self.assign_partitions(self.table, newly_assigned, generation_id)
+
+    async def stop(self) -> None:
+        self.logger.info("Closing rocksdb on stop")
+        # for db in self._dbs.values():
+        #     db.close()
+        self._dbs.clear()
+        gc.collect()
 
     def revoke_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """De-assign partitions used on this worker instance.
@@ -341,54 +368,85 @@ class Store(base.SerializedStore):
             tps: Set of topic partitions that we should no longer
                 be serving data for.
         """
-        dbs_closed = 0
         for tp in tps:
             if tp.topic in table.changelog_topic.topics:
                 db = self._dbs.pop(tp.partition, None)
                 if db is not None:
-                    del db
-                    dbs_closed += 1
-        if dbs_closed:
-            gc.collect()  # XXX RocksDB has no .close() method :X
+                    self.logger.info(f"closing db {tp.topic} partition {tp.partition}")
+                    # db.close()
+        gc.collect()
 
-    async def assign_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
+    async def assign_partitions(
+        self, table: CollectionT, tps: Set[TP], generation_id: int = 0
+    ) -> None:
         """Assign partitions to this worker instance.
 
         Arguments:
             table: The table that we store data for.
             tps: Set of topic partitions we have been assigned.
         """
+        self.rebalance_ack = True
         standby_tps = self.app.assignor.assigned_standbys()
         my_topics = table.changelog_topic.topics
-
         for tp in tps:
-            if tp.topic in my_topics and tp not in standby_tps:
-                await self._try_open_db_for_partition(tp.partition)
+            if tp.topic in my_topics and tp not in standby_tps and self.rebalance_ack:
+                await self._try_open_db_for_partition(
+                    tp.partition, generation_id=generation_id
+                )
                 await asyncio.sleep(0)
 
     async def _try_open_db_for_partition(
-        self, partition: int, max_retries: int = 5, retry_delay: float = 1.0
+        self,
+        partition: int,
+        max_retries: int = 30,
+        retry_delay: float = 1.0,
+        generation_id: int = 0,
     ) -> DB:
         for i in range(max_retries):
             try:
                 # side effect: opens db and adds to self._dbs.
+                self.logger.info(
+                    f"opening partition {partition} for gen id "
+                    f"{generation_id} app id {self.app.consumer_generation_id}"
+                )
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
                 if i == max_retries - 1 or "lock" not in repr(exc):
+                    # release all the locks and crash
+                    self.log.warning(
+                        "DB for partition %r retries timed out ", partition
+                    )
+                    await self.stop()
                     raise
                 self.log.info(
                     "DB for partition %r is locked! Retry in 1s...", partition
                 )
+                if generation_id != self.app.consumer_generation_id:
+                    self.log.info(
+                        f"Rebalanced again giving up partition {partition} gen id"
+                        f" {generation_id} app {self.app.consumer_generation_id}"
+                    )
+                    return
                 await self.sleep(retry_delay)
         else:  # pragma: no cover
             ...
 
     def _contains(self, key: bytes) -> bool:
-        for db in self._dbs_for_key(key):
-            # bloom filter: false positives possible, but not false negatives
-            if db.key_may_exist(key)[0] and db.get(key) is not None:
+        event = current_event()
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
                 return True
-        return False
+            else:
+                return False
+        else:
+            for db in self._dbs_for_key(key):
+                # bloom filter: false positives possible, but not false negatives
+                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                    return True
+            return False
 
     def _dbs_for_key(self, key: bytes) -> Iterable[DB]:
         # Returns cached db if key is in index, otherwise all dbs
@@ -400,7 +458,7 @@ class Store(base.SerializedStore):
 
     def _dbs_for_actives(self) -> Iterator[DB]:
         actives = self.app.assignor.assigned_actives()
-        topic = self.table._changelog_topic_name()
+        topic = self.table.changelog_topic_name
         for partition, db in self._dbs.items():
             tp = TP(topic=topic, partition=partition)
             # for global tables, keys from all

@@ -16,7 +16,7 @@ class FakeActor(Actor):
         return ""
 
 
-class test_Actor:
+class Test_Actor:
 
     ActorType = FakeActor
 
@@ -90,7 +90,7 @@ class test_Actor:
         assert repr(actor)
 
 
-class test_AsyncIterableActor(test_Actor):
+class Test_AsyncIterableActor(Test_Actor):
 
     ActorType = AsyncIterableActor
 
@@ -100,7 +100,7 @@ class test_AsyncIterableActor(test_Actor):
         assert res is it.__aiter__()
 
 
-class test_AwaitableActor(test_Actor):
+class Test_AwaitableActor(Test_Actor):
 
     ActorType = AwaitableActor
 

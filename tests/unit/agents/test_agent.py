@@ -27,7 +27,7 @@ class Word(Record):
     word: str
 
 
-class test_AgentService:
+class Test_AgentService:
     @pytest.fixture
     def agent(self, *, app):
         @app.agent()
@@ -168,7 +168,7 @@ class test_AgentService:
         assert label(agent)
 
 
-class test_Agent:
+class Test_Agent:
     @pytest.fixture
     def agent(self, *, app):
         @app.agent()
@@ -429,6 +429,24 @@ class test_Agent:
             assert ret is aref
 
     @pytest.mark.asyncio
+    async def test_prepare_actor__Awaitable_with_multiple_topics(self, *, agent2):
+        aref = agent2(index=0, active_partitions=None)
+        asyncio.ensure_future(aref.it).cancel()  # silence warning
+        agent2.channel.topics = ["foo", "bar"]
+        with patch("asyncio.Task") as Task:
+            agent2._execute_actor = Mock(name="_execute_actor")
+            beacon = Mock(name="beacon", autospec=Node)
+            ret = await agent2._prepare_actor(aref, beacon)
+            coro = aref
+            agent2._execute_actor.assert_called_once_with(coro, aref)
+            Task.assert_called_once_with(agent2._execute_actor(), loop=agent2.loop)
+            task = Task()
+            assert task._beacon is beacon
+            assert aref.actor_task is task
+            assert aref in agent2._actors
+            assert ret is aref
+
+    @pytest.mark.asyncio
     async def test_prepare_actor__Awaitable_cannot_have_sinks(self, *, agent2):
         aref = agent2(index=0, active_partitions=None)
         asyncio.ensure_future(aref.it).cancel()  # silence warning
@@ -453,6 +471,7 @@ class test_Agent:
             await agent._execute_actor(coro, Mock(name="aref", autospec=Actor))
         coro.assert_awaited()
 
+    @pytest.mark.skip(reason="Fix is TBD")
     @pytest.mark.asyncio
     async def test_execute_actor__cancelled_running(self, *, agent):
         coro = FutureMock()
@@ -885,7 +904,7 @@ class test_Agent:
             schema=agent._schema,
             key_type=agent._key_type,
             value_type=agent._value_type,
-            **agent._channel_kwargs
+            **agent._channel_kwargs,
         )
         assert channel is agent._prepare_channel.return_value
         assert agent._channel is channel

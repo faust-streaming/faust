@@ -4,7 +4,7 @@ from mode.utils.mocks import patch
 from faust.cli.completion import completion
 
 
-class test_completion:
+class Test_completion:
     @pytest.fixture()
     def command(self, *, context):
         return completion(context)
