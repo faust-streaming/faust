@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+##0.6.4
+### Bug Fixes
+- Fix partition from message for globaltables or tables that use partitioner [129](https://github.com/faust-streaming/faust/issues/129)
+- Calling window close callback after popping the value from store [137](https://github.com/faust-streaming/faust/pull/137)
 ##0.6.3
 ### Bug Fixes
 - Fix for [126](https://github.com/faust-streaming/faust/issues/126)
