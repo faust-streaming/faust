@@ -1,8 +1,9 @@
 """Message transport using :pypi:`aiokafka`."""
 import asyncio
 import typing
-from asyncio import Lock
+from asyncio import Lock, QueueEmpty
 from collections import deque
+from functools import partial
 from time import monotonic
 from typing import (
     Any,
@@ -44,6 +45,7 @@ from kafka.partitioner import murmur2
 from kafka.partitioner.default import DefaultPartitioner
 from kafka.protocol.metadata import MetadataRequest_v1
 from mode import Service, get_logger
+from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
@@ -66,7 +68,14 @@ from faust.transport.consumer import (
     ThreadDelegateConsumer,
     ensure_TPset,
 )
-from faust.types import TP, ConsumerMessage, HeadersArg, RecordMetadata
+from faust.types import (
+    TP,
+    ConsumerMessage,
+    FutureMessage,
+    HeadersArg,
+    PendingMessage,
+    RecordMetadata,
+)
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
 from faust.utils.kafka.protocol.admin import CreateTopicsRequest
@@ -150,10 +159,24 @@ Has not committed %r (last commit %s).
 """.strip()
 
 
+def __canon_host(host, default):
+    """Ensure host is correctly formatted for aiokafka. That means IPv6
+    addresses must enclosed in squared brackets.
+    """
+    if not host:
+        return default
+    if ":" in host:
+        return f"[{host}]"
+    return host
+
+
 def server_list(urls: List[URL], default_port: int) -> List[str]:
     """Convert list of urls to list of servers accepted by :pypi:`aiokafka`."""
     default_host = "127.0.0.1"
-    return [f"{u.host or default_host}:{u.port or default_port}" for u in urls]
+    # Yarl strips [] from IPv6 adresses, and aiokafka expects them.
+    return [
+        f"{__canon_host(u.host, default_host)}:{u.port or default_port}" for u in urls
+    ]
 
 
 class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type: ignore
@@ -176,7 +199,10 @@ class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type
 
     async def on_partitions_assigned(self, assigned: Iterable[_TopicPartition]) -> None:
         """Call when partitions are being assigned."""
-        await self._thread.on_partitions_assigned(ensure_TPset(assigned))
+        generation = self._thread._ensure_consumer()._coordinator.generation
+        # set the generation on the app
+        self._thread.app.consumer_generation_id = generation
+        await self._thread.on_partitions_assigned(ensure_TPset(assigned), generation)
 
 
 class Consumer(ThreadDelegateConsumer):
@@ -251,6 +277,143 @@ class Consumer(ThreadDelegateConsumer):
 
     def verify_event_path(self, now: float, tp: TP) -> None:
         return self._thread.verify_event_path(now, tp)
+
+
+class ThreadedProducer(ServiceThread):
+    _producer: Optional[aiokafka.AIOKafkaProducer] = None
+    event_queue: Optional[asyncio.Queue] = None
+    _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    app: None
+
+    def __init__(
+        self,
+        default_producer,
+        app,
+        *,
+        executor: Any = None,
+        loop: asyncio.AbstractEventLoop = None,
+        thread_loop: asyncio.AbstractEventLoop = None,
+        Worker: Type[WorkerThread] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            executor=executor,
+            loop=loop,
+            thread_loop=thread_loop,
+            Worker=Worker,
+            **kwargs,
+        )
+        self._default_producer = default_producer
+        self.app = app
+
+    async def flush(self) -> None:
+        """Wait for producer to finish transmitting all buffered messages."""
+        while True:
+            try:
+                msg = self.event_queue.get_nowait()
+            except QueueEmpty:
+                break
+            else:
+                await self.publish_message(msg)
+        if self._producer is not None:
+            await self._producer.flush()
+
+    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+        return aiokafka.AIOKafkaProducer(
+            loop=self.thread_loop,
+            **{
+                **self._default_producer._settings_default(),
+                **self._default_producer._settings_auth(),
+                **self._default_producer._settings_extra(),
+            },
+            transactional_id=transactional_id,
+        )
+
+    async def on_start(self) -> None:
+        self.event_queue = asyncio.Queue()
+        producer = self._producer = self._new_producer()
+        await producer.start()
+        asyncio.create_task(self.push_events())
+
+    async def on_thread_stop(self) -> None:
+        """Call when producer thread is stopping."""
+        logger.info("Stopping producer thread")
+        await super().on_thread_stop()
+        # when method queue is stopped, we can stop the consumer
+        if self._producer is not None:
+            await self.flush()
+            await self._producer.stop()
+
+    async def push_events(self):
+        while True:
+            event = await self.event_queue.get()
+            self.app.sensors.on_threaded_producer_buffer_processed(
+                app=self.app, size=self.event_queue.qsize()
+            )
+            await self.publish_message(event)
+
+    async def publish_message(
+        self, fut_other: FutureMessage, wait: bool = False
+    ) -> Awaitable[RecordMetadata]:
+        """Fulfill promise to publish message to topic."""
+        fut = FutureMessage(fut_other.message)
+        message: PendingMessage = fut.message
+        topic = message.channel.get_topic_name()
+        key: bytes = cast(bytes, message.key)
+        value: bytes = cast(bytes, message.value)
+        partition: Optional[int] = message.partition
+        timestamp: float = cast(float, message.timestamp)
+        headers: Optional[HeadersArg] = message.headers
+        logger.debug(
+            "send: topic=%r k=%r v=%r timestamp=%r partition=%r",
+            topic,
+            key,
+            value,
+            timestamp,
+            partition,
+        )
+        producer = self._producer
+        state = self.app.sensors.on_send_initiated(
+            producer,
+            topic,
+            message=message,
+            keysize=len(key) if key else 0,
+            valsize=len(value) if value else 0,
+        )
+        timestamp_ms = int(timestamp * 1000.0) if timestamp else timestamp
+        if headers is not None:
+            if isinstance(headers, Mapping):
+                headers = list(headers.items())
+        if wait:
+            ret: RecordMetadata = await producer.send_and_wait(
+                topic=topic,
+                key=key,
+                value=value,
+                partition=partition,
+                timestamp_ms=timestamp_ms,
+                headers=headers,
+            )
+            return await self._finalize_message(fut, ret)
+        else:
+            fut2 = cast(
+                asyncio.Future,
+                await producer.send(
+                    topic=topic,
+                    key=key,
+                    value=value,
+                    partition=partition,
+                    timestamp_ms=timestamp_ms,
+                    headers=headers,
+                ),
+            )
+            callback = partial(
+                fut.message.channel._on_published,
+                message=fut,
+                state=state,
+                producer=producer,
+            )
+            fut2.add_done_callback(cast(Callable, callback))
+            return fut2
 
 
 class AIOKafkaConsumerThread(ConsumerThread):
@@ -520,30 +683,29 @@ class AIOKafkaConsumerThread(ConsumerThread):
         now = monotonic()
         try:
             aiokafka_offsets = {
-                tp: OffsetAndMetadata(offset, "") for tp, offset in offsets.items()
+                tp: OffsetAndMetadata(offset, "")
+                for tp, offset in offsets.items()
+                if tp in self.assignment()
             }
-            self.tp_last_committed_at.update({tp: now for tp in offsets})
+            self.tp_last_committed_at.update({tp: now for tp in aiokafka_offsets})
             await consumer.commit(aiokafka_offsets)
         except CommitFailedError as exc:
             if "already rebalanced" in str(exc):
                 return False
             self.log.exception("Committing raised exception: %r", exc)
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         except IllegalStateError as exc:
             self.log.exception(
                 "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         except Exception as exc:
             self.log.exception(
                 "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
-            self.supervisor.wakeup()
             return False
         return True
 
@@ -823,7 +985,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
                     max_records=max_records,
                 )
             finally:
-                fetcher._fetch_waiters.clear()
+                pass
 
     async def create_topic(
         self,
@@ -890,6 +1052,9 @@ class Producer(base.Producer):
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
     _trn_locks: typing.Dict[str, Lock] = {}
 
+    def create_threaded_producer(self):
+        return ThreadedProducer(default_producer=self, app=self.app)
+
     def __post_init__(self) -> None:
         self._send_on_produce_message = self.app.on_produce_message.send
         if self.partitioner is None:
@@ -951,7 +1116,7 @@ class Producer(base.Producer):
                 transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     await transaction_producer.commit_transaction()
-                    logger.info(f"Done committing transaction {transactional_id}")
+                    logger.debug(f"Done committing transaction {transactional_id}")
                 else:
                     logger.warning(
                         f"Commit invoked for unknown transaction {transactional_id}"
@@ -1021,11 +1186,11 @@ class Producer(base.Producer):
                         offsets, group_id
                     )
                     await transaction_producer.commit_transaction()
-                    logger.info(f"Done committing transaction {transactional_id}")
+                    logger.debug(f"Done committing transaction {transactional_id}")
                     if start_new_transaction:
-                        logger.info(f"Starting transaction {transactional_id}")
+                        logger.debug(f"Starting transaction {transactional_id}")
                         await transaction_producer.begin_transaction()
-                        logger.info(f"Started transaction {transactional_id}")
+                        logger.debug(f"Started transaction {transactional_id}")
 
                 else:
                     logger.warning(

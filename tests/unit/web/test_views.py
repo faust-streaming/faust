@@ -10,7 +10,7 @@ async def foo(self, request):
     return self, request
 
 
-class test_View:
+class Test_View:
     @pytest.fixture
     def web(self):
         return Mock(name="web", autospec=Web)

@@ -6,7 +6,7 @@ from mode.utils.mocks import Mock
 from faust import web
 
 
-class test_Blueprint:
+class Test_Blueprint:
     @pytest.fixture()
     def bp(self):
         return web.Blueprint("test")

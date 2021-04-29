@@ -9,7 +9,7 @@ TP2 = TP("bar", 4)
 TP3 = TP("baz", 5)
 
 
-class test_Manager:
+class Test_Manager:
     @pytest.fixture()
     def tables(self, *, app):
         return app.tables
@@ -139,17 +139,19 @@ class test_Manager:
     async def test_on_rebalance(self, *, tables):
         tables._update_channels = AsyncMock()
         tables._recovery = Mock(on_rebalance=AsyncMock())
-
-        await tables.on_rebalance({TP1, TP2, TP3}, set(), {TP1, TP2, TP3})
+        gen_id = 1
+        await tables.on_rebalance(
+            {TP1, TP2, TP3}, set(), {TP1, TP2, TP3}, generation_id=gen_id
+        )
         tables._recovery_started.clear()
 
         tables._update_channels.assert_called_once_with()
         tables._recovery.on_rebalance.assert_called_once_with(
-            {TP1, TP2, TP3}, set(), {TP1, TP2, TP3}
+            {TP1, TP2, TP3}, set(), {TP1, TP2, TP3}, gen_id
         )
 
         table1 = Mock(name="table", on_rebalance=AsyncMock())
         tables.add(table1)
 
-        await tables.on_rebalance({TP2, TP3}, {TP1}, set())
-        table1.on_rebalance.assert_called_once_with({TP2, TP3}, {TP1}, set())
+        await tables.on_rebalance({TP2, TP3}, {TP1}, set(), generation_id=gen_id)
+        table1.on_rebalance.assert_called_once_with({TP2, TP3}, {TP1}, set(), gen_id)

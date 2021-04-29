@@ -1,7 +1,7 @@
 from faust.windows import TumblingWindow
 
 
-class test_TumblingWindow:
+class Test_TumblingWindow:
     def test_tumbling_window_has_just_one_range(self):
         tumbling = TumblingWindow(10)
         assert len(tumbling.ranges(0)) == 1

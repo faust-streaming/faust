@@ -5,7 +5,7 @@ from faust.fixups import fixups
 from faust.fixups.django import Fixup
 
 
-class test_Fixup:
+class Test_Fixup:
     @pytest.fixture()
     def fixup(self, *, app):
         return Fixup(app)

@@ -22,7 +22,7 @@ def statsd(*, monkeypatch):
     return statsd
 
 
-class test_DatadogStatsClient:
+class TestDatadogStatsClient:
     @pytest.fixture()
     def client(self, *, dogstatsd, statsd):
         return DatadogStatsClient()
@@ -59,7 +59,7 @@ class test_DatadogStatsClient:
         )
 
 
-class test_DatadogMonitor:
+class TestDatadogMonitor:
     @pytest.fixture
     def time(self):
         timefun = Mock(name="time()")

@@ -4,7 +4,7 @@ from faust.exceptions import SecurityError
 from faust.models.tags import Secret, Sensitive
 
 
-class test_Sensitive:
+class Test_Sensitive:
     @pytest.fixture
     def typ(self):
         return Sensitive[str]
@@ -26,7 +26,7 @@ class test_Sensitive:
             typ(v)
 
 
-class test_Secret(test_Sensitive):
+class Test_Secret(Test_Sensitive):
     @pytest.fixture
     def typ(self):
         return Secret[str]

@@ -29,13 +29,13 @@ def execution():
 @pytest.fixture()
 def case(*, livecheck):
     @livecheck.case()
-    class test_foo(livecheck.Case):
+    class Test_foo(livecheck.Case):
         async def run(self, arg1, kw1=None):
             assert arg1 == "foo"
             assert kw1 == 1.03
             assert True
 
-    return test_foo
+    return Test_foo
 
 
 @pytest.fixture()
@@ -43,14 +43,14 @@ def runner(*, execution, case):
     return TestRunner(case, execution, started=100.0)
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def current_test_stack():
     with patch("faust.livecheck.case.current_test_stack") as cts:
         cts.push = ContextMock()
         yield cts
 
 
-@pytest.yield_fixture()
+@pytest.fixture()
 def current_execution_stack():
     with patch("faust.livecheck.case.current_execution_stack") as ces:
         ces.push = ContextMock()

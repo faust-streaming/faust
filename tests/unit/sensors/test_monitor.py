@@ -1,4 +1,3 @@
-from collections import deque
 from http import HTTPStatus
 from statistics import median
 from typing import Any
@@ -15,7 +14,7 @@ from faust.types import TP, Message
 TP1 = TP("foo", 0)
 
 
-class test_Monitor:
+class TestMonitor:
     @pytest.fixture
     def time(self):
         timefun = Mock(name="time()")
@@ -332,6 +331,29 @@ class test_Monitor:
         assert state["time_end"] == time()
         assert state["latency_end"] == time() - other_time
 
+    def test_topic_related_sensors_are_cleared_after_rebalance(
+        self, *, mon, app, message, stream, event
+    ):
+        mon.on_message_in(TP1, 11, message)
+        mon.on_stream_event_in(TP, 11, stream, event)
+        mon.on_tp_commit({TP1: 10})
+        mon.track_tp_end_offset(TP1, 12)
+        mon.on_topic_buffer_full(TP1)
+        assert len(mon.tp_committed_offsets) > 0
+        assert len(mon.tp_read_offsets) > 0
+        assert len(mon.tp_end_offsets) > 0
+        assert len(mon.topic_buffer_full) > 0
+        assert len(mon.stream_inbound_time) > 0
+
+        state = mon.on_rebalance_start(app)
+        mon.on_rebalance_end(app, state)
+
+        assert len(mon.tp_committed_offsets) == 0
+        assert len(mon.tp_read_offsets) == 0
+        assert len(mon.tp_end_offsets) == 0
+        assert len(mon.topic_buffer_full) == 0
+        assert len(mon.stream_inbound_time) == 0
+
     def test_on_web_request_start(self, *, mon, time, app):
         request = Mock(name="request")
         view = Mock(name="view")
@@ -423,10 +445,10 @@ class test_Monitor:
         prev_message_total = 0
         mon.events_runtime = []
         mon._sample(prev_event_total, prev_message_total)
-        mon.events_runtime = deque(range(100))
-        mon.rebalance_return_latency = deque(range(100))
-        mon.rebalance_end_latency = deque(range(100))
-        mon.http_response_latency = deque(range(100))
+        mon.events_runtime.extend(range(100))
+        mon.rebalance_return_latency.extend(range(100))
+        mon.rebalance_end_latency.extend(range(100))
+        mon.http_response_latency.extend(range(100))
         prev_event_total = 0
         prev_message_total = 0
         mon._sample(prev_event_total, prev_message_total)

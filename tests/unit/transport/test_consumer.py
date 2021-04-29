@@ -27,7 +27,7 @@ TP2 = TP("foo", 1)
 TP3 = TP("bar", 3)
 
 
-class test_Fetcher:
+class TestFetcher:
     @pytest.fixture
     def consumer(self):
         return Mock(
@@ -123,7 +123,7 @@ class test_Fetcher:
             assert wait_for.call_count == 3
 
 
-class test_TransactionManager:
+class TestTransactionManager:
     @pytest.fixture()
     def consumer(self):
         return Mock(
@@ -416,7 +416,7 @@ class MyConsumer(MockedConsumerAbstractMethods, Consumer):
         super().__init__(*args, **kwargs)
 
 
-class test_Consumer:
+class TestConsumer:
     @pytest.fixture
     def callback(self):
         return Mock(name="callback")
@@ -526,6 +526,38 @@ class test_Consumer:
         ]
 
     @pytest.mark.asyncio
+    async def test_getmany_buffered(self, *, consumer):
+        def to_message(tp, record):
+            return record
+
+        consumer._to_message = to_message
+        self._setup_records(
+            consumer,
+            active_partitions={TP1},
+            buffered_partitions={TP2},
+            records={
+                TP1: ["A", "B", "C"],
+                TP2: ["D", "E", "F", "G"],
+                TP3: ["H", "I", "J"],
+            },
+        )
+        assert not consumer.should_stop
+        consumer.flow_active = False
+        consumer.can_resume_flow.set()
+        assert [a async for a in consumer.getmany(1.0)] == []
+        assert not consumer.should_stop
+        consumer.flow_active = True
+        assert [a async for a in consumer.getmany(1.0)] == [
+            (TP1, "A"),
+            (TP2, "D"),
+            (TP1, "B"),
+            (TP2, "E"),
+            (TP1, "C"),
+            (TP2, "F"),
+            (TP2, "G"),
+        ]
+
+    @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "client_only",
         [
@@ -563,10 +595,16 @@ class test_Consumer:
         assert ret == ({}, set())
 
     def _setup_records(
-        self, consumer, active_partitions, records=None, flow_active=True
+        self,
+        consumer,
+        active_partitions,
+        records=None,
+        flow_active=True,
+        buffered_partitions=None,
     ):
         consumer.flow_active = flow_active
         consumer._active_partitions = active_partitions
+        consumer._buffered_partitions = buffered_partitions or set()
         consumer._getmany = AsyncMock(
             return_value={} if records is None else records,
         )
@@ -704,9 +742,10 @@ class test_Consumer:
     async def test_on_partitions_assigned(self, *, consumer):
         consumer._on_partitions_assigned = AsyncMock(name="opa")
         tps = {TP("foo", 0), TP("bar", 2)}
-        await consumer.on_partitions_assigned(tps)
+        gen_id = 1
+        await consumer.on_partitions_assigned(tps, generation_id=gen_id)
 
-        consumer._on_partitions_assigned.assert_called_once_with(tps)
+        consumer._on_partitions_assigned.assert_called_once_with(tps, gen_id)
 
     def test_track_message(self, *, consumer, message):
         consumer._on_message_in = Mock(name="omin")
@@ -1013,18 +1052,19 @@ class test_Consumer:
         assert consumer._should_commit(tp, offset) == should
 
     @pytest.mark.parametrize(
-        "tp,acked,expected_offset",
+        "tp,acked,expected_offset,expected_acked",
         [
-            (TP1, [], None),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], 9),
-            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], 5),
-            (TP1, [1, 3, 4, 6, 7, 8, 10], 2),
+            (TP1, [], None, {TP1: []}),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 11, {TP1: []}),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], 9, {TP1: [10]}),
+            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], 5, {TP1: [6, 7, 8, 10]}),
+            (TP1, [1, 3, 4, 6, 7, 8, 10], 2, {TP1: [3, 4, 6, 7, 8, 10]}),
         ],
     )
-    def test_new_offset(self, tp, acked, expected_offset, *, consumer):
+    def test_new_offset(self, tp, acked, expected_offset, expected_acked, *, consumer):
         consumer._acked[tp] = acked
         assert consumer._new_offset(tp) == expected_offset
+        assert consumer._acked == expected_acked
 
     @pytest.mark.parametrize(
         "tp,acked,gaps,expected_offset",
@@ -1087,7 +1127,7 @@ class test_Consumer:
         consumer.close()
 
 
-class test_ConsumerThread:
+class Test_ConsumerThread:
     class MyConsumerThread(MockedConsumerAbstractMethods, ConsumerThread):
         def close(self):
             ...
@@ -1140,14 +1180,14 @@ class test_ConsumerThread:
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned(self, *, thread, consumer):
-        await thread.on_partitions_assigned({TP1, TP2})
+        gen_id = 1
+        await thread.on_partitions_assigned({TP1, TP2}, gen_id)
         consumer.threadsafe_partitions_assigned.assert_called_once_with(
-            thread.thread_loop,
-            {TP1, TP2},
+            thread.thread_loop, {TP1, TP2}, gen_id
         )
 
 
-class test_ThreadDelegateConsumer:
+class Test_ThreadDelegateConsumer:
     class TestThreadDelegateConsumer(ThreadDelegateConsumer):
         def _new_consumer_thread(self):
             return Mock(
@@ -1227,12 +1267,11 @@ class test_ThreadDelegateConsumer:
     @pytest.mark.asyncio
     async def test_threadsafe_partitions_assigned(self, *, consumer):
         loop = Mock(name="loop")
-        await consumer.threadsafe_partitions_assigned(loop, {})
+        gen_id = 1
+        await consumer.threadsafe_partitions_assigned(loop, {}, generation_id=gen_id)
         loop.create_future.assert_called_once_with()
         consumer._method_queue._call.assert_called_once_with(
-            loop.create_future(),
-            consumer.on_partitions_assigned,
-            {},
+            loop.create_future(), consumer.on_partitions_assigned, {}, gen_id
         )
 
     @pytest.mark.asyncio
@@ -1347,7 +1386,7 @@ class test_ThreadDelegateConsumer:
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            await consumer.verify_all_partitions_active()
+            consumer.verify_all_partitions_active()
 
             consumer.verify_event_path.assert_has_calls(
                 [
@@ -1373,6 +1412,6 @@ class test_ThreadDelegateConsumer:
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            await consumer.verify_all_partitions_active()
+            consumer.verify_all_partitions_active()
 
-            consumer.verify_event_path.assert_called_once_with(now, TP1)
+            consumer.verify_event_path.assert_called_with(now, TP3)

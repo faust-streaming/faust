@@ -89,10 +89,10 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
     @abc.abstractmethod
     async def on_rebalance(
         self,
-        table: _CollectionT,
         assigned: Set[TP],
         revoked: Set[TP],
         newly_assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         ...
 

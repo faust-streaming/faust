@@ -26,7 +26,6 @@ from faust.types import AppT, CollectionT, EventT, StreamT
 from faust.types.assignor import PartitionAssignorT
 from faust.types.transports import ConsumerT, ProducerT
 from faust.types.tuples import TP, Message, PendingMessage, RecordMetadata
-from faust.utils.functional import deque_pushpopmax
 
 from .base import Sensor
 
@@ -256,16 +255,18 @@ class Monitor(Sensor, KeywordReduce):
             self.rebalances = rebalances
 
         self.tables = {} if tables is None else tables
-        self.commit_latency = deque() if commit_latency is None else commit_latency
-        self.send_latency = deque() if send_latency is None else send_latency
-        self.assignment_latency = (
-            deque() if assignment_latency is None else assignment_latency
+        self.commit_latency = deque(
+            commit_latency or [], maxlen=self.max_commit_latency_history
         )
-        self.rebalance_return_latency = (
-            deque() if rebalance_return_latency is None else rebalance_return_latency
+        self.send_latency = deque(send_latency or [], self.max_send_latency_history)
+        self.assignment_latency = deque(
+            assignment_latency or [], maxlen=self.max_assignment_latency_history
         )
-        self.rebalance_end_latency = (
-            deque() if rebalance_end_latency is None else rebalance_end_latency
+        self.rebalance_return_latency = deque(
+            rebalance_return_latency or [], maxlen=self.max_avg_history
+        )
+        self.rebalance_end_latency = deque(
+            rebalance_end_latency or [], maxlen=self.max_avg_history
         )
         self.rebalance_return_avg = rebalance_return_avg
         self.rebalance_end_avg = rebalance_end_avg
@@ -283,12 +284,14 @@ class Monitor(Sensor, KeywordReduce):
         self.events_by_stream = Counter()
         self.events_s = events_s
         self.events_runtime_avg = events_runtime_avg
-        self.events_runtime = deque() if events_runtime is None else events_runtime
+        self.events_runtime = deque(events_runtime or [], maxlen=self.max_avg_history)
         self.topic_buffer_full = Counter()
         self.time: Callable[[], float] = time
 
         self.http_response_codes = Counter()
-        self.http_response_latency = deque()
+        self.http_response_latency = deque(
+            http_response_latency or [], maxlen=self.max_avg_history
+        )
         self.http_response_latency_avg = http_response_latency_avg
 
         self.metric_counts = Counter()
@@ -460,7 +463,7 @@ class Monitor(Sensor, KeywordReduce):
                 time_out=time_out,
                 time_total=time_total,
             )
-            deque_pushpopmax(self.events_runtime, time_total, self.max_avg_history)
+            self.events_runtime.append(time_total)
 
     def on_topic_buffer_full(self, tp: TP) -> None:
         """Call when conductor topic buffer is full and has to wait."""
@@ -500,11 +503,7 @@ class Monitor(Sensor, KeywordReduce):
     def on_commit_completed(self, consumer: ConsumerT, state: Any) -> None:
         """Call when consumer commit offset operation completed."""
         latency = self.time() - cast(float, state)
-        deque_pushpopmax(
-            self.commit_latency,
-            latency,
-            self.max_commit_latency_history,
-        )
+        self.commit_latency.append(latency)
 
     def on_send_initiated(
         self,
@@ -524,7 +523,7 @@ class Monitor(Sensor, KeywordReduce):
     ) -> None:
         """Call when producer finished sending message."""
         latency = self.time() - cast(float, state)
-        deque_pushpopmax(self.send_latency, latency, self.max_send_latency_history)
+        self.send_latency.append(latency)
 
     def on_send_error(
         self, producer: ProducerT, exc: BaseException, state: Any
@@ -553,9 +552,7 @@ class Monitor(Sensor, KeywordReduce):
     ) -> None:
         """Partition assignor did not complete assignor due to error."""
         time_total = self.time() - state["time_start"]
-        deque_pushpopmax(
-            self.assignment_latency, time_total, self.max_assignment_latency_history
-        )
+        self.assignment_latency.append(time_total)
         self.assignments_failed += 1
 
     def on_assignment_completed(
@@ -563,14 +560,13 @@ class Monitor(Sensor, KeywordReduce):
     ) -> None:
         """Partition assignor completed assignment."""
         time_total = self.time() - state["time_start"]
-        deque_pushpopmax(
-            self.assignment_latency, time_total, self.max_assignment_latency_history
-        )
+        self.assignment_latency.append(time_total)
         self.assignments_completed += 1
 
     def on_rebalance_start(self, app: AppT) -> Dict:
         """Cluster rebalance in progress."""
         self.rebalances = app.rebalancing_count
+        self._clear_topic_related_sensors()
         return {"time_start": self.time()}
 
     def on_rebalance_return(self, app: AppT, state: Dict) -> None:
@@ -582,9 +578,7 @@ class Monitor(Sensor, KeywordReduce):
             time_return=time_return,
             latency_return=latency_return,
         )
-        deque_pushpopmax(
-            self.rebalance_return_latency, latency_return, self.max_avg_history
-        )
+        self.rebalance_return_latency.append(latency_return)
 
     def on_rebalance_end(self, app: AppT, state: Dict) -> None:
         """Cluster rebalance fully completed (including recovery)."""
@@ -595,7 +589,8 @@ class Monitor(Sensor, KeywordReduce):
             time_end=time_end,
             latency_end=latency_end,
         )
-        deque_pushpopmax(self.rebalance_end_latency, latency_end, self.max_avg_history)
+        self.rebalance_end_latency.append(latency_end)
+        self._clear_topic_related_sensors()
 
     def on_web_request_start(
         self, app: AppT, request: web.Request, *, view: web.View = None
@@ -622,8 +617,11 @@ class Monitor(Sensor, KeywordReduce):
             latency_end=latency_end,
             status_code=status_code,
         )
-        deque_pushpopmax(self.http_response_latency, latency_end, self.max_avg_history)
+        self.http_response_latency.append(latency_end)
         self.http_response_codes[status_code] += 1
+
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
+        pass
 
     def _normalize(
         self,
@@ -633,3 +631,10 @@ class Monitor(Sensor, KeywordReduce):
         substitution: str = RE_NORMALIZE_SUBSTITUTION
     ) -> str:
         return pattern.sub(substitution, name)
+
+    def _clear_topic_related_sensors(self) -> None:
+        self.tp_committed_offsets.clear()
+        self.tp_read_offsets.clear()
+        self.tp_end_offsets.clear()
+        self.topic_buffer_full.clear()
+        self.stream_inbound_time.clear()

@@ -41,6 +41,11 @@ def is_valid(
     return True
 
 
+def clients_balanced(new: MutableMapping[str, CopartitionedAssignment]) -> bool:
+    assert all(new[client].actives for client in new)
+    return True
+
+
 def client_addition_sticky(
     old: MutableMapping[str, CopartitionedAssignment],
     new: MutableMapping[str, CopartitionedAssignment],
@@ -120,7 +125,10 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)
-    assert client_addition_sticky(old_assignments, new_assignments)
+    if replicas > 0:
+        assert client_addition_sticky(old_assignments, new_assignments)
+    elif partitions and partitions >= num_clients + num_additional_clients:
+        assert clients_balanced(new_assignments)
 
 
 @given(
@@ -156,4 +164,7 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)
-    assert client_removal_sticky(old_assignments, new_assignments)
+    if replicas > 0:
+        assert client_removal_sticky(old_assignments, new_assignments)
+    elif partitions >= num_clients - num_removal_clients:
+        assert clients_balanced(new_assignments)

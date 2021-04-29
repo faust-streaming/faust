@@ -1,4 +1,5 @@
 from collections import Counter
+from unittest.mock import MagicMock
 
 import pytest
 from mode.utils.mocks import AsyncMock, Mock
@@ -22,7 +23,7 @@ def recovery(*, tables, app):
     return Recovery(app, tables)
 
 
-class test_Recovery:
+class TestRecovery:
     @pytest.fixture()
     def table(self):
         return Mock(name="table")
@@ -95,7 +96,8 @@ class test_Recovery:
         app._fetcher = Mock(maybe_start=AsyncMock())
         consumer = app.consumer = Mock()
         recovery._wait = AsyncMock()
-
+        recovery._is_changelog_tp = MagicMock(return_value=False)
+        consumer.assignment = MagicMock(return_value=[("tp", 1)])
         await recovery._resume_streams()
         app.on_rebalance_complete.send.assert_called_once_with()
         consumer.resume_flow.assert_called_once_with()
@@ -130,7 +132,7 @@ class test_Recovery:
                 recovery, stopped=False, done=recovery.signal_recovery_start
             )
 
-    async def assert_wait(self, recovery, stopped=False, done=None):
+    async def assert_wait(self, recovery, stopped=False, done=None, timeout=None):
         coro = Mock()
         recovery.wait_first = AsyncMock()
         recovery.wait_first.coro.return_value.stopped = stopped
@@ -138,7 +140,9 @@ class test_Recovery:
 
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(
-            coro, recovery.signal_recovery_start, timeout=None
+            coro,
+            recovery.signal_recovery_start,
+            timeout=timeout,
         )
         return ret
 

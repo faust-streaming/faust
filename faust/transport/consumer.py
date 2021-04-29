@@ -71,6 +71,7 @@ from typing import (
 )
 from weakref import WeakSet
 
+from aiokafka.errors import ProducerFenced
 from mode import Service, ServiceT, flight_recorder, get_logger
 from mode.threads import MethodQueue, QueueServiceThread
 from mode.utils.futures import notify
@@ -334,11 +335,15 @@ class TransactionManager(Service, TransactionManagerT):
             by_transactional_id[transactional_id][tp] = offset
 
         if by_transactional_id:
-            await producer.commit_transactions(
-                by_transactional_id,
-                group_id,
-                start_new_transaction=start_new_transaction,
-            )
+            try:
+                await producer.commit_transactions(
+                    by_transactional_id,
+                    group_id,
+                    start_new_transaction=start_new_transaction,
+                )
+            except ProducerFenced as pf:
+                logger.warning(f"ProducerFenced {pf}")
+                await self.app.crash(pf)
         return True
 
     def key_partition(self, topic: str, key: bytes) -> TP:
@@ -513,9 +518,11 @@ class Consumer(Service, ConsumerT):
         return xtps
 
     def on_buffer_full(self, tp: TP) -> None:
-        active_partitions = self._get_active_partitions()
-        active_partitions.discard(tp)
-        self._buffered_partitions.add(tp)
+        # do not remove the partition when in recovery
+        if not self.app.in_recovery:
+            active_partitions = self._get_active_partitions()
+            active_partitions.discard(tp)
+            self._buffered_partitions.add(tp)
 
     def on_buffer_drop(self, tp: TP) -> None:
         buffered_partitions = self._buffered_partitions
@@ -606,10 +613,20 @@ class Consumer(Service, ConsumerT):
             if self._active_partitions is not None:
                 self._active_partitions.difference_update(revoked)
             self._paused_partitions.difference_update(revoked)
+            # Remove the revoked partitions from local data structures
+            for tp in revoked:
+                self._gap.pop(tp, None)
+                self._acked.pop(tp, None)
+                self._acked_index.pop(tp, None)
+                self._read_offset.pop(tp, None)
+                self._committed_offset.pop(tp, None)
+
             await T(self._on_partitions_revoked, partitions=revoked)(revoked)
 
     @Service.transitions_to(CONSUMER_PARTITIONS_ASSIGNED)
-    async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Call during rebalancing when partitions are being assigned."""
         span = self.app._start_span_from_rebalancing("on_partitions_assigned")
         T = traced_from_parent_span(span)
@@ -621,7 +638,11 @@ class Consumer(Service, ConsumerT):
             # start callback chain of assigned callbacks.
             #   need to copy set at this point, since we cannot have
             #   the callbacks mutate our active list.
-            await T(self._on_partitions_assigned, partitions=assigned)(assigned)
+            await T(
+                self._on_partitions_assigned,
+                partitions=assigned,
+                generation_id=generation_id,
+            )(assigned, generation_id)
         self.app.on_rebalance_return()
 
     @abc.abstractmethod
@@ -685,7 +706,11 @@ class Consumer(Service, ConsumerT):
             for tp, record in records_it:
                 if not self.flow_active:
                     break
-                if active_partitions is None or tp in active_partitions:
+                if (
+                    active_partitions is None
+                    or tp in active_partitions
+                    or tp in self._buffered_partitions
+                ):
                     highwater_mark = self.highwater(tp)
                     self.app.monitor.track_tp_end_offset(tp, highwater_mark)
                     # convert timestamp to seconds from int milliseconds.
@@ -823,12 +848,13 @@ class Consumer(Service, ConsumerT):
         await self.sleep(interval)
         async for sleep_time in self.itertimer(interval, name="livelock"):
             if not self.app.rebalancing:
-                await self.verify_all_partitions_active()
+                await self.app.loop.run_in_executor(
+                    None, self.verify_all_partitions_active
+                )
 
-    async def verify_all_partitions_active(self) -> None:
+    def verify_all_partitions_active(self) -> None:
         now = monotonic()
         for tp in self.assignment():
-            await self.sleep(0)
             if not self.should_stop:
                 self.verify_event_path(now, tp)
 
@@ -1007,11 +1033,11 @@ class Consumer(Service, ConsumerT):
         # then return the offset before that.
         # For example if acked[tp] is:
         #   1 2 3 4 5 6 7 8 9
-        # the return value will be: 9
+        # the return value will be: 10
         # If acked[tp] is:
         #  34 35 36 40 41 42 43 44
         #          ^--- gap
-        # the return value will be: 36
+        # the return value will be: 37
         if acked:
             max_offset = max(acked)
             gap_for_tp = self._gap[tp]
@@ -1239,9 +1265,13 @@ class ConsumerThread(QueueServiceThread):
         """Call on rebalance when partitions are being revoked."""
         await self.consumer.threadsafe_partitions_revoked(self.thread_loop, revoked)
 
-    async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Call on rebalance when partitions are being assigned."""
-        await self.consumer.threadsafe_partitions_assigned(self.thread_loop, assigned)
+        await self.consumer.threadsafe_partitions_assigned(
+            self.thread_loop, assigned, generation_id
+        )
 
     @abc.abstractmethod
     def key_partition(
@@ -1290,13 +1320,17 @@ class ThreadDelegateConsumer(Consumer):
         await promise
 
     async def threadsafe_partitions_assigned(
-        self, receiver_loop: asyncio.AbstractEventLoop, assigned: Set[TP]
+        self,
+        receiver_loop: asyncio.AbstractEventLoop,
+        assigned: Set[TP],
+        generation_id: int = 0,
     ) -> None:
         """Call rebalancing callback in a thread-safe manner."""
         promise = await self._method_queue.call(
             receiver_loop.create_future(),
             self.on_partitions_assigned,
             assigned,
+            generation_id,
         )
         # wait for main-thread to finish processing request
         await promise
