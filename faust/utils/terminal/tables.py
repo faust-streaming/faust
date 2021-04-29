@@ -60,13 +60,16 @@ def _get_best_table_type(tty: bool) -> Type[Table]:
     return SingleTable if tty else AsciiTable
 
 
+DEFAULT_SORT_KEY = itemgetter(0)
+
+
 def dict_as_ansitable(
     d: Mapping,
     *,
     key: str = "Key",
     value: str = "Value",
     sort: bool = False,
-    sortkey: Callable[[Any], Any] = itemgetter(0),
+    sortkey: Callable[[Any], Any] = DEFAULT_SORT_KEY,
     target: IO = sys.stdout,
     title: str = None
 ) -> str:

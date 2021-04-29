@@ -626,8 +626,8 @@ class Test_settings:
         origin="faust",
         canonical_url="http://example.com/",
         broker_client_id="client id",
-        datadir=str(DATADIR),
-        tabledir=str(TABLEDIR),
+        datadir=str(DATADIR),  # noqa: B008
+        tabledir=str(TABLEDIR),  # noqa: B008
         processing_guarantee="exactly_once",
         blocking_timeout=3.03,
         broker_api_version="0.1",
@@ -680,8 +680,8 @@ class Test_settings:
         worker_redirect_stdouts_level="DEBUG",
         broker_max_poll_records=1000,
         broker_max_poll_interval=10000,
-        timezone=pytz.timezone("US/Eastern"),
-        logging_config={"foo": 10},  # noqa
+        timezone=pytz.timezone("US/Eastern"),  # noqa: B008
+        logging_config={"foo": 10},  # noqa: B006
         consumer_auto_offset_reset="latest",
         ConsumerScheduler=OtherSchedulingStrategy,
         **kwargs,

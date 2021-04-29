@@ -528,7 +528,7 @@ class TestCase:
     async def test_url_request(self, *, case, mock_http_client):
         case.app._http_client = mock_http_client
         case._maybe_recover_from_failed_state = Mock()
-        await case.url_request("get", "http://foo/") == "foo"
+        assert await case.url_request("get", "http://foo/") == b""
         case._maybe_recover_from_failed_state.assert_called_once_with()
 
     @pytest.mark.asyncio
@@ -537,7 +537,7 @@ class TestCase:
         case.on_suite_fail = AsyncMock()
         case.sleep = AsyncMock()
         case.app._http_client = mock_http_client
-        await case.url_request("get", "http://foo/") is None
+        assert await case.url_request("get", "http://foo/") is None
         case.on_suite_fail.assert_called_once_with(ANY)
 
     @pytest.mark.asyncio
@@ -545,7 +545,7 @@ class TestCase:
     async def test_url_request_fails_recover(self, *, case, mock_http_client):
         case.sleep = AsyncMock()
         case.app._http_client = mock_http_client
-        await case.url_request("get", "http://foo/") == "foo"
+        assert await case.url_request("get", "http://foo/") == b""
 
     def test_current_test(self, *, case):
         with patch("faust.livecheck.case.current_test_stack") as cts:
