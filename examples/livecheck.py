@@ -157,7 +157,7 @@ async def execute_order(orders: StreamT[Order]) -> None:
 
 
 @livecheck.case(warn_stalled_after=5.0, frequency=0.5, probability=0.5)
-class test_order(Case):
+class Test_order(Case):
 
     order_sent_to_db: Signal[Order]
     order_sent_to_kafka: Signal[None]
