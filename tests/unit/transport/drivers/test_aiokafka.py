@@ -1253,30 +1253,39 @@ class MyPartitioner:
 my_partitioner = MyPartitioner()
 
 
-@pytest.mark.skip("Needs fixing")
+# @pytest.mark.skip("Needs fixing")
 class TestProducer:
     @pytest.fixture()
     def producer(self, *, app, _producer):
         producer = Producer(app.transport)
+        producer._new_producer = Mock(return_value=_producer)
         producer._producer = _producer
         return producer
 
     @pytest.fixture()
-    def _producer(self):
-        return Mock(
-            name="AIOKafkaProducer",
-            autospec=aiokafka.AIOKafkaProducer,
-            start=AsyncMock(),
-            stop=AsyncMock(),
-            begin_transaction=AsyncMock(),
-            commit_transaction=AsyncMock(),
-            abort_transaction=AsyncMock(),
-            stop_transaction=AsyncMock(),
-            maybe_begin_transaction=AsyncMock(),
-            commit=AsyncMock(),
-            send=AsyncMock(),
-            flush=AsyncMock(),
-        )
+    def _producer(self, _producer_call):
+        return _producer_call()
+
+    @pytest.fixture()
+    def _producer_call(self):
+        def inner():
+            return Mock(
+                name="AIOKafkaProducer",
+                autospec=aiokafka.AIOKafkaProducer,
+                start=AsyncMock(),
+                stop=AsyncMock(),
+                begin_transaction=AsyncMock(),
+                commit_transaction=AsyncMock(),
+                abort_transaction=AsyncMock(),
+                stop_transaction=AsyncMock(),
+                maybe_begin_transaction=AsyncMock(),
+                commit=AsyncMock(),
+                send=AsyncMock(),
+                flush=AsyncMock(),
+                send_offsets_to_transaction=AsyncMock(),
+            )
+
+        return inner
 
     @pytest.mark.conf(producer_partitioner=my_partitioner)
     def test_producer__uses_custom_partitioner(self, *, producer):
@@ -1285,45 +1294,66 @@ class TestProducer:
     @pytest.mark.asyncio
     async def test_begin_transaction(self, *, producer, _producer):
         await producer.begin_transaction("tid")
-        _producer.begin_transaction.assert_called_once_with("tid")
+        _producer.begin_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_commit_transaction(self, *, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.commit_transaction("tid")
-        _producer.commit_transaction.assert_called_once_with("tid")
+        _producer.commit_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_abort_transaction(self, *, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.abort_transaction("tid")
-        _producer.abort_transaction.assert_called_once_with("tid")
+        _producer.abort_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_stop_transaction(self, *, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.stop_transaction("tid")
-        _producer.stop_transaction.assert_called_once_with("tid")
+        _producer.stop.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_maybe_begin_transaction(self, *, producer, _producer):
         await producer.maybe_begin_transaction("tid")
-        _producer.maybe_begin_transaction.assert_called_once_with("tid")
+        _producer.begin_transaction.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_commit_transactions(self, *, producer, _producer):
+    async def test_commit_transactions(self, *, producer, _producer_call):
+        _producer1 = _producer_call()
+        _producer2 = _producer_call()
+        await producer.begin_transaction("t1")
+        await producer.begin_transaction("t2")
+        producer._transaction_producers["t1"] = _producer1
+        producer._transaction_producers["t2"] = _producer2
         tid_to_offset_map = {"t1": {TP1: 1001}, "t2": {TP2: 2002}}
+
         await producer.commit_transactions(
             tid_to_offset_map, "group_id", start_new_transaction=False
         )
-        _producer.commit.assert_called_once_with(
-            tid_to_offset_map, "group_id", start_new_transaction=False
+
+        _producer1.send_offsets_to_transaction.assert_called_once_with(
+            {TP1: 1001}, "group_id"
         )
+        _producer2.send_offsets_to_transaction.assert_called_once_with(
+            {TP2: 2002}, "group_id"
+        )
+        _producer1.commit_transaction.assert_called_once()
+        _producer2.commit_transaction.assert_called_once()
 
     def test__settings_extra(self, *, producer, app):
         app.in_transaction = True
-        assert producer._settings_extra() == {"acks": "all"}
+        assert producer._settings_extra() == {"acks": "all", "enable_idempotence": True}
         app.in_transaction = False
         assert producer._settings_extra() == {}
 
-    def test__new_producer(self, *, producer):
+    @pytest.mark.skip("fix me")
+    def test__new_producer(self, *, app):
+        producer = Producer(app.transport)
         self.assert_new_producer(producer)
 
     @pytest.mark.parametrize(
@@ -1376,7 +1406,9 @@ class TestProducer:
             ),
         ],
     )
-    def test__new_producer__using_settings(self, expected_args, *, app, producer):
+    @pytest.mark.skip("fix me")
+    def test__new_producer__using_settings(self, expected_args, *, app):
+        producer = Producer(app.transport)
         self.assert_new_producer(producer, **expected_args)
 
     def assert_new_producer(
@@ -1410,25 +1442,30 @@ class TestProducer:
                 security_protocol=security_protocol,
                 loop=producer.loop,
                 partitioner=producer.partitioner,
-                on_irrecoverable_error=producer._on_irrecoverable_error,
+                # on_irrecoverable_error=producer._on_irrecoverable_error,
                 **kwargs,
             )
 
-    def test__new_producer__default(self, *, producer):
+    @pytest.mark.asyncio
+    async def test__new_producer__default(self, *, app):
+        producer = Producer(app.transport)
         p = producer._new_producer()
         assert isinstance(p, aiokafka.AIOKafkaProducer)
 
+    @pytest.mark.skip("obsolete test?")
     def test__new_producer__in_transaction(self, *, producer):
         producer.app.in_transaction = True
         p = producer._new_producer()
         assert isinstance(p, aiokafka.MultiTXNProducer)
 
+    @pytest.mark.skip("obsolete test?")
     def test__producer_type(self, *, producer, app):
         app.in_transaction = True
         assert producer._producer_type is aiokafka.MultiTXNProducer
         app.in_transaction = False
         assert producer._producer_type is aiokafka.AIOKafkaProducer
 
+    @pytest.mark.skip("obsolete test?")
     @pytest.mark.asyncio
     async def test__on_irrecoverable_error(self, *, producer):
         exc = KeyError()
@@ -1511,6 +1548,8 @@ class TestProducer:
 
     @pytest.mark.asyncio
     async def test_send(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1527,12 +1566,13 @@ class TestProducer:
             partition=3,
             timestamp_ms=100 * 1000.0,
             headers=[("foo", "bar")],
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     @pytest.mark.conf(producer_api_version="0.10")
     async def test_send__request_no_headers(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1549,12 +1589,13 @@ class TestProducer:
             partition=3,
             timestamp_ms=100 * 1000.0,
             headers=None,
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     @pytest.mark.conf(producer_api_version="0.11")
     async def test_send__kafka011_supports_headers(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1571,12 +1612,13 @@ class TestProducer:
             partition=3,
             timestamp_ms=100 * 1000.0,
             headers=[("foo", "bar")],
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     @pytest.mark.conf(producer_api_version="auto")
     async def test_send__auto_passes_headers(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1593,11 +1635,12 @@ class TestProducer:
             partition=3,
             timestamp_ms=100 * 1000.0,
             headers=[("foo", "bar")],
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     async def test_send__no_headers(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1614,11 +1657,12 @@ class TestProducer:
             partition=3,
             timestamp_ms=100 * 1000.0,
             headers=None,
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     async def test_send__no_timestamp(self, producer, _producer):
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1635,12 +1679,26 @@ class TestProducer:
             partition=3,
             timestamp_ms=None,
             headers=None,
-            transactional_id="tid",
         )
 
     @pytest.mark.asyncio
     async def test_send__KafkaError(self, producer, _producer):
         _producer.send.coro.side_effect = KafkaError()
+        with pytest.raises(ProducerSendError):
+            await producer.send(
+                "topic",
+                "k",
+                "v",
+                3,
+                None,
+                None,
+            )
+
+    @pytest.mark.asyncio
+    async def test_send__trn_KafkaError(self, producer, _producer):
+        _producer.send.coro.side_effect = KafkaError()
+        await producer.begin_transaction("tid")
+        producer._transaction_producers["tid"] = _producer
         with pytest.raises(ProducerSendError):
             await producer.send(
                 "topic",
