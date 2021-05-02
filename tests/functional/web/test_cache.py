@@ -316,7 +316,7 @@ async def test_redis__url(
         password=password,
         db=db,
         skip_full_coverage_check=True,
-        **settings
+        **settings,
     )
 
 
@@ -432,7 +432,7 @@ async def model_response(
     *,
     expected_status: int = 200,
     expected_content_type: str = "application/json",
-    model=ResponseModel
+    model=ResponseModel,
 ):
     assert response.status == 200
     assert response.content_type == expected_content_type
