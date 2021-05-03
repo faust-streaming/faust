@@ -223,7 +223,7 @@ reqs: reqs-default reqs-test reqs-dist reqs-docs reqs-ci reqs-debug
 
 .PHONY:
 reqs-default:
-	$(PIP) install -U -r requirements/default.txt
+	$(PIP) install -U -r requirements/requirements.txt
 
 .PHONY:
 reqs-test:
