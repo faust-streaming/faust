@@ -46,7 +46,7 @@ class TestAerospikeStore:
     @pytest.fixture()
     def store(self):
         with patch("faust.stores.aerospike.aerospike", MagicMock()):
-            options = dict()
+            options = {}
             options[AeroSpikeStore.HOSTS_KEY] = "localhost"
             options[AeroSpikeStore.USERNAME_KEY] = "USERNAME"
             options[AeroSpikeStore.PASSWORD_KEY] = "PASSWORD"
