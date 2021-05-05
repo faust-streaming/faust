@@ -1188,21 +1188,21 @@ def test_Record_comparison():
     assert X(10, 40) <= X(10, 40)
 
     with pytest.raises(TypeError):
-        X(10) >= object()
+        X(10) >= object()  # noqa: B015
     with pytest.raises(TypeError):
-        X(10) <= object()
+        X(10) <= object()  # noqa: B015
     with pytest.raises(TypeError):
-        X(10) < object()
+        X(10) < object()  # noqa: B015
     with pytest.raises(TypeError):
-        X(10) > object()
+        X(10) > object()  # noqa: B015
     with pytest.raises(TypeError):
-        object() > X(10)
+        object() > X(10)  # noqa: B015
     with pytest.raises(TypeError):
-        object() >= X(10)
+        object() >= X(10)  # noqa: B015
     with pytest.raises(TypeError):
-        object() < X(10)
+        object() < X(10)  # noqa: B015
     with pytest.raises(TypeError):
-        object() <= X(10)
+        object() <= X(10)  # noqa: B015
 
 
 def test_maybe_model():

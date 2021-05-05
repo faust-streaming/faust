@@ -35,6 +35,7 @@ from .signals import BaseSignal, Signal
 __all__ = ["LiveCheck"]
 
 SCAN_CASE = "livecheck.case"
+WARN_STALLED_AFTER_DEFAULT = timedelta(minutes=30)
 
 #: alias for mypy bug
 _Case = Case
@@ -211,7 +212,7 @@ class LiveCheck(faust.App):
         *,
         name: str = None,
         probability: float = None,
-        warn_stalled_after: Seconds = timedelta(minutes=30),
+        warn_stalled_after: Seconds = WARN_STALLED_AFTER_DEFAULT,
         active: bool = None,
         test_expires: Seconds = None,
         frequency: Seconds = None,
