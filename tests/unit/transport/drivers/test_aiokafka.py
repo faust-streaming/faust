@@ -1259,7 +1259,6 @@ class MyPartitioner:
 my_partitioner = MyPartitioner()
 
 
-# @pytest.mark.skip("Needs fixing")
 class TestProducer:
     @pytest.fixture()
     def producer(self, *, app, _producer):
