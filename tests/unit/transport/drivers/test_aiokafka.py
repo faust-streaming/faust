@@ -1442,7 +1442,6 @@ class TestProducer:
                 security_protocol=security_protocol,
                 loop=producer.loop,
                 partitioner=producer.partitioner,
-                # on_irrecoverable_error=producer._on_irrecoverable_error,
                 **kwargs,
             )
 
@@ -1452,32 +1451,8 @@ class TestProducer:
         p = producer._new_producer()
         assert isinstance(p, aiokafka.AIOKafkaProducer)
 
-    @pytest.mark.skip("obsolete test?")
-    def test__new_producer__in_transaction(self, *, producer):
-        producer.app.in_transaction = True
-        p = producer._new_producer()
-        assert isinstance(p, aiokafka.MultiTXNProducer)
-
-    @pytest.mark.skip("obsolete test?")
     def test__producer_type(self, *, producer, app):
-        app.in_transaction = True
-        assert producer._producer_type is aiokafka.MultiTXNProducer
-        app.in_transaction = False
         assert producer._producer_type is aiokafka.AIOKafkaProducer
-
-    @pytest.mark.skip("obsolete test?")
-    @pytest.mark.asyncio
-    async def test__on_irrecoverable_error(self, *, producer):
-        exc = KeyError()
-        producer.crash = AsyncMock()
-        app = producer.transport.app
-        app.consumer = None
-        await producer._on_irrecoverable_error(exc)
-        producer.crash.assert_called_once_with(exc)
-        app.consumer = Mock(name="consumer")
-        app.consumer.crash = AsyncMock()
-        await producer._on_irrecoverable_error(exc)
-        app.consumer.crash.assert_called_once_with(exc)
 
     @pytest.mark.asyncio
     async def test_create_topic(self, *, producer, _producer):
