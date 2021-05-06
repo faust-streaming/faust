@@ -275,6 +275,9 @@ class Consumer(ThreadDelegateConsumer):
         transport = cast(Transport, self.transport)
         transport._topic_waiters.clear()
 
+    def verify_event_path(self, now: float, tp: TP) -> None:
+        return self._thread.verify_event_path(now, tp)
+
 
 class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None

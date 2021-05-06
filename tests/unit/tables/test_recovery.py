@@ -97,13 +97,15 @@ class TestRecovery:
         consumer = app.consumer = Mock()
         recovery._wait = AsyncMock()
         recovery._is_changelog_tp = MagicMock(return_value=False)
-        consumer.assignment = MagicMock(return_value=[("tp", 1)])
+        consumer.assignment = MagicMock(return_value={("tp", 1)})
         await recovery._resume_streams()
         app.on_rebalance_complete.send.assert_called_once_with()
         consumer.resume_flow.assert_called_once_with()
         app.flow_control.resume.assert_called_once_with()
-        recovery._wait.assert_called_once_with(consumer.perform_seek(), timeout=90.0)
-        consumer.resume_partitions.assert_called_once
+        recovery._wait.assert_called_once_with(
+            consumer.perform_seek(), timeout=app.conf.broker_request_timeout
+        )
+        consumer.resume_partitions.assert_called_once_with(consumer.assignment())
 
         assert recovery.completed.is_set()
         app._fetcher.maybe_start.assert_called_once_with()
