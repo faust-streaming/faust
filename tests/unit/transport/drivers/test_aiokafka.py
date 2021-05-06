@@ -1260,10 +1260,15 @@ class TestProducer:
         producer = Producer(app.transport)
         producer._new_producer = Mock(return_value=_producer)
         producer._producer = _producer
+
+        # I can't figure out what is setting a value for this,
+        # so we're clearing out the dict after creation
+        producer._transaction_producers = {}
+
         return producer
 
     @pytest.fixture()
-    def _producer(self, _producer_call):
+    def _producer(self, *, _producer_call):
         return _producer_call()
 
     @pytest.fixture()
@@ -1299,21 +1304,18 @@ class TestProducer:
     @pytest.mark.asyncio
     async def test_commit_transaction(self, *, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.commit_transaction("tid")
         _producer.commit_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_abort_transaction(self, *, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.abort_transaction("tid")
         _producer.abort_transaction.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_stop_transaction(self, *, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.stop_transaction("tid")
         _producer.stop.assert_called_once()
 
@@ -1326,10 +1328,10 @@ class TestProducer:
     async def test_commit_transactions(self, *, producer, _producer_call):
         _producer1 = _producer_call()
         _producer2 = _producer_call()
+        producer._new_producer = Mock(return_value=_producer1)
         await producer.begin_transaction("t1")
+        producer._new_producer = Mock(return_value=_producer2)
         await producer.begin_transaction("t2")
-        producer._transaction_producers["t1"] = _producer1
-        producer._transaction_producers["t2"] = _producer2
         tid_to_offset_map = {"t1": {TP1: 1001}, "t2": {TP2: 2002}}
 
         await producer.commit_transactions(
@@ -1524,7 +1526,6 @@ class TestProducer:
     @pytest.mark.asyncio
     async def test_send(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1547,7 +1548,6 @@ class TestProducer:
     @pytest.mark.conf(producer_api_version="0.10")
     async def test_send__request_no_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1570,7 +1570,6 @@ class TestProducer:
     @pytest.mark.conf(producer_api_version="0.11")
     async def test_send__kafka011_supports_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1593,7 +1592,6 @@ class TestProducer:
     @pytest.mark.conf(producer_api_version="auto")
     async def test_send__auto_passes_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1615,7 +1613,6 @@ class TestProducer:
     @pytest.mark.asyncio
     async def test_send__no_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1637,7 +1634,6 @@ class TestProducer:
     @pytest.mark.asyncio
     async def test_send__no_timestamp(self, producer, _producer):
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         await producer.send(
             "topic",
             "k",
@@ -1673,7 +1669,6 @@ class TestProducer:
     async def test_send__trn_KafkaError(self, producer, _producer):
         _producer.send.coro.side_effect = KafkaError()
         await producer.begin_transaction("tid")
-        producer._transaction_producers["tid"] = _producer
         with pytest.raises(ProducerSendError):
             await producer.send(
                 "topic",
