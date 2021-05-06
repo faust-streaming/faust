@@ -474,10 +474,25 @@ class Test_Agent:
     @pytest.mark.skip(reason="Fix is TBD")
     @pytest.mark.asyncio
     async def test_execute_actor__cancelled_running(self, *, agent):
+        agent._on_error = AsyncMock(name="on_error")
+        agent.log = Mock(name="log", autospec=CompositeLogger)
+        aref = Mock(
+            name="aref",
+            autospec=Actor,
+            crash=AsyncMock(),
+        )
+        agent.supervisor = Mock(name="supervisor")
         coro = FutureMock()
-        coro.side_effect = asyncio.CancelledError()
-        await agent._execute_actor(coro, Mock(name="aref", autospec=Actor))
+        exc = coro.side_effect = asyncio.CancelledError()
+        await agent._execute_actor(coro, aref)
         coro.assert_awaited()
+
+        aref.crash.assert_called_once_with(exc)
+        agent.supervisor.wakeup.assert_called_once_with()
+        agent._on_error.assert_not_called()
+
+        agent._on_error = None
+        await agent._execute_actor(coro, aref)
 
     @pytest.mark.asyncio
     async def test_execute_actor__raising(self, *, agent):
