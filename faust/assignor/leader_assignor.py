@@ -34,6 +34,7 @@ class LeaderAssignor(Service, LeaderAssignorT):
             partitions=1,
             acks=False,
             internal=True,
+            replicas=self.app.conf.topic_replication_factor
         )
 
     @cached_property
