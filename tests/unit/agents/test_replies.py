@@ -4,9 +4,9 @@ import json
 import pytest
 from mode.utils.mocks import AsyncMock, Mock
 
+from faust import Record
 from faust.agents.models import ReqRepResponse
 from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
-from faust import Record
 
 
 class Account(Record, serializer="json"):
