@@ -12,6 +12,8 @@ from .models import ReqRepResponse
 
 __all__ = ["ReplyPromise", "BarrierState", "ReplyConsumer"]
 
+from ..models import maybe_model
+
 
 class ReplyTuple(NamedTuple):
     correlation_id: str
@@ -181,7 +183,7 @@ class ReplyConsumer(Service):
     async def _drain_replies(self, channel: ChannelT) -> None:
         async for reply in channel.stream():
             for promise in self._waiting[reply.correlation_id]:
-                promise.fulfill(reply.correlation_id, reply.value)
+                promise.fulfill(reply.correlation_id, maybe_model(reply.value))
 
     def _reply_topic(self, topic: str) -> TopicT:
         return self.app.topic(
