@@ -852,11 +852,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
             current_value=app.conf.broker_commit_livelock_soft_timeout,
         )
 
-    def _make_slow_processing_error(self, msg: str, causes: Iterable[str]) -> str:
+    def _make_slow_processing_error(
+        self, msg: str, causes: Iterable[str], setting: str, current_value: float
+    ) -> str:
         return " ".join(
             [
                 msg,
-                SLOW_PROCESSING_EXPLAINED,
+                SLOW_PROCESSING_EXPLAINED
+                % {"setting": setting, "current_value": current_value},
                 text.enumeration(causes, start=2, sep="\n\n"),
             ]
         )
@@ -870,10 +873,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
         current_value: float,
     ) -> None:
         return self.log.error(
-            self._make_slow_processing_error(msg, causes),
+            self._make_slow_processing_error(msg, causes, setting, current_value),
             *args,
-            setting=setting,
-            current_value=current_value,
         )
 
     async def position(self, tp: TP) -> Optional[int]:
