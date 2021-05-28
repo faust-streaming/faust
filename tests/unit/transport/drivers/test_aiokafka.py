@@ -8,6 +8,7 @@ import opentracing
 import pytest
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
+from mode.utils import text
 from mode.utils.futures import done_future
 from mode.utils.mocks import ANY, AsyncMock, MagicMock, Mock, call, patch
 from opentracing.ext import tags
@@ -18,6 +19,10 @@ from faust.exceptions import ImproperlyConfigured, NotReady
 from faust.sensors.monitor import Monitor
 from faust.transport.drivers import aiokafka as mod
 from faust.transport.drivers.aiokafka import (
+    SLOW_PROCESSING_CAUSE_AGENT,
+    SLOW_PROCESSING_CAUSE_STREAM,
+    SLOW_PROCESSING_EXPLAINED,
+    SLOW_PROCESSING_STREAM_IDLE_SINCE_START,
     TOPIC_LENGTH_MAX,
     AIOKafkaConsumerThread,
     Consumer,
@@ -384,6 +389,29 @@ class Test_verify_event_path_base(AIOKafkaConsumerThreadFixtures):
     def test_state(self, *, cthread, now):
         # verify that setup_consumer fixture was applied
         assert cthread.time_started == now
+
+
+class Test_Log_Slow_Processing(Test_verify_event_path_base):
+    def test_log_slow_processing_stream(
+        self, cthread: AIOKafkaConsumerThread, tp: TP, logger
+    ):
+        cthread._log_slow_processing_stream(
+            SLOW_PROCESSING_STREAM_IDLE_SINCE_START, tp, "3 seconds ago"
+        )
+        logger.error.assert_called_with(
+            SLOW_PROCESSING_STREAM_IDLE_SINCE_START
+            + " "
+            + SLOW_PROCESSING_EXPLAINED
+            % {"setting": "stream_processing_timeout", "current_value": 300.0}
+            + " "
+            + text.enumeration(
+                [SLOW_PROCESSING_CAUSE_STREAM, SLOW_PROCESSING_CAUSE_AGENT],
+                start=2,
+                sep="\n\n",
+            ),
+            tp,
+            "3 seconds ago",
+        )
 
 
 @pytest.mark.skip("Needs fixing")
