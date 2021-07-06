@@ -722,8 +722,10 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
 
         if monitor is not None:  # need for .stream_inbound_time
-            highwater = self.highwater(tp)
-            committed_offset = parent._committed_offset.get(tp)
+            aiotp = TopicPartition(tp.topic, tp.partition)
+            tp_state = self._ensure_consumer()._fetcher._subscriptions.subscription.assignment.state_value(aiotp)
+            highwater = tp_state.highwater
+            committed_offset = tp_state.position
             has_acks = acks_enabled_for(tp.topic)
             if highwater is None:
                 if secs_since_started >= self.tp_stream_timeout_secs:
