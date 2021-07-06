@@ -723,7 +723,9 @@ class AIOKafkaConsumerThread(ConsumerThread):
 
         if monitor is not None:  # need for .stream_inbound_time
             aiotp = TopicPartition(tp.topic, tp.partition)
-            tp_state = self._ensure_consumer()._fetcher._subscriptions.subscription.assignment.state_value(aiotp)
+            tp_state = self._ensure_consumer()._fetcher._subscriptions.subscription.assignment.state_value(
+                aiotp
+            )
             highwater = tp_state.highwater
             committed_offset = tp_state.position
             has_acks = acks_enabled_for(tp.topic)
