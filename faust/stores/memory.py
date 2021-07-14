@@ -31,7 +31,9 @@ class Store(base.Store):
             self._create_batch_iterator(to_delete.add, to_key, to_value, batch)
         )
         for key in to_delete:
-            delete_key(key, None)
+            # If the key was assigned a value again at a later time, it will not be deleted.
+            if not self.data[key]:
+                delete_key(key, None)
 
     def _create_batch_iterator(
         self,
@@ -45,7 +47,6 @@ class Store(base.Store):
             # to delete keys in the table we set the raw value to None
             if event.message.value is None:
                 mark_as_delete(key)
-                continue
             yield key, to_value(event.value)
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
