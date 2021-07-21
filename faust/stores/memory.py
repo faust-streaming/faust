@@ -31,7 +31,7 @@ class Store(base.Store):
             self._create_batch_iterator(to_delete.add, to_key, to_value, batch)
         )
         for key in to_delete:
-            # If the key was assigned a value again at a later time, it will not be deleted.
+            # If the key was assigned a value again, it will not be deleted.
             if not self.data[key]:
                 delete_key(key, None)
 
