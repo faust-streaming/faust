@@ -33,6 +33,15 @@ class Test_Store:
 
         assert to_key() not in store.data
 
+    def test_apply_changelog_batch__deletes_key_and_reassign_it(self, *, store):
+        self.test_apply_changelog_batch__deletes_key_for_None_value(store=store)
+
+        events = [self.mock_event(value=value) for value in ("v1", None, "v2")]
+        to_key, to_value = self.mock_to_key_value(events[0])
+
+        store.apply_changelog_batch(events, to_key=to_key, to_value=to_value)
+        assert to_key() in store.data
+
     def mock_event_to_key_value(self, key=b"key", value=b"value"):
         event = self.mock_event(key=key, value=value)
         to_key, to_value = self.mock_to_key_value(event)
