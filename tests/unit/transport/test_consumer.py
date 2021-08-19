@@ -1386,7 +1386,7 @@ class Test_ThreadDelegateConsumer:
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            consumer.verify_all_partitions_active()
+            await consumer.verify_all_partitions_active()
 
             consumer.verify_event_path.assert_has_calls(
                 [
@@ -1405,13 +1405,13 @@ class Test_ThreadDelegateConsumer:
         consumer.sleep = AsyncMock()
 
         async def on_sleep(secs):
-            if consumer.sleep.call_count == 2:
+            if consumer.sleep.call_count == 4:
                 consumer._stopped.set()
 
         consumer.sleep.side_effect = on_sleep
 
         with patch("faust.transport.consumer.monotonic") as monotonic:
             now = monotonic.return_value = 391243.231
-            consumer.verify_all_partitions_active()
+            await consumer.verify_all_partitions_active()
 
             consumer.verify_event_path.assert_called_with(now, TP3)

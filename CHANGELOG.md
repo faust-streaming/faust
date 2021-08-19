@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+##0.6.9
+### Changed
+- Fixed [166](https://github.com/faust-streaming/faust/issues/166)
+
+##0.6.8
+### Changed
+- Fixed [166](https://github.com/faust-streaming/faust/issues/166)
+
+##0.6.7
+### Changed
+- aiokafka dependency is set to >=0.7.1,<0.8.0
+
+##0.6.6
+### Bug Fixes
+- Error when logging slow process in aiokafka with python 3.9 [153](https://github.com/faust-streaming/faust/issues/153)
+- FIX Record instances deserialize properly when returned by agent.ask[151](https://github.com/faust-streaming/faust/issues/151)
+
+##0.6.5
+### Bug Fixes
+- Fix leader topic replication [149](https://github.com/faust-streaming/faust/issues/149)
+
+##0.6.4
+### Bug Fixes
+- Fix partition from message for globaltables or tables that use partitioner [129](https://github.com/faust-streaming/faust/issues/129)
+- Calling window close callback after popping the value from store [137](https://github.com/faust-streaming/faust/pull/137)
+##0.6.3
+### Bug Fixes
+- Fix for [126](https://github.com/faust-streaming/faust/issues/126)
 ##0.6.2
 ### Bug Fixes
 - Add app_name to prometheus sensors[120](https://github.com/faust-streaming/faust/pull/120)

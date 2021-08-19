@@ -275,6 +275,9 @@ class Consumer(ThreadDelegateConsumer):
         transport = cast(Transport, self.transport)
         transport._topic_waiters.clear()
 
+    def verify_event_path(self, now: float, tp: TP) -> None:
+        return self._thread.verify_event_path(now, tp)
+
 
 class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
@@ -719,8 +722,10 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
 
         if monitor is not None:  # need for .stream_inbound_time
-            highwater = self.highwater(tp)
-            committed_offset = parent._committed_offset.get(tp)
+            aiotp = TopicPartition(tp.topic, tp.partition)
+            tp_state = self._ensure_consumer()._fetcher._subscriptions.subscription.assignment.state_value(aiotp)
+            highwater = tp_state.highwater
+            committed_offset = tp_state.position
             has_acks = acks_enabled_for(tp.topic)
             if highwater is None:
                 if secs_since_started >= self.tp_stream_timeout_secs:
@@ -849,11 +854,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
             current_value=app.conf.broker_commit_livelock_soft_timeout,
         )
 
-    def _make_slow_processing_error(self, msg: str, causes: Iterable[str]) -> str:
+    def _make_slow_processing_error(
+        self, msg: str, causes: Iterable[str], setting: str, current_value: float
+    ) -> str:
         return " ".join(
             [
                 msg,
-                SLOW_PROCESSING_EXPLAINED,
+                SLOW_PROCESSING_EXPLAINED
+                % {"setting": setting, "current_value": current_value},
                 text.enumeration(causes, start=2, sep="\n\n"),
             ]
         )
@@ -867,10 +875,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
         current_value: float,
     ) -> None:
         return self.log.error(
-            self._make_slow_processing_error(msg, causes),
+            self._make_slow_processing_error(msg, causes, setting, current_value),
             *args,
-            setting=setting,
-            current_value=current_value,
         )
 
     async def position(self, tp: TP) -> Optional[int]:
@@ -1071,7 +1077,6 @@ class Producer(base.Producer):
             "max_batch_size": self.max_batch_size,
             "max_request_size": self.max_request_size,
             "compression_type": self.compression_type,
-            # 'on_irrecoverable_error': self._on_irrecoverable_error,
             "security_protocol": "SSL" if self.ssl_context else "PLAINTEXT",
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
@@ -1214,13 +1219,6 @@ class Producer(base.Producer):
     def _producer_type(self) -> Type[aiokafka.AIOKafkaProducer]:
         return aiokafka.AIOKafkaProducer
 
-    # async def _on_irrecoverable_error(self, exc: BaseException) -> None:
-    #     consumer = self.transport.app.consumer
-    #     if consumer is not None:  # pragma: no cover
-    #         # coverage executes this line, but does not mark as covered.
-    #         await consumer.crash(exc)
-    #     await self.crash(exc)
-
     async def create_topic(
         self,
         topic: str,
@@ -1260,7 +1258,6 @@ class Producer(base.Producer):
     async def on_start(self) -> None:
         """Call when producer starts."""
         await super().on_start()
-        # if not self.app.in_transaction:
         producer = self._producer = self._new_producer()
         self.beacon.add(producer)
         await producer.start()

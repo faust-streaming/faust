@@ -97,7 +97,13 @@ class AeroSpikeStore(base.SerializedStore):
             self.log.debug(f"key not found {key} exception {ex}")
             raise KeyError(f"key not found {key}")
         except Exception as ex:
-            self.log.error(f"Error in set for table {self.table_name} exception {ex}")
+            self.log.error(
+                f"Error in set for table {self.table_name} exception {ex} key {key}"
+            )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _set(self, key: bytes, value: Optional[bytes]) -> None:
@@ -114,7 +120,13 @@ class AeroSpikeStore(base.SerializedStore):
                 },
             )
         except Exception as ex:
-            self.log.error(f"Error in set for table {self.table_name} exception {ex}")
+            self.log.error(
+                f"Error in set for table {self.table_name} exception {ex} key {key}"
+            )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _del(self, key: bytes) -> None:
@@ -122,13 +134,17 @@ class AeroSpikeStore(base.SerializedStore):
             key = (self.namespace, self.table_name, key)
             self.client.remove(key=key)
         except aerospike.exception.RecordNotFound as ex:
-            self.log.error(
-                f"Error in delete for table {self.table_name} exception {ex}"
+            self.log.warning(
+                f"Error in delete for table {self.table_name} exception {ex} key {key}"
             )
         except Exception as ex:
             self.log.error(
-                f"Error in delete for table {self.table_name} exception {ex}"
+                f"Error in delete for table {self.table_name} exception {ex} key {key}"
             )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _iterkeys(self) -> Iterator[bytes]:
@@ -142,6 +158,10 @@ class AeroSpikeStore(base.SerializedStore):
             self.log.error(
                 f"Error in _iterkeys for table {self.table_name} exception {ex}"
             )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _itervalues(self) -> Iterator[bytes]:
@@ -159,6 +179,10 @@ class AeroSpikeStore(base.SerializedStore):
             self.log.error(
                 f"Error in _itervalues for table {self.table_name} exception {ex}"
             )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _iteritems(self) -> Iterator[Tuple[bytes, bytes]]:
@@ -178,6 +202,10 @@ class AeroSpikeStore(base.SerializedStore):
             self.log.error(
                 f"Error in _iteritems for table {self.table_name} exception {ex}"
             )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _size(self) -> int:
@@ -196,8 +224,13 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"Error in _contains for table {self.table_name} exception {ex}"
+                f"Error in _contains for table {self.table_name} exception "
+                f"{ex} key {key}"
             )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _clear(self) -> None:

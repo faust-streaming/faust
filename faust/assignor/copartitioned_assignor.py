@@ -204,11 +204,11 @@ class CopartitionedAssignor:
         client_limit = self._get_client_limit(active)
         if active:
             candidates_list = sorted(
-                list(self._client_assignments.values()), key=lambda x: len(x.actives)
+                self._client_assignments.values(), key=lambda x: len(x.actives)
             )
         else:
             candidates_list = sorted(
-                list(self._client_assignments.values()), key=lambda x: len(x.standbys)
+                self._client_assignments.values(), key=lambda x: len(x.standbys)
             )
 
         candidates = cycle(iter(candidates_list))

@@ -289,7 +289,11 @@ class Store(base.SerializedStore):
 
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()
-        partition_from_message = event is not None and not self.table.is_global and not self.table.use_partitioner
+        partition_from_message = (
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
+        )
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
@@ -429,7 +433,12 @@ class Store(base.SerializedStore):
 
     def _contains(self, key: bytes) -> bool:
         event = current_event()
-        if event is not None:
+        partition_from_message = (
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
+        )
+        if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
             value = db.get(key)

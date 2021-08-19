@@ -519,7 +519,7 @@ def test_label(app):
 def test_iter_raises(app):
     with pytest.raises(NotImplementedError):
         for _ in new_stream(app):
-            assert False
+            raise AssertionError()
 
 
 def test_derive_topic_from_nontopic_channel_raises(app):

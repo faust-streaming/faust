@@ -2,6 +2,8 @@ black
 isort
 autoflake
 flake8
+flake8-bugbear
+flake8-comprehensions
 hypothesis>=3.31
 freezegun>=0.3.11
 pytest-aiofiles>=0.2.0
@@ -25,3 +27,4 @@ wheel
 -r extras/statsd.txt
 -r extras/yaml.txt
 -r extras/prometheus.txt
+-r extras/orjson.txt

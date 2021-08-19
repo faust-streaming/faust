@@ -1,10 +1,18 @@
 import asyncio
+import json
 
 import pytest
 from mode.utils.mocks import AsyncMock, Mock
 
+from faust import Record
 from faust.agents.models import ReqRepResponse
 from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
+
+
+class Account(Record, serializer="json"):
+    id: str
+    name: str
+    active: bool = True
 
 
 def test_ReplyPromise():
@@ -207,9 +215,17 @@ class Test_ReplyConsumer:
 
     @pytest.mark.asyncio
     async def test_drain_replies(self, *, c):
+        an_account = Account(id="1", name="aName", active=False)
         responses = [
             ReqRepResponse(key="key1", value="value1", correlation_id="id1"),
             ReqRepResponse(key="key2", value="value2", correlation_id="id2"),
+            ReqRepResponse.from_data(
+                json.loads(
+                    ReqRepResponse(
+                        key="key3", value=an_account, correlation_id="id3"
+                    ).dumps()
+                )
+            ),
         ]
         channel = Mock(
             stream=Mock(return_value=self._response_stream(responses)),
@@ -217,14 +233,17 @@ class Test_ReplyConsumer:
         p1 = Mock()
         p2 = Mock()
         p3 = Mock()
+        p4 = Mock()
         c._waiting["id1"] = {p1, p2}
         c._waiting["id2"] = {p3}
+        c._waiting["id3"] = {p4}
 
         await c._drain_replies(channel)
 
         p1.fulfill.assert_called_once_with("id1", "value1")
         p2.fulfill.assert_called_once_with("id1", "value1")
         p3.fulfill.assert_called_once_with("id2", "value2")
+        p4.fulfill.assert_called_once_with("id3", an_account)
 
     async def _response_stream(self, responses):
         for response in responses:
