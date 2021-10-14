@@ -84,3 +84,20 @@ class Test_Router:
         response = await router.route_req("foo", "k", web, request)
         assert response is web.text.return_value
         web.text.assert_called_once_with(b"foobar", content_type=ANY, status=ANY)
+
+    @pytest.mark.asyncio
+    @pytest.mark.http_session(text=b"foobar")
+    async def test_route_req_method(self, *, router, app, mock_http_client):
+        app.conf.canonical_url = URL("http://ge.example.com:8181")
+        web = Mock(name="web")
+        request = Mock(name="request")
+        request_method = "POST"
+        routed_url = "http://el.example.com"
+        routed_port = 8181
+        request.method = request_method
+        app.router.key_store = Mock()
+        app.router.key_store.return_value = URL(f"{routed_url}:{routed_port}")
+        await router.route_req("foo", "k", web, request)
+        mock_http_client.request.assert_called_once_with(
+            request_method, request.url.with_host(routed_url).with_port(routed_port)
+        )
