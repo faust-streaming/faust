@@ -71,7 +71,7 @@ class Test_Store:
         assert not store.data
 
     @pytest.mark.asyncio
-    async def test_apply_changelog_batch__different_partitions_repartition(
+    async def test_apply_changelog_batch__different_partitions_repartition_single(
         self, *, store
     ):
         self.test_apply_changelog_batch__different_partitions(store=store)
@@ -80,6 +80,17 @@ class Test_Store:
 
         assert len(store.data) == 1
         assert len(store._key_partition) == 1
+
+    @pytest.mark.asyncio
+    async def test_apply_changelog_batch__different_partitions_repartition_multi(
+        self, *, store
+    ):
+        self.test_apply_changelog_batch__different_partitions(store=store)
+
+        await store.on_recovery_completed({TP("foo", 0), TP("foo", 1)}, set())
+
+        assert len(store.data) == 2
+        assert len(store._key_partition) == 2
 
     def mock_event_to_key_value(self, key=b"key", value=b"value", partition=0):
         event = self.mock_event(key=key, value=value, partition=partition)
