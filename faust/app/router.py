@@ -39,6 +39,10 @@ class Router(RouterT):
         """Return metadata stored for all tables in the partition assignor."""
         return self._assignor.tables_metadata()
 
+    def external_topics_metadata(self) -> HostToPartitionMap:
+        """Return metadata stored for all external topics in the partition assignor."""
+        return self._assignor.external_topics_metadata()
+
     @classmethod
     def _get_table_topic(cls, table: CollectionT) -> str:
         return table.changelog_topic.get_topic_name()
@@ -66,6 +70,12 @@ class Router(RouterT):
             dest_url: URL = app.router.key_store(table_name, key)
         except KeyError:
             raise ServiceUnavailable()
+        return await self._route_req(dest_url,web,request)
+
+    async def _route_req(
+        self, dest_url: URL, web: Web, request: Request
+    ):
+        app = self.app
         dest_ident = (host, port) = self._urlident(dest_url)
         if dest_ident == self._urlident(app.conf.canonical_url):
             raise SameNode()
@@ -76,6 +86,26 @@ class Router(RouterT):
                 content_type=response.content_type,
                 status=response.status,
             )
+
+    async def route_topic_req(
+        self, topic: CollectionT, key: K, web: Web, request: Request
+    ) -> Response:
+        """Route request to a worker that processes the partition with the given key.
+
+        Arguments:
+            topic_name: Name of the topic.
+            key: The key that we want.
+            web: The currently sued web driver,
+            request: The web request currently being served.
+        """
+        
+        try:
+            topic_name = topic.topics[0]
+            k = topic.prepare_key(key, None)[0]
+            dest_url: URL = self._assignor.external_key_store(topic_name, k)
+        except KeyError:
+            raise ServiceUnavailable()
+        return await self._route_req(dest_url,web,request)
 
     def _urlident(self, url: URL) -> Tuple[str, int]:
         return (
