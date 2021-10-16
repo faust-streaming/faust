@@ -16,6 +16,7 @@ class TableList(web.View):
         router = self.app.router
         return self.json(router.tables_metadata())
 
+
 @blueprint.route("/topics", name="list")
 class TopicList(web.View):
     """List routes for all external topics."""
@@ -24,6 +25,7 @@ class TopicList(web.View):
         """Return JSON response with list of all table routes."""
         router = self.app.router
         return self.json(router.external_topics_metadata())
+
 
 @blueprint.route("/{name}/", name="detail")
 class TableDetail(web.View):

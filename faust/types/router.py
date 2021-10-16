@@ -6,8 +6,8 @@ from yarl import URL
 
 from . import web
 from .assignor import HostToPartitionMap
-from .topics import TopicT
 from .core import K
+from .topics import TopicT
 
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT

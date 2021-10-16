@@ -1354,7 +1354,6 @@ class App(AppT, Service):
 
         return _decorator
 
-
     def topic_route(
         self,
         topic: CollectionT,
