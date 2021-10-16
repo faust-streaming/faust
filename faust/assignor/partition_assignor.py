@@ -50,7 +50,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
     """PartitionAssignor handles internal topic creation.
 
     Further, this assignor needs to be sticky and potentially redundant
-    In addition, it tracks external topic assignments as well (mainly to support topic routes)
+    In addition, it tracks external topic assignments as well (to support topic routes)
 
     Notes:
         Interface copied from :mod:`kafka.coordinator.assignors.abstract`.
@@ -131,9 +131,6 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         metadata = cast(
             ClientMetadata, ClientMetadata.loads(self._decompress(assignment.user_data))
         )
-        print("-------------------------")
-        print(assignment)
-        print(self._decompress(assignment.user_data))
         self._assignment = metadata.assignment
         self._topic_groups = dict(metadata.topic_groups)
         self._active_tps = self._assignment.active_tps
@@ -400,7 +397,9 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
     ) -> HostToPartitionMap:
         topics = self._table_manager.changelog_topics
         return {
-            self._member_urls[client]: self._non_table_topics_filtered(assignment.actives, topics)
+            self._member_urls[client]: self._non_table_topics_filtered(
+                assignment.actives, topics
+            )
             for client, assignment in assignments.items()
         }
 

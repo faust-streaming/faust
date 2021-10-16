@@ -61,9 +61,7 @@ class Router(RouterT):
     def _get_table(self, name: str) -> CollectionT:
         return self.app.tables[name]
 
-    async def _route_req(
-        self, dest_url: URL, web: Web, request: Request
-    ):
+    async def _route_req(self, dest_url: URL, web: Web, request: Request) -> Response:
         app = self.app
         dest_ident = (host, port) = self._urlident(dest_url)
         if dest_ident == self._urlident(app.conf.canonical_url):
@@ -92,7 +90,8 @@ class Router(RouterT):
             dest_url: URL = app.router.key_store(table_name, key)
         except KeyError:
             raise ServiceUnavailable()
-        return await self._route_req(dest_url,web,request)
+
+        return await self._route_req(dest_url, web, request)
 
     async def route_topic_req(
         self, topic: TopicT, key: K, web: Web, request: Request
@@ -110,7 +109,8 @@ class Router(RouterT):
             dest_url: URL = app.router.external_topic_key_store(topic, key)
         except KeyError:
             raise ServiceUnavailable()
-        return await self._route_req(dest_url,web,request)
+
+        return await self._route_req(dest_url, web, request)
 
     def _urlident(self, url: URL) -> Tuple[str, int]:
         return (
