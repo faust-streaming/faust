@@ -943,11 +943,11 @@ class Test_App:
                 async def view(self, request):
                     ...
 
-    def test_topic_route__missing_param(self, *, app):
-        topic = app.topic("foo")
+    def test_table_route__missing_param(self, *, app):
+        table = app.Table("foo")
         with pytest.raises(TypeError):
 
-            @app.topic_route(topic)
+            @app.table_route(table)
             async def view(self, request):
                 ...
 
