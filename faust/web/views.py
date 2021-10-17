@@ -42,6 +42,7 @@ class View:
     view_path: str
 
     methods: Mapping[str, Callable[[Request], Awaitable]]
+    base_methods: Mapping[str, Callable[[Request], Awaitable]]
 
     @classmethod
     def from_handler(cls, fun: ViewHandlerFun) -> Type["View"]:
@@ -71,11 +72,29 @@ class View:
             "options": self.options,
             "search": self.search,
         }
+
         self.__post_init__()
 
     def __post_init__(self) -> None:
         """Override this to add custom initialization to your view."""
         ...
+
+    def get_methods(self):
+        methods = []
+        base_methods = {
+            "head": View.head,
+            "get": View.get,
+            "post": View.post,
+            "patch": View.patch,
+            "delete": View.delete,
+            "put": View.put,
+            "options": View.options,
+            "search": View.search,
+        }
+        for method_name, method in self.methods.items():
+            if method.__code__ is not base_methods[method_name].__code__:
+                methods.append(method_name.upper())
+        return(methods)
 
     async def __call__(self, request: Any) -> Any:
         """Perform HTTP request."""
