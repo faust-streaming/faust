@@ -47,8 +47,14 @@ class TableView(web.View):
 
 @blueprint.route("/", name="list")
 class TableList(TableView):
-    """List available table names."""
-
+    """
+    ---
+    description: List available table names.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with a list of available table names."""
         return self.json([self.table_json(table) for table in self.app.tables.values()])
@@ -56,8 +62,19 @@ class TableList(TableView):
 
 @blueprint.route("/{name}/", name="detail")
 class TableDetail(TableView):
-    """Get details for table by name."""
-
+    """
+    ---
+    description: Get details for table by name.
+    tags:
+    - Faust
+    parameters:
+    - in: path
+      name: name
+      type: string
+      required: true
+    produces:
+    - application/json
+    """
     async def get(self, request: web.Request, name: str) -> web.Response:
         """Return JSON response with table information."""
         table = self.get_table_or_404(name)
@@ -66,8 +83,23 @@ class TableDetail(TableView):
 
 @blueprint.route("/{name}/{key}/", name="key-detail")
 class TableKeyDetail(TableView):
-    """List information about key."""
-
+    """
+    ---
+    description: List information about key.
+    tags:
+    - Faust
+    parameters:
+    - in: path
+      name: name
+      type: string
+      required: true
+    - in: path
+      name: key
+      type: string
+      required: true
+    produces:
+    - application/json
+    """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
