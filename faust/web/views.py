@@ -8,6 +8,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Type,
     Union,
     cast,
@@ -79,8 +80,9 @@ class View:
         """Override this to add custom initialization to your view."""
         ...
 
-    def get_methods(self):
-        methods = []
+    def get_methods(self) -> Set:
+        """Return the supported methods for this view"""
+        methods = set({"HEAD"})
         base_methods = {
             "head": View.head,
             "get": View.get,
@@ -93,8 +95,8 @@ class View:
         }
         for method_name, method in self.methods.items():
             if method.__code__ is not base_methods[method_name].__code__:
-                methods.append(method_name.upper())
-        return(methods)
+                methods.add(method_name.upper())
+        return methods
 
     async def __call__(self, request: Any) -> Any:
         """Perform HTTP request."""

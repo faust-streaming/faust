@@ -234,9 +234,7 @@ class Web(base.Web):
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
             for method in handler.get_methods():
-                self.web_app.router.add_route(
-                    method, pattern, async_handler
-                )
+                self.web_app.router.add_route(method, pattern, async_handler)
 
     def _wrap_into_asyncdef(self, handler: Callable) -> Callable:
         # get rid of pesky "DeprecationWarning: Bare functions are
@@ -246,6 +244,7 @@ class Web(base.Web):
         # To avoid that we just wrap it in an `async def` function
         async def _dispatch(request: base.Request) -> base.Response:
             return await handler(request)
+
         _dispatch.__doc__ = handler.__doc__
         return _dispatch
 

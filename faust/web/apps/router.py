@@ -17,6 +17,7 @@ class TableList(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with list of all table routes."""
         router = self.app.router
@@ -33,6 +34,7 @@ class TopicList(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with list of all table routes."""
         router = self.app.router
@@ -54,6 +56,7 @@ class TableDetail(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request, name: str) -> web.Response:
         """Return JSON response with table metadata."""
         router = self.app.router
@@ -79,6 +82,7 @@ class TableKeyDetail(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request, name: str, key: str) -> web.Response:
         """Return JSON response after looking up the route of a table key.
 

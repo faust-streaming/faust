@@ -41,8 +41,8 @@ class Test_View:
         }
 
     def test_get_methods(self, view):
-        assert view.get_methods() == ["GET"]
-    
+        assert view.get_methods() == set({"GET", "HEAD"})
+
     @pytest.mark.parametrize(
         "method",
         [

@@ -18,6 +18,7 @@ class Graph(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request) -> web.Response:
         """Draw image of the services running in this worker."""
         try:

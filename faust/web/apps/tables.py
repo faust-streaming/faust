@@ -55,6 +55,7 @@ class TableList(TableView):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with a list of available table names."""
         return self.json([self.table_json(table) for table in self.app.tables.values()])
@@ -75,6 +76,7 @@ class TableDetail(TableView):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request, name: str) -> web.Response:
         """Return JSON response with table information."""
         table = self.get_table_or_404(name)
@@ -100,6 +102,7 @@ class TableKeyDetail(TableView):
     produces:
     - application/json
     """
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 

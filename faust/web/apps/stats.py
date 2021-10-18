@@ -23,6 +23,7 @@ class Stats(web.View):
     produces:
     - application/json
     """
+
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with sensor information."""
         return self.json(
