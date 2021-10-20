@@ -249,6 +249,8 @@ class AeroSpikeStore(base.SerializedStore):
                 f_tries -= 1
         try:
             return fun(*args, **kwargs)
+        except RecordNotFound as ex:
+            raise ex
         except Exception as ex:
             self.log.error(
                 f"FaustAerospikeException Error in aerospike "
