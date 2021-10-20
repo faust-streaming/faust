@@ -24,7 +24,7 @@ else:
 
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    import aerospike.exception.RecordNotFound as RecordNotFound
+    import aerospike.exception.RecordNotFound
 else:
 
     class RecordNotFound(Exception):  # noqa
@@ -95,7 +95,7 @@ class AeroSpikeStore(base.SerializedStore):
             if bins:
                 return bins[self.BIN_KEY]
             return None
-        except RecordNotFound as ex:
+        except aerospike.exception.RecordNotFound as ex:
             self.log.debug(f"key not found {key} exception {ex}")
             raise KeyError(f"key not found {key}")
         except Exception as ex:
@@ -131,7 +131,7 @@ class AeroSpikeStore(base.SerializedStore):
         try:
             key = (self.namespace, self.table_name, key)
             self.aerospike_fun_call_with_retry(fun=self.client.remove, key=key)
-        except RecordNotFound as ex:
+        except aerospike.exception.RecordNotFound as ex:
             self.log.debug(
                 f"Error in delete for table {self.table_name} exception {ex} key {key}"
             )
@@ -242,14 +242,14 @@ class AeroSpikeStore(base.SerializedStore):
         while f_tries > 1:
             try:
                 return fun(*args, **kwargs)
-            except RecordNotFound as ex:
+            except aerospike.exception.RecordNotFound as ex:
                 raise ex
             except Exception:
                 time.sleep(f_delay)
                 f_tries -= 1
         try:
             return fun(*args, **kwargs)
-        except RecordNotFound as ex:
+        except aerospike.exception.RecordNotFound as ex:
             raise ex
         except Exception as ex:
             self.log.error(
