@@ -122,7 +122,8 @@ class AeroSpikeStore(base.SerializedStore):
 
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in set for table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in set for "
+                f"table {self.table_name} exception {ex} key {key}"
             )
             raise ex
 
@@ -136,7 +137,8 @@ class AeroSpikeStore(base.SerializedStore):
             )
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in delete for table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in delete for "
+                f"table {self.table_name} exception {ex} key {key}"
             )
             raise ex
 
@@ -151,7 +153,8 @@ class AeroSpikeStore(base.SerializedStore):
                 yield result[0][2]
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _iterkeys for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error in _iterkeys "
+                f"for table {self.table_name} exception {ex}"
             )
             raise ex
 
@@ -170,7 +173,9 @@ class AeroSpikeStore(base.SerializedStore):
                     yield None
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _itervalues for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error "
+                f"in _itervalues for table {self.table_name}"
+                f" exception {ex}"
             )
             raise ex
 
@@ -189,7 +194,8 @@ class AeroSpikeStore(base.SerializedStore):
                 yield key, bins
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _iteritems for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error in _iteritems "
+                f"for table {self.table_name} exception {ex}"
             )
             raise ex
 
@@ -211,7 +217,8 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _contains for table {self.table_name} exception "
+                f"FaustAerospikeException Error in _contains for table "
+                f"{self.table_name} exception "
                 f"{ex} key {key}"
             )
             raise ex
@@ -244,7 +251,9 @@ class AeroSpikeStore(base.SerializedStore):
             return fun(*args, **kwargs)
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in aerospike operation for table {self.table_name} exception {ex} after retries"
+                f"FaustAerospikeException Error in aerospike "
+                f"operation for table {self.table_name} "
+                f"exception {ex} after retries"
             )
             if self.app.conf.crash_app_on_aerospike_exception:
                 self.app._crash(

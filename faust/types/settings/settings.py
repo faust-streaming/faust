@@ -1389,8 +1389,8 @@ class Settings(base.SettingsRegistry):
     def aerospike_retries_on_exception(self) -> bool:
         """Number of retries to aerospike on a runtime error from the aerospike client.
 
-        Set this to the number of retries using the aerospike client on a runtime Exception
-        thrown by the client
+        Set this to the number of retries using the aerospike client on a runtime
+        Exception thrown by the client
         """
 
     @sections.Stream.setting(
@@ -1400,10 +1400,11 @@ class Settings(base.SettingsRegistry):
         default=1,
     )
     def aerospike_sleep_seconds_between_retries_on_exception(self) -> bool:
-        """Seconds to sleep between retries to aerospike on a runtime error from the aerospike client.
+        """Seconds to sleep between retries to aerospike on a runtime error from
+        the aerospike client.
 
-        Set this to the sleep in seconds between retries using the aerospike client on a runtime Exception
-        thrown by the client
+        Set this to the sleep in seconds between retries using the aerospike
+        client on a runtime Exception thrown by the client
         """
 
     @sections.RPC.setting(
