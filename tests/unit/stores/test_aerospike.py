@@ -57,6 +57,9 @@ class TestAerospikeStore:
             )
             store.namespace = "test_ns"
             store.client = MagicMock()
+            store.app.conf.aerospike_sleep_seconds_between_retries_on_exception = 0
+            store.app.conf.aerospike_retries_on_exception = 2
+            store.app.conf.crash_app_on_aerospike_exception = True
             return store
 
     def test_get_correct_value(self, store):
