@@ -99,6 +99,10 @@ class worker(AppCommand):
             self.app.conf.web_host = web_host
         if web_transport is not None:
             self.app.conf.web_transport = web_transport
+        if web_port is not None or web_host is not None:
+            self.app.conf.canonical_url = (
+                f"http://{self.app.conf.web_host}:{self.app.conf.web_port}"
+            )
 
     @property
     def _Worker(self) -> Type[Worker]:
