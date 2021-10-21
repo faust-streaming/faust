@@ -141,7 +141,6 @@ class Channel(ChannelT[T]):
                 maxsize = self.app.conf.stream_buffer_maxsize
             self._queue = self.app.FlowControlQueue(
                 maxsize=maxsize,
-                loop=self.loop,
                 clear_on_resume=True,
             )
         return self._queue

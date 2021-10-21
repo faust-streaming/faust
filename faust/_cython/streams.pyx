@@ -84,7 +84,7 @@ cdef class StreamIterator:
         event = None
 
         while value is None and event is None:
-            await sleep(0, loop=self.loop)
+            await sleep(0)
             need_slow_get, channel_value = self._try_get_quick_value()
             if need_slow_get:
                 channel_value = await self.chan_slow_get()

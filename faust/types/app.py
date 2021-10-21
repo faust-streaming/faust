@@ -479,7 +479,6 @@ class AppT(ServiceT):
         maxsize: int = None,
         *,
         clear_on_resume: bool = False,
-        loop: asyncio.AbstractEventLoop = None
     ) -> ThrowableQueue:
         ...
 
