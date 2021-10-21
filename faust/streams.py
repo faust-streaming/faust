@@ -896,7 +896,6 @@ class Stream(StreamT[T_co], Service):
 
     async def _py_aiter(self) -> AsyncIterator[T_co]:
         self._finalized = True
-        loop = self.loop
         started_by_aiter = await self.maybe_start()
         on_merge = self.on_merge
         on_stream_event_out = self._on_stream_event_out
