@@ -141,7 +141,7 @@ class BootStrategyT:
         enable_kafka: bool = True,
         enable_kafka_producer: bool = None,
         enable_kafka_consumer: bool = None,
-        enable_sensors: bool = True
+        enable_sensors: bool = True,
     ) -> None:
         ...
 
@@ -248,7 +248,7 @@ class AppT(ServiceT):
         self,
         *extra_modules: str,
         categories: Iterable[str] = ("a", "b", "c"),
-        ignore: Iterable[Any] = ("foo", "bar")
+        ignore: Iterable[Any] = ("foo", "bar"),
     ) -> None:
         ...
 
@@ -273,7 +273,7 @@ class AppT(ServiceT):
         maxsize: int = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: asyncio.AbstractEventLoop = None
+        loop: asyncio.AbstractEventLoop = None,
     ) -> TopicT:
         ...
 
@@ -285,7 +285,7 @@ class AppT(ServiceT):
         key_type: _ModelArg = None,
         value_type: _ModelArg = None,
         maxsize: int = None,
-        loop: asyncio.AbstractEventLoop = None
+        loop: asyncio.AbstractEventLoop = None,
     ) -> ChannelT:
         ...
 
@@ -300,7 +300,7 @@ class AppT(ServiceT):
         sink: Iterable[SinkT] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Callable[[AgentFun[_T]], AgentT[_T]]:
         ...
 
@@ -329,7 +329,7 @@ class AppT(ServiceT):
         *,
         timezone: tzinfo = None,
         on_leader: bool = False,
-        traced: bool = True
+        traced: bool = True,
     ) -> Callable:
         ...
 
@@ -352,7 +352,7 @@ class AppT(ServiceT):
         window: WindowT = None,
         partitions: int = None,
         help: str = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -365,7 +365,7 @@ class AppT(ServiceT):
         window: WindowT = None,
         partitions: int = None,
         help: str = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -378,7 +378,7 @@ class AppT(ServiceT):
         partitions: int = None,
         start_manager: bool = False,
         help: str = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -391,7 +391,7 @@ class AppT(ServiceT):
         partitions: int = None,
         start_manager: bool = False,
         help: str = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -402,7 +402,7 @@ class AppT(ServiceT):
         *,
         base: Type[View] = View,
         cors_options: Mapping[str, ResourceOptions] = None,
-        name: str = None
+        name: str = None,
     ) -> Callable[[PageArg], Type[View]]:
         ...
 
@@ -414,7 +414,7 @@ class AppT(ServiceT):
         *,
         query_param: str = None,
         match_info: str = None,
-        exact_key: str = None
+        exact_key: str = None,
     ) -> ViewDecorator:
         ...
 
