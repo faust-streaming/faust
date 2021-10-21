@@ -45,7 +45,7 @@ class model(AppCommand):
         self.say(
             self.tabulate(
                 self.model_fields(model),
-                headers=[h for h in self.headers],
+                headers=self.headers,
                 title=self._name(model),
                 wrap_last_row=False,
             )
