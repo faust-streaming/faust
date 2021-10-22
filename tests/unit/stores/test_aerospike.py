@@ -1,9 +1,23 @@
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 import faust
 from faust.stores.aerospike import AeroSpikeStore
+
+try:
+    from aerospike.exception import RecordNotFound
+except ImportError:
+
+    class RecordNotFound(Exception):
+        ...
+
+    m1 = MagicMock()
+    m2 = MagicMock()
+    sys.modules["aerospike"] = m1
+    m1.exception = m2
+    m2.RecordNotFound = RecordNotFound
 
 
 class TestAerospikeStore:
@@ -45,6 +59,7 @@ class TestAerospikeStore:
 
     @pytest.fixture()
     def store(self):
+        sys.modules["aerospike"] = MagicMock()
         with patch("faust.stores.aerospike.aerospike", MagicMock()):
             options = {}
             options[AeroSpikeStore.HOSTS_KEY] = "localhost"
@@ -57,6 +72,9 @@ class TestAerospikeStore:
             )
             store.namespace = "test_ns"
             store.client = MagicMock()
+            store.app.conf.aerospike_sleep_seconds_between_retries_on_exception = 0
+            store.app.conf.aerospike_retries_on_exception = 2
+            store.app.conf.crash_app_on_aerospike_exception = True
             return store
 
     def test_get_correct_value(self, store):

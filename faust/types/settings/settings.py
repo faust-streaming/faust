@@ -1380,6 +1380,33 @@ class Settings(base.SettingsRegistry):
         client has to catch the Error and implement a dead letter queue
         """
 
+    @sections.Stream.setting(
+        params.Int,
+        version_introduced="0.6.10",
+        env_name="AEROSPIKE_RETRIES_ON_EXCEPTION",
+        default=60,
+    )
+    def aerospike_retries_on_exception(self) -> bool:
+        """Number of retries to aerospike on a runtime error from the aerospike client.
+
+        Set this to the number of retries using the aerospike client on a runtime
+        Exception thrown by the client
+        """
+
+    @sections.Stream.setting(
+        params.Int,
+        version_introduced="0.6.10",
+        env_name="AEROSPIKE_SLEEP_SECONDS_BETWEEN_RETRIES_ON_EXCEPTION",
+        default=1,
+    )
+    def aerospike_sleep_seconds_between_retries_on_exception(self) -> bool:
+        """Seconds to sleep between retries to aerospike on a runtime error from
+        the aerospike client.
+
+        Set this to the sleep in seconds between retries using the aerospike
+        client on a runtime Exception thrown by the client
+        """
+
     @sections.RPC.setting(
         params.Bool,
         env_name="APP_REPLY_CREATE_TOPIC",
