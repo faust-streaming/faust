@@ -1,3 +1,4 @@
+import time
 import typing
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
@@ -26,8 +27,8 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     import aerospike.exception.RecordNotFound
 else:
 
-    class RecordNotFound:  # noqa
-        """Dummy Client."""
+    class RecordNotFound(Exception):  # noqa
+        """Dummy Exception."""
 
 
 aerospike_client: Client = None
@@ -88,8 +89,9 @@ class AeroSpikeStore(base.SerializedStore):
 
     def _get(self, key: bytes) -> Optional[bytes]:
         key = (self.namespace, self.table_name, key)
+        fun = self.client.get
         try:
-            (key, meta, bins) = self.client.get(key=key)
+            (key, meta, bins) = self.aerospike_fun_call_with_retry(fun=fun, key=key)
             if bins:
                 return bins[self.BIN_KEY]
             return None
@@ -100,17 +102,15 @@ class AeroSpikeStore(base.SerializedStore):
             self.log.error(
                 f"Error in set for table {self.table_name} exception {ex} key {key}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _set(self, key: bytes, value: Optional[bytes]) -> None:
         try:
+            fun = self.client.put
             key = (self.namespace, self.table_name, key)
             vt = {self.BIN_KEY: value}
-            self.client.put(
+            self.aerospike_fun_call_with_retry(
+                fun=fun,
                 key=key,
                 bins=vt,
                 meta={"ttl": self.ttl},
@@ -119,55 +119,51 @@ class AeroSpikeStore(base.SerializedStore):
                     "key": aerospike.POLICY_KEY_SEND,
                 },
             )
+
         except Exception as ex:
             self.log.error(
-                f"Error in set for table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in set for "
+                f"table {self.table_name} exception {ex} key {key}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _del(self, key: bytes) -> None:
         try:
             key = (self.namespace, self.table_name, key)
-            self.client.remove(key=key)
+            self.aerospike_fun_call_with_retry(fun=self.client.remove, key=key)
         except aerospike.exception.RecordNotFound as ex:
-            self.log.warning(
+            self.log.debug(
                 f"Error in delete for table {self.table_name} exception {ex} key {key}"
             )
         except Exception as ex:
             self.log.error(
-                f"Error in delete for table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in delete for "
+                f"table {self.table_name} exception {ex} key {key}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _iterkeys(self) -> Iterator[bytes]:
         try:
-            scan: aerospike.Scan = self.client.scan(
-                namespace=self.namespace, set=self.table_name
+            fun = self.client.scan
+
+            scan: aerospike.Scan = self.aerospike_fun_call_with_retry(
+                fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
                 yield result[0][2]
         except Exception as ex:
             self.log.error(
-                f"Error in _iterkeys for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error in _iterkeys "
+                f"for table {self.table_name} exception {ex}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _itervalues(self) -> Iterator[bytes]:
         try:
-            scan: aerospike.Scan = self.client.scan(
-                namespace=self.namespace, set=self.table_name
+            fun = self.client.scan
+
+            scan: aerospike.Scan = self.aerospike_fun_call_with_retry(
+                fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
                 (key, meta, bins) = result
@@ -177,19 +173,17 @@ class AeroSpikeStore(base.SerializedStore):
                     yield None
         except Exception as ex:
             self.log.error(
-                f"Error in _itervalues for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error "
+                f"in _itervalues for table {self.table_name}"
+                f" exception {ex}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _iteritems(self) -> Iterator[Tuple[bytes, bytes]]:
         try:
-
-            scan: aerospike.Scan = self.client.scan(
-                namespace=self.namespace, set=self.table_name
+            fun = self.client.scan
+            scan: aerospike.Scan = self.aerospike_fun_call_with_retry(
+                fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
                 (key_data, meta, bins) = result
@@ -200,12 +194,9 @@ class AeroSpikeStore(base.SerializedStore):
                 yield key, bins
         except Exception as ex:
             self.log.error(
-                f"Error in _iteritems for table {self.table_name} exception {ex}"
+                f"FaustAerospikeException Error in _iteritems "
+                f"for table {self.table_name} exception {ex}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _size(self) -> int:
@@ -215,7 +206,9 @@ class AeroSpikeStore(base.SerializedStore):
         try:
             if self.app.conf.store_check_exists:
                 key = (self.namespace, self.table_name, key)
-                (key, meta) = self.client.exists(key=key)
+                (key, meta) = self.aerospike_fun_call_with_retry(
+                    fun=self.client.exists, key=key
+                )
                 if meta:
                     return True
                 else:
@@ -224,13 +217,10 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"Error in _contains for table {self.table_name} exception "
+                f"FaustAerospikeException Error in _contains for table "
+                f"{self.table_name} exception "
                 f"{ex} key {key}"
             )
-            if self.app.conf.crash_app_on_aerospike_exception:
-                self.app._crash(
-                    ex
-                )  # crash the app to prevent the offset from progressing
             raise ex
 
     def _clear(self) -> None:
@@ -245,3 +235,30 @@ class AeroSpikeStore(base.SerializedStore):
         This always returns :const:`None` when using the aerospike store.
         """
         return None
+
+    def aerospike_fun_call_with_retry(self, fun, *args, **kwargs):
+        f_tries = self.app.conf.aerospike_retries_on_exception
+        f_delay = self.app.conf.aerospike_sleep_seconds_between_retries_on_exception
+        while f_tries > 1:
+            try:
+                return fun(*args, **kwargs)
+            except aerospike.exception.RecordNotFound as ex:
+                raise ex
+            except Exception:
+                time.sleep(f_delay)
+                f_tries -= 1
+        try:
+            return fun(*args, **kwargs)
+        except aerospike.exception.RecordNotFound as ex:
+            raise ex
+        except Exception as ex:
+            self.log.error(
+                f"FaustAerospikeException Error in aerospike "
+                f"operation for table {self.table_name} "
+                f"exception {ex} after retries"
+            )
+            if self.app.conf.crash_app_on_aerospike_exception:
+                self.app._crash(
+                    ex
+                )  # crash the app to prevent the offset from progressing
+            raise ex

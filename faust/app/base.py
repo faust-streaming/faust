@@ -1433,7 +1433,7 @@ class App(AppT, Service):
         self.client_only = True
         await self.maybe_start()
         self.consumer.stop_flow()
-        await self.topics.wait_for_subscriptions()
+        await self.topics.maybe_wait_for_subscriptions()
         await self.topics.on_client_only_start()
         self.consumer.resume_flow()
         self.flow_control.resume()
