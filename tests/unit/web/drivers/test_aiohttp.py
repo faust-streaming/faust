@@ -292,6 +292,9 @@ class Test_Web:
 
     def test_route__with_cors_options(self, *, web):
         handler = Mock()
+        handler.get_methods = Mock(
+            name="get_methods", return_value=set({"GET", "PUT", "POST", "DELETE"})
+        )
         cors_options = {
             "http://example.com": ResourceOptions(
                 allow_credentials=True,

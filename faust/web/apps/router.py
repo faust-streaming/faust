@@ -24,7 +24,6 @@ class TableList(web.View):
         return self.json(router.tables_metadata())
 
 
-
 @blueprint.route("/{name}/", name="detail")
 class TableDetail(web.View):
     """

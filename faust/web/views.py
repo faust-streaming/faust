@@ -43,7 +43,6 @@ class View:
     view_path: str
 
     methods: Mapping[str, Callable[[Request], Awaitable]]
-    base_methods: Mapping[str, Callable[[Request], Awaitable]]
 
     @classmethod
     def from_handler(cls, fun: ViewHandlerFun) -> Type["View"]:
