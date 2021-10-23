@@ -2,7 +2,7 @@
 from faust import web
 from faust.web.exceptions import ServiceUnavailable
 
-__all__ = ["TableList", "TopicList", "TableDetail", "TableKeyDetail", "blueprint"]
+__all__ = ["TableList", "TableDetail", "TableKeyDetail", "blueprint"]
 
 blueprint = web.Blueprint("router")
 
@@ -23,22 +23,6 @@ class TableList(web.View):
         router = self.app.router
         return self.json(router.tables_metadata())
 
-
-@blueprint.route("/topics", name="list")
-class TopicList(web.View):
-    """
-    ---
-    description: List routes for all external topics.
-    tags:
-    - Faust
-    produces:
-    - application/json
-    """
-
-    async def get(self, request: web.Request) -> web.Response:
-        """Return JSON response with list of all table routes."""
-        router = self.app.router
-        return self.json(router.external_topics_metadata())
 
 
 @blueprint.route("/{name}/", name="detail")

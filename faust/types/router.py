@@ -7,7 +7,6 @@ from yarl import URL
 from . import web
 from .assignor import HostToPartitionMap
 from .core import K
-from .topics import TopicT
 
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
@@ -31,10 +30,6 @@ class RouterT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def external_topic_key_store(self, topic: TopicT, key: K) -> URL:
-        ...
-
-    @abc.abstractmethod
     def table_metadata(self, table_name: str) -> HostToPartitionMap:
         ...
 
@@ -43,17 +38,7 @@ class RouterT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def external_topics_metadata(self) -> HostToPartitionMap:
-        ...
-
-    @abc.abstractmethod
     async def route_req(
         self, table_name: str, key: K, web: web.Web, request: web.Request
-    ) -> web.Response:
-        ...
-
-    @abc.abstractmethod
-    async def route_topic_req(
-        self, topic: TopicT, key: K, web: web.Web, request: web.Request
     ) -> web.Response:
         ...
