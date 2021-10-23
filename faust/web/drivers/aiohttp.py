@@ -229,7 +229,7 @@ class Web(base.Web):
         """Add route for web view or handler."""
         async_handler = self._wrap_into_asyncdef(handler)
         if cors_options or self.cors_options:
-            for method in NON_OPTIONS_METHODS:
+            for method in NON_OPTIONS_METHODS & handler.get_methods():
                 r = self.web_app.router.add_route(method, pattern, async_handler)
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
