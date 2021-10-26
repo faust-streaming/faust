@@ -10,7 +10,14 @@ blueprint = web.Blueprint("graph")
 
 @blueprint.route("/", name="detail")
 class Graph(web.View):
-    """Render image from graph of running services."""
+    """
+    ---
+    description: Render image from graph of running services.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
 
     async def get(self, request: web.Request) -> web.Response:
         """Draw image of the services running in this worker."""
