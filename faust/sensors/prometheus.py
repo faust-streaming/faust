@@ -45,12 +45,36 @@ def setup_prometheus_sensors(
     registry: CollectorRegistry = REGISTRY,
     name_prefix: str = None,
 ) -> None:
+    """
+    A utility function which sets up prometheus and attaches the config to the app.
+
+    @param app: the faust app instance
+    @param pattern: the url pattern for prometheus
+    @param registry: the prometheus registry
+    @param name_prefix: the name prefix. Defaults to the app name
+    @return: None
+    """
     if prometheus_client is None:
         raise ImproperlyConfigured(
             "prometheus_client requires `pip install prometheus_client`."
         )
+    if name_prefix is None:
+        app_conf_name = app.conf.name
+        app.logger.info(
+            "Name prefix is not supplied. Using the name %s from App config.",
+            app_conf_name,
+        )
+        if "-" in app_conf_name:
+            name_prefix = app_conf_name.replace("-", "_")
+            app.logger.warning(
+                "App config name %s does not conform to"
+                " Prometheus naming conventions."
+                " Using %s as a name_prefix.",
+                app_conf_name,
+                name_prefix,
+            )
 
-    faust_metrics = FaustMetrics.create(registry, name_prefix or app.conf.name)
+    faust_metrics = FaustMetrics.create(registry, name_prefix)
     app.monitor = PrometheusMonitor(metrics=faust_metrics)
 
     @app.page(pattern)
