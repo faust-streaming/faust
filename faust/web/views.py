@@ -8,6 +8,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Type,
     Union,
     cast,
@@ -71,11 +72,30 @@ class View:
             "options": self.options,
             "search": self.search,
         }
+
         self.__post_init__()
 
     def __post_init__(self) -> None:
         """Override this to add custom initialization to your view."""
         ...
+
+    def get_methods(self) -> Set:
+        """Return the supported methods for this view"""
+        methods = set({"HEAD"})
+        base_methods = {
+            "head": View.head,
+            "get": View.get,
+            "post": View.post,
+            "patch": View.patch,
+            "delete": View.delete,
+            "put": View.put,
+            "options": View.options,
+            "search": View.search,
+        }
+        for method_name, method in self.methods.items():
+            if method.__code__ is not base_methods[method_name].__code__:
+                methods.add(method_name.upper())
+        return methods
 
     async def __call__(self, request: Any) -> Any:
         """Perform HTTP request."""
