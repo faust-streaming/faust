@@ -40,9 +40,9 @@ class agents(AppCommand):
     def agent_to_row(self, agent: AgentT) -> Sequence[str]:
         """Convert agent fields to terminal table row."""
         return [
-            self.bold_tail(self._name(agent)),
+            self._name(agent),
             self._topic(agent),
-            self.dark(self._help(agent)),
+            self._help(agent),
         ]
 
     def _name(self, agent: AgentT) -> str:
