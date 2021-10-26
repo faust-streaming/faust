@@ -50,6 +50,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
     """PartitionAssignor handles internal topic creation.
 
     Further, this assignor needs to be sticky and potentially redundant
+    In addition, it tracks external topic assignments as well (to support topic routes)
 
     Notes:
         Interface copied from :mod:`kafka.coordinator.assignors.abstract`.
@@ -59,9 +60,11 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
     _table_manager: TableManagerT
     _member_urls: MutableMapping[str, str]
     _changelog_distribution: HostToPartitionMap
+    _external_topic_distribution: HostToPartitionMap
     _active_tps: Set[TP]
     _standby_tps: Set[TP]
     _tps_url: MutableMapping[TP, str]
+    _external_tps_url: MutableMapping[TP, str]
     _topic_groups: MutableMapping[str, int]
 
     def __init__(self, app: AppT, replicas: int = 0) -> None:
@@ -70,9 +73,11 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         self._table_manager = self.app.tables
         self._assignment = ClientAssignment(actives={}, standbys={})
         self._changelog_distribution = {}
+        self._external_topic_distribution = {}
         self.replicas = replicas
         self._member_urls = {}
         self._tps_url = {}
+        self._external_tps_url = {}
         self._active_tps = set()
         self._standby_tps = set()
         self._topic_groups = {}
@@ -95,11 +100,26 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         }
 
     @property
+    def external_topic_distribution(self) -> HostToPartitionMap:
+        return self._external_topic_distribution
+
+    @external_topic_distribution.setter
+    def external_topic_distribution(self, value: HostToPartitionMap) -> None:
+        self._external_topic_distribution = value
+        self._external_tps_url = {
+            TP(topic, partition): url
+            for url, tps in self._external_topic_distribution.items()
+            for topic, partitions in tps.items()
+            for partition in partitions
+        }
+
+    @property
     def _metadata(self) -> ClientMetadata:
         return ClientMetadata(
             assignment=self._assignment,
             url=str(self._url),
             changelog_distribution=self.changelog_distribution,
+            external_topic_distribution=self.external_topic_distribution,
             topic_groups=self._topic_groups,
         )
 
@@ -116,6 +136,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         self._active_tps = self._assignment.active_tps
         self._standby_tps = self._assignment.standby_tps
         self.changelog_distribution = metadata.changelog_distribution
+        self.external_topic_distribution = metadata.external_topic_distribution
         a = sorted(assignment.assignment)
         b = sorted(self._assignment.kafka_protocol_assignment(self._table_manager))
         assert a == b, f"{a!r} != {b!r}"
@@ -278,9 +299,11 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         )
 
         changelog_distribution = self._get_changelog_distribution(assignments)
+        external_topic_distribution = self._get_external_topic_distribution(assignments)
         res = self._protocol_assignments(
             assignments,
             changelog_distribution,
+            external_topic_distribution,
             topic_to_group_id,
         )
         return res
@@ -312,6 +335,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
         self,
         assignments: ClientAssignmentMapping,
         cl_distribution: HostToPartitionMap,
+        tp_distribution: HostToPartitionMap,
         topic_groups: Mapping[str, int],
     ) -> MemberAssignmentMapping:
         return {
@@ -323,6 +347,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                         assignment=assignment,
                         url=self._member_urls[client],
                         changelog_distribution=cl_distribution,
+                        external_topic_distribution=tp_distribution,
                         topic_groups=topic_groups,
                     ).dumps(),
                 ),
@@ -348,12 +373,33 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
             if topic in topics
         }
 
+    @classmethod
+    def _non_table_topics_filtered(
+        cls, assignment: TopicToPartitionMap, topics: Set[str]
+    ) -> TopicToPartitionMap:
+        return {
+            topic: partitions
+            for topic, partitions in assignment.items()
+            if topic not in topics
+        }
+
     def _get_changelog_distribution(
         self, assignments: ClientAssignmentMapping
     ) -> HostToPartitionMap:
         topics = self._table_manager.changelog_topics
         return {
             self._member_urls[client]: self._topics_filtered(assignment.actives, topics)
+            for client, assignment in assignments.items()
+        }
+
+    def _get_external_topic_distribution(
+        self, assignments: ClientAssignmentMapping
+    ) -> HostToPartitionMap:
+        topics = self._table_manager.changelog_topics
+        return {
+            self._member_urls[client]: self._non_table_topics_filtered(
+                assignment.actives, topics
+            )
             for client, assignment in assignments.items()
         }
 
@@ -388,8 +434,14 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
     def tables_metadata(self) -> HostToPartitionMap:
         return self.changelog_distribution
 
+    def external_topics_metadata(self) -> HostToPartitionMap:
+        return self.external_topic_distribution
+
     def key_store(self, topic: str, key: bytes) -> URL:
         return URL(self._tps_url[self.app.producer.key_partition(topic, key)])
+
+    def external_key_store(self, topic: str, key: bytes) -> URL:
+        return URL(self._external_tps_url[self.app.producer.key_partition(topic, key)])
 
     def is_active(self, tp: TP) -> bool:
         return tp in self._active_tps
