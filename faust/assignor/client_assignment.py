@@ -149,6 +149,7 @@ class ClientMetadata(
     assignment: ClientAssignment
     url: str
     changelog_distribution: HostToPartitionMap
+    external_topic_distribution: HostToPartitionMap
     topic_groups: Mapping[str, int] = cast(Mapping[str, int], None)
 
     def __post_init__(self) -> None:

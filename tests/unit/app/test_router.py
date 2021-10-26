@@ -41,6 +41,19 @@ class Test_Router:
             table.changelog_topic.prepare_key.return_value,
         )
 
+    def test_external_topic_key_store(self, *, router, app, assignor):
+        topic = Mock()
+        prepare_key = topic.prepare_key
+        prepare_key.return_value = [Mock(name="v1"), Mock(name="v2")]
+        assert (
+            router.external_topic_key_store(topic, "k")
+            is assignor.external_key_store.return_value
+        )
+        assignor.external_key_store.assert_called_once_with(
+            topic.get_topic_name(),
+            topic.prepare_key.return_value[0],
+        )
+
     def test_table_metadata(self, *, router, app, assignor):
         table = app.tables["foo"] = Mock(name="table")
         ret = router.table_metadata("foo")
@@ -53,6 +66,11 @@ class Test_Router:
         res = router.tables_metadata()
         assert res is assignor.tables_metadata.return_value
         assignor.tables_metadata.assert_called_once_with()
+
+    def test_external_topics_metadata(self, *, router, assignor):
+        res = router.external_topics_metadata()
+        assert res is assignor.external_topics_metadata.return_value
+        assignor.external_topics_metadata.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_route_req__unavail(self, *, router, app):
@@ -101,3 +119,17 @@ class Test_Router:
         mock_http_client.request.assert_called_once_with(
             request_method, request.url.with_host(routed_url).with_port(routed_port)
         )
+
+    @pytest.mark.asyncio
+    @pytest.mark.http_session(text=b"foobar")
+    async def test_topic_route_req(self, *, router, app, mock_http_client):
+        app.conf.canonical_url = URL("http://ge.example.com:8181")
+        web = Mock(name="web")
+        request = Mock(name="request")
+        app.router.external_topic_key_store = Mock()
+        app.router.external_topic_key_store.return_value = URL(
+            "http://el.example.com:8181"
+        )
+        response = await router.route_topic_req("foo", "k", web, request)
+        assert response is web.text.return_value
+        web.text.assert_called_once_with(b"foobar", content_type=ANY, status=ANY)

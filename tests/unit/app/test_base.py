@@ -951,6 +951,89 @@ class Test_App:
             async def view(self, request):
                 ...
 
+    @pytest.mark.asyncio
+    async def test_topic_route__query_param(self, *, app):
+        topic = app.topic("foo")
+        view = Mock()
+        request = Mock()
+        app.router.route_topic_req = AsyncMock()
+
+        @app.topic_route(topic, query_param="q")
+        async def routed(self, request):
+            return 42
+
+        request.query = {"q": "KEY"}
+
+        ret = await routed(view, request)
+        assert ret is app.router.route_topic_req.coro.return_value
+
+        app.router.route_topic_req.coro.side_effect = SameNode()
+        ret = await routed(view, request)
+        assert ret == 42
+
+    @pytest.mark.asyncio
+    async def test_topic_route__match_info(self, *, app):
+        topic = app.topic("foo")
+        view = Mock()
+        request = Mock()
+        app.router.route_topic_req = AsyncMock()
+
+        @app.topic_route(topic, match_info="q")
+        async def routed(self, request):
+            return 42
+
+        request.match_info = {"q": "KEY"}
+
+        ret = await routed(view, request)
+        assert ret is app.router.route_topic_req.coro.return_value
+
+        app.router.route_topic_req.coro.side_effect = SameNode()
+        ret = await routed(view, request)
+        assert ret == 42
+
+    @pytest.mark.asyncio
+    async def test_topic_route__exact_key(self, *, app):
+        topic = app.topic("foo")
+        view = Mock()
+        request = Mock()
+        app.router.route_topic_req = AsyncMock()
+
+        @app.topic_route(topic, exact_key="active")
+        async def routed(self, request):
+            return 42
+
+        ret = await routed(view, request)
+        assert ret is app.router.route_topic_req.coro.return_value
+
+        app.router.route_topic_req.coro.side_effect = SameNode()
+        ret = await routed(view, request)
+        assert ret == 42
+
+    def test_topic_route__compat_shard_param(self, *, app):
+        topic = app.topic("foo")
+        with pytest.warns(DeprecationWarning):
+
+            @app.topic_route(topic, shard_param="x")
+            async def view(self, request):
+                ...
+
+    def test_topic_route__query_param_and_shard_param(self, *, app):
+        topic = app.topic("foo")
+        with pytest.warns(DeprecationWarning):
+            with pytest.raises(TypeError):
+
+                @app.topic_route(topic, query_param="q", shard_param="x")
+                async def view(self, request):
+                    ...
+
+    def test_topic_route__missing_param(self, *, app):
+        topic = app.topic("foo")
+        with pytest.raises(TypeError):
+
+            @app.topic_route(topic)
+            async def view(self, request):
+                ...
+
     def test_command(self, *, app):
         @app.command()
         async def foo():
