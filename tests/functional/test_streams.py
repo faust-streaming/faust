@@ -223,19 +223,16 @@ async def test_stream_filter__async(app):
 
 
 @pytest.mark.asyncio
-async def test_stream_filter_acks_filtered_out_messages(app):
+async def test_stream_filter_acks_filtered_out_messages(app, event_loop):
     """
     Test the filter function acknowledges the filtered out
      messages regardless of the ack setting.
     """
-    i = 0
     values = [1000, 3000, 99, 5000, 3, 9999]
-    async with app.stream(values).noack().filter(lambda x: x > 1000) as s:
-        async for value in s:
-            i += 1
-            assert value > 1000
-    assert s.events_total == len(values)
-    assert i == 3
+    async with app.stream(values).filter(lambda x: x > 1000) as stream:
+        async for event in stream.events():
+            assert event.value > 1000
+    assert len(app.consumer.unacked) == 0
 
 
 @pytest.mark.asyncio

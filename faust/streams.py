@@ -1007,9 +1007,9 @@ class Stream(StreamT[T_co], Service):
                         # otherwise the lag would increase
                         value = skipped_value
 
-                self.events_total += 1
                 try:
                     if value is not skipped_value:
+                        self.events_total += 1
                         yield value
                 finally:
                     self.current_event = None
