@@ -22,12 +22,6 @@ def test_tabulated(faust):
     assert b"@app.mul" in stdout
 
 
-def test_colors(faust_color):
-    exitcode, stdout, stderr = faust_color("agents", "--local")
-    assert not exitcode
-    assert b"@app.mul" in stdout
-
-
 def test_json_no_local(faust_json):
     exitcode, agents, stderr = faust_json("agents")
     assert not exitcode

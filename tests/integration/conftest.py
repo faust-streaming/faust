@@ -29,10 +29,8 @@ CommandReturns = Tuple[int, str, str]
 
 
 def _create_faust_cli(
-    executable: Path, *partial_args: str, color: bool = False, json: bool = False
+    executable: Path, *partial_args: str, json: bool = False
 ) -> Callable[..., CommandReturns]:
-    if not color:
-        partial_args += ("--no-color",)
     if json:
         partial_args += ("--json",)
 
@@ -62,8 +60,3 @@ def faust(main_path: Path) -> Callable[..., CommandReturns]:
 @pytest.fixture
 def faust_json(main_path: Path):
     return _create_faust_cli(main_path, json=True)
-
-
-@pytest.fixture
-def faust_color(main_path: Path) -> Callable[..., CommandReturns]:
-    return _create_faust_cli(main_path, color=True)

@@ -20,12 +20,6 @@ def test_tabulated(faust):
     assert b"Arena" in stdout
 
 
-def test_colors(faust_color):
-    exitcode, stdout, stderr = faust_color("models", "--builtins")
-    assert not exitcode
-    assert b"Point" in stdout
-
-
 def test_json_no_local(faust_json):
     exitcode, models, stderr = faust_json("models")
     assert not exitcode

@@ -45,7 +45,7 @@ class model(AppCommand):
         self.say(
             self.tabulate(
                 self.model_fields(model),
-                headers=[self.bold(h) for h in self.headers],
+                headers=self.headers,
                 title=self._name(model),
                 wrap_last_row=False,
             )
@@ -69,7 +69,7 @@ class model(AppCommand):
         return [
             field.field,
             self._type(field.type),
-            self.dark("*" if field.required else repr(field.default)),
+            "*" if field.required else repr(field.default),
         ]
 
     def _type(self, typ: Any) -> str:
@@ -78,8 +78,8 @@ class model(AppCommand):
     def model_to_row(self, model: Type[ModelT]) -> Sequence[str]:
         """Convert model to terminal table row."""
         return [
-            self.bold_tail(self._name(model)),
-            self.dark(self._help(model)),
+            self._name(model),
+            self._help(model),
         ]
 
     def _name(self, model: Type[ModelT]) -> str:

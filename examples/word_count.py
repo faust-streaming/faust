@@ -24,12 +24,13 @@ async def shuffle_words(posts):
         for word in post.split():
             await count_words.send(key=word, value=word)
 
-
+last_count = {w:0 for w in WORDS}
 @app.agent(value_type=str)
 async def count_words(words):
     """Count words from blog post article body."""
     async for word in words:
         word_counts[word] += 1
+        last_count[word] = word_counts[word]
 
 
 @app.page('/count/{word}/')
@@ -39,6 +40,12 @@ async def get_count(web, request, word):
         word: word_counts[word],
     })
 
+@app.page('/last/{word}/')
+@app.topic_route(topic=posts_topic, match_info='word')
+async def get_last(web, request, word):
+    return web.json({
+        word: last_count,
+    })
 
 @app.task
 async def sender():
