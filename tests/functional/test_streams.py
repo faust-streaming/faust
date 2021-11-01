@@ -550,6 +550,126 @@ async def test_stop_stops_related_streams(app):
 
 
 @pytest.mark.asyncio
+async def test_noack_take(app):
+    async with new_stream(app).noack() as s:
+        assert s.enable_acks is False
+        await s.channel.send(value=1)
+        event = None
+        # noack_take returns an event instead of value
+        async for noack_value in s.noack_take(1, within=1):
+            assert noack_value[0].value == 1
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+
+        if not event.ack.called:
+            assert not event.message.acked
+            assert not event.message.refcount
+        assert s.enable_acks is False
+
+
+@pytest.mark.asyncio
+async def test_noack_take__10(app, loop):
+    async with new_stream(app).noack() as s:
+        assert s.enable_acks is False
+        for i in range(9):
+            await s.channel.send(value=i)
+
+        async def in_one_second_finalize():
+            await s.sleep(1.0)
+            await s.channel.send(value=9)
+            for i in range(10):
+                await s.channel.send(value=i + 10)
+
+        asyncio.ensure_future(in_one_second_finalize())
+
+        event = None
+        buffer_processor = s.noack_take(10, within=10.0)
+        async for noack_value in buffer_processor:
+            assert [nv.value for nv in noack_value] == list(range(10))
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+        async for noack_value in buffer_processor:
+            assert [nv.value for nv in noack_value] == list(range(10, 20))
+            assert s.enable_acks is False
+            break
+
+        try:
+            await buffer_processor.athrow(asyncio.CancelledError())
+        except asyncio.CancelledError:
+            pass
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+
+    if not event.ack.called:
+        assert not event.message.acked
+        assert not event.message.refcount
+    assert s.enable_acks is False
+
+
+@pytest.mark.asyncio
+async def test_noack_take__10_and_ack(app, loop):
+    async with new_stream(app).noack() as s:
+        assert s.enable_acks is False
+        for i in range(9):
+            await s.channel.send(value=i)
+
+        async def in_one_second_finalize():
+            await s.sleep(1.0)
+            await s.channel.send(value=9)
+            for i in range(10):
+                await s.channel.send(value=i + 10)
+
+        asyncio.ensure_future(in_one_second_finalize())
+
+        event = None
+        buffer_processor = s.noack_take(10, within=10.0)
+        async for noack_values in buffer_processor:
+            assert [nv.value for nv in noack_values] == list(range(10))
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            # acknowledge
+            for noack_event in noack_values:
+                await s.ack(noack_event)
+            break
+        async for noack_values in buffer_processor:
+            assert [nv.value for nv in noack_values] == list(range(10, 20))
+            assert s.enable_acks is False
+            for noack_event in noack_values:
+                await s.ack(noack_event)
+            break
+
+        try:
+            await buffer_processor.athrow(asyncio.CancelledError())
+        except asyncio.CancelledError:
+            pass
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+
+    if not event.ack.called:
+        assert event.message.acked
+        assert not event.message.refcount
+    assert s.enable_acks is False
+
+
+@pytest.mark.asyncio
 async def test_take(app):
     async with new_stream(app) as s:
         assert s.enable_acks is True
@@ -564,8 +684,8 @@ async def test_take(app):
         assert event
         # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
         # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
 
         if not event.ack.called:
             assert event.message.acked

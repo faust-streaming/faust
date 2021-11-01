@@ -201,7 +201,6 @@ def Test__prepare_cli():
             workdir="/foo",
             datadir="/data",
             json=True,
-            no_color=False,
             loop="foo",
         )
 
@@ -211,7 +210,6 @@ def Test__prepare_cli():
         assert state.workdir == "/foo"
         assert state.datadir == "/data"
         assert state.json
-        assert not state.no_color
         assert state.loop == "foo"
 
         root.side_effects = True
@@ -228,7 +226,6 @@ def Test__prepare_cli():
                             workdir="/foo",
                             datadir="/data",
                             json=False,
-                            no_color=False,
                             loop="foo",
                         )
                         chdir.assert_called_with(Path("/foo").absolute())
@@ -242,7 +239,6 @@ def Test__prepare_cli():
                             workdir="/foo",
                             datadir="/data",
                             json=True,
-                            no_color=False,
                             loop="foo",
                         )
                         dac.assert_called_once_with()
@@ -256,7 +252,6 @@ def Test__prepare_cli():
                             workdir="/foo",
                             datadir="/data",
                             json=False,
-                            no_color=True,
                             loop="foo",
                         )
                         eac.assert_not_called()
@@ -269,7 +264,6 @@ def Test__prepare_cli():
                             workdir=None,
                             datadir=None,
                             json=False,
-                            no_color=True,
                             loop="foo",
                         )
     finally:
@@ -425,18 +419,6 @@ class Test_Command:
             t = command.table(data, title="foo")
             assert t is table.return_value
             table.assert_called_once_with(data, title="foo", target=sys.stdout)
-
-    def test_color(self, *, command):
-        assert command.color("blue", "text")
-
-    def test_dark(self, *, command):
-        assert command.dark("text")
-
-    def test_bold(self, *, command):
-        assert command.bold("text")
-
-    def test_bold_tail(self, *, command):
-        assert command.bold_tail("foo.bar.baz")
 
     def test_table_wrap(self, *, command):
         table = command.table([["A", "B", "C"]])

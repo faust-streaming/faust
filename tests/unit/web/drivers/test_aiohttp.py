@@ -292,6 +292,9 @@ class Test_Web:
 
     def test_route__with_cors_options(self, *, web):
         handler = Mock()
+        handler.get_methods = Mock(
+            name="get_methods", return_value=set({"GET", "PUT", "POST", "DELETE"})
+        )
         cors_options = {
             "http://example.com": ResourceOptions(
                 allow_credentials=True,
@@ -311,7 +314,8 @@ class Test_Web:
         )
 
         web.web_app.router.add_route.assert_has_calls(
-            [call(method, "/foo/", ANY) for method in NON_OPTIONS_METHODS]
+            [call(method, "/foo/", ANY) for method in NON_OPTIONS_METHODS],
+            any_order=True,
         )
         web._cors.add.assert_has_calls(
             [
@@ -319,7 +323,8 @@ class Test_Web:
                     web.web_app.router.add_route(), _prepare_cors_options(cors_options)
                 )
                 for _ in NON_OPTIONS_METHODS
-            ]
+            ],
+            any_order=True,
         )
 
     def test__create_site(self, *, web, app):
