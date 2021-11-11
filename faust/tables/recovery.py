@@ -304,10 +304,6 @@ class Recovery(Service):
         app = self.app
         consumer = app.consumer
         await app.on_rebalance_complete.send()
-        # Resume partitions and start fetching.
-        self.log.info("Resuming flow...")
-        consumer.resume_flow()
-        app.flow_control.resume()
         assignment = consumer.assignment()
         if self.app.consumer_generation_id != generation_id:
             self.log.warning("Recovery rebalancing again")
@@ -324,6 +320,10 @@ class Recovery(Service):
         else:
             self.log.info("Resuming streams with empty assignment")
         self.completed.set()
+        # Resume partitions and start fetching.
+        self.log.info("Resuming flow...")
+        consumer.resume_flow()
+        app.flow_control.resume()
         # finally make sure the fetcher is running.
         await cast(_App, app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
