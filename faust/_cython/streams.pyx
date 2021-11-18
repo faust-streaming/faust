@@ -89,6 +89,8 @@ cdef class StreamIterator:
             if need_slow_get:
                 channel_value = await self.chan_slow_get()
             event, value, sensor_state = self._prepare_event(channel_value)
+            if value is self._skipped_value:
+                return value, sensor_state
 
             try:
                 for processor in self.processors:
@@ -157,6 +159,9 @@ cdef class StreamIterator:
             tp = message.tp
             offset = message.offset
             consumer = self.consumer
+
+            if message.generation_id != self.app.consumer_generation_id:
+                return None, self._skipped_value, stream_state
 
             if topic in self.acking_topics and not message.tracked:
                 message.tracked = True

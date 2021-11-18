@@ -975,7 +975,8 @@ class Stream(StreamT[T_co], Service):
                         offset = message.offset
 
                         if message.generation_id != self.app.consumer_generation_id:
-                            continue
+                            value = skipped_value
+                            break
                         if topic in acking_topics and not message.tracked:
                             message.tracked = True
                             # This inlines Consumer.track_message(message)
