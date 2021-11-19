@@ -161,6 +161,12 @@ cdef class StreamIterator:
             consumer = self.consumer
 
             if message.generation_id != self.app.consumer_generation_id:
+                self.app.log.dev(
+                    "Skipping message %r with generation_id %r because app generation_id is %r",
+                    message,
+                    message.generation_id,
+                    self.app.consumer_generation_id,
+                )
                 return None, self._skipped_value, stream_state
 
             if topic in self.acking_topics and not message.tracked:

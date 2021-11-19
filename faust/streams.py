@@ -976,6 +976,12 @@ class Stream(StreamT[T_co], Service):
 
                         if message.generation_id != self.app.consumer_generation_id:
                             value = skipped_value
+                            self.log.dev(
+                                "Skipping message %r with generation_id %r because app generation_id is %r",
+                                message,
+                                message.generation_id,
+                                self.app.consumer_generation_id,
+                            )
                             break
                         if topic in acking_topics and not message.tracked:
                             message.tracked = True
