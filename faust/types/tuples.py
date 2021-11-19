@@ -69,6 +69,7 @@ class PendingMessage(NamedTuple):
     callback: Optional[MessageSentCallback]
     topic: Optional[str] = None
     offset: Optional[int] = None
+    generation_id: Optional[int] = None
 
 
 def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
@@ -92,6 +93,7 @@ def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
         value=p.value,
         checksum=None,
         tp=tp,
+        generation_id=p.generation_id,
     )
 
 

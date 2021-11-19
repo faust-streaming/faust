@@ -1184,6 +1184,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
             checksum=b"",
             serialized_key_size=0,
             serialized_value_size=0,
+            generation_id=self.app.consumer_generation_id,
         )
 
     async def throw(self, exc: BaseException) -> None:
