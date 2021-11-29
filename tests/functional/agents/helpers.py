@@ -191,6 +191,7 @@ class AgentCase(Service):
             value=value,
             checksum=checksum,
             tp=tp,
+            generation_id=self.app.consumer_generation_id,
         )
 
     def next_offset(self, tp: TP, *, offsets=CURRENT_OFFSETS) -> int:
