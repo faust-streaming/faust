@@ -55,7 +55,7 @@ class worker(AppCommand):
         option(
             "--web-host",
             "-h",
-            default=socket.gethostname(),
+            default=None,
             type=str,
             help=f"Canonical host name for the web server " f"(default: {WEB_BIND})",
         ),
@@ -86,7 +86,7 @@ class worker(AppCommand):
         with_web: bool,
         web_port: Optional[int],
         web_bind: Optional[str],
-        web_host: str,
+        web_host: Optional[str],
         web_transport: URL,
         **kwargs: Any,
     ) -> None:
@@ -99,6 +99,10 @@ class worker(AppCommand):
             self.app.conf.web_host = web_host
         if web_transport is not None:
             self.app.conf.web_transport = web_transport
+        if web_port is not None or web_host is not None:
+            self.app.conf.canonical_url = (
+                f"http://{self.app.conf.web_host}:{self.app.conf.web_port}"
+            )
 
     @property
     def _Worker(self) -> Type[Worker]:
@@ -111,7 +115,7 @@ class worker(AppCommand):
 
     def _format_banner_table(self, data: TableDataT) -> str:
         table = self.table(
-            [(self.bold(x), str(y)) for x, y in data],
+            [(x, str(y)) for x, y in data],
             title=self._banner_title(),
         )
         table.inner_heading_row_border = False
@@ -172,7 +176,7 @@ class worker(AppCommand):
 
     def faust_ident(self) -> str:
         """Return Faust version information as ANSI string."""
-        return self.color("hiblue", f"{FAUST} v{faust_version}")
+        return f"{FAUST} v{faust_version}"
 
     def platform(self) -> str:
         """Return platform identifier as ANSI string."""

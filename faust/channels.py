@@ -288,6 +288,7 @@ class Channel(ChannelT[T]):
                 # [ask]
                 topic=None,
                 offset=None,
+                generation_id=self.app.consumer_generation_id,
             ),
         )
 

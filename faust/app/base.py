@@ -1354,6 +1354,50 @@ class App(AppT, Service):
 
         return _decorator
 
+    def topic_route(
+        self,
+        topic: CollectionT,
+        shard_param: str = None,
+        *,
+        query_param: str = None,
+        match_info: str = None,
+        exact_key: str = None,
+    ) -> ViewDecorator:
+        """Decorate view method to route request to a topic partition destination."""
+
+        def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
+            _query_param = query_param
+            if shard_param is not None:
+                warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
+                if query_param:
+                    raise TypeError("Cannot specify shard_param and query_param")
+                _query_param = shard_param
+            if _query_param is None and match_info is None and exact_key is None:
+                raise TypeError("Need one of query_param, shard_param, or exact key")
+
+            @wraps(fun)
+            async def get(
+                view: View, request: Request, *args: Any, **kwargs: Any
+            ) -> Response:
+                if exact_key:
+                    key = exact_key
+                elif match_info:
+                    key = request.match_info[match_info]
+                elif _query_param:
+                    key = request.query[_query_param]
+                else:  # pragma: no cover
+                    raise Exception("cannot get here")
+                try:
+                    return await self.router.route_topic_req(
+                        topic, key, view.web, request
+                    )
+                except SameNode:
+                    return await fun(view, request, *args, **kwargs)  # type: ignore
+
+            return get
+
+        return _decorator
+
     def command(
         self, *options: Any, base: Optional[Type[_AppCommand]] = None, **kwargs: Any
     ) -> Callable[[Callable], Type[_AppCommand]]:
@@ -1389,7 +1433,7 @@ class App(AppT, Service):
         self.client_only = True
         await self.maybe_start()
         self.consumer.stop_flow()
-        await self.topics.wait_for_subscriptions()
+        await self.topics.maybe_wait_for_subscriptions()
         await self.topics.on_client_only_start()
         self.consumer.resume_flow()
         self.flow_control.resume()
