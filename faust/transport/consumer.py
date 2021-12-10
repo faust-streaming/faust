@@ -701,8 +701,8 @@ class Consumer(Service, ConsumerT):
         # has 1 partition, then t2 will end up being starved most of the time.
         #
         # We solve this by going round-robin through each topic.
-        generation_id = self.app.consumer_generation_id
         records, active_partitions = await self._wait_next_records(timeout)
+        generation_id = self.app.consumer_generation_id
         if records is None or self.should_stop:
             return
 
