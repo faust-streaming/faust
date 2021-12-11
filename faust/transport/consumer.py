@@ -702,6 +702,7 @@ class Consumer(Service, ConsumerT):
         #
         # We solve this by going round-robin through each topic.
         records, active_partitions = await self._wait_next_records(timeout)
+        generation_id = self.app.consumer_generation_id
         if records is None or self.should_stop:
             return
 
@@ -710,6 +711,14 @@ class Consumer(Service, ConsumerT):
         if self.flow_active:
             for tp, record in records_it:
                 if not self.flow_active:
+                    break
+                new_generation_id = self.app.consumer_generation_id
+                if new_generation_id != generation_id:
+                    self.log.dev(
+                        "Generation id changed from %r to %r. Cancelling getmany.",
+                        generation_id,
+                        new_generation_id,
+                    )
                     break
                 if (
                     active_partitions is None
