@@ -160,8 +160,10 @@ cdef class StreamIterator:
             offset = message.offset
             consumer = self.consumer
 
-            if not self.app.flow_control.is_active() or\
-                message.generation_id != self.app.consumer_generation_id:
+            if (
+                not self.app.flow_control.is_active()
+                or message.generation_id != self.app.consumer_generation_id
+            ):
                 self.app.log.dev(
                     "Skipping message %r with generation_id %r because "
                     "app generation_id is %r flow control.is_active %r",
