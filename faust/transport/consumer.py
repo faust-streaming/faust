@@ -429,7 +429,7 @@ class Consumer(Service, ConsumerT):
     _commit_every: Optional[int]
     _n_acked: int = 0
 
-    _active_partitions: Optional[Set[TP]]
+    _active_partitions: Set[TP]
     _paused_partitions: Set[TP]
     _buffered_partitions: Set[TP]
 
@@ -495,7 +495,7 @@ class Consumer(Service, ConsumerT):
         return []
 
     def _reset_state(self) -> None:
-        self._active_partitions = None
+        self._active_partitions = set()
         self._paused_partitions = set()
         self._buffered_partitions = set()
         self.can_resume_flow.clear()
