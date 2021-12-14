@@ -760,15 +760,16 @@ class Consumer(Service, ConsumerT):
             # Fetch records only if active partitions to avoid the risk of
             # fetching all partitions in the beginning when none of the
             # partitions is paused/resumed.
+            _getmany = self._getmany(
+                active_partitions=active_partitions,
+                timeout=timeout,
+            )
             wait_results = await self.wait_first(
-                self._getmany(
-                    active_partitions=active_partitions,
-                    timeout=timeout,
-                ),
+                _getmany,
                 self.suspend_flow.wait(),
             )
             for coro, result in zip(wait_results.done, wait_results.results):
-                if coro.__name__ == "_getmany":
+                if coro == _getmany:
                     records = result
                     break
         else:
