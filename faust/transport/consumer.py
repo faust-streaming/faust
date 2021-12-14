@@ -731,6 +731,13 @@ class Consumer(Service, ConsumerT):
                     # convert timestamp to seconds from int milliseconds.
                     yield tp, to_message(tp, record)
 
+    async def _wait_suspend(self):
+        """Wrapper around self.suspend_flow.wait() with no return value.
+
+        This allows for easily
+        """
+        await self.suspend_flow.wait()
+
     async def _wait_next_records(
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
@@ -751,10 +758,17 @@ class Consumer(Service, ConsumerT):
             # Fetch records only if active partitions to avoid the risk of
             # fetching all partitions in the beginning when none of the
             # partitions is paused/resumed.
-            records = await self._getmany(
-                active_partitions=active_partitions,
-                timeout=timeout,
+            wait_results = await self.wait_first(
+                self._getmany(
+                    active_partitions=active_partitions,
+                    timeout=timeout,
+                ),
+                self.suspend_flow.wait(),
             )
+            for coro, result in zip(wait_results.done, wait_results.results):
+                if coro.__name__ == "_getmany":
+                    records = result
+                    break
         else:
             # We should still release to the event loop
             await self.sleep(1)
