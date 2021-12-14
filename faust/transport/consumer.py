@@ -516,9 +516,10 @@ class Consumer(Service, ConsumerT):
         return tps
 
     def _set_active_tps(self, tps: Set[TP]) -> Set[TP]:
-        xtps = self._active_partitions = ensure_TPset(tps)  # copy
-        xtps.difference_update(self._paused_partitions)
-        return xtps
+        self._active_partitions.clear()
+        self._active_partitions.update(ensure_TPset(tps))
+        self._active_partitions.difference_update(self._paused_partitions)
+        return self._active_partitions
 
     def on_buffer_full(self, tp: TP) -> None:
         # do not remove the partition when in recovery
