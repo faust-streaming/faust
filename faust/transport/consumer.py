@@ -429,7 +429,7 @@ class Consumer(Service, ConsumerT):
     _commit_every: Optional[int]
     _n_acked: int = 0
 
-    _active_partitions: Optional[Set[TP]]
+    _active_partitions: Set[TP]
     _paused_partitions: Set[TP]
     _buffered_partitions: Set[TP]
 
@@ -495,7 +495,7 @@ class Consumer(Service, ConsumerT):
         return []
 
     def _reset_state(self) -> None:
-        self._active_partitions = None
+        self._active_partitions = set()
         self._paused_partitions = set()
         self._buffered_partitions = set()
         self.can_resume_flow.clear()
@@ -516,9 +516,12 @@ class Consumer(Service, ConsumerT):
         return tps
 
     def _set_active_tps(self, tps: Set[TP]) -> Set[TP]:
-        xtps = self._active_partitions = ensure_TPset(tps)  # copy
-        xtps.difference_update(self._paused_partitions)
-        return xtps
+        if self._active_partitions is None:
+            self._active_partitions = set()
+        self._active_partitions.clear()
+        self._active_partitions.update(ensure_TPset(tps))
+        self._active_partitions.difference_update(self._paused_partitions)
+        return self._active_partitions
 
     def on_buffer_full(self, tp: TP) -> None:
         # do not remove the partition when in recovery
@@ -730,6 +733,13 @@ class Consumer(Service, ConsumerT):
                     # convert timestamp to seconds from int milliseconds.
                     yield tp, to_message(tp, record)
 
+    async def _wait_suspend(self):
+        """Wrapper around self.suspend_flow.wait() with no return value.
+
+        This allows for easily
+        """
+        await self.suspend_flow.wait()
+
     async def _wait_next_records(
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
@@ -750,10 +760,18 @@ class Consumer(Service, ConsumerT):
             # Fetch records only if active partitions to avoid the risk of
             # fetching all partitions in the beginning when none of the
             # partitions is paused/resumed.
-            records = await self._getmany(
+            _getmany = self._getmany(
                 active_partitions=active_partitions,
                 timeout=timeout,
             )
+            wait_results = await self.wait_first(
+                _getmany,
+                self.suspend_flow.wait(),
+            )
+            for coro, result in zip(wait_results.done, wait_results.results):
+                if coro is _getmany:
+                    records = result
+                    break
         else:
             # We should still release to the event loop
             await self.sleep(1)
