@@ -516,6 +516,8 @@ class Consumer(Service, ConsumerT):
         return tps
 
     def _set_active_tps(self, tps: Set[TP]) -> Set[TP]:
+        if self._active_partitions is None:
+            self._active_partitions = set()
         self._active_partitions.clear()
         self._active_partitions.update(ensure_TPset(tps))
         self._active_partitions.difference_update(self._paused_partitions)
