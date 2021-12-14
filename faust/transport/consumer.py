@@ -769,7 +769,7 @@ class Consumer(Service, ConsumerT):
                 self.suspend_flow.wait(),
             )
             for coro, result in zip(wait_results.done, wait_results.results):
-                if coro == _getmany:
+                if coro is _getmany:
                     records = result
                     break
         else:
