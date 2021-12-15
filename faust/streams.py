@@ -431,8 +431,9 @@ class Stream(StreamT[T_co], Service):
                     finally:
                         buffer_consuming = None
                 self.log.info(str(event_to_add.message.partition))
-                buffer_add(event_to_add)
                 event = self.current_event
+                event_to_add['kafka_timestamp'] = event.message.timestamp
+                buffer_add(event_to_add)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
@@ -483,7 +484,7 @@ class Stream(StreamT[T_co], Service):
         finally:
             # Restore last behaviour of "enable_acks"
             self.enable_acks = stream_enable_acks
-            # self._processors.remove(add_to_buffer)
+            self._processors.remove(add_to_buffer)
 
     def enumerate(self, start: int = 0) -> AsyncIterable[Tuple[int, T_co]]:
         """Enumerate values received on this stream.
