@@ -405,11 +405,11 @@ class Stream(StreamT[T_co], Service):
                 the agent is likely to stall and block buffered events for an
                 unreasonable length of time(!).
         """
-        buffer: List[EventT] = []
+        _buffer: List[EventT] = []
         events: List[EventT] = []
-        buffer_add = buffer.append
+        buffer_add = _buffer.append
         event_add = events.append
-        buffer_size = buffer.__len__
+        buffer_size = _buffer.__len__
         buffer_full = asyncio.Event(loop=self.loop)
         buffer_consumed = asyncio.Event(loop=self.loop)
         timeout = want_seconds(within) if within else None
@@ -430,6 +430,7 @@ class Stream(StreamT[T_co], Service):
                         await buffer_consuming
                     finally:
                         buffer_consuming = None
+                self.log.info(str(event_to_add.message.partition))
                 buffer_add(event_to_add)
                 event = self.current_event
                 if event is None:
@@ -459,14 +460,14 @@ class Stream(StreamT[T_co], Service):
             while not self.should_stop:
                 # wait until buffer full, or timeout
                 await self.wait_for_stopped(buffer_full, timeout=timeout)
-                if buffer:
+                if _buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
                     buffer_consuming = self.loop.create_future()
                     try:
-                        yield list(buffer)
+                        yield list(_buffer)
                     finally:
-                        buffer.clear()
+                        _buffer.clear()
                         for event in events:
                             await self.ack(event)
                         events.clear()
@@ -482,7 +483,7 @@ class Stream(StreamT[T_co], Service):
         finally:
             # Restore last behaviour of "enable_acks"
             self.enable_acks = stream_enable_acks
-            self._processors.remove(add_to_buffer)
+            # self._processors.remove(add_to_buffer)
 
     def enumerate(self, start: int = 0) -> AsyncIterable[Tuple[int, T_co]]:
         """Enumerate values received on this stream.
