@@ -421,7 +421,7 @@ class Stream(StreamT[T_co], Service):
 
         # We add this processor to populate the buffer, and the stream
         # is passively consumed in the background (enable_passive below).
-        async def add_to_buffer(event_to_add: EventT) -> EventT:
+        async def add_to_buffer(value: T) -> T:
             try:
                 # buffer_consuming is set when consuming buffer after timeout.
                 nonlocal buffer_consuming
@@ -430,10 +430,10 @@ class Stream(StreamT[T_co], Service):
                         await buffer_consuming
                     finally:
                         buffer_consuming = None
-                self.log.info(str(event_to_add.message.partition))
                 event = self.current_event
-                event_to_add['kafka_timestamp'] = event.message.timestamp
-                buffer_add(event_to_add)
+                self.log.info(str(event.message.timestamp))
+                value['kafka_timestamp'] = event.message.timestamp
+                buffer_add(value)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
@@ -449,7 +449,7 @@ class Stream(StreamT[T_co], Service):
             except Exception as exc:
                 self.log.exception("Error adding to take buffer: %r", exc)
                 await self.crash(exc)
-            return event_to_add
+            return value
 
         # Disable acks to ensure this method acks manually
         # events only after they are consumed by the user
