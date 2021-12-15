@@ -392,7 +392,8 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
-    async def take_with_timestamp(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+    async def take_with_timestamp(self, max_: int, within: Seconds,
+                                  timestamp_field_name: str) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values with the timestamp
            when the message was added to kafka.
 
@@ -405,6 +406,8 @@ class Stream(StreamT[T_co], Service):
                 Warning: If there's no timeout (i.e. `timeout=None`),
                 the agent is likely to stall and block buffered events for an
                 unreasonable length of time(!).
+            timestamp_field_name: the name of the field containing kafka timestamp,
+                that is going to be added to the value
         """
         buffer: List[EventT] = []
         events: List[EventT] = []
@@ -432,7 +435,7 @@ class Stream(StreamT[T_co], Service):
                     finally:
                         buffer_consuming = None
                 event = self.current_event
-                value['kafka_timestamp'] = event.message.timestamp
+                value[timestamp_field_name] = event.message.timestamp
                 buffer_add(value)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
