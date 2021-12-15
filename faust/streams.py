@@ -392,8 +392,9 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
-    async def full_take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
-        """Buffer n events at a time and yield a list of buffered events.
+    async def take_with_timestamp(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+        """Buffer n values at a time and yield a list of buffered values with the timestamp
+           when the message was added to kafka.
 
         Arguments:
             max_: Max number of messages to receive. When more than this
@@ -405,11 +406,11 @@ class Stream(StreamT[T_co], Service):
                 the agent is likely to stall and block buffered events for an
                 unreasonable length of time(!).
         """
-        _buffer: List[EventT] = []
+        buffer: List[EventT] = []
         events: List[EventT] = []
-        buffer_add = _buffer.append
+        buffer_add = buffer.append
         event_add = events.append
-        buffer_size = _buffer.__len__
+        buffer_size = buffer.__len__
         buffer_full = asyncio.Event(loop=self.loop)
         buffer_consumed = asyncio.Event(loop=self.loop)
         timeout = want_seconds(within) if within else None
@@ -431,7 +432,6 @@ class Stream(StreamT[T_co], Service):
                     finally:
                         buffer_consuming = None
                 event = self.current_event
-                self.log.info(str(event.message.timestamp))
                 value['kafka_timestamp'] = event.message.timestamp
                 buffer_add(value)
                 if event is None:
@@ -461,14 +461,14 @@ class Stream(StreamT[T_co], Service):
             while not self.should_stop:
                 # wait until buffer full, or timeout
                 await self.wait_for_stopped(buffer_full, timeout=timeout)
-                if _buffer:
+                if buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
                     buffer_consuming = self.loop.create_future()
                     try:
-                        yield list(_buffer)
+                        yield list(buffer)
                     finally:
-                        _buffer.clear()
+                        buffer.clear()
                         for event in events:
                             await self.ack(event)
                         events.clear()
