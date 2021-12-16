@@ -436,7 +436,8 @@ class Stream(StreamT[T_co], Service):
                     finally:
                         buffer_consuming = None
                 event = self.current_event
-                value[timestamp_field_name] = event.message.timestamp
+                if isinstance(value, dict):
+                    value[timestamp_field_name] = event.message.timestamp
                 buffer_add(value)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
