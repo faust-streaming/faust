@@ -833,6 +833,32 @@ async def test_take_wit_timestamp_wit_simple_value(app):
 
 
 @pytest.mark.asyncio
+async def test_take_wit_timestamp_without_timestamp_field(app):
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        await s.channel.send(value=1)
+        event = None
+        async for value in s.take_with_timestamp(
+            1, within=1, timestamp_field_name=None
+        ):
+            assert value == [1]
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        if not event.ack.called:
+            assert event.message.acked
+            assert not event.message.refcount
+        assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
 async def test_take_wit_timestamp__5(app, loop):
     s = new_stream(app)
     async with s:
