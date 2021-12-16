@@ -392,8 +392,9 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
-    async def take_with_timestamp(self, max_: int, within: Seconds,
-                                  timestamp_field_name: str) -> AsyncIterable[Sequence[T_co]]:
+    async def take_with_timestamp(
+        self, max_: int, within: Seconds, timestamp_field_name: str
+    ) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values with the timestamp
            when the message was added to kafka.
 
