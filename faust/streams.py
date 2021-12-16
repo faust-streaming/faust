@@ -395,7 +395,7 @@ class Stream(StreamT[T_co], Service):
     async def take_with_timestamp(self, max_: int, within: Seconds,
                                   timestamp_field_name: str) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values with the timestamp
-           when the message was added to kafka including message offset.
+           when the message was added to kafka.
 
         Arguments:
             max_: Max number of messages to receive. When more than this
@@ -436,7 +436,6 @@ class Stream(StreamT[T_co], Service):
                         buffer_consuming = None
                 event = self.current_event
                 value[timestamp_field_name] = event.message.timestamp
-                value['kafka_offset'] = event.message.offset
                 buffer_add(value)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
