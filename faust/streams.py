@@ -410,7 +410,7 @@ class Stream(StreamT[T_co], Service):
             timestamp_field_name: the name of the field containing kafka timestamp,
                 that is going to be added to the value
         """
-        buffer: List[EventT] = []
+        buffer: List[T_co] = []
         events: List[EventT] = []
         buffer_add = buffer.append
         event_add = events.append
