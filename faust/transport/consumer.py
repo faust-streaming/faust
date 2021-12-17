@@ -429,7 +429,7 @@ class Consumer(Service, ConsumerT):
     _commit_every: Optional[int]
     _n_acked: int = 0
 
-    _active_partitions: Optional[Set[TP]]
+    _active_partitions: Set[TP]
     _paused_partitions: Set[TP]
     _buffered_partitions: Set[TP]
 
@@ -495,7 +495,7 @@ class Consumer(Service, ConsumerT):
         return []
 
     def _reset_state(self) -> None:
-        self._active_partitions = None
+        self._active_partitions = set()
         self._paused_partitions = set()
         self._buffered_partitions = set()
         self.can_resume_flow.clear()
@@ -516,9 +516,12 @@ class Consumer(Service, ConsumerT):
         return tps
 
     def _set_active_tps(self, tps: Set[TP]) -> Set[TP]:
-        xtps = self._active_partitions = ensure_TPset(tps)  # copy
-        xtps.difference_update(self._paused_partitions)
-        return xtps
+        if self._active_partitions is None:
+            self._active_partitions = set()
+        self._active_partitions.clear()
+        self._active_partitions.update(ensure_TPset(tps))
+        self._active_partitions.difference_update(self._paused_partitions)
+        return self._active_partitions
 
     def on_buffer_full(self, tp: TP) -> None:
         # do not remove the partition when in recovery
