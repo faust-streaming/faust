@@ -267,6 +267,7 @@ class Consumer(ThreadDelegateConsumer):
             record.serialized_key_size,
             record.serialized_value_size,
             tp,
+            generation_id=self.app.consumer_generation_id,
         )
 
     async def on_stop(self) -> None:
