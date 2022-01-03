@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
-# In this exapmple we have a function `publish_every_2secs` publishing a
+# In this example we have a function `publish_every_2secs` publishing a
 # message every 2 seconds to topic `hopping_topic`.
 # We have created an agent `print_windowed_events` consuming events from
 # `hopping_topic` that mutates the windowed table `hopping_table`.
 
-# `hopping_table` is a table with hopping (overlaping) windows. Each of
+# `hopping_table` is a table with hopping (overlapping) windows. Each of
 # its windows is 10 seconds of duration, and we create a new window every 5
 # seconds.
 # |----------|
