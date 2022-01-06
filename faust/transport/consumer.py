@@ -732,6 +732,8 @@ class Consumer(Service, ConsumerT):
                     self.app.monitor.track_tp_end_offset(tp, highwater_mark)
                     # convert timestamp to seconds from int milliseconds.
                     yield tp, to_message(tp, record)
+        else:
+            await self.perform_seek()
 
     async def _wait_next_records(
         self, timeout: float
