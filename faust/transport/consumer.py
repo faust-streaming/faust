@@ -479,6 +479,7 @@ class Consumer(Service, ConsumerT):
         self.can_resume_flow = Event()
         self.suspend_flow = Event()
         self.not_waiting_next_records = Event()
+        self.not_waiting_next_records.set()
         self._reset_state()
         super().__init__(loop=loop or self.transport.loop, **kwargs)
         self.transactions = self.transport.create_transaction_manager(
@@ -713,11 +714,7 @@ class Consumer(Service, ConsumerT):
         #
         # We solve this by going round-robin through each topic.
 
-        if not self.flow_active:
-            await self.wait(self.can_resume_flow)
-        self.not_waiting_next_records.clear()
         records, active_partitions = await self._wait_next_records(timeout)
-        self.not_waiting_next_records.set()
         generation_id = self.app.consumer_generation_id
         if records is None or self.should_stop:
             return
@@ -749,7 +746,10 @@ class Consumer(Service, ConsumerT):
     async def _wait_next_records(
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
+        if not self.flow_active:
+            await self.wait(self.can_resume_flow)
         # Implementation for the Fetcher service.
+        self.not_waiting_next_records.clear()
 
         is_client_only = self.app.client_only
 
@@ -780,6 +780,7 @@ class Consumer(Service, ConsumerT):
         else:
             # We should still release to the event loop
             await self.sleep(1)
+        self.not_waiting_next_records.set()
         return records, active_partitions
 
     @abc.abstractmethod
