@@ -365,9 +365,7 @@ class Collection(Service, CollectionT):
         window = cast(WindowT, self.window)
         assert window
         for partition, timestamps in self._partition_timestamps.items():
-            while timestamps and window.stale(
-                timestamps[0], self._partition_latest_timestamp[partition]
-            ):
+            while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 keys_to_remove = self._partition_timestamp_keys.pop(
                     (partition, timestamp), None
