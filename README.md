@@ -277,7 +277,7 @@ The following bundles are available:
 
 `pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
 
-`pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+`pip install faust[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
 ### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
