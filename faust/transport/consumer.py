@@ -436,6 +436,7 @@ class Consumer(Service, ConsumerT):
     flow_active: bool = True
     can_resume_flow: Event
     suspend_flow: Event
+    not_waiting_next_records: Event
 
     def __init__(
         self,
@@ -477,6 +478,8 @@ class Consumer(Service, ConsumerT):
         self.randomly_assigned_topics = set()
         self.can_resume_flow = Event()
         self.suspend_flow = Event()
+        self.not_waiting_next_records = Event()
+        self.not_waiting_next_records.set()
         self._reset_state()
         super().__init__(loop=loop or self.transport.loop, **kwargs)
         self.transactions = self.transport.create_transaction_manager(
@@ -500,6 +503,7 @@ class Consumer(Service, ConsumerT):
         self._buffered_partitions = set()
         self.can_resume_flow.clear()
         self.suspend_flow.clear()
+        self.not_waiting_next_records.set()
         self.flow_active = True
         self._time_start = monotonic()
 
@@ -580,6 +584,11 @@ class Consumer(Service, ConsumerT):
         self.flow_active = False
         self.can_resume_flow.clear()
         self.suspend_flow.set()
+
+    async def wait_for_stopped_flow(self) -> None:
+        """Wait until the consumer is not waiting on any newly fetched records."""
+        if not self.not_waiting_next_records.is_set():
+            await self.not_waiting_next_records.wait()
 
     def resume_flow(self) -> None:
         """Allow consumer to process messages."""
@@ -704,6 +713,7 @@ class Consumer(Service, ConsumerT):
         # has 1 partition, then t2 will end up being starved most of the time.
         #
         # We solve this by going round-robin through each topic.
+
         records, active_partitions = await self._wait_next_records(timeout)
         generation_id = self.app.consumer_generation_id
         if records is None or self.should_stop:
@@ -739,28 +749,41 @@ class Consumer(Service, ConsumerT):
         if not self.flow_active:
             await self.wait(self.can_resume_flow)
         # Implementation for the Fetcher service.
+        try:
+            self.not_waiting_next_records.clear()
 
-        is_client_only = self.app.client_only
+            is_client_only = self.app.client_only
 
-        active_partitions: Optional[Set[TP]]
-        if is_client_only:
-            active_partitions = None
-        else:
-            active_partitions = self._get_active_partitions()
+            active_partitions: Optional[Set[TP]]
+            if is_client_only:
+                active_partitions = None
+            else:
+                active_partitions = self._get_active_partitions()
 
-        records: RecordMap = {}
-        if is_client_only or active_partitions:
-            # Fetch records only if active partitions to avoid the risk of
-            # fetching all partitions in the beginning when none of the
-            # partitions is paused/resumed.
-            records = await self._getmany(
-                active_partitions=active_partitions,
-                timeout=timeout,
-            )
-        else:
-            # We should still release to the event loop
-            await self.sleep(1)
-        return records, active_partitions
+            records: RecordMap = {}
+            if is_client_only or active_partitions:
+                # Fetch records only if active partitions to avoid the risk of
+                # fetching all partitions in the beginning when none of the
+                # partitions is paused/resumed.
+                suspend_flow = self.suspend_flow.wait()
+                getmany = self._getmany(
+                    active_partitions=active_partitions,
+                    timeout=timeout,
+                )
+                wait_results = await self.wait_first(getmany, suspend_flow)
+                for coro, result in zip(wait_results.done, wait_results.results):
+                    # Ignore records fetched while flow was suspended
+                    if coro is suspend_flow:
+                        records = {}
+                        break
+                    if coro is getmany:
+                        records = result
+            else:
+                # We should still release to the event loop
+                await self.sleep(1)
+            return records, active_partitions
+        finally:
+            self.not_waiting_next_records.set()
 
     @abc.abstractmethod
     def _to_message(self, tp: TP, record: Any) -> ConsumerMessage:
