@@ -77,8 +77,8 @@ class _patching(object):
 
 
 class TimeMarks(NamedTuple):
-    time: float = None
-    monotonic: float = None
+    time: Optional[float] = None
+    monotonic: Optional[float] = None
 
 
 @pytest.fixture()

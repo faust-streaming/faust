@@ -128,9 +128,9 @@ class Web(base.Web):
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create text response, using "text/plain" content-type."""
@@ -147,9 +147,9 @@ class Web(base.Web):
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create HTML response from string, ``text/html`` content-type."""
@@ -165,9 +165,9 @@ class Web(base.Web):
         self,
         value: Any,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Any:
         """Create new JSON response.
@@ -201,9 +201,9 @@ class Web(base.Web):
         self,
         value: _bytes,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create new ``bytes`` response - for binary data."""

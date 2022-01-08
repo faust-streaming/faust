@@ -45,7 +45,7 @@ class CopartitionedAssignor:
         cluster_asgn: MutableMapping[str, CopartitionedAssignment],
         num_partitions: int,
         replicas: int,
-        capacity: int = None,
+        capacity: Optional[int] = None,
     ) -> None:
         self._num_clients = len(cluster_asgn)
         assert self._num_clients, "Should assign to at least 1 client"
@@ -154,7 +154,7 @@ class CopartitionedAssignor:
         self,
         assignemnt: CopartitionedAssignment,
         active: bool,
-        client_limit: int = None,
+        client_limit: Optional[int] = None,
     ) -> bool:
         if client_limit is None:
             client_limit = self._get_client_limit(active)

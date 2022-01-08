@@ -88,7 +88,7 @@ class ActorT(ServiceT, Generic[_T]):
         agent: "AgentT",
         stream: StreamT,
         it: _T,
-        active_partitions: Set[TP] = None,
+        active_partitions: Optional[Set[TP]] = None,
         **kwargs: Any
     ) -> None:
         ...
@@ -135,15 +135,15 @@ class AgentT(ServiceT, Generic[_T]):
         self,
         fun: AgentFun,
         *,
-        name: str = None,
-        app: _AppT = None,
+        name: Optional[str] = None,
+        app: Optional[_AppT] = None,
         channel: Union[str, ChannelT] = None,
         concurrency: int = 1,
         sink: Iterable[SinkT] = None,
         on_error: AgentErrorHandler = None,
         supervisor_strategy: Type[SupervisorStrategyT] = None,
-        help: str = None,
-        schema: SchemaT = None,
+        help: Optional[str] = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         isolated_partitions: bool = False,
@@ -159,17 +159,17 @@ class AgentT(ServiceT, Generic[_T]):
     def __call__(
         self,
         *,
-        index: int = None,
-        active_partitions: Set[TP] = None,
-        stream: StreamT = None,
-        channel: ChannelT = None
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None
     ) -> ActorRefT:
         ...
 
     @abc.abstractmethod
     def test_context(
         self,
-        channel: ChannelT = None,
+        channel: Optional[ChannelT] = None,
         supervisor_strategy: SupervisorStrategyT = None,
         **kwargs: Any
     ) -> "AgentTestWrapperT":
@@ -197,8 +197,8 @@ class AgentT(ServiceT, Generic[_T]):
         value: V = None,
         *,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None
     ) -> None:
         ...
@@ -209,11 +209,11 @@ class AgentT(ServiceT, Generic[_T]):
         value: V = None,
         *,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None
+        correlation_id: Optional[str] = None
     ) -> Any:
         ...
 
@@ -223,13 +223,13 @@ class AgentT(ServiceT, Generic[_T]):
         *,
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None
+        correlation_id: Optional[str] = None
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -334,7 +334,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
 
     @abc.abstractmethod
     def __init__(
-        self, *args: Any, original_channel: ChannelT = None, **kwargs: Any
+        self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
     ) -> None:
         ...
 
@@ -343,14 +343,14 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         self,
         value: V = None,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
         *,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
         wait: bool = True
     ) -> EventT:
         ...
@@ -363,7 +363,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         *,
         partition: int = 0,
         offset: int = 0,
-        timestamp: float = None,
+        timestamp: Optional[float] = None,
         timestamp_type: int = 0,
         headers: HeadersArg = None
     ) -> Message:

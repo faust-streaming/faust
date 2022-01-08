@@ -90,7 +90,10 @@ class DatadogStatsClient:
         )
 
     def timed(
-        self, metric: str = None, labels: Dict = None, use_ms: bool = None
+        self,
+        metric: Optional[str] = None,
+        labels: Dict = None,
+        use_ms: Optional[bool] = None,
     ) -> float:
         return self.client.timed(  # type: ignore
             metric=metric,

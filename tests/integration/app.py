@@ -11,7 +11,7 @@ class Point(faust.Record):
 
 class Arena(faust.Record):
     points: List[Point]
-    timestamp: float = None
+    timestamp: Optional[float] = None
 
 
 app = faust.App("t-integration", origin="t.integration.app")
