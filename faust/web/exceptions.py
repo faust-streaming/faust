@@ -1,6 +1,6 @@
 """HTTP and related errors."""
 import http
-from typing import Any, Dict, cast, Optional
+from typing import Any, Dict, Optional, cast
 
 from faust.exceptions import FaustError
 
