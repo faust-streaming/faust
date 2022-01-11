@@ -742,11 +742,7 @@ class Consumer(Service, ConsumerT):
     async def _wait_next_records(
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
-        while True:
-            # can_resume_flow may return even if flow went inactive -> active ->
-            # inactive. Check that flow is actually active after can_resume_flow is set.
-            if self.flow_active:
-                break
+        if not self.flow_active:
             await self.wait(self.can_resume_flow)
 
         # Implementation for the Fetcher service.

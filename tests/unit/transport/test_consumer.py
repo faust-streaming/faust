@@ -386,7 +386,7 @@ class MockedConsumerAbstractMethods:
         ...
 
     async def seek_to_committed(self, *args, **kwargs):
-        ...
+        return {}
 
     async def seek_wait(self, *args, **kwargs):
         ...
@@ -544,6 +544,7 @@ class TestConsumer:
         assert not consumer.should_stop
         consumer.flow_active = False
         consumer.can_resume_flow.set()
+        # Test is hanging here
         assert [a async for a in consumer.getmany(1.0)] == []
         assert not consumer.should_stop
         consumer.flow_active = True
