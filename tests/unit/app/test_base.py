@@ -299,7 +299,6 @@ class Test_App:
             transactions=Mock(
                 on_partitions_revoked=AsyncMock(),
             ),
-            wait_for_stopped_flow=AsyncMock(),
         )
         app.tables = Mock()
         app.flow_control = Mock()
