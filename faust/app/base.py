@@ -1685,8 +1685,6 @@ class App(AppT, Service):
                     T(self.flow_control.suspend)()
                     on_timeout.info("consumer.pause_partitions")
                     T(consumer.pause_partitions)(assignment)
-                    on_timeout.info("consumer.wait_for_stopped_flow")
-                    await T(consumer.wait_for_stopped_flow)()
 
                     # Every agent instance has an incoming buffer of messages
                     # (a asyncio.Queue) -- we clear those to make sure
