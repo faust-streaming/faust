@@ -544,7 +544,6 @@ class TestConsumer:
         assert not consumer.should_stop
         consumer.flow_active = False
         consumer.can_resume_flow.set()
-        # Test is hanging here
         assert [a async for a in consumer.getmany(1.0)] == []
         assert not consumer.should_stop
         consumer.flow_active = True
