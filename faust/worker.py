@@ -219,7 +219,7 @@ class Worker(mode.Worker):
         sensors: Optional[Iterable[SensorT]] = None,
         debug: bool = DEBUG,
         quiet: bool = False,
-        loglevel: Union[str, int, None]  = None,
+        loglevel: Union[str, int, None] = None,
         logfile: Union[str, IO, None] = None,
         stdout: IO = sys.stdout,
         stderr: IO = sys.stderr,
