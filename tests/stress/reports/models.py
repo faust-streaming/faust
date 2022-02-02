@@ -1,3 +1,5 @@
+from typing import Optional
+
 import faust
 
 __all__ = ["Error", "Status"]

@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timezone
 from itertools import count
+from typing import Optional
 
 import faust
 
@@ -9,7 +10,7 @@ class Withdrawal(faust.Record, isodates=True, serializer="json"):
     user: str
     country: str
     amount: float
-    date: datetime = None
+    date: Optional[datetime] = None
 
 
 def generate_withdrawals(n: Optional[int] = None):

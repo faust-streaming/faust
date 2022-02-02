@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import List
+from typing import List, Optional
 
 import faust
 
