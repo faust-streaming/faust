@@ -753,7 +753,10 @@ class Consumer(Service, ConsumerT):
             self.log.dev(
                 "getmany called while flow not active. Seek back to committed offsets."
             )
-            await self.perform_seek()
+            try:
+                await self.perform_seek()
+            except Exception as ex:
+                self.log.warning(f"exception performing seek when flow not active {ex}")
 
     async def _wait_next_records(
         self, timeout: float
