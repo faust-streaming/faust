@@ -2061,7 +2061,9 @@ class App(AppT, Service):
 
         Responsible for partition assignment.
         """
-        assignor = self.conf.PartitionAssignor(self, replicas=self.conf.table_standby_replicas)  # type: ignore
+        assignor = self.conf.PartitionAssignor(  # type: ignore
+            self, replicas=self.conf.table_standby_replicas
+        )
         return cast(PartitionAssignorT, assignor)
 
     @cached_property
@@ -2074,7 +2076,9 @@ class App(AppT, Service):
         exclusively on one node at a time. Excellent for things that would
         traditionally require a lock/mutex.
         """
-        assignor = self.conf.LeaderAssignor(self, loop=self.loop, beacon=self.beacon)  # type: ignore
+        assignor = self.conf.LeaderAssignor(  # type: ignore
+            self, loop=self.loop, beacon=self.beacon
+        )
         return cast(LeaderAssignorT, assignor)
 
     @cached_property
