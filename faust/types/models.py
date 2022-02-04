@@ -57,6 +57,7 @@ try:
     class _UsingKwargsInNew(_InitSubclassCheck, ident=909):
         ...
 
+
 except TypeError:
     abc_compatible_with_init_subclass = False
 else:
