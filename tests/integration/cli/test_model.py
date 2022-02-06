@@ -7,7 +7,7 @@ class Test_Arena:
             {"field": "points", "type": "typing.List[__main__.Point]", "default": "*"},
             {
                 "field": "timestamp",
-                "type": "typing.Union[float, NoneType]",
+                "type": "typing.Optional[float]",
                 "default": "None",
             },
         ]
