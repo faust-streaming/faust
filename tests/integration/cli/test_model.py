@@ -5,7 +5,11 @@ class Test_Arena:
 
         assert model == [
             {"field": "points", "type": "typing.List[__main__.Point]", "default": "*"},
-            {"field": "timestamp", "type": "float", "default": "None"},
+            {
+                "field": "timestamp",
+                "type": "typing.Union[float, NoneType]",
+                "default": "None",
+            },
         ]
 
     def test_tabulated(self, faust):
