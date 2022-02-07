@@ -1,6 +1,6 @@
 """Monitor using Prometheus."""
 import typing
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple, Optional, cast
 
 from aiohttp.web import Response
 
@@ -43,7 +43,7 @@ def setup_prometheus_sensors(
     app: AppT,
     pattern: str = "/metrics",
     registry: CollectorRegistry = REGISTRY,
-    name_prefix: str = None,
+    name_prefix: Optional[str] = None,
 ) -> None:
     """
     A utility function which sets up prometheus and attaches the config to the app.

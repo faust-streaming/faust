@@ -39,7 +39,7 @@ class Schema(SchemaT):
         value_type: ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: bool = None,
+        allow_empty: Optional[bool] = None,
     ) -> None:
         self.update(
             key_type=key_type,
@@ -56,7 +56,7 @@ class Schema(SchemaT):
         value_type: ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: bool = None,
+        allow_empty: Optional[bool] = None,
     ) -> None:
         if key_type is not None:
             self.key_type = key_type
@@ -78,7 +78,7 @@ class Schema(SchemaT):
         app: AppT,
         message: Message,
         *,
-        loads: Callable = None,
+        loads: Optional[Callable] = None,
         serializer: CodecArg = None,
     ) -> KT:
         if loads is None:
@@ -97,7 +97,7 @@ class Schema(SchemaT):
         app: AppT,
         message: Message,
         *,
-        loads: Callable = None,
+        loads: Optional[Callable] = None,
         serializer: CodecArg = None,
     ) -> VT:
         if loads is None:

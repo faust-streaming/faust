@@ -580,7 +580,7 @@ class Recovery(Service):
         else:
             return None
 
-    async def _wait(self, coro: WaitArgT, timeout: int = None) -> None:
+    async def _wait(self, coro: WaitArgT, timeout: Optional[int] = None) -> None:
         signal = self.signal_recovery_start
         wait_result = await self.wait_first(coro, signal, timeout=timeout)
         if wait_result.stopped:

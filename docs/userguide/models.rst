@@ -601,8 +601,8 @@ time and last modified time:
 .. sourcecode:: python
 
     class MyBaseRecord(Record, abstract=True):
-        time_created: float = None
-        time_modified: float = None
+        time_created: Optional[float] = None
+        time_modified: Optional[float] = None
 
 Inherit from this model to create a new model
 having the fields by default:

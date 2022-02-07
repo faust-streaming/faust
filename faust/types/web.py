@@ -110,7 +110,9 @@ class CacheBackendT(ServiceT):
         ...
 
     @abc.abstractmethod
-    async def set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -128,8 +130,8 @@ class CacheT(abc.ABC):
     @abc.abstractmethod
     def __init__(
         self,
-        timeout: Seconds = None,
-        key_prefix: str = None,
+        timeout: Optional[Seconds] = None,
+        key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
         **kwargs: Any
     ) -> None:
@@ -138,9 +140,9 @@ class CacheT(abc.ABC):
     @abc.abstractmethod
     def view(
         self,
-        timeout: Seconds = None,
+        timeout: Optional[Seconds] = None,
         include_headers: bool = False,
-        key_prefix: str = None,
+        key_prefix: Optional[str] = None,
         **kwargs: Any
     ) -> Callable[[Callable], Callable]:
         ...
@@ -153,9 +155,9 @@ class BlueprintT(abc.ABC):
     @abc.abstractmethod
     def cache(
         self,
-        timeout: Seconds = None,
+        timeout: Optional[Seconds] = None,
         include_headers: bool = False,
-        key_prefix: str = None,
+        key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
     ) -> CacheT:
         ...

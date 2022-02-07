@@ -226,11 +226,11 @@ class Consumer(ThreadDelegateConsumer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -292,8 +292,8 @@ class ThreadedProducer(ServiceThread):
         app,
         *,
         executor: Any = None,
-        loop: asyncio.AbstractEventLoop = None,
-        thread_loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        thread_loop: Optional[asyncio.AbstractEventLoop] = None,
         Worker: Type[WorkerThread] = None,
         **kwargs: Any,
     ) -> None:
@@ -319,7 +319,9 @@ class ThreadedProducer(ServiceThread):
         if self._producer is not None:
             await self._producer.flush()
 
-    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+    def _new_producer(
+        self, transactional_id: Optional[str] = None
+    ) -> aiokafka.AIOKafkaProducer:
         return aiokafka.AIOKafkaProducer(
             loop=self.thread_loop,
             **{
@@ -975,8 +977,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
         self,
         consumer: aiokafka.AIOKafkaConsumer,
         active_partitions: Set[TP],
-        timeout: float = None,
-        max_records: int = None,
+        timeout: Optional[float] = None,
+        max_records: Optional[int] = None,
     ) -> RecordMap:
         if not self.consumer.flow_active:
             return {}
@@ -999,11 +1001,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1030,7 +1032,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition destination."""
         consumer = self._ensure_consumer()
@@ -1207,7 +1209,9 @@ class Producer(base.Producer):
             return {"acks": "all", "enable_idempotence": True}
         return {}
 
-    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+    def _new_producer(
+        self, transactional_id: Optional[str] = None
+    ) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
             loop=self.loop,
             **{
@@ -1228,11 +1232,11 @@ class Producer(base.Producer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 20.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1285,7 +1289,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be transmitted by producer."""
 
@@ -1349,7 +1353,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         fut = await self.send(
@@ -1411,7 +1415,10 @@ class Transport(base.Transport):
         self._topic_waiters = {}
 
     def _topic_config(
-        self, retention: int = None, compacting: bool = None, deleting: bool = None
+        self,
+        retention: Optional[int] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
     ) -> MutableMapping[str, Any]:
         config: MutableMapping[str, Any] = {}
         cleanup_flags: Set[str] = set()
@@ -1481,11 +1488,11 @@ class Transport(base.Transport):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: int = 30000,
-        retention: int = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[int] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:  # pragma: no cover
         owner.log.info("Creating topic %r", topic)
@@ -1543,7 +1550,7 @@ class Transport(base.Transport):
 
 
 def credentials_to_aiokafka_auth(
-    credentials: CredentialsT = None, ssl_context: Any = None
+    credentials: Optional[CredentialsT] = None, ssl_context: Any = None
 ) -> Mapping:
     if credentials is not None:
         if isinstance(credentials, SSLCredentials):

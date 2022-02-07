@@ -2,7 +2,7 @@
 import asyncio
 import typing
 from time import monotonic
-from typing import Any, Dict, Generic, Tuple, Type, TypeVar, cast
+from typing import Any, Dict, Generic, Optional, Tuple, Type, TypeVar, cast
 
 from mode import Seconds, want_seconds
 
@@ -43,7 +43,7 @@ class BaseSignal(Generic[VT]):
         """Notify test that this signal is now complete."""
         raise NotImplementedError()
 
-    async def wait(self, *, key: Any = None, timeout: Seconds = None) -> VT:
+    async def wait(self, *, key: Any = None, timeout: Optional[Seconds] = None) -> VT:
         """Wait for signal to be completed."""
         raise NotImplementedError()
 
@@ -59,7 +59,7 @@ class BaseSignal(Generic[VT]):
     def _wakeup_resolvers(self) -> None:
         self.case.app._can_resolve.set()
 
-    async def _wait_for_resolved(self, *, timeout: float = None) -> None:
+    async def _wait_for_resolved(self, *, timeout: Optional[float] = None) -> None:
         app = self.case.app
         app._can_resolve.clear()
         await app.wait(app._can_resolve, timeout=timeout)
@@ -116,7 +116,7 @@ class Signal(BaseSignal[VT]):
             ),
         )
 
-    async def wait(self, *, key: Any = None, timeout: Seconds = None) -> VT:
+    async def wait(self, *, key: Any = None, timeout: Optional[Seconds] = None) -> VT:
         """Wait for signal to be completed."""
         # wait for key to arrive in consumer
         runner = self.case.current_execution
@@ -144,7 +144,7 @@ class Signal(BaseSignal[VT]):
         assert ev.case_name == case, f"{ev.case_name!r} == {case!r}"
 
     async def _wait_for_message_by_key(
-        self, key: Any, *, timeout: float = None, max_interval: float = 2.0
+        self, key: Any, *, timeout: Optional[float] = None, max_interval: float = 2.0
     ) -> SignalEvent:
         app = self.case.app
         time_start = monotonic()

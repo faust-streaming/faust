@@ -43,7 +43,9 @@ class CacheBackend(CacheBackendT, Service):
         ...
 
     @abc.abstractmethod
-    async def _set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def _set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -55,7 +57,9 @@ class CacheBackend(CacheBackendT, Service):
         async with self._recovery_context(key):
             return await self._get(key)
 
-    async def set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         """Set cached-value by key."""
         async with self._recovery_context(key):
             await self._set(key, value, timeout)

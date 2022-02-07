@@ -284,7 +284,7 @@ class TransactionManager(Service, TransactionManagerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         group = transactional_id = None
@@ -314,7 +314,7 @@ class TransactionManager(Service, TransactionManagerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         fut = await self.send(topic, key, value, partition, timestamp, headers)
@@ -355,11 +355,11 @@ class TransactionManager(Service, TransactionManagerT):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -445,9 +445,9 @@ class Consumer(Service, ConsumerT):
         on_partitions_revoked: PartitionsRevokedCallback,
         on_partitions_assigned: PartitionsAssignedCallback,
         *,
-        commit_interval: float = None,
-        commit_livelock_soft_timeout: float = None,
-        loop: asyncio.AbstractEventLoop = None,
+        commit_interval: Optional[float] = None,
+        commit_livelock_soft_timeout: Optional[float] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any,
     ) -> None:
         assert callback is not None
@@ -1299,11 +1299,11 @@ class ConsumerThread(QueueServiceThread):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1323,7 +1323,7 @@ class ConsumerThread(QueueServiceThread):
 
     @abc.abstractmethod
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition number."""
         ...
@@ -1435,7 +1435,7 @@ class ThreadDelegateConsumer(Consumer):
         self._thread.close()
 
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition number."""
         return self._thread.key_partition(topic, key, partition=partition)

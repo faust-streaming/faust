@@ -80,7 +80,7 @@ def test_parameters():
     assert not account2.active
 
     class Account3(Account):
-        foo: int = None
+        foo: Optional[int] = None
 
     account3 = Account3("id", "name", False, "foo")
     assert account3.id == "id"
@@ -662,10 +662,10 @@ def test_dumps(record):
 def test_subclass_default_values():
     class X(Record):
         x: int
-        y: int = None
+        y: Optional[int] = None
 
     class Z(X):
-        z: int = None
+        z: Optional[int] = None
 
     assert X(x=None).y is None
     assert X(x=None, y=303).y == 303
@@ -678,7 +678,7 @@ def test_subclass_default_values():
 def test_subclass_preserves_required_values():
     class X(Record):
         x: int
-        z: int = None
+        z: Optional[int] = None
 
     class Y(X):
         y: int
@@ -946,22 +946,22 @@ def test_adtribute_payload(app):
         tracker: str
         reftag: str
         nonce: str
-        campaign_name: str = None
-        adgroup_name: str = None
-        creative_name: str = None
-        click_referer: str = None
-        is_organic: str = None
-        reattribution_attribution_window: str = None
-        impression_attribution_window: str = None
-        store: str = None
-        match_type: str = None
-        platform_adid: str = None
-        search_term: str = None
-        event_name: str = None
-        installed_at: str = None
-        engagement_time: str = None
-        deeplink: str = None
-        source_user: str = None
+        campaign_name: Optional[str] = None
+        adgroup_name: Optional[str] = None
+        creative_name: Optional[str] = None
+        click_referer: Optional[str] = None
+        is_organic: Optional[str] = None
+        reattribution_attribution_window: Optional[str] = None
+        impression_attribution_window: Optional[str] = None
+        store: Optional[str] = None
+        match_type: Optional[str] = None
+        platform_adid: Optional[str] = None
+        search_term: Optional[str] = None
+        event_name: Optional[str] = None
+        installed_at: Optional[str] = None
+        engagement_time: Optional[str] = None
+        deeplink: Optional[str] = None
+        source_user: Optional[str] = None
 
     class User(Record):
         username: str
@@ -988,8 +988,8 @@ def test_adtribute_payload(app):
         app: App
         event: Event
         timestamp: str
-        client_ip: str = None
-        event_hash: str = None
+        client_ip: Optional[str] = None
+        event_hash: Optional[str] = None
 
     def __post_init__(self) -> None:
         self.data_store = None
@@ -1008,8 +1008,8 @@ def test_overwrite_asdict():
 
 def test_prepare_dict():
     class Quote(Record):
-        ask_price: float = None
-        bid_price: float = None
+        ask_price: Optional[float] = None
+        bid_price: Optional[float] = None
 
         def _prepare_dict(self, payload):
             return {k: v for k, v in payload.items() if v is not None}

@@ -41,8 +41,8 @@ DEFAULT_MAX_OPEN_FILES = _max_open_files
 DEFAULT_WRITE_BUFFER_SIZE = 67108864
 DEFAULT_MAX_WRITE_BUFFER_NUMBER = 3
 DEFAULT_TARGET_FILE_SIZE_BASE = 67108864
-DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024 ** 3
-DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024 ** 2
+DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024**3
+DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024**2
 DEFAULT_BLOOM_FILTER_SIZE = 3
 
 try:  # pragma: no cover
@@ -87,13 +87,13 @@ class RocksDBOptions:
 
     def __init__(
         self,
-        max_open_files: int = None,
-        write_buffer_size: int = None,
-        max_write_buffer_number: int = None,
-        target_file_size_base: int = None,
-        block_cache_size: int = None,
-        block_cache_compressed_size: int = None,
-        bloom_filter_size: int = None,
+        max_open_files: Optional[int] = None,
+        write_buffer_size: Optional[int] = None,
+        max_write_buffer_number: Optional[int] = None,
+        target_file_size_base: Optional[int] = None,
+        block_cache_size: Optional[int] = None,
+        block_cache_compressed_size: Optional[int] = None,
+        bloom_filter_size: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         if max_open_files is not None:
@@ -157,8 +157,8 @@ class Store(base.SerializedStore):
         app: AppT,
         table: CollectionT,
         *,
-        key_index_size: int = None,
-        options: Mapping[str, Any] = None,
+        key_index_size: Optional[int] = None,
+        options: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         if rocksdb is None:
