@@ -59,20 +59,9 @@ def setup_prometheus_sensors(
             "prometheus_client requires `pip install prometheus_client`."
         )
     if name_prefix is None:
-        app_conf_name = app.conf.name
-        app.logger.info(
-            "Name prefix is not supplied. Using the name %s from App config.",
-            app_conf_name,
-        )
-        if "-" in app_conf_name:
-            name_prefix = app_conf_name.replace("-", "_")
-            app.logger.warning(
-                "App config name %s does not conform to"
-                " Prometheus naming conventions."
-                " Using %s as a name_prefix.",
-                app_conf_name,
-                name_prefix,
-            )
+        name_prefix = app.conf.name
+
+    name_prefix = name_prefix.replace("-", "_").replace(".", "_")
 
     faust_metrics = FaustMetrics.create(registry, name_prefix)
     app.monitor = PrometheusMonitor(metrics=faust_metrics)
