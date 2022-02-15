@@ -119,15 +119,15 @@ class Stream(StreamT[T_co], Service):
         app: AppT,
         processors: Iterable[Processor[T]] = None,
         combined: List[JoinableT] = None,
-        on_start: Callable = None,
-        join_strategy: JoinT = None,
-        beacon: NodeT = None,
-        concurrency_index: int = None,
-        prev: StreamT = None,
-        active_partitions: Set[TP] = None,
+        on_start: Optional[Callable] = None,
+        join_strategy: Optional[JoinT] = None,
+        beacon: Optional[NodeT] = None,
+        concurrency_index: Optional[int] = None,
+        prev: Optional[StreamT] = None,
+        active_partitions: Optional[Set[TP]] = None,
         enable_acks: bool = True,
         prefix: str = "",
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         Service.__init__(self, loop=loop, beacon=beacon)
         self.app = app
@@ -703,9 +703,9 @@ class Stream(StreamT[T_co], Service):
         self,
         key: GroupByKeyArg,
         *,
-        name: str = None,
-        topic: TopicT = None,
-        partitions: int = None,
+        name: Optional[str] = None,
+        topic: Optional[TopicT] = None,
+        partitions: Optional[int] = None,
     ) -> StreamT:
         """Create new stream that repartitions the stream using a new key.
 
@@ -837,7 +837,7 @@ class Stream(StreamT[T_co], Service):
         self,
         name: str,
         *,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         prefix: str = "",
@@ -988,7 +988,7 @@ class Stream(StreamT[T_co], Service):
                 await self.stop()
                 self.service_reset()
 
-    def _set_current_event(self, event: EventT = None) -> None:
+    def _set_current_event(self, event: Optional[EventT] = None) -> None:
         if event is None:
             _current_event.set(None)
         else:

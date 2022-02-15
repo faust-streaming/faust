@@ -126,7 +126,7 @@ class ProducerT(ServiceT):
     def __init__(
         self,
         transport: "TransportT",
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any
     ) -> None:
         ...
@@ -141,7 +141,7 @@ class ProducerT(ServiceT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: Optional[str] = None
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -159,7 +159,7 @@ class ProducerT(ServiceT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None
+        transactional_id: Optional[str] = None
     ) -> RecordMetadata:
         ...
 
@@ -170,11 +170,11 @@ class ProducerT(ServiceT):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 1000.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False
     ) -> None:
         ...
@@ -230,7 +230,7 @@ class TransactionManagerT(ProducerT):
     def __init__(
         self,
         transport: "TransportT",
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         *,
         consumer: "ConsumerT",
         producer: "ProducerT",
@@ -316,8 +316,8 @@ class ConsumerT(ServiceT):
         on_partitions_revoked: PartitionsRevokedCallback,
         on_partitions_assigned: PartitionsAssignedCallback,
         *,
-        commit_interval: float = None,
-        loop: asyncio.AbstractEventLoop = None,
+        commit_interval: Optional[float] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any
     ) -> None:
         self._on_partitions_revoked: PartitionsRevokedCallback
@@ -330,11 +330,11 @@ class ConsumerT(ServiceT):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 1000.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False
     ) -> None:
         ...
@@ -424,7 +424,7 @@ class ConsumerT(ServiceT):
 
     @abc.abstractmethod
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         ...
 
@@ -522,7 +522,10 @@ class TransportT(abc.ABC):
 
     @abc.abstractmethod
     def __init__(
-        self, url: List[URL], app: _AppT, loop: asyncio.AbstractEventLoop = None
+        self,
+        url: List[URL],
+        app: _AppT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         ...
 

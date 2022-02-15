@@ -30,8 +30,8 @@ class SASLCredentials(Credentials):
     def __init__(
         self,
         *,
-        username: str = None,
-        password: str = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
         ssl_context: ssl.SSLContext = None,
         mechanism: Union[str, SASLMechanism] = None,
     ) -> None:
@@ -61,7 +61,7 @@ class GSSAPICredentials(Credentials):
         self,
         *,
         kerberos_service_name: str = "kafka",
-        kerberos_domain_name: str = None,
+        kerberos_domain_name: Optional[str] = None,
         ssl_context: ssl.SSLContext = None,
         mechanism: Union[str, SASLMechanism] = None,
     ) -> None:

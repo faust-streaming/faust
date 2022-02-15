@@ -151,13 +151,13 @@ class Message:
         key: Optional[bytes],
         value: Optional[bytes],
         checksum: Optional[bytes],
-        serialized_key_size: int = None,
-        serialized_value_size: int = None,
+        serialized_key_size: Optional[int] = None,
+        serialized_value_size: Optional[int] = None,
         tp: TP = None,
-        time_in: float = None,
-        time_out: float = None,
-        time_total: float = None,
-        generation_id: int = None,
+        time_in: Optional[float] = None,
+        time_out: Optional[float] = None,
+        time_total: Optional[float] = None,
+        generation_id: Optional[int] = None,
     ) -> None:
         self.topic: str = topic
         self.partition: int = partition

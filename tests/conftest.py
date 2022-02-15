@@ -2,7 +2,7 @@ import os
 import threading
 import time
 from http import HTTPStatus
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Optional
 
 import pytest
 from _pytest.assertion.util import _compare_eq_dict, _compare_eq_set
@@ -77,8 +77,8 @@ class _patching(object):
 
 
 class TimeMarks(NamedTuple):
-    time: float = None
-    monotonic: float = None
+    time: Optional[float] = None
+    monotonic: Optional[float] = None
 
 
 @pytest.fixture()

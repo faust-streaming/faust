@@ -250,17 +250,17 @@ class Model(ModelT):
 
     def __init_subclass__(
         self,
-        serializer: str = None,
-        namespace: str = None,
-        include_metadata: bool = None,
-        isodates: bool = None,
+        serializer: Optional[str] = None,
+        namespace: Optional[str] = None,
+        include_metadata: Optional[bool] = None,
+        isodates: Optional[bool] = None,
         abstract: bool = False,
-        allow_blessed_key: bool = None,
-        decimals: bool = None,
-        coerce: bool = None,
+        allow_blessed_key: Optional[bool] = None,
+        decimals: Optional[bool] = None,
+        coerce: Optional[bool] = None,
         coercions: CoercionMapping = None,
-        polymorphic_fields: bool = None,
-        validation: bool = None,
+        polymorphic_fields: Optional[bool] = None,
+        validation: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
         lazy_creation: bool = False,
         **kwargs: Any,
@@ -305,17 +305,17 @@ class Model(ModelT):
     @classmethod
     def _init_subclass(
         cls,
-        serializer: str = None,
-        namespace: str = None,
-        include_metadata: bool = None,
-        isodates: bool = None,
+        serializer: Optional[str] = None,
+        namespace: Optional[str] = None,
+        include_metadata: Optional[bool] = None,
+        isodates: Optional[bool] = None,
         abstract: bool = False,
-        allow_blessed_key: bool = None,
-        decimals: bool = None,
-        coerce: bool = None,
+        allow_blessed_key: Optional[bool] = None,
+        decimals: Optional[bool] = None,
+        coerce: Optional[bool] = None,
         coercions: CoercionMapping = None,
-        polymorphic_fields: bool = None,
-        validation: bool = None,
+        polymorphic_fields: Optional[bool] = None,
+        validation: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
     ) -> None:
         # Can set serializer/namespace/etc. using:
@@ -421,7 +421,10 @@ class Model(ModelT):
     @classmethod
     @abc.abstractmethod
     def _contribute_field_descriptors(
-        cls, target: Type, options: ModelOptions, parent: FieldDescriptorT = None
+        cls,
+        target: Type,
+        options: ModelOptions,
+        parent: Optional[FieldDescriptorT] = None,
     ) -> FieldMap:  # pragma: no cover
         ...
 

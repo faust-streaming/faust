@@ -67,10 +67,10 @@ class CacheBackend(base.CacheBackend):
         app: AppT,
         url: Union[URL, str],
         *,
-        connect_timeout: float = None,
-        stream_timeout: float = None,
-        max_connections: int = None,
-        max_connections_per_node: int = None,
+        connect_timeout: Optional[float] = None,
+        stream_timeout: Optional[float] = None,
+        max_connections: Optional[int] = None,
+        max_connections_per_node: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(app, url, **kwargs)
@@ -95,7 +95,9 @@ class CacheBackend(base.CacheBackend):
             return want_bytes(value)
         return None
 
-    async def _set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def _set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         if timeout is not None:
             await self.client.setex(key, int(timeout), value)
         else:
@@ -125,10 +127,10 @@ class CacheBackend(base.CacheBackend):
         self,
         url: URL,
         *,
-        connect_timeout: str = None,
-        stream_timeout: str = None,
-        max_connections: str = None,
-        max_connections_per_node: str = None,
+        connect_timeout: Optional[str] = None,
+        stream_timeout: Optional[str] = None,
+        max_connections: Optional[str] = None,
+        max_connections_per_node: Optional[str] = None,
         **kwargs: Any,
     ) -> _RedisClientT:
         Client = self._client_by_scheme[url.scheme]
@@ -160,15 +162,17 @@ class CacheBackend(base.CacheBackend):
             return self._as_cluster_kwargs(**kwargs)
         return kwargs
 
-    def _as_cluster_kwargs(self, db: str = None, **kwargs: Any) -> Mapping:
+    def _as_cluster_kwargs(self, db: Optional[str] = None, **kwargs: Any) -> Mapping:
         # Redis Cluster does not support db as argument.
         return kwargs
 
-    def _int_from_str(self, val: str = None, default: int = None) -> Optional[int]:
+    def _int_from_str(
+        self, val: Optional[str] = None, default: Optional[int] = None
+    ) -> Optional[int]:
         return int(val) if val else default
 
     def _float_from_str(
-        self, val: str = None, default: float = None
+        self, val: Optional[str] = None, default: Optional[float] = None
     ) -> Optional[float]:
         return float(val) if val else default
 

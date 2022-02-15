@@ -1436,7 +1436,7 @@ consider doing retries (send to separate topic):
    main_topic = app.topic('main')
    deadletter_topic = app.topic('main_deadletter')
 
-   async def send_request(value, timeout: float = None) -> None:
+   async def send_request(value, timeout: Optional[float] = None) -> None:
        await app.http_client.get('http://foo.com', timeout=timeout)
 
    @app.agent(main_topic)
