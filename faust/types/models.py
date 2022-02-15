@@ -57,7 +57,6 @@ try:
     class _UsingKwargsInNew(_InitSubclassCheck, ident=909):
         ...
 
-
 except TypeError:
     abc_compatible_with_init_subclass = False
 else:
@@ -210,15 +209,15 @@ class FieldDescriptorT(Generic[T]):
     def __init__(
         self,
         *,
-        field: str = None,
-        input_name: str = None,
-        output_name: str = None,
-        type: Type[T] = None,
-        model: Type[ModelT] = None,
+        field: Optional[str] = None,
+        input_name: Optional[str] = None,
+        output_name: Optional[str] = None,
+        type: Optional[Type[T]] = None,
+        model: Optional[Type[ModelT]] = None,
         required: bool = True,
         default: T = None,
         parent: "FieldDescriptorT" = None,
-        exclude: bool = None,
+        exclude: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
         **kwargs: Any
     ) -> None:

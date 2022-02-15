@@ -135,18 +135,18 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         self,
         channel: AsyncIterator[T_co] = None,
         *,
-        app: _AppT = None,
+        app: Optional[_AppT] = None,
         processors: Iterable[Processor[T]] = None,
         combined: List[JoinableT] = None,
-        on_start: Callable = None,
+        on_start: Optional[Callable] = None,
         join_strategy: _JoinT = None,
-        beacon: NodeT = None,
-        concurrency_index: int = None,
+        beacon: Optional[NodeT] = None,
+        concurrency_index: Optional[int] = None,
         prev: "StreamT" = None,
-        active_partitions: Set[TP] = None,
+        active_partitions: Optional[Set[TP]] = None,
         enable_acks: bool = True,
         prefix: str = "",
-        loop: asyncio.AbstractEventLoop = None
+        loop: Optional[asyncio.AbstractEventLoop] = None
     ) -> None:
         ...
 
@@ -195,7 +195,11 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
 
     @abc.abstractmethod
     def group_by(
-        self, key: GroupByKeyArg, *, name: str = None, topic: TopicT = None
+        self,
+        key: GroupByKeyArg,
+        *,
+        name: Optional[str] = None,
+        topic: Optional[TopicT] = None
     ) -> "StreamT":
         ...
 
@@ -204,7 +208,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         self,
         name: str,
         *,
-        schema: _SchemaT = None,
+        schema: Optional[_SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         prefix: str = "",

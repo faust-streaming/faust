@@ -119,15 +119,15 @@ class Stream(StreamT[T_co], Service):
         app: AppT,
         processors: Iterable[Processor[T]] = None,
         combined: List[JoinableT] = None,
-        on_start: Callable = None,
-        join_strategy: JoinT = None,
-        beacon: NodeT = None,
-        concurrency_index: int = None,
-        prev: StreamT = None,
-        active_partitions: Set[TP] = None,
+        on_start: Optional[Callable] = None,
+        join_strategy: Optional[JoinT] = None,
+        beacon: Optional[NodeT] = None,
+        concurrency_index: Optional[int] = None,
+        prev: Optional[StreamT] = None,
+        active_partitions: Optional[Set[TP]] = None,
         enable_acks: bool = True,
         prefix: str = "",
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         Service.__init__(self, loop=loop, beacon=beacon)
         self.app = app
@@ -391,6 +391,105 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
+    async def take_with_timestamp(
+        self, max_: int, within: Seconds, timestamp_field_name: str
+    ) -> AsyncIterable[Sequence[T_co]]:
+        """Buffer n values at a time and yield a list of buffered values with the timestamp
+           when the message was added to kafka.
+
+        Arguments:
+            max_: Max number of messages to receive. When more than this
+                number of messages are received within the specified number of
+                seconds then we flush the buffer immediately.
+            within: Timeout for when we give up waiting for another value,
+                and process the values we have.
+                Warning: If there's no timeout (i.e. `timeout=None`),
+                the agent is likely to stall and block buffered events for an
+                unreasonable length of time(!).
+            timestamp_field_name: the name of the field containing kafka timestamp,
+                that is going to be added to the value
+        """
+        buffer: List[T_co] = []
+        events: List[EventT] = []
+        buffer_add = buffer.append
+        event_add = events.append
+        buffer_size = buffer.__len__
+        buffer_full = asyncio.Event(loop=self.loop)
+        buffer_consumed = asyncio.Event(loop=self.loop)
+        timeout = want_seconds(within) if within else None
+        stream_enable_acks: bool = self.enable_acks
+
+        buffer_consuming: Optional[asyncio.Future] = None
+
+        channel_it = aiter(self.channel)
+
+        # We add this processor to populate the buffer, and the stream
+        # is passively consumed in the background (enable_passive below).
+        async def add_to_buffer(value: T) -> T:
+            try:
+                # buffer_consuming is set when consuming buffer after timeout.
+                nonlocal buffer_consuming
+                if buffer_consuming is not None:
+                    try:
+                        await buffer_consuming
+                    finally:
+                        buffer_consuming = None
+                event = self.current_event
+                if isinstance(value, dict) and timestamp_field_name:
+                    value[timestamp_field_name] = event.message.timestamp
+                buffer_add(value)
+                if event is None:
+                    raise RuntimeError("Take buffer found current_event is None")
+                event_add(event)
+                if buffer_size() >= max_:
+                    # signal that the buffer is full and should be emptied.
+                    buffer_full.set()
+                    # strict wait for buffer to be consumed after buffer full.
+                    # If max is 1000, we are not allowed to return 1001 values.
+                    buffer_consumed.clear()
+                    await self.wait(buffer_consumed)
+            except CancelledError:  # pragma: no cover
+                raise
+            except Exception as exc:
+                self.log.exception("Error adding to take buffer: %r", exc)
+                await self.crash(exc)
+            return value
+
+        # Disable acks to ensure this method acks manually
+        # events only after they are consumed by the user
+        self.enable_acks = False
+
+        self.add_processor(add_to_buffer)
+        self._enable_passive(cast(ChannelT, channel_it))
+        try:
+            while not self.should_stop:
+                # wait until buffer full, or timeout
+                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                if buffer:
+                    # make sure background thread does not add new items to
+                    # buffer while we read.
+                    buffer_consuming = self.loop.create_future()
+                    try:
+                        yield list(buffer)
+                    finally:
+                        buffer.clear()
+                        for event in events:
+                            await self.ack(event)
+                        events.clear()
+                        # allow writing to buffer again
+                        notify(buffer_consuming)
+                        buffer_full.clear()
+                        buffer_consumed.set()
+                else:  # pragma: no cover
+                    pass
+            else:  # pragma: no cover
+                pass
+
+        finally:
+            # Restore last behaviour of "enable_acks"
+            self.enable_acks = stream_enable_acks
+            self._processors.remove(add_to_buffer)
+
     def enumerate(self, start: int = 0) -> AsyncIterable[Tuple[int, T_co]]:
         """Enumerate values received on this stream.
 
@@ -602,9 +701,9 @@ class Stream(StreamT[T_co], Service):
         self,
         key: GroupByKeyArg,
         *,
-        name: str = None,
-        topic: TopicT = None,
-        partitions: int = None,
+        name: Optional[str] = None,
+        topic: Optional[TopicT] = None,
+        partitions: Optional[int] = None,
     ) -> StreamT:
         """Create new stream that repartitions the stream using a new key.
 
@@ -736,7 +835,7 @@ class Stream(StreamT[T_co], Service):
         self,
         name: str,
         *,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         prefix: str = "",
@@ -887,7 +986,7 @@ class Stream(StreamT[T_co], Service):
                 await self.stop()
                 self.service_reset()
 
-    def _set_current_event(self, event: EventT = None) -> None:
+    def _set_current_event(self, event: Optional[EventT] = None) -> None:
         if event is None:
             _current_event.set(None)
         else:
@@ -971,6 +1070,20 @@ class Stream(StreamT[T_co], Service):
                         tp = message.tp
                         offset = message.offset
 
+                        if (
+                            not self.app.flow_control.is_active()
+                            or message.generation_id != self.app.consumer_generation_id
+                        ):
+                            value = skipped_value
+                            self.log.dev(
+                                "Skipping message %r with generation_id %r because "
+                                "app generation_id is %r flow_control.is_active %r",
+                                message,
+                                message.generation_id,
+                                self.app.consumer_generation_id,
+                                self.app.flow_control.is_active(),
+                            )
+                            break
                         if topic in acking_topics and not message.tracked:
                             message.tracked = True
                             # This inlines Consumer.track_message(message)

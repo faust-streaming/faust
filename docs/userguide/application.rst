@@ -856,8 +856,8 @@ This can be used to attach custom headers to Kafka messages:
             sender: AppT,
             key: bytes = None,
             value: bytes = None,
-            partition: int = None,
-            timestamp: float = None,
+            partition: Optional[int] = None,
+            timestamp: Optional[float] = None,
             headers: List[Tuple[str, bytes]] = None,
             **kwargs: Any) -> None:
         test = current_test()

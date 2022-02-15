@@ -304,26 +304,26 @@ class Recovery(Service):
         app = self.app
         consumer = app.consumer
         await app.on_rebalance_complete.send()
-        # Resume partitions and start fetching.
-        self.log.info("Resuming flow...")
-        consumer.resume_flow()
-        app.flow_control.resume()
         assignment = consumer.assignment()
         if self.app.consumer_generation_id != generation_id:
             self.log.warning("Recovery rebalancing again")
             return
         if assignment:
-            self.log.info("Seek stream partitions to committed offsets.")
-            await self._wait(
-                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
-            )
             self.log.dev("Resume stream partitions")
             consumer.resume_partitions(
                 {tp for tp in assignment if not self._is_changelog_tp(tp)}
             )
+            self.log.info("Seek stream partitions to committed offsets.")
+            await self._wait(
+                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
+            )
         else:
             self.log.info("Resuming streams with empty assignment")
         self.completed.set()
+        # Resume partitions and start fetching.
+        self.log.info("Resuming flow...")
+        app.flow_control.resume()
+        consumer.resume_flow()
         # finally make sure the fetcher is running.
         await cast(_App, app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
@@ -440,9 +440,9 @@ class Recovery(Service):
                     T(consumer.resume_partitions)(active_tps)
                     # Resume partitions and start fetching.
                     self.log.info("Resuming flow...")
+                    T(self.app.flow_control.resume)()
                     T(consumer.resume_flow)()
                     await T(cast(_App, self.app)._fetcher.maybe_start)()
-                    T(self.app.flow_control.resume)()
 
                     # Wait for actives to be up to date.
                     # This signal will be set by _slurp_changelogs
@@ -467,8 +467,8 @@ class Recovery(Service):
                     T(consumer.pause_partitions)(active_tps)
                 else:
                     self.log.info("Resuming flow...")
-                    T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
+                    T(consumer.resume_flow)()
                     self._set_recovery_ended()
                 self.log.info("Recovery complete")
                 if span:
@@ -519,8 +519,8 @@ class Recovery(Service):
                         self.app._span_add_default_tags(span)
                     self.log.dev("Resume standby partitions")
                     T(consumer.resume_partitions)(standby_tps)
-                    T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
+                    T(consumer.resume_flow)()
 
                 # Pause all our topic partitions,
                 # to make sure we don't fetch any more records from them.
@@ -580,7 +580,7 @@ class Recovery(Service):
         else:
             return None
 
-    async def _wait(self, coro: WaitArgT, timeout: int = None) -> None:
+    async def _wait(self, coro: WaitArgT, timeout: Optional[int] = None) -> None:
         signal = self.signal_recovery_start
         wait_result = await self.wait_first(coro, signal, timeout=timeout)
         if wait_result.stopped:
@@ -615,6 +615,9 @@ class Recovery(Service):
                 f"{self.app.consumer_generation_id} param {generation_id}"
             )
             return
+        consumer.resume_partitions(
+            {tp for tp in assignment if not self._is_changelog_tp(tp)}
+        )
         if assignment:
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
@@ -622,11 +625,8 @@ class Recovery(Service):
             )
         self.completed.set()
         self.log.dev("Resume stream partitions")
-        consumer.resume_partitions(
-            {tp for tp in assignment if not self._is_changelog_tp(tp)}
-        )
-        consumer.resume_flow()
         self.app.flow_control.resume()
+        consumer.resume_flow()
         # finally make sure the fetcher is running.
         await cast(_App, self.app)._fetcher.maybe_start()
         self.tables.on_actives_ready()

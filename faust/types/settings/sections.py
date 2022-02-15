@@ -56,7 +56,12 @@ class Section:
     content: Optional[str]
 
     def __init__(
-        self, type: SectionType, title: str, refid: str, *, content: str = None
+        self,
+        type: SectionType,
+        title: str,
+        refid: str,
+        *,
+        content: Optional[str] = None,
     ) -> None:
         self.type = type
         self.title = title

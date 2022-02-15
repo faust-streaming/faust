@@ -1,5 +1,5 @@
 """Actor - Individual Agent instances."""
-from typing import Any, AsyncGenerator, AsyncIterator, Coroutine, Set, cast
+from typing import Any, AsyncGenerator, AsyncIterator, Coroutine, Optional, Set, cast
 
 from mode import Service
 from mode.utils.tracebacks import format_agen_stack, format_coro_stack
@@ -22,8 +22,8 @@ class Actor(ActorT, Service):
         agent: AgentT,
         stream: StreamT,
         it: _T,
-        index: int = None,
-        active_partitions: Set[TP] = None,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
         **kwargs: Any,
     ) -> None:
         self.agent = agent
