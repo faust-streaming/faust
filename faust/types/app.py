@@ -141,7 +141,7 @@ class BootStrategyT:
         enable_kafka: bool = True,
         enable_kafka_producer: Optional[bool] = None,
         enable_kafka_consumer: Optional[bool] = None,
-        enable_sensors: bool = True
+        enable_sensors: bool = True,
     ) -> None:
         ...
 
@@ -273,7 +273,7 @@ class AppT(ServiceT):
         maxsize: Optional[int] = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> TopicT:
         ...
 
@@ -285,7 +285,7 @@ class AppT(ServiceT):
         key_type: _ModelArg = None,
         value_type: _ModelArg = None,
         maxsize: Optional[int] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> ChannelT:
         ...
 
@@ -352,7 +352,7 @@ class AppT(ServiceT):
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -365,7 +365,7 @@ class AppT(ServiceT):
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -378,7 +378,7 @@ class AppT(ServiceT):
         partitions: Optional[int] = None,
         start_manager: bool = False,
         help: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -391,7 +391,7 @@ class AppT(ServiceT):
         partitions: Optional[int] = None,
         start_manager: bool = False,
         help: Optional[str] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -402,7 +402,7 @@ class AppT(ServiceT):
         *,
         base: Type[View] = View,
         cors_options: Mapping[str, ResourceOptions] = None,
-        name: Optional[str] = None
+        name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         ...
 
@@ -414,7 +414,7 @@ class AppT(ServiceT):
         *,
         query_param: Optional[str] = None,
         match_info: Optional[str] = None,
-        exact_key: Optional[str] = None
+        exact_key: Optional[str] = None,
     ) -> ViewDecorator:
         ...
 
