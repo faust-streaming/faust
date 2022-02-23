@@ -1,7 +1,18 @@
 """Using :pypi:`terminaltables` to draw ANSI tables."""
 import sys
 from operator import itemgetter
-from typing import IO, Any, Callable, Iterable, List, Mapping, Sequence, Type, cast
+from typing import (
+    IO,
+    Any,
+    Callable,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Type,
+    cast,
+)
 
 from mode.utils import logging, text
 from mode.utils.compat import isatty
@@ -14,7 +25,12 @@ TableDataT = Sequence[Sequence[str]]
 
 
 def table(
-    data: TableDataT, *, title: str, target: IO = None, tty: bool = None, **kwargs: Any
+    data: TableDataT,
+    *,
+    title: str,
+    target: IO = None,
+    tty: Optional[bool] = None,
+    **kwargs: Any
 ) -> Table:
     """Create suitable :pypi:`terminaltables` table for target.
 
@@ -41,8 +57,8 @@ def logtable(
     *,
     title: str,
     target: IO = None,
-    tty: bool = None,
-    headers: Sequence[str] = None,
+    tty: Optional[bool] = None,
+    headers: Optional[Sequence[str]] = None,
     **kwargs: Any
 ) -> str:
     """Prepare table for logging.
@@ -71,7 +87,7 @@ def dict_as_ansitable(
     sort: bool = False,
     sortkey: Callable[[Any], Any] = DEFAULT_SORT_KEY,
     target: IO = sys.stdout,
-    title: str = None
+    title: Optional[str] = None
 ) -> str:
     header = [text.title(key), text.title(value)]
     data = cast(Iterable[List[str]], d.items())

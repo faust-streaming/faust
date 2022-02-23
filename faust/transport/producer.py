@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 
 
 class ProducerBuffer(Service, ProducerBufferT):
-    app: AppT = None
+    app: Optional[AppT] = None
     max_messages = 100
     queue: Optional[asyncio.Queue] = None
 
@@ -123,7 +123,7 @@ class Producer(Service, ProducerT):
     def __init__(
         self,
         transport: TransportT,
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any,
     ) -> None:
         self.transport = transport
@@ -160,7 +160,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         raise NotImplementedError()
@@ -177,7 +177,7 @@ class Producer(Service, ProducerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         raise NotImplementedError()
@@ -193,11 +193,11 @@ class Producer(Service, ProducerT):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 1000.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""

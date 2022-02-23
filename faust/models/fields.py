@@ -132,16 +132,16 @@ class FieldDescriptor(FieldDescriptorT[T]):
     def __init__(
         self,
         *,
-        field: str = None,
-        input_name: str = None,
-        output_name: str = None,
+        field: Optional[str] = None,
+        input_name: Optional[str] = None,
+        output_name: Optional[str] = None,
         type: Type[T] = None,
         model: Type[ModelT] = None,
         required: bool = True,
         default: T = None,
-        parent: FieldDescriptorT = None,
-        coerce: bool = None,
-        exclude: bool = None,
+        parent: Optional[FieldDescriptorT] = None,
+        coerce: Optional[bool] = None,
+        exclude: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
         tag: Type[Tag] = None,
         **options: Any,
@@ -239,7 +239,9 @@ class FieldDescriptor(FieldDescriptorT[T]):
             value = to_python(value)
         return self.prepare_value(value)
 
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[T]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[T]:
         return cast(T, value)
 
     def _copy_descriptors(self, typ: Type = None) -> None:
@@ -264,7 +266,7 @@ class FieldDescriptor(FieldDescriptorT[T]):
                 evaluated_fields.add(field)
         return value
 
-    def should_coerce(self, value: Any, coerce: bool = None) -> bool:
+    def should_coerce(self, value: Any, coerce: Optional[bool] = None) -> bool:
         c = coerce if coerce is not None else self.coerce
         return c and (self.required or value is not None)
 
@@ -320,7 +322,9 @@ class BooleanField(FieldDescriptor[bool]):
                 f"{self.field} must be True or False, of type bool"
             )
 
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[bool]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[bool]:
         if self.should_coerce(value, coerce):
             return True if value else False
         return value
@@ -332,7 +336,11 @@ class NumberField(FieldDescriptor[T]):
     min_value: Optional[int]
 
     def __init__(
-        self, *, max_value: int = None, min_value: int = None, **kwargs: Any
+        self,
+        *,
+        max_value: Optional[int] = None,
+        min_value: Optional[int] = None,
+        **kwargs: Any,
     ) -> None:
         self.max_value = max_value
         self.min_value = min_value
@@ -358,12 +366,16 @@ class NumberField(FieldDescriptor[T]):
 
 
 class IntegerField(NumberField[int]):
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[int]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[int]:
         return int(value) if self.should_coerce(value, coerce) else value
 
 
 class FloatField(NumberField[float]):
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[float]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[float]:
         return float(value) if self.should_coerce(value, coerce) else value
 
 
@@ -372,7 +384,11 @@ class DecimalField(NumberField[Decimal]):
     max_decimal_places: Optional[int] = None
 
     def __init__(
-        self, *, max_digits: int = None, max_decimal_places: int = None, **kwargs: Any
+        self,
+        *,
+        max_digits: Optional[int] = None,
+        max_decimal_places: Optional[int] = None,
+        **kwargs: Any,
     ) -> None:
         self.max_digits = max_digits
         self.max_decimal_places = max_decimal_places
@@ -393,7 +409,9 @@ class DecimalField(NumberField[Decimal]):
         else:
             return self._to_python(value)
 
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[Decimal]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[Decimal]:
         return Decimal(value) if self.should_coerce(value, coerce) else value
 
     def validate(self, value: Decimal) -> Iterable[ValidationError]:
@@ -430,8 +448,8 @@ class CharField(FieldDescriptor[CharacterType]):
     def __init__(
         self,
         *,
-        max_length: int = None,
-        min_length: int = None,
+        max_length: Optional[int] = None,
+        min_length: Optional[int] = None,
         trim_whitespace: bool = False,
         allow_blank: bool = False,
         **kwargs: Any,
@@ -472,7 +490,9 @@ class CharField(FieldDescriptor[CharacterType]):
 
 
 class StringField(CharField[str]):
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[str]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[str]:
         if self.should_coerce(value, coerce):
             val = str(value) if not isinstance(value, str) else value
             if self.trim_whitespace:
@@ -491,7 +511,9 @@ class DatetimeField(FieldDescriptor[datetime]):
         else:
             return self._to_python(value)
 
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[datetime]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[datetime]:
         if self.should_coerce(value, coerce):
             if value is not None and not isinstance(value, datetime):
                 return self.date_parser(value)
@@ -506,7 +528,11 @@ class BytesField(CharField[bytes]):
     errors: str = "strict"
 
     def __init__(
-        self, *, encoding: str = None, errors: str = None, **kwargs: Any
+        self,
+        *,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
         if encoding is not None:
             self.encoding = encoding
@@ -518,7 +544,9 @@ class BytesField(CharField[bytes]):
             **kwargs,
         )
 
-    def prepare_value(self, value: Any, *, coerce: bool = None) -> Optional[bytes]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[bytes]:
         if self.should_coerce(value, coerce):
             if isinstance(value, bytes):
                 val = value

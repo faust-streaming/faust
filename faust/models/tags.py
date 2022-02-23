@@ -31,7 +31,7 @@ class Tag(Generic[T]):
     is_sensitive: bool = False
     is_personal: bool = False
 
-    def __init__(self, value: T, *, field: str = None):
+    def __init__(self, value: T, *, field: Optional[str] = None):
         if isinstance(value, Tag):
             raise SecurityError("Cannot wrap: value is already tagged")
         self._value = value

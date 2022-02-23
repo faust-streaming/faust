@@ -88,7 +88,7 @@ class SchemaT(Generic[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: bool = None
+        allow_empty: Optional[bool] = None
     ) -> None:
         ...
 
@@ -100,7 +100,7 @@ class SchemaT(Generic[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: bool = None
+        allow_empty: Optional[bool] = None
     ) -> None:
         ...
 
@@ -110,7 +110,7 @@ class SchemaT(Generic[KT, VT]):
         app: _AppT,
         message: _Message,
         *,
-        loads: Callable = None,
+        loads: Optional[Callable] = None,
         serializer: CodecArg = None
     ) -> KT:
         ...
@@ -121,7 +121,7 @@ class SchemaT(Generic[KT, VT]):
         app: _AppT,
         message: _Message,
         *,
-        loads: Callable = None,
+        loads: Optional[Callable] = None,
         serializer: CodecArg = None
     ) -> VT:
         ...

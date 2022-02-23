@@ -1,5 +1,5 @@
 """Table (key/value changelog stream)."""
-from typing import Any, ClassVar, Type
+from typing import Any, ClassVar, Optional, Type
 
 from mode import Seconds
 
@@ -33,7 +33,7 @@ class Table(TableT[KT, VT], Collection):
         self,
         size: Seconds,
         step: Seconds,
-        expires: Seconds = None,
+        expires: Optional[Seconds] = None,
         key_index: bool = False,
     ) -> WindowWrapperT:
         """Wrap table in a hopping window."""
@@ -43,7 +43,7 @@ class Table(TableT[KT, VT], Collection):
         )
 
     def tumbling(
-        self, size: Seconds, expires: Seconds = None, key_index: bool = False
+        self, size: Seconds, expires: Optional[Seconds] = None, key_index: bool = False
     ) -> WindowWrapperT:
         """Wrap table in a tumbling window."""
         return self.using_window(

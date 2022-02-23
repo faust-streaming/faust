@@ -107,24 +107,24 @@ class CollectionT(ServiceT, JoinableT):
         self,
         app: _AppT,
         *,
-        name: str = None,
+        name: Optional[str] = None,
         default: Callable[[], Any] = None,
         store: Union[str, URL] = None,
-        schema: _SchemaT = None,
+        schema: Optional[_SchemaT] = None,
         key_type: _ModelArg = None,
         value_type: _ModelArg = None,
-        partitions: int = None,
-        window: WindowT = None,
-        changelog_topic: TopicT = None,
-        help: str = None,
+        partitions: Optional[int] = None,
+        window: Optional[WindowT] = None,
+        changelog_topic: Optional[TopicT] = None,
+        help: Optional[str] = None,
         on_recover: RecoverCallback = None,
-        on_changelog_event: ChangelogEventCallback = None,
+        on_changelog_event: Optional[ChangelogEventCallback] = None,
         recovery_buffer_size: int = 1000,
-        standby_buffer_size: int = None,
-        extra_topic_configs: Mapping[str, Any] = None,
-        options: Mapping[str, Any] = None,
+        standby_buffer_size: Optional[int] = None,
+        extra_topic_configs: Optional[Mapping[str, Any]] = None,
+        options: Optional[Mapping[str, Any]] = None,
         use_partitioner: bool = False,
-        on_window_close: WindowCloseCallback = None,
+        on_window_close: Optional[WindowCloseCallback] = None,
         **kwargs: Any
     ) -> None:
         ...
@@ -220,14 +220,14 @@ class CollectionT(ServiceT, JoinableT):
         self,
         size: Seconds,
         step: Seconds,
-        expires: Seconds = None,
+        expires: Optional[Seconds] = None,
         key_index: bool = False,
     ) -> "WindowWrapperT":
         ...
 
     @abc.abstractmethod
     def tumbling(
-        self, size: Seconds, expires: Seconds = None, key_index: bool = False
+        self, size: Seconds, expires: Optional[Seconds] = None, key_index: bool = False
     ) -> "WindowWrapperT":
         ...
 
@@ -236,11 +236,11 @@ class CollectionT(ServiceT, JoinableT):
         ...
 
     @abc.abstractmethod
-    def _relative_now(self, event: EventT = None) -> float:
+    def _relative_now(self, event: Optional[EventT] = None) -> float:
         ...
 
     @abc.abstractmethod
-    def _relative_event(self, event: EventT = None) -> float:
+    def _relative_event(self, event: Optional[EventT] = None) -> float:
         ...
 
     @abc.abstractmethod
@@ -325,22 +325,26 @@ class WindowSetT(FastUserDict[KT, VT]):
 
     @abc.abstractmethod
     def __init__(
-        self, key: KT, table: TableT, wrapper: "WindowWrapperT", event: EventT = None
+        self,
+        key: KT,
+        table: TableT,
+        wrapper: "WindowWrapperT",
+        event: Optional[EventT] = None,
     ) -> None:
         ...
 
     @abc.abstractmethod
     def apply(
-        self, op: Callable[[VT, VT], VT], value: VT, event: EventT = None
+        self, op: Callable[[VT, VT], VT], value: VT, event: Optional[EventT] = None
     ) -> "WindowSetT":
         ...
 
     @abc.abstractmethod
-    def value(self, event: EventT = None) -> VT:
+    def value(self, event: Optional[EventT] = None) -> VT:
         ...
 
     @abc.abstractmethod
-    def current(self, event: EventT = None) -> VT:
+    def current(self, event: Optional[EventT] = None) -> VT:
         ...
 
     @abc.abstractmethod
@@ -348,7 +352,7 @@ class WindowSetT(FastUserDict[KT, VT]):
         ...
 
     @abc.abstractmethod
-    def delta(self, d: Seconds, event: EventT = None) -> VT:
+    def delta(self, d: Seconds, event: Optional[EventT] = None) -> VT:
         ...
 
     @abc.abstractmethod
@@ -402,7 +406,9 @@ class WindowSetT(FastUserDict[KT, VT]):
 
 class WindowedItemsViewT(ItemsView):
     @abc.abstractmethod
-    def __init__(self, mapping: "WindowWrapperT", event: EventT = None) -> None:
+    def __init__(
+        self, mapping: "WindowWrapperT", event: Optional[EventT] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -414,17 +420,21 @@ class WindowedItemsViewT(ItemsView):
         ...
 
     @abc.abstractmethod
-    def current(self, event: EventT = None) -> Iterator[Tuple[Any, Any]]:
+    def current(self, event: Optional[EventT] = None) -> Iterator[Tuple[Any, Any]]:
         ...
 
     @abc.abstractmethod
-    def delta(self, d: Seconds, event: EventT = None) -> Iterator[Tuple[Any, Any]]:
+    def delta(
+        self, d: Seconds, event: Optional[EventT] = None
+    ) -> Iterator[Tuple[Any, Any]]:
         ...
 
 
 class WindowedValuesViewT(ValuesView):
     @abc.abstractmethod
-    def __init__(self, mapping: "WindowWrapperT", event: EventT = None) -> None:
+    def __init__(
+        self, mapping: "WindowWrapperT", event: Optional[EventT] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -436,11 +446,11 @@ class WindowedValuesViewT(ValuesView):
         ...
 
     @abc.abstractmethod
-    def current(self, event: EventT = None) -> Iterator[Any]:
+    def current(self, event: Optional[EventT] = None) -> Iterator[Any]:
         ...
 
     @abc.abstractmethod
-    def delta(self, d: Seconds, event: EventT = None) -> Iterator[Any]:
+    def delta(self, d: Seconds, event: Optional[EventT] = None) -> Iterator[Any]:
         ...
 
 
@@ -454,7 +464,7 @@ class WindowWrapperT(MutableMapping):
         *,
         relative_to: RelativeArg = None,
         key_index: bool = False,
-        key_index_table: TableT = None
+        key_index_table: Optional[TableT] = None
     ) -> None:
         ...
 
@@ -480,7 +490,7 @@ class WindowWrapperT(MutableMapping):
         ...
 
     @abc.abstractmethod
-    def get_timestamp(self, event: EventT = None) -> float:
+    def get_timestamp(self, event: Optional[EventT] = None) -> float:
         ...
 
     @abc.abstractmethod
