@@ -973,6 +973,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__in_transaction(self, *, consumer):
         consumer.in_transaction = True
+        consumer.app.producer.flush = AsyncMock()
         consumer.transactions.commit = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         ret = await consumer._commit_offsets(
