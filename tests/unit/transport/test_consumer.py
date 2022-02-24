@@ -943,6 +943,7 @@ class TestConsumer:
     async def test_commit_offsets(self, *, consumer):
         consumer._commit = AsyncMock(name="_commit")
         consumer.current_assignment.update({TP1, TP2})
+        consumer.app.producer.flush = AsyncMock()
         await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -960,6 +961,7 @@ class TestConsumer:
     async def test_commit_offsets__did_not_commit(self, *, consumer):
         consumer.in_transaction = False
         consumer._commit = AsyncMock(return_value=False)
+        consumer.app.producer.flush = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.tables = Mock(name="app.tables")
         await consumer._commit_offsets(
