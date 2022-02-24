@@ -840,6 +840,7 @@ class TestConsumer:
     async def test_commit_tps(self, *, consumer):
         consumer._handle_attached = AsyncMock(name="_handle_attached")
         consumer._commit_offsets = AsyncMock(name="_commit_offsets")
+        consumer.app.producer.flush = AsyncMock()
         consumer._filter_committable_offsets = Mock(name="filt")
         consumer._filter_committable_offsets.return_value = {
             TP1: 4,
@@ -992,6 +993,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__no_committable_offsets(self, *, consumer):
         consumer.current_assignment.clear()
+        consumer.app.producer.flush = AsyncMock()
         assert not await consumer._commit_offsets(
             {
                 TP1: 3003,
