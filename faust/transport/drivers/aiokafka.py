@@ -284,6 +284,7 @@ class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: Optional[asyncio.Queue] = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    _push_events_task: Optional[asyncio.Task] = None
     app: None
     stopped: bool
 
@@ -338,7 +339,7 @@ class ThreadedProducer(ServiceThread):
         producer = self._producer = self._new_producer()
         await producer.start()
         self.stopped = False
-        self.thread_loop.create_task(self.push_events())
+        self._push_events_task = self.thread_loop.create_task(self.push_events())
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
@@ -349,6 +350,9 @@ class ThreadedProducer(ServiceThread):
         if self._producer is not None:
             await self.flush()
             await self._producer.stop()
+        if self._push_events_task is not None:
+            while not self._push_events_task.done():
+                await asyncio.sleep(0.1)
 
     async def push_events(self):
         while not self.stopped:

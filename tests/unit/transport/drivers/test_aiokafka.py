@@ -1785,16 +1785,20 @@ class TestThreadedProducer(ProducerBaseTest):
             threaded_producer._new_producer.assert_called_once_with()
             mocked_producer.start.coro.assert_called_once_with()
         finally:
-            await threaded_producer.on_thread_stop()
+            await threaded_producer.start()
+            await threaded_producer.stop()
 
     @pytest.mark.asyncio
     async def test_on_thread_stop(
         self, *, threaded_producer: ThreadedProducer, mocked_producer: Mock, loop
     ):
-        await threaded_producer.on_start()
+        await threaded_producer.start()
         await threaded_producer.on_thread_stop()
-        mocked_producer.flush.coro.assert_called_once_with()
-        mocked_producer.stop.coro.assert_called_once_with()
+        try:
+            mocked_producer.flush.coro.assert_called_once_with()
+            mocked_producer.stop.coro.assert_called_once_with()
+        finally:
+            await threaded_producer.stop()
 
     @pytest.mark.asyncio
     async def test_publish_message(
