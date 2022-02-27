@@ -338,7 +338,7 @@ class ThreadedProducer(ServiceThread):
         producer = self._producer = self._new_producer()
         await producer.start()
         self.stopped = False
-        asyncio.create_task(self.push_events())
+        self.thread_loop.create_task(self.push_events())
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
@@ -404,9 +404,7 @@ class ThreadedProducer(ServiceThread):
                 headers=headers,
             )
             fut.message.channel._on_published(
-                message=fut,
-                state=state,
-                producer=producer
+                message=fut, state=state, producer=producer
             )
             fut.set_result(ret)
             return fut

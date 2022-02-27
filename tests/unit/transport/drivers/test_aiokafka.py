@@ -1,4 +1,3 @@
-import asyncio
 import random
 import string
 from contextlib import contextmanager
@@ -38,7 +37,7 @@ from faust.transport.drivers.aiokafka import (
     server_list,
 )
 from faust.types import TP
-from faust.types.tuples import FutureMessage, Message, PendingMessage
+from faust.types.tuples import FutureMessage, PendingMessage
 
 TP1 = TP("topic", 23)
 TP2 = TP("topix", 23)
