@@ -1,4 +1,6 @@
 import asyncio
+from typing import Any, Optional
+from unittest.mock import PropertyMock
 
 import pytest
 from mode.utils.mocks import AsyncMock, Mock, call
@@ -60,58 +62,58 @@ class TestProducerBuffer:
     async def test_wait_until_ebb(self, *, buf):
         buf.max_messages = 10
 
-        def create_send_pending_mock(max_messages):
-            sent_messages = 0
+        flush_atmost_call_count = 0
 
-            async def _inner():
-                nonlocal sent_messages
-                if sent_messages < max_messages:
-                    sent_messages += 1
-                    return
-                else:
-                    await asyncio.Future()
+        async def flush_atmost(max_messages: Optional[int]) -> int:
+            assert (
+                max_messages is None or max_messages == buf.max_messages
+            ), "Max messages set not to the max messages buffer"
+            nonlocal flush_atmost_call_count
+            flush_atmost_call_count += 1
 
-        return create_send_pending_mock
+            await asyncio.sleep(0)
+            return 0
 
-        buf._send_pending = create_send_pending_mock(10)
+        buf.flush_atmost = flush_atmost
         await buf.start()
-        self._put(buf, range(20))
-        assert buf.size == 20
+        original_size = buf.__class__.size
+        loop = asyncio.get_event_loop()
+        try:
+            buf.__class__.size = PropertyMock(return_value=20)
 
-        await buf.wait_until_ebb()
-        assert list(buf.pending._queue) == list(range(10, 20))
-        assert buf.size == 10
+            task = loop.create_task(buf.wait_until_ebb())
+            await asyncio.sleep(0)
+            assert flush_atmost_call_count == 1
+            assert not task.done(), (
+                "The wait_until_ebb has been finished even "
+                "though flush atmost did not return"
+            )
 
-        await buf.wait_until_ebb()
-        assert list(buf.pending._queue) == list(range(10, 20))
-        assert buf.size == 10
+            buf.__class__.size = PropertyMock(return_value=10)
+            await asyncio.sleep(0)
+            assert task.done(), (
+                "The wait_until_ebb did not complete even "
+                "though the size is beneath the max size"
+            )
+
+            assert (
+                flush_atmost_call_count > 0
+            ), "The wait_until_ebb did not call the flush_atmost function"
+            task = loop.create_task(buf.wait_until_ebb())
+            await asyncio.sleep(0)
+            assert task.done(), (
+                "The wait_until_ebb function did not finish even "
+                "though the buffer is small enough"
+            )
+        finally:
+            buf.__class__.size = original_size
+            await buf.stop()
 
     @pytest.mark.asyncio
     async def test_flush(self, *, buf):
-        def create_send_pending_mock(max_messages):
-            sent_messages = 0
-
-            async def _inner():
-                nonlocal sent_messages
-                if sent_messages < max_messages:
-                    sent_messages += 1
-                    return
-                else:
-                    await asyncio.Future()
-
-        return create_send_pending_mock
-
-        buf._send_pending = create_send_pending_mock(10)
-        await buf.start()
-
-        assert not buf.size
+        buf.flush_atmost = AsyncMock(return_value=0)
         await buf.flush()
-
-        self._put(buf, range(10))
-        assert buf.size == 10
-
-        await buf.flush()
-        assert not buf.size
+        buf.flush_atmost.assert_called()
 
     def _put(self, buf, items):
         for item in items:
@@ -119,10 +121,13 @@ class TestProducerBuffer:
 
     @pytest.mark.asyncio
     async def test_flush_atmost(self, *, buf):
-        def create_send_pending_mock(max_messages):
-            sent_messages = 0
 
-            async def _inner():
+        sent_messages = 0
+
+        def create_send_pending_mock(max_messages):
+            nonlocal sent_messages
+
+            async def _inner(*args: Any):
                 nonlocal sent_messages
                 if sent_messages < max_messages:
                     sent_messages += 1
@@ -130,21 +135,77 @@ class TestProducerBuffer:
                 else:
                     await asyncio.Future()
 
-        return create_send_pending_mock
+            return _inner
 
-        assert await buf.flush_atmost(10) == 0
+        await buf.start()
+        buf._send_pending = create_send_pending_mock(13)
 
-        self._put(buf, range(3))
-        assert buf.size == 3
-        assert await buf.flush_atmost(10) == 3
+        try:
+            assert await buf.flush_atmost(10) == 0
 
-        self._put(buf, range(10))
-        assert buf.size == 10
-        assert (await buf.flush_atmost(4)) == 4
-        assert buf.size == 6
+            self._put(buf, range(3))
+            assert buf.size == 3
+            assert await buf.flush_atmost(10) > 0
+            assert sent_messages == 3
 
-        assert (await buf.flush_atmost(6)) == 6
-        assert not buf.size
+            self._put(buf, range(10))
+            assert buf.size == 10
+            await buf.flush_atmost(4)
+
+            await buf.flush_atmost(6)
+            assert not buf.size
+            assert sent_messages == 13
+        finally:
+            await buf.stop()
+
+    @pytest.mark.asyncio
+    async def test_flush_atmost_with_simulated_threaded_behavior(self, *, buf):
+        def create_send_pending_mock(max_messages):
+            sent_messages = 0
+
+            async def _inner(*args: Any):
+                nonlocal sent_messages
+                if sent_messages < max_messages:
+                    sent_messages += 1
+                    return
+                else:
+                    await asyncio.Future()
+
+            return _inner
+
+        buf._send_pending = create_send_pending_mock(10)
+
+        class WaitForEverEvent(asyncio.Event):
+            test_stopped: bool = False
+
+            def stop_test(self) -> None:
+                self.test_stopped = True
+
+            async def wait(self) -> None:
+                while not self.test_stopped:
+                    await asyncio.sleep(1.0)
+
+        wait_for_event = buf.message_sent = WaitForEverEvent()
+        await buf.start()
+
+        try:
+            original_size_property = buf.__class__.size
+            buf.__class__.size = PropertyMock(return_value=10)
+            waiting = buf.flush_atmost(10)
+            loop = asyncio.get_event_loop()
+            task = loop.create_task(waiting)
+            await asyncio.sleep(0)
+            assert (
+                not task.done()
+            ), "Task has completed even though not all events have been issued"
+            buf.__class__.size = PropertyMock(return_value=0)
+            await asyncio.sleep(0.2)
+            assert task.done(), "Task has not been completed even though queue is None"
+            assert isinstance(task.result(), int)
+        finally:
+            wait_for_event.stop_test()
+            buf.__class__.size = original_size_property
+            await buf.stop()
 
 
 class ProducerTests:
