@@ -284,7 +284,9 @@ class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: Optional[asyncio.Queue] = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    _push_events_task: Optional[asyncio.Task] = None
     app: None
+    stopped: bool
 
     def __init__(
         self,
@@ -336,20 +338,29 @@ class ThreadedProducer(ServiceThread):
         self.event_queue = asyncio.Queue()
         producer = self._producer = self._new_producer()
         await producer.start()
-        asyncio.create_task(self.push_events())
+        self.stopped = False
+        self._push_events_task = self.thread_loop.create_task(self.push_events())
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
         logger.info("Stopping producer thread")
         await super().on_thread_stop()
+        self.stopped = True
         # when method queue is stopped, we can stop the consumer
         if self._producer is not None:
             await self.flush()
             await self._producer.stop()
+        if self._push_events_task is not None:
+            while not self._push_events_task.done():
+                await asyncio.sleep(0.1)
 
     async def push_events(self):
-        while True:
-            event = await self.event_queue.get()
+        while not self.stopped:
+            try:
+                event = await asyncio.wait_for(self.event_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
+
             self.app.sensors.on_threaded_producer_buffer_processed(
                 app=self.app, size=self.event_queue.qsize()
             )
@@ -396,7 +407,11 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            return await self._finalize_message(fut, ret)
+            fut.message.channel._on_published(
+                message=fut, state=state, producer=producer
+            )
+            fut.set_result(ret)
+            return fut
         else:
             fut2 = cast(
                 asyncio.Future,
