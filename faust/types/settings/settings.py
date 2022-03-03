@@ -106,6 +106,8 @@ class Settings(base.SettingsRegistry):
         broker_rebalance_timeout: Optional[Seconds] = None,
         broker_request_timeout: Optional[Seconds] = None,
         broker_session_timeout: Optional[Seconds] = None,
+        broker_metadata_max_age: Optional[Seconds] = None,
+        broker_connections_max_idle: Optional[Seconds] = None,
         ssl_context: ssl.SSLContext = None,
         # Consumer settings:
         consumer_api_version: Optional[str] = None,
@@ -1034,6 +1036,30 @@ class Settings(base.SettingsRegistry):
 
             The session timeout must not be greater than the
             :setting:`broker_request_timeout`.
+        """
+
+    @sections.Broker.setting(
+        params.Seconds,
+        env_name="BROKER_METADATA_MAX_AGE",
+        default=300.0
+    )
+    def broker_metadata_max_age(self) -> float:
+        """Broker metadata max age.
+
+        The period of time in seconds after which we force a refresh of metadata even
+        if we haven't seen any partition leadership changes to proactively discover any new
+        brokers or partitions.
+        """
+
+    @sections.Broker.setting(
+        params.Seconds,
+        env_name="BROKER_CONNECTIONS_MAX_IDLE",
+        default=540.0
+    )
+    def broker_connections_max_idle(self) -> float:
+        """Broker connections max idle.
+
+        Close idle connections after the number of seconds specified by this config.
         """
 
     @sections.Common.setting(
