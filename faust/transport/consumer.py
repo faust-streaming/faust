@@ -1047,6 +1047,7 @@ class Consumer(Service, ConsumerT):
                     start_new_transaction=start_new_transaction,
                 )
             else:
+                await self.app.producer.flush()
                 did_commit = await self._commit(committable_offsets)
             on_timeout.info("-consumer.commit()")
             if did_commit:

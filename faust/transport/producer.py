@@ -62,8 +62,11 @@ class ProducerBuffer(Service, ProducerBufferT):
                 (max_messages is None or flushed_messages < max_messages)
             ):
                 self.message_sent.clear()
-                await self.message_sent.wait()
-                flushed_messages += 1
+                try:
+                    await asyncio.wait_for(self.message_sent.wait(), timeout=0.1)
+                    flushed_messages += 1
+                except asyncio.TimeoutError:
+                    return flushed_messages
             else:
                 return flushed_messages
 
