@@ -1041,7 +1041,7 @@ class Settings(base.SettingsRegistry):
     @sections.Broker.setting(
         params.Seconds,
         env_name="BROKER_METADATA_MAX_AGE",
-        default=300.0
+        default=300.0,
     )
     def broker_metadata_max_age(self) -> float:
         """Broker metadata max age.
@@ -1054,7 +1054,7 @@ class Settings(base.SettingsRegistry):
     @sections.Broker.setting(
         params.Seconds,
         env_name="BROKER_CONNECTIONS_MAX_IDLE",
-        default=540.0
+        default=540.0,
     )
     def broker_connections_max_idle(self) -> float:
         """Broker connections max idle.
