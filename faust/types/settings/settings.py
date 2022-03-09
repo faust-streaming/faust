@@ -112,6 +112,8 @@ class Settings(base.SettingsRegistry):
         consumer_max_fetch_size: Optional[int] = None,
         consumer_auto_offset_reset: Optional[str] = None,
         consumer_group_instance_id: Optional[str] = None,
+        consumer_metadata_max_age_ms: Optional[int] = None,
+        consumer_connections_max_idle_ms: Optional[int] = None,
         # Topic serialization settings:
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
@@ -128,6 +130,8 @@ class Settings(base.SettingsRegistry):
         producer_partitioner: SymbolArg[PartitionerT] = None,
         producer_request_timeout: Optional[Seconds] = None,
         producer_threaded: bool = False,
+        producer_metadata_max_age_ms: Optional[int] = None,
+        producer_connections_max_idle_ms: Optional[int] = None,
         # RPC settings:
         reply_create_topic: Optional[bool] = None,
         reply_expires: Optional[Seconds] = None,
@@ -1114,6 +1118,37 @@ class Settings(base.SettingsRegistry):
         each consumer instance has to have a unique id.
         """
 
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def consumer_metadata_max_age_ms(self) -> int:
+        """Consumer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+        """
+
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def consumer_connections_max_idle_ms(self) -> int:
+        """Consumer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
+        """
+
     @sections.Serialization.setting(
         params.Codec,
         env_name="APP_KEY_SERIALIZER",
@@ -1342,6 +1377,38 @@ class Settings(base.SettingsRegistry):
         If True, spin up a different producer in a different thread
         to be used for messages buffered up for producing via
         send_soon function.
+        """
+
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def producer_metadata_max_age_ms(self) -> int:
+        """Producer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+
+        """
+
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def producer_connections_max_idle_ms(self) -> int:
+        """Producer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
         """
 
     @sections.Stream.setting(
