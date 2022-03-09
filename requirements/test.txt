@@ -21,6 +21,7 @@ codecov
 bandit==1.6.2
 twine
 wheel
+intervaltree
 -r requirements.txt
 -r extras/datadog.txt
 -r extras/redis.txt
