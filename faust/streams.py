@@ -1118,11 +1118,10 @@ class Stream(StreamT[T_co], Service):
                     except Skip:
                         value = skipped_value
 
-                if value is skipped_value:
-                    continue
-                self.events_total += 1
                 try:
-                    yield value
+                    if value is not skipped_value:
+                        self.events_total += 1
+                        yield value
                 finally:
                     self.current_event = None
                     if do_ack and event is not None:
