@@ -690,12 +690,18 @@ class Recovery(Service):
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
         # FIXME To be consistent with the offset -1 logic
-        earliest = {tp: offset - 1 for tp, offset in earliest.items()}
+        earliest = {
+            tp: offset - 1 if offset is not None else None
+            for tp, offset in earliest.items()
+        }
+
         for tp in tps:
             last_value = destination[tp]
-            new_value = earliest[tp]
+            new_value = earliest.get(tp, None)
 
-            if last_value is None:
+            if last_value is None and new_value is None:
+                destination[tp] = -1
+            elif last_value is None:
                 destination[tp] = new_value
             elif new_value is None:
                 destination[tp] = last_value
