@@ -55,3 +55,4 @@ The award for doing this in any significant capacity for one year or longer, is 
 | Eran Kampf          | <ekampf@users.noreply.github.com>     |
 | Wjatscheslaw Kewlin | <Wjatscheslaw.Kewlin@d-fine.de>       |
 | Ramkumar M          | <ramchiyan1093@gmail.com>             |
+| Mark Lambert        | <mark.lambert@gmail.com>              |
