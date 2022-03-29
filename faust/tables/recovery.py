@@ -843,7 +843,10 @@ class Recovery(Service):
 
                 await _maybe_signal_recovery_end()
 
-                if not self.standby_remaining_total():
+                standby_ready = (
+                    self._standbys_span is None and self.tables.standbys_ready
+                )
+                if not standby_ready and not self.standby_remaining_total():
                     logger.debug("Completed standby partition fetch")
                     if self._standbys_span:
                         finish_span(self._standbys_span)
