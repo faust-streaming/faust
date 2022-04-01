@@ -294,7 +294,7 @@ class Conductor(ConductorT, Service):
             notify(self._subscription_done)
 
             # Now we wait for changes
-            ev = self._subscription_changed = asyncio.Event(loop=self.loop)
+            ev = self._subscription_changed = asyncio.Event()
         while not self.should_stop:
             # Wait for something to add/remove topics from subscription.
             await ev.wait()

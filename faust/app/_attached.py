@@ -186,7 +186,6 @@ class Attachments:
         await asyncio.wait(
             await self.publish_for_tp_offset(tp, offset),
             return_when=asyncio.ALL_COMPLETED,
-            loop=self.app.loop,
         )
 
     async def publish_for_tp_offset(
