@@ -67,10 +67,10 @@ class AgentCase(Service):
 
         super().__init__(**kwargs)
 
-        self.agent_started = asyncio.Event(loop=self.loop)
-        self.agent_started_processing = asyncio.Event(loop=self.loop)
-        self.agent_stopped_processing = asyncio.Event(loop=self.loop)
-        self.finished = asyncio.Event(loop=self.loop)
+        self.agent_started = asyncio.Event()
+        self.agent_started_processing = asyncio.Event()
+        self.agent_stopped_processing = asyncio.Event()
+        self.finished = asyncio.Event()
 
     async def on_start(self) -> None:
         app = self.app
