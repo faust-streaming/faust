@@ -195,14 +195,14 @@ class Recovery(Service):
     def signal_recovery_start(self) -> Event:
         """Event used to signal that recovery has started."""
         if self._signal_recovery_start is None:
-            self._signal_recovery_start = Event(loop=self.loop)
+            self._signal_recovery_start = Event()
         return self._signal_recovery_start
 
     @property
     def signal_recovery_end(self) -> Event:
         """Event used to signal that recovery has ended."""
         if self._signal_recovery_end is None:
-            self._signal_recovery_end = Event(loop=self.loop)
+            self._signal_recovery_end = Event()
         return self._signal_recovery_end
 
     async def on_stop(self) -> None:
@@ -849,7 +849,10 @@ class Recovery(Service):
 
                 await _maybe_signal_recovery_end()
 
-                if not self.standby_remaining_total():
+                standby_ready = (
+                    self._standbys_span is None and self.tables.standbys_ready
+                )
+                if not standby_ready and not self.standby_remaining_total():
                     logger.debug("Completed standby partition fetch")
                     if self._standbys_span:
                         finish_span(self._standbys_span)
