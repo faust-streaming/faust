@@ -28,7 +28,10 @@ __all__ = [
 if typing.TYPE_CHECKING:
     import orjson
 else:  # pragma: no cover
-    orjson = None  # noqa
+    try:
+        import orjson
+    except ImportError:
+        orjson = None  # noqa
 
 DEFAULT_TEXTUAL_TYPES: List[Type] = [Decimal, uuid.UUID, bytes]
 
