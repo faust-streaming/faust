@@ -69,6 +69,7 @@ def test_JSONEncoder():
     assert encoder.default(datetime.now(timezone.utc))
     assert encoder.default(Counter([("foo", 3), ("bar", 4)]))
     assert encoder.default(uuid4())
+    assert encoder.default(frozenset({1, 2, 3})) == [1, 2, 3]
     assert encoder.default(Flags.X) == "Xval"
     assert encoder.default(Flags.Y) == "Yval"
     assert encoder.default({1, 2, 3}) == [1, 2, 3]
