@@ -106,7 +106,7 @@ def test_paramters_with_custom_init():
     assert p.y == 10
 
     payload = p.dumps(serializer="json")
-    assert payload == b'{"x": 30, "y": 10}'
+    assert payload == b'{"x":30,"y":10}'
 
     data = json.loads(payload)
     p2 = Point.from_data(data)
@@ -128,7 +128,7 @@ def test_parameters_with_custom_init_and_super():
     assert p.z == 40
 
     payload = p.dumps(serializer="json")
-    assert payload == b'{"x": 30, "y": 10}'
+    assert payload == b'{"x":30,"y":10}'
 
     data = json.loads(payload)
     p2 = Point.from_data(data)
