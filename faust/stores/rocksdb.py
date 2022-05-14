@@ -62,7 +62,7 @@ else:
         """Dummy Options."""
 
     class BackupEngine:  # noqa
-        """Dummy Options."""
+        """Dummy BackupEngine."""
 
 class PartitionDB(NamedTuple):
     """Tuple of ``(partition, rocksdb.DB)``."""
@@ -202,7 +202,10 @@ class Store(base.SerializedStore):
         See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
         """
         try:
-            db = await self._try_open_db_for_partition(partition)
+            if flush:
+                db = await self._try_open_db_for_partition(partition)
+            else:
+                db = self.rocksdb_options.open(self.partition_path(partition), read_only=True)
             self._backup_engine.create_backup(db, flush_before_backup=flush)
             if purge:
                 self._backup_engine.purge_old_backups(keep)
