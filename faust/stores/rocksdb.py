@@ -188,11 +188,12 @@ class Store(base.SerializedStore):
         self.rebalance_ack = False
         self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
 
-    async def backup_partition(self, partition: int, flush: bool = True, purge=False, keep=1):
+    async def backup_partition(self, partition: int, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this table.
 
         This will be saved in a separate directory in the data directory called '/backups'.
         Arguments:
+            partition: Index value of partition
             flush: Flush the memset before backing up the state of the table.
             purge: Purge old backups in the process
             keep: How many backups to keep after purging
