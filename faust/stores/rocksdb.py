@@ -2,6 +2,7 @@
 import asyncio
 import gc
 import math
+import os
 import shutil
 import typing
 from collections import defaultdict
@@ -51,7 +52,7 @@ except ImportError:  # pragma: no cover
     rocksdb = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from rocksdb import DB, Options
+    from rocksdb import DB, Options, BackupEngine
 else:
 
     class DB:  # noqa
@@ -60,6 +61,8 @@ else:
     class Options:  # noqa
         """Dummy Options."""
 
+    class BackupEngine:  # noqa
+        """Dummy Options."""
 
 class PartitionDB(NamedTuple):
     """Tuple of ``(partition, rocksdb.DB)``."""
@@ -183,6 +186,28 @@ class Store(base.SerializedStore):
         self._key_index = LRUCache(limit=self.key_index_size)
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
+        self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
+
+    async def backup_partition(self, partition: int, flush: bool = True, purge=False, keep=1):
+        """Backup partition from this table.
+
+        This will be saved in a separate directory in the data directory called '/backups'.
+        Arguments:
+            flush: Flush the memset before backing up the state of the table.
+            purge: Purge old backups in the process
+            keep: How many backups to keep after purging
+
+        This is only supported in newer versions of python-rocksdb which can read the RocksDB
+        database using multi-process read access.
+        See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
+        """
+        try:
+            db = await self._try_open_db_for_partition(partition)
+            self._backup_engine.create_backup(db, flush_before_backup=flush)
+            if purge:
+                self._backup_engine.purge_old_backups(keep)
+        except:
+            self.log.info(f"Unable to backup partition {partition}.")
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
