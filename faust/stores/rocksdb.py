@@ -186,7 +186,7 @@ class Store(base.SerializedStore):
         self._key_index = LRUCache(limit=self.key_index_size)
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
-        self._backup_path = os.path.join(self.path, 'backups')
+        self._backup_path = os.path.join(self.path, f"{str(self.basename)}-backups")
         if not os.path.isdir(self._backup_path):
             os.makedirs(self._backup_path, exist_ok=True)
         self._backup_engine = rocksdb.BackupEngine(self._backup_path)
