@@ -760,7 +760,7 @@ class Recovery(Service):
             # the aiokafka consumer position and draining of the queue
             if timeout and self.app.in_transaction and timeout_count > 1:
                 await detect_aborted_tx()
-            if not self.need_recovery() and self.in_recovery:
+            if self.in_recovery and not self.need_recovery():
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()

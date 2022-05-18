@@ -65,7 +65,7 @@ except ImportError:  # pragma: no cover
 DECIMAL_MAXLEN = 1000
 
 #: Types that we convert to lists.
-SEQUENCE_TYPES: TypeTuple[Iterable] = (set, deque)
+SEQUENCE_TYPES: TypeTuple[Iterable] = (set, frozenset, deque)
 
 DateTypeTuple = Tuple[Union[Type[datetime.date], Type[datetime.time]], ...]
 DatetimeTypeTuple = Tuple[
