@@ -101,3 +101,13 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         self, active_tps: Set[TP], standby_tps: Set[TP]
     ) -> None:
         ...
+
+    @abc.abstractmethod
+    async def backup_partition(
+        self,
+        partition: int,
+        flush: bool = True,
+        purge: bool = False,
+        keep: int = 1
+    ) -> None:
+        ...

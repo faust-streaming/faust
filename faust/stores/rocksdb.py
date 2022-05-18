@@ -189,7 +189,7 @@ class Store(base.SerializedStore):
         self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
 
     async def backup_partition(self, partition: int, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
-        """Backup partition from this table.
+        """Backup partition from this store.
 
         This will be saved in a separate directory in the data directory called '/backups'.
         Arguments:
