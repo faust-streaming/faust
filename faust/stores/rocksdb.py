@@ -220,7 +220,6 @@ class Store(base.SerializedStore):
     def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
         """Restore partition backup from this store.
 
-        Not yet implemented for Aerospike.
         Arguments:
             tp: Partition to restore
             latest: Restore the latest backup, set as False to restore a specific ID
