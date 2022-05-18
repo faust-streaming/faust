@@ -97,3 +97,4 @@ class Store(base.Store, base.StoreT[KT, VT]):
         This does nothing when using the in-memory store.
 
         """
+        ...
