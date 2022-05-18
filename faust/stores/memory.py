@@ -1,5 +1,5 @@
 """In-memory table storage."""
-from typing import Any, Callable, Iterable, MutableMapping, Optional, Set, Tuple
+from typing import Any, Callable, Iterable, MutableMapping, Optional, Set, Tuple, Union
 
 from faust.types import TP, EventT
 from faust.types.stores import KT, VT
@@ -83,7 +83,7 @@ class Store(base.Store, base.StoreT[KT, VT]):
         """
         ...
 
-    async def backup_partition(self, tp: TP, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
         This does nothing when using the in-memory store.

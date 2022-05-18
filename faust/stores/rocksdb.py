@@ -188,12 +188,12 @@ class Store(base.SerializedStore):
         self.rebalance_ack = False
         self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
 
-    async def backup_partition(self, tp: TP, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
         This will be saved in a separate directory in the data directory called '/backups'.
         Arguments:
-            partition: Index value of partition
+            tp: Partition to backup
             flush: Flush the memset before backing up the state of the table.
             purge: Purge old backups in the process
             keep: How many backups to keep after purging
@@ -202,11 +202,14 @@ class Store(base.SerializedStore):
         database using multi-process read access.
         See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
         """
+        partition = tp
+        if isinstance(tp, TP):
+            partition = tp.partition
         try:
             if flush:
-                db = await self._try_open_db_for_partition(tp.partition)
+                db = await self._try_open_db_for_partition(partition)
             else:
-                db = self.rocksdb_options.open(self.partition_path(tp.partition), read_only=True)
+                db = self.rocksdb_options.open(self.partition_path(partition), read_only=True)
             self._backup_engine.create_backup(db, flush_before_backup=flush)
             if purge:
                 self._backup_engine.purge_old_backups(keep)
