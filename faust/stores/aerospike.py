@@ -263,7 +263,7 @@ class AeroSpikeStore(base.SerializedStore):
                 )  # crash the app to prevent the offset from progressing
             raise ex
 
-    async def backup_partition(self, partition: int, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(self, tp: TP, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
         Not yet implemented for Aerospike.

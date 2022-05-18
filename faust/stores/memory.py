@@ -83,7 +83,7 @@ class Store(base.Store, base.StoreT[KT, VT]):
         """
         ...
 
-    async def backup_partition(self, partition: int, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(self, tp: TP, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
         This does nothing when using the in-memory store.

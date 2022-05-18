@@ -188,7 +188,7 @@ class Store(base.SerializedStore):
         self.rebalance_ack = False
         self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
 
-    async def backup_partition(self, partition: int, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(self, tp: TP, flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
         This will be saved in a separate directory in the data directory called '/backups'.
@@ -204,14 +204,14 @@ class Store(base.SerializedStore):
         """
         try:
             if flush:
-                db = await self._try_open_db_for_partition(partition)
+                db = await self._try_open_db_for_partition(tp.partition)
             else:
-                db = self.rocksdb_options.open(self.partition_path(partition), read_only=True)
+                db = self.rocksdb_options.open(self.partition_path(tp.partition), read_only=True)
             self._backup_engine.create_backup(db, flush_before_backup=flush)
             if purge:
                 self._backup_engine.purge_old_backups(keep)
         except:
-            self.log.info(f"Unable to backup partition {partition}.")
+            self.log.info(f"Unable to backup partition {tp.partition}.")
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
