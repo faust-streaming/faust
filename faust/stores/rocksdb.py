@@ -232,9 +232,9 @@ class Store(base.SerializedStore):
         if isinstance(tp, TP):
             partition = tp.partition
         if latest:
-            self._backup_engine.restore_latest_backup(self.partition_path(partition), self._backup_path)
+            self._backup_engine.restore_latest_backup(str(self.partition_path(partition)), self._backup_path)
         else:
-            self._backup_engine.restore_backup(backup_id, self.partition_path(partition), self._backup_path)
+            self._backup_engine.restore_backup(backup_id, str(self.partition_path(partition)), self._backup_path)
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
