@@ -186,7 +186,8 @@ class Store(base.SerializedStore):
         self._key_index = LRUCache(limit=self.key_index_size)
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
-        self._backup_engine = rocksdb.BackupEngine(os.path.join(self.path, 'backups'))
+        self._backup_path = os.path.join(self.path, 'backups')
+        self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
@@ -215,6 +216,24 @@ class Store(base.SerializedStore):
                 self._backup_engine.purge_old_backups(keep)
         except:
             self.log.info(f"Unable to backup partition {partition}.")
+
+    def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
+        """Restore partition backup from this store.
+
+        Not yet implemented for Aerospike.
+        Arguments:
+            tp: Partition to restore
+            latest: Restore the latest backup, set as False to restore a specific ID
+            backup_id: Backup to restore
+
+        """
+        partition = tp
+        if isinstance(tp, TP):
+            partition = tp.partition
+        if latest:
+            self._backup_engine.restore_latest_backup(self.partition_path(partition), self._backup_path)
+        else:
+            self._backup_engine.restore_backup(backup_id, self.partition_path(partition), self._backup_path)
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.

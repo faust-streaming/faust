@@ -270,3 +270,11 @@ class AeroSpikeStore(base.SerializedStore):
 
         """
         raise NotImplementedError("Not yet implemented for Aerospike.")
+
+    def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
+        """Restore partition backup from this store.
+
+        Not yet implemented for Aerospike.
+
+        """
+        raise NotImplementedError("Not yet implemented for Aerospike.")
