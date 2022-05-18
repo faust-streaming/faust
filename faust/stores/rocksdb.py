@@ -187,6 +187,8 @@ class Store(base.SerializedStore):
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
         self._backup_path = os.path.join(self.path, 'backups')
+        if not os.path.isdir(self._backup_path):
+            os.makedirs(self._backup_path, exist_ok=True)
         self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
