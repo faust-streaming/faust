@@ -214,7 +214,7 @@ class Store(base.SerializedStore):
             if purge:
                 self._backup_engine.purge_old_backups(keep)
         except:
-            self.log.info(f"Unable to backup partition {tp.partition}.")
+            self.log.info(f"Unable to backup partition {partition}.")
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
