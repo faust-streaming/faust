@@ -220,7 +220,7 @@ class Store(base.SerializedStore):
             self._backup_engine.create_backup(db, flush_before_backup=flush)
             if purge:
                 self._backup_engine.purge_old_backups(keep)
-        except:
+        except Exception:
             self.log.info(f"Unable to backup partition {partition}.")
 
     def restore_backup(
