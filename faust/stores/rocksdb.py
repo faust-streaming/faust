@@ -194,7 +194,7 @@ class Store(base.SerializedStore):
     async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
         """Backup partition from this store.
 
-        This will be saved in a separate directory in the data directory called '/backups'.
+        This will be saved in a separate directory in the data directory called '{table-name}-backups'.
         Arguments:
             tp: Partition to backup
             flush: Flush the memset before backing up the state of the table.
