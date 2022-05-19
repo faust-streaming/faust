@@ -263,7 +263,9 @@ class AeroSpikeStore(base.SerializedStore):
                 )  # crash the app to prevent the offset from progressing
             raise ex
 
-    async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
         """Backup partition from this store.
 
         Not yet implemented for Aerospike.
@@ -271,7 +273,9 @@ class AeroSpikeStore(base.SerializedStore):
         """
         raise NotImplementedError("Not yet implemented for Aerospike.")
 
-    def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
         """Restore partition backup from this store.
 
         Not yet implemented for Aerospike.

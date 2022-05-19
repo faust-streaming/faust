@@ -61,6 +61,7 @@ else:
     class Options:  # noqa
         """Dummy Options."""
 
+
 class PartitionDB(NamedTuple):
     """Tuple of ``(partition, rocksdb.DB)``."""
 
@@ -188,7 +189,9 @@ class Store(base.SerializedStore):
             os.makedirs(self._backup_path, exist_ok=True)
         self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
-    async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
         """Backup partition from this store.
 
         This will be saved in a separate directory in the data directory called '{table-name}-backups'.
@@ -209,14 +212,18 @@ class Store(base.SerializedStore):
             if flush:
                 db = await self._try_open_db_for_partition(partition)
             else:
-                db = self.rocksdb_options.open(self.partition_path(partition), read_only=True)
+                db = self.rocksdb_options.open(
+                    self.partition_path(partition), read_only=True
+                )
             self._backup_engine.create_backup(db, flush_before_backup=flush)
             if purge:
                 self._backup_engine.purge_old_backups(keep)
         except:
             self.log.info(f"Unable to backup partition {partition}.")
 
-    def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
         """Restore partition backup from this store.
 
         Arguments:
@@ -229,9 +236,13 @@ class Store(base.SerializedStore):
         if isinstance(tp, TP):
             partition = tp.partition
         if latest:
-            self._backup_engine.restore_latest_backup(str(self.partition_path(partition)), self._backup_path)
+            self._backup_engine.restore_latest_backup(
+                str(self.partition_path(partition)), self._backup_path
+            )
         else:
-            self._backup_engine.restore_backup(backup_id, str(self.partition_path(partition)), self._backup_path)
+            self._backup_engine.restore_backup(
+                backup_id, str(self.partition_path(partition)), self._backup_path
+            )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.

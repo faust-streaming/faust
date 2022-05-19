@@ -83,7 +83,9 @@ class Store(base.Store, base.StoreT[KT, VT]):
         """
         ...
 
-    async def backup_partition(self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1) -> None:
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
         """Backup partition from this store.
 
         This does nothing when using the in-memory store.
@@ -91,7 +93,9 @@ class Store(base.Store, base.StoreT[KT, VT]):
         """
         ...
 
-    def restore_backup(self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0) -> None:
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
         """Restore partition backup from this store.
 
         This does nothing when using the in-memory store.
