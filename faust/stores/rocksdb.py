@@ -52,7 +52,7 @@ except ImportError:  # pragma: no cover
     rocksdb = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from rocksdb import DB, Options, BackupEngine
+    from rocksdb import DB, Options
 else:
 
     class DB:  # noqa
@@ -60,9 +60,6 @@ else:
 
     class Options:  # noqa
         """Dummy Options."""
-
-    class BackupEngine:  # noqa
-        """Dummy BackupEngine."""
 
 class PartitionDB(NamedTuple):
     """Tuple of ``(partition, rocksdb.DB)``."""
