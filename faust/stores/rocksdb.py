@@ -194,15 +194,17 @@ class Store(base.SerializedStore):
     ) -> None:
         """Backup partition from this store.
 
-        This will be saved in a separate directory in the data directory called '{table-name}-backups'.
+        This will be saved in a separate directory in the data directory called
+        '{table-name}-backups'.
+
         Arguments:
             tp: Partition to backup
             flush: Flush the memset before backing up the state of the table.
             purge: Purge old backups in the process
             keep: How many backups to keep after purging
 
-        This is only supported in newer versions of python-rocksdb which can read the RocksDB
-        database using multi-process read access.
+        This is only supported in newer versions of python-rocksdb which can read
+        the RocksDB database using multi-process read access.
         See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
         """
         partition = tp
