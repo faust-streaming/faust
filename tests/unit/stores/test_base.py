@@ -62,7 +62,7 @@ class Test_Store:
         )
 
     def test_encode_key(self, *, store):
-        assert store._encode_key({"foo": 1}) == b'{"foo": 1}'
+        assert store._encode_key({"foo": 1}) == b'{"foo":1}'
 
     def test_encode_key__cannot_be_None(self, *, store):
         store.key_serializer = "raw"
@@ -70,7 +70,7 @@ class Test_Store:
             store._encode_key(None)
 
     def test_encode_value(self, *, store):
-        assert store._encode_value({"foo": 1}) == b'{"foo": 1}'
+        assert store._encode_value({"foo": 1}) == b'{"foo":1}'
 
     def test_decode_key(self, *, store):
         assert store._decode_key(b'{"foo": 1}') == {"foo": 1}
