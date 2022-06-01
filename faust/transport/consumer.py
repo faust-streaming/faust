@@ -1107,7 +1107,7 @@ class Consumer(Service, ConsumerT):
             # the return value will be: 31
             if self._committed_offset[tp]:
                 if min(acked) - self._committed_offset[tp] > 0:
-                    return self._committed_offset[tp]
+                    return None
 
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers

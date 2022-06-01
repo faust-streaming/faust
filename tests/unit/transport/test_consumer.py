@@ -1079,7 +1079,7 @@ class TestConsumer:
             (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], [9], 11),
             (TP1, [1, 2, 3, 4, 6, 7, 8, 10], [5], 9),
             (TP1, [1, 3, 4, 6, 7, 8, 10], [2, 5, 9], 11),
-            (TP1, [3, 4], [], 1),
+            (TP1, [3, 4], [], None),
         ],
     )
     def test_new_offset_with_gaps(self, tp, acked, gaps, expected_offset, *, consumer):
