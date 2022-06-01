@@ -1104,7 +1104,7 @@ class Consumer(Service, ConsumerT):
             #    34 35 36 37
             #  ^-- gap
             # self._committed_offset[tp] is 31
-            # the return value will be: 31
+            # the return value will be None (the same as 31)
             if self._committed_offset[tp]:
                 if min(acked) - self._committed_offset[tp] > 0:
                     return None
