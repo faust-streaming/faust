@@ -1097,6 +1097,18 @@ class Consumer(Service, ConsumerT):
                 acked.extend(gaps)
                 gap_for_tp[:gap_index] = []
             acked.sort()
+
+            # We iterate over it until we handle gap in the head of acked queue
+            # then return the previous committed offset.
+            # For example if acked[tp] is:
+            #    34 35 36 37
+            #  ^-- gap
+            # self._committed_offset[tp] is 31
+            # the return value will be None (the same as 31)
+            if self._committed_offset[tp]:
+                if min(acked) - self._committed_offset[tp] > 0:
+                    return None
+
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
