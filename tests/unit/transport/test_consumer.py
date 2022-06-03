@@ -1079,9 +1079,13 @@ class TestConsumer:
             (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], [9], 11),
             (TP1, [1, 2, 3, 4, 6, 7, 8, 10], [5], 9),
             (TP1, [1, 3, 4, 6, 7, 8, 10], [2, 5, 9], 11),
+            (TP1, [3, 4], [], None),
+            (TP1, [3, 4], [2], None),
+            (TP1, [3, 4], [1, 2], 5),
         ],
     )
     def test_new_offset_with_gaps(self, tp, acked, gaps, expected_offset, *, consumer):
+        consumer._committed_offset[tp] = 1
         consumer._acked[tp] = acked
         consumer._gap[tp] = gaps
         assert consumer._new_offset(tp) == expected_offset
