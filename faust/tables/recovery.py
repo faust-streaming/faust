@@ -698,12 +698,18 @@ class Recovery(Service):
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
         # FIXME To be consistent with the offset -1 logic
-        earliest = {tp: offset - 1 for tp, offset in earliest.items()}
+        earliest = {
+            tp: offset - 1 if offset is not None else None
+            for tp, offset in earliest.items()
+        }
+
         for tp in tps:
             last_value = destination[tp]
-            new_value = earliest[tp]
+            new_value = earliest.get(tp, None)
 
-            if last_value is None:
+            if last_value is None and new_value is None:
+                destination[tp] = -1
+            elif last_value is None:
                 destination[tp] = new_value
             elif new_value is None:
                 destination[tp] = last_value
@@ -762,7 +768,7 @@ class Recovery(Service):
             # the aiokafka consumer position and draining of the queue
             if timeout and self.app.in_transaction and timeout_count > 1:
                 await detect_aborted_tx()
-            if not self.need_recovery() and self.in_recovery:
+            if self.in_recovery and not self.need_recovery():
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()
