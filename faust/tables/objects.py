@@ -183,3 +183,16 @@ class ChangeloggedObjectManager(Store):
 
         for tp, offset in tp_offsets.items():
             self.set_persisted_offset(tp, offset)
+
+    async def backup_partition(
+        self, tp, flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        raise NotImplementedError
+
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
+        raise NotImplementedError
