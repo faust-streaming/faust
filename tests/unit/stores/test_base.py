@@ -29,6 +29,19 @@ class MyStore(Store):
     def reset_state(self):
         ...
 
+    async def backup_partition(
+        self, tp, flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        ...
+
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
+        ...
+
 
 class Test_Store:
     @pytest.fixture
