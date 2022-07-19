@@ -4,6 +4,7 @@ import gc
 import math
 import os
 import shutil
+import tempfile
 import typing
 from collections import defaultdict
 from contextlib import suppress
@@ -185,9 +186,23 @@ class Store(base.SerializedStore):
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
         self._backup_path = os.path.join(self.path, f"{str(self.basename)}-backups")
-        if not os.path.isdir(self._backup_path):
-            os.makedirs(self._backup_path, exist_ok=True)
-        self._backup_engine = rocksdb.BackupEngine(self._backup_path)
+        try:
+            self._backup_engine = None
+            if not os.path.isdir(self._backup_path):
+                os.makedirs(self._backup_path, exist_ok=True)
+            testfile = tempfile.TemporaryFile(dir=self._backup_path)
+            testfile.close()
+        except PermissionError:
+            self.log.warning(
+                f'Unable to make directory for path "{self._backup_path}",'
+                f"disabling backups."
+            )
+        except (OSError, IOError):
+            self.log.warning(
+                f'Unable to create files in "{self._backup_path}",' f"disabling backups"
+            )
+        else:
+            self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(
         self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
@@ -207,21 +222,22 @@ class Store(base.SerializedStore):
         the RocksDB database using multi-process read access.
         See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
         """
-        partition = tp
-        if isinstance(tp, TP):
-            partition = tp.partition
-        try:
-            if flush:
-                db = await self._try_open_db_for_partition(partition)
-            else:
-                db = self.rocksdb_options.open(
-                    self.partition_path(partition), read_only=True
-                )
-            self._backup_engine.create_backup(db, flush_before_backup=flush)
-            if purge:
-                self._backup_engine.purge_old_backups(keep)
-        except Exception:
-            self.log.info(f"Unable to backup partition {partition}.")
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            try:
+                if flush:
+                    db = await self._try_open_db_for_partition(partition)
+                else:
+                    db = self.rocksdb_options.open(
+                        self.partition_path(partition), read_only=True
+                    )
+                self._backup_engine.create_backup(db, flush_before_backup=flush)
+                if purge:
+                    self._backup_engine.purge_old_backups(keep)
+            except Exception:
+                self.log.info(f"Unable to backup partition {partition}.")
 
     def restore_backup(
         self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
@@ -234,17 +250,18 @@ class Store(base.SerializedStore):
             backup_id: Backup to restore
 
         """
-        partition = tp
-        if isinstance(tp, TP):
-            partition = tp.partition
-        if latest:
-            self._backup_engine.restore_latest_backup(
-                str(self.partition_path(partition)), self._backup_path
-            )
-        else:
-            self._backup_engine.restore_backup(
-                backup_id, str(self.partition_path(partition)), self._backup_path
-            )
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            if latest:
+                self._backup_engine.restore_latest_backup(
+                    str(self.partition_path(partition)), self._backup_path
+                )
+            else:
+                self._backup_engine.restore_backup(
+                    backup_id, str(self.partition_path(partition)), self._backup_path
+                )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
