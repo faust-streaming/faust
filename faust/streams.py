@@ -1113,6 +1113,8 @@ class Stream(StreamT[T_co], Service):
                                 value = await _maybe_async(processor(value))
                         value = await on_merge(value)
                     except Skip:
+                        # We want to ack the filtered message
+                        # otherwise the lag would increase
                         value = skipped_value
 
                 try:
@@ -1121,7 +1123,9 @@ class Stream(StreamT[T_co], Service):
                         yield value
                 finally:
                     self.current_event = None
-                    if do_ack and event is not None:
+                    # We want to ack the filtered out message
+                    # otherwise the lag would increase
+                    if event is not None and (do_ack or value is skipped_value):
                         # This inlines self.ack
                         last_stream_to_ack = event.ack()
                         message = event.message
@@ -1130,6 +1134,7 @@ class Stream(StreamT[T_co], Service):
                         on_stream_event_out(tp, offset, self, event, sensor_state)
                         if last_stream_to_ack:
                             on_message_out(tp, offset, message)
+
         except StopAsyncIteration:
             # We are not allowed to propagate StopAsyncIteration in __aiter__
             # (if we do, it'll be converted to RuntimeError by CPython).
