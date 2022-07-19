@@ -134,10 +134,9 @@ class Stream(StreamT[T_co], Service):
         self.channel = channel
         self.outbox = self.app.FlowControlQueue(
             maxsize=self.app.conf.stream_buffer_maxsize,
-            loop=self.loop,
             clear_on_resume=True,
         )
-        self._passive_started = asyncio.Event(loop=self.loop)
+        self._passive_started = asyncio.Event()
         self.join_strategy = join_strategy
         self.combined = combined if combined is not None else []
         self.concurrency_index = concurrency_index
@@ -318,8 +317,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -415,8 +414,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -518,8 +517,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -691,7 +690,6 @@ class Stream(StreamT[T_co], Service):
         async def echoing(value: T) -> T:
             await asyncio.wait(
                 [maybe_forward(value, channel) for channel in _channels],
-                loop=self.loop,
                 return_when=asyncio.ALL_COMPLETED,
             )
             return value
@@ -997,7 +995,6 @@ class Stream(StreamT[T_co], Service):
 
     async def _py_aiter(self) -> AsyncIterator[T_co]:
         self._finalized = True
-        loop = self.loop
         started_by_aiter = await self.maybe_start()
         on_merge = self.on_merge
         on_stream_event_out = self._on_stream_event_out
@@ -1049,7 +1046,7 @@ class Stream(StreamT[T_co], Service):
                 value: Any = None
                 # we iterate until on_merge gives value.
                 while value is None and event is None:
-                    await sleep(0, loop=loop)
+                    await sleep(0)
                     # get message from channel
                     # This inlines ThrowableQueue.get for performance:
                     # We selectively call `await Q.put`/`Q.put_nowait`,

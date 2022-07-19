@@ -1098,7 +1098,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
     ) -> None:
         super().__init__(*args, **kwargs)
         self.results = {}
-        self.new_value_processed = asyncio.Condition(loop=self.loop)
+        self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
         self.add_sink(self._on_value_processed)
         self._stream = self.channel.stream()

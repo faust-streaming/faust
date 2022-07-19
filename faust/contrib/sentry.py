@@ -129,13 +129,11 @@ def setup(
     dsn: Optional[str] = None,
     workers: int = 4,
     max_queue_size: int = 1000,
-    loglevel: Optional[int] = None
+    loglevel: Optional[int] = None,
+    **kwargs
 ) -> None:
     sentry_handler = handler_from_dsn(
-        dsn=dsn,
-        workers=workers,
-        qsize=max_queue_size,
-        loglevel=loglevel,
+        dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs
     )
     if sentry_handler is not None:
         if sentry_sdk is None or _sdk_aiohttp is None:

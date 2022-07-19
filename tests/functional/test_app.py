@@ -668,7 +668,7 @@ class Test_settings:
         web_transport="udp://",
         web_in_thread=True,
         web_cors_options={  # noqa: B006
-            "http://example.com": ResourceOptions(
+            "http://example.com": ResourceOptions(  # noqa: B008
                 allow_credentials=True,
                 expose_headers="*",
                 allow_headers="*",
