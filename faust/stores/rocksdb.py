@@ -197,7 +197,7 @@ class Store(base.SerializedStore):
                 f'Unable to make directory for path "{self._backup_path}",'
                 f"disabling backups."
             )
-        except (OSError, IOError):
+        except OSError:
             self.log.warning(
                 f'Unable to create files in "{self._backup_path}",' f"disabling backups"
             )
