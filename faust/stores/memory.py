@@ -1,5 +1,5 @@
 """In-memory table storage."""
-from typing import Any, Callable, Iterable, MutableMapping, Optional, Set, Tuple
+from typing import Any, Callable, Iterable, MutableMapping, Optional, Set, Tuple, Union
 
 from faust.types import TP, EventT
 from faust.types.stores import KT, VT
@@ -77,6 +77,26 @@ class Store(base.Store, base.StoreT[KT, VT]):
 
     def reset_state(self) -> None:
         """Remove local file system state.
+
+        This does nothing when using the in-memory store.
+
+        """
+        ...
+
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        """Backup partition from this store.
+
+        This does nothing when using the in-memory store.
+
+        """
+        ...
+
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
+        """Restore partition backup from this store.
 
         This does nothing when using the in-memory store.
 
