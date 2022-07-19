@@ -398,7 +398,7 @@ Yes! Use the `tornado.platform.asyncio` [bridge](http://www.tornadoweb.org/en/st
 
 ### Can I use Faust with Twisted
 
-Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documents/17.1.0/api/twisted internet.asyncioreactor.html
+Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documents/current/api/twisted.internet.asyncioreactor.html
 
 ### Will you support Python 2.7 or Python 3.5
 
