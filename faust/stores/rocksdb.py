@@ -161,6 +161,7 @@ class Store(base.SerializedStore):
         *,
         key_index_size: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
+        read_only: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
         if rocksdb is None:
@@ -177,6 +178,10 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
+        self.read_only = read_only
+        if "read_only" in self.options:
+            self.read_only = self.options.get("read_only")
+            del self.options["read_only"]
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
@@ -364,7 +369,9 @@ class Store(base.SerializedStore):
             return db
 
     def _open_for_partition(self, partition: int) -> DB:
-        return self.rocksdb_options.open(self.partition_path(partition))
+        return self.rocksdb_options.open(
+            self.partition_path(partition), read_only=self.read_only
+        )
 
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()
