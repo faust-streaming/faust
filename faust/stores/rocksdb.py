@@ -369,8 +369,9 @@ class Store(base.SerializedStore):
             return db
 
     def _open_for_partition(self, partition: int) -> DB:
+        path = self.partition_path(partition)
         return self.rocksdb_options.open(
-            self.partition_path(partition), read_only=self.read_only
+            path, read_only=self.read_only if os.path.isfile(path) else False
         )
 
     def _get(self, key: bytes) -> Optional[bytes]:
