@@ -178,10 +178,7 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
-        self.read_only = read_only
-        if "read_only" in self.options:
-            self.read_only = self.options.get("read_only")
-            del self.options["read_only"]
+        self.read_only = self.options.pop("read_only", read_only)
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
