@@ -43,13 +43,19 @@ class TestDatadogStatsClient:
         t = client.timed("metric", {"l": "v"}, True)
         assert t is client.client.timed.return_value
         client.client.timed.assert_called_once_with(
-            metric="metric", tags=["l:v"], sample_rate=client.rate, use_ms=True,
+            metric="metric",
+            tags=["l:v"],
+            sample_rate=client.rate,
+            use_ms=True,
         )
 
     def test_histogram(self, *, client):
         client.histogram("metric", "value", {"l": "v"})
         client.client.histogram.assert_called_once_with(
-            "metric", tags=["l:v"], value="value", sample_rate=client.rate,
+            "metric",
+            tags=["l:v"],
+            value="value",
+            sample_rate=client.rate,
         )
 
 
@@ -232,7 +238,11 @@ class TestDatadogMonitor:
 
         mon.on_send_error(producer, KeyError("foo"), state)
         client.increment.assert_has_calls(
-            [call("messages_send_failed", sample_rate=mon.rate, tags=None, value=1.0),]
+            [
+                call(
+                    "messages_send_failed", sample_rate=mon.rate, tags=None, value=1.0
+                ),
+            ]
         )
         client.timing.assert_has_calls(
             [
@@ -252,7 +262,11 @@ class TestDatadogMonitor:
 
         client = mon.client.client
         client.increment.assert_has_calls(
-            [call("assignments_complete", sample_rate=mon.rate, tags=None, value=1.0),]
+            [
+                call(
+                    "assignments_complete", sample_rate=mon.rate, tags=None, value=1.0
+                ),
+            ]
         )
         client.timing.assert_called_once_with(
             "assignment_latency",
@@ -268,7 +282,9 @@ class TestDatadogMonitor:
 
         client = mon.client.client
         client.increment.assert_has_calls(
-            [call("assignments_error", sample_rate=mon.rate, tags=None, value=1.0),]
+            [
+                call("assignments_error", sample_rate=mon.rate, tags=None, value=1.0),
+            ]
         )
         client.timing.assert_called_once_with(
             "assignment_latency",
@@ -315,7 +331,10 @@ class TestDatadogMonitor:
         state = mon.on_rebalance_start(app)
 
         client.increment.assert_called_once_with(
-            "rebalances", sample_rate=mon.rate, tags=None, value=1.0,
+            "rebalances",
+            sample_rate=mon.rate,
+            tags=None,
+            value=1.0,
         )
 
         mon.on_rebalance_return(app, state)
@@ -329,7 +348,10 @@ class TestDatadogMonitor:
             ]
         )
         client.decrement.assert_called_once_with(
-            "rebalances", sample_rate=mon.rate, tags=None, value=1.0,
+            "rebalances",
+            sample_rate=mon.rate,
+            tags=None,
+            value=1.0,
         )
         client.timing.assert_called_once_with(
             "rebalance_return_latency",

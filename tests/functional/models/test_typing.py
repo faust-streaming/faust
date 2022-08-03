@@ -52,7 +52,14 @@ CASE_TUPLE_LIST_SET_X = TypeExpressionTest(
         Xi(0),
         [[Xi(1), Xi(2), Xi(3)], [Xi(4), Xi(5), Xi(6)], [Xi(7), Xi(8)]],
     ],
-    expected_result=(X(0), [{X(1), X(2), X(3)}, {X(4), X(5), X(6)}, {X(7), X(8)},],),
+    expected_result=(
+        X(0),
+        [
+            {X(1), X(2), X(3)},
+            {X(4), X(5), X(6)},
+            {X(7), X(8)},
+        ],
+    ),
     expected_comprehension="""\
 (test__X._from_data_field(a[0]), \
 [{test__X._from_data_field(c) for c in b} \
@@ -67,7 +74,11 @@ CASE_LIST_LIST_X = TypeExpressionTest(
         [Xi(4), Xi(5), Xi(6)],
         [Xi(7), Xi(8), Xi(9)],
     ],
-    expected_result=[[X(1), X(2), X(3)], [X(4), X(5), X(6)], [X(7), X(8), X(9)],],
+    expected_result=[
+        [X(1), X(2), X(3)],
+        [X(4), X(5), X(6)],
+        [X(7), X(8), X(9)],
+    ],
     expected_comprehension="""\
 [[test__X._from_data_field(c) for c in b] for b in a]""",
     expected_types={NodeType.MODEL: {X}},
@@ -127,7 +138,12 @@ CASE_COMPLEX1_COMP = """\
 for f, g in e.items()} for e in d] for c, d in b.items()} for b in a]\
 """
 CASE_COMPLEX1 = TypeExpressionTest(
-    type_expression=List[Dict[Tuple[int, Any], List[Mapping[str, Optional[Set[X]]]],]],
+    type_expression=List[
+        Dict[
+            Tuple[int, Any],
+            List[Mapping[str, Optional[Set[X]]]],
+        ]
+    ],
     serialized_data=[
         {
             (0, 1): [
@@ -136,7 +152,9 @@ CASE_COMPLEX1 = TypeExpressionTest(
                 {"baz": None},
                 {"xuz": []},
             ],
-            (10, 20): [{"moo": [Xi(3), Xi(4), Xi(5), Xi(6)]},],
+            (10, 20): [
+                {"moo": [Xi(3), Xi(4), Xi(5), Xi(6)]},
+            ],
         },
         {
             (30, 42131): [
@@ -145,7 +163,9 @@ CASE_COMPLEX1 = TypeExpressionTest(
                 {"ieqieiai": None},
                 {"uidafjaaoz": []},
             ],
-            (3192, 12321): [{"moo": [Xi(3), Xi(4), Xi(5), Xi(6)]},],
+            (3192, 12321): [
+                {"moo": [Xi(3), Xi(4), Xi(5), Xi(6)]},
+            ],
         },
     ],
     expected_result=[
@@ -156,7 +176,9 @@ CASE_COMPLEX1 = TypeExpressionTest(
                 {"baz": None},
                 {"xuz": set()},
             ],
-            (10, 20): [{"moo": {X(3), X(4), X(5), X(6)}},],
+            (10, 20): [
+                {"moo": {X(3), X(4), X(5), X(6)}},
+            ],
         },
         {
             (30, 42131): [
@@ -165,7 +187,9 @@ CASE_COMPLEX1 = TypeExpressionTest(
                 {"ieqieiai": None},
                 {"uidafjaaoz": set()},
             ],
-            (3192, 12321): [{"moo": {X(3), X(4), X(5), X(6)}},],
+            (3192, 12321): [
+                {"moo": {X(3), X(4), X(5), X(6)}},
+            ],
         },
     ],
     expected_comprehension=CASE_COMPLEX1_COMP,

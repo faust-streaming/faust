@@ -47,7 +47,11 @@ class TestTestRunner:
 
         with pytest.raises(raises):
             await self._do_execute(
-                runner, execution, active=True, expired=False, side_effect=exc,
+                runner,
+                execution,
+                active=True,
+                expired=False,
+                side_effect=exc,
             )
         cb.assert_called_once_with(exc)
         runner.on_pass.assert_not_called()
@@ -84,7 +88,13 @@ class TestTestRunner:
         assert runner._prepare_args((1, 2, 3, object()))
 
     def test__prepare_kwargs(self, *, runner):
-        assert runner._prepare_kwargs({"foo": object(), "bar": 1, "baz": 1.03,})
+        assert runner._prepare_kwargs(
+            {
+                "foo": object(),
+                "bar": 1,
+                "baz": 1.03,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_on_skipped(self, *, runner):

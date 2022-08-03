@@ -52,7 +52,11 @@ class View:
         return type(
             fun.__name__,
             (cls,),
-            {"get": fun, "__doc__": fun.__doc__, "__module__": fun.__module__,},
+            {
+                "get": fun,
+                "__doc__": fun.__doc__,
+                "__module__": fun.__module__,
+            },
         )
 
     def __init__(self, app: AppT, web: Web) -> None:

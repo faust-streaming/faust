@@ -77,14 +77,20 @@ def test_logtable(tty, contexts, headers, expected_tty, expected_data):
                 TABLE_DATA, title="Title", target=None, tty=tty, headers=headers
             )
             table.assert_called_with(
-                expected_data, title="Title", target=None, tty=expected_tty,
+                expected_data,
+                title="Title",
+                target=None,
+                tty=expected_tty,
             )
             assert ret is table().table
 
 
 @pytest.mark.parametrize(
     "tty,expected_table_type",
-    [(True, terminaltables.SingleTable), (False, terminaltables.AsciiTable),],
+    [
+        (True, terminaltables.SingleTable),
+        (False, terminaltables.AsciiTable),
+    ],
 )
 def test_get_best_table_type(tty, expected_table_type):
     assert tables._get_best_table_type(tty) is expected_table_type

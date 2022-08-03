@@ -45,7 +45,9 @@ async def test_agent_isolated_partitions(
 async def test_agent_isolated_partitions__concurrency(*, app, logging):
     with pytest.raises(ImproperlyConfigured):
         await AgentIsolatedCase.run_test(
-            app=app, concurrency=2, isolated_partitions=True,
+            app=app,
+            concurrency=2,
+            isolated_partitions=True,
         )
 
 

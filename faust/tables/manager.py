@@ -110,7 +110,8 @@ class TableManager(Service, TableManagerT):
         """Queue used to buffer changelog events."""
         if self._changelog_queue is None:
             self._changelog_queue = self.app.FlowControlQueue(
-                maxsize=self.app.conf.stream_buffer_maxsize, clear_on_resume=True,
+                maxsize=self.app.conf.stream_buffer_maxsize,
+                clear_on_resume=True,
             )
         return self._changelog_queue
 

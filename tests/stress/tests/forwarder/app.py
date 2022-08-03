@@ -19,12 +19,23 @@ app = create_stress_app(
 )
 
 app.add_system_check(
-    checks.Increasing("counter_received", get_value=lambda: counter_received,),
+    checks.Increasing(
+        "counter_received",
+        get_value=lambda: counter_received,
+    ),
 )
 app.add_system_check(
-    checks.Stationary("duplicates", get_value=lambda: found_duplicates,),
+    checks.Stationary(
+        "duplicates",
+        get_value=lambda: found_duplicates,
+    ),
 )
-app.add_system_check(checks.Stationary("gaps", get_value=lambda: found_gaps,),)
+app.add_system_check(
+    checks.Stationary(
+        "gaps",
+        get_value=lambda: found_gaps,
+    ),
+)
 
 
 leader_sending = SimpleCheck("leader-sending")

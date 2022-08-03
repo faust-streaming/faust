@@ -243,7 +243,10 @@ def test_as_future_message__eager_partitioning(*, app):
     topic = app.topic("foo")
     app.producer = Mock(name="producer")
     fut = topic.as_future_message(
-        key=b"foo", value=b"bar", partition=None, eager_partitioning=True,
+        key=b"foo",
+        value=b"bar",
+        partition=None,
+        eager_partitioning=True,
     )
     assert fut.message.partition is not None
 
@@ -252,5 +255,8 @@ def test_as_future_message__eager_partitioning_on_channel(*, channel, app):
     app.producer = Mock(name="producer")
     with pytest.raises(NotImplementedError):
         channel.as_future_message(
-            key=b"foo", value=b"bar", partition=None, eager_partitioning=True,
+            key=b"foo",
+            value=b"bar",
+            partition=None,
+            eager_partitioning=True,
         )

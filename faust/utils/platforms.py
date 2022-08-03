@@ -17,7 +17,11 @@ def max_open_files() -> Optional[int]:
             # is an actual system limit.
             if platform.system() == "Darwin":
                 output = subprocess.check_output(
-                    ["sysctl", "-q", "kern.maxfilesperproc",]
+                    [
+                        "sysctl",
+                        "-q",
+                        "kern.maxfilesperproc",
+                    ]
                 )
                 # $ sysctl -q kern.maxfilesperproc
                 # kern.maxfilesperproc: 24576

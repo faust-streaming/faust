@@ -113,13 +113,20 @@ class Test_App:
 
     def test_new_producer(self, *, app):
         app._producer = None
-        transport = app._transport = Mock(name="transport", autospec=Transport,)
+        transport = app._transport = Mock(
+            name="transport",
+            autospec=Transport,
+        )
         assert app._new_producer() is transport.create_producer.return_value
         transport.create_producer.assert_called_with(beacon=ANY)
         assert app.producer is transport.create_producer.return_value
 
     @pytest.mark.parametrize(
-        "broker_url,broker_consumer_url", [("moo://", None), ("moo://", "zoo://"),],
+        "broker_url,broker_consumer_url",
+        [
+            ("moo://", None),
+            ("moo://", "zoo://"),
+        ],
     )
     def test_new_transport(self, broker_url, broker_consumer_url, *, app, patching):
         app.conf.broker = broker_url
@@ -136,7 +143,11 @@ class Test_App:
         assert app.transport == 10
 
     @pytest.mark.parametrize(
-        "broker_url,broker_producer_url", [("moo://", None), ("moo://", "zoo://"),],
+        "broker_url,broker_producer_url",
+        [
+            ("moo://", None),
+            ("moo://", "zoo://"),
+        ],
     )
     def test_new_producer_transport(
         self, broker_url, broker_producer_url, *, app, patching
@@ -179,7 +190,9 @@ class Test_App:
         app.consumer.wait_empty.assert_not_called()
 
     async def assert_stop_consumer(self, app):
-        consumer = app._consumer = Mock(wait_empty=AsyncMock(),)
+        consumer = app._consumer = Mock(
+            wait_empty=AsyncMock(),
+        )
         consumer.assignment.return_value = set()
         app.tables = Mock()
         app.flow_control = Mock()
@@ -217,7 +230,8 @@ class Test_App:
         app.sensors.on_rebalance_return = Mock()
         app.on_rebalance_return()
         app.sensors.on_rebalance_return.assert_called_once_with(
-            app, app._rebalancing_sensor_state,
+            app,
+            app._rebalancing_sensor_state,
         )
 
     def test_on_rebalance_start_end(self, *, app):
@@ -282,7 +296,9 @@ class Test_App:
         app.on_partitions_revoked = Mock(send=AsyncMock())
         consumer = app.consumer = Mock(
             wait_empty=AsyncMock(),
-            transactions=Mock(on_partitions_revoked=AsyncMock(),),
+            transactions=Mock(
+                on_partitions_revoked=AsyncMock(),
+            ),
         )
         app.tables = Mock()
         app.flow_control = Mock()
@@ -359,9 +375,17 @@ class Test_App:
     async def test_on_partitions_assigned(self, *, app):
         app._assignment = {TP("foo", 1), TP("bar", 2)}
         app.on_partitions_assigned = Mock(send=AsyncMock())
-        app.consumer = Mock(transactions=Mock(on_rebalance=AsyncMock(),),)
-        app.agents = Mock(on_rebalance=AsyncMock(),)
-        app.tables = Mock(on_rebalance=AsyncMock(),)
+        app.consumer = Mock(
+            transactions=Mock(
+                on_rebalance=AsyncMock(),
+            ),
+        )
+        app.agents = Mock(
+            on_rebalance=AsyncMock(),
+        )
+        app.tables = Mock(
+            on_rebalance=AsyncMock(),
+        )
         app.topics = Mock(
             maybe_wait_for_subscriptions=AsyncMock(),
             on_partitions_assigned=AsyncMock(),
@@ -397,7 +421,9 @@ class Test_App:
         app._assignment = {TP("foo", 1), TP("bar", 2)}
         app.on_partitions_assigned = Mock(send=AsyncMock())
         app.consumer = Mock()
-        app.agents = Mock(on_rebalance=AsyncMock(),)
+        app.agents = Mock(
+            on_rebalance=AsyncMock(),
+        )
         app.agents.on_rebalance.coro.side_effect = RuntimeError()
         app.crash = AsyncMock()
 
@@ -775,7 +801,10 @@ class Test_App:
         assert Foo in app._extra_services
 
     def test_is_leader(self, *, app):
-        app._leader_assignor = Mock(name="_leader_assignor", autospec=LeaderAssignor,)
+        app._leader_assignor = Mock(
+            name="_leader_assignor",
+            autospec=LeaderAssignor,
+        )
         app._leader_assignor.is_leader.return_value = True
         assert app.is_leader()
 
@@ -1041,7 +1070,11 @@ class Test_App:
 
     @pytest.mark.asyncio
     async def test_commit(self, *, app):
-        app.topics = Mock(name="topics", autospec=Conductor, commit=AsyncMock(),)
+        app.topics = Mock(
+            name="topics",
+            autospec=Conductor,
+            commit=AsyncMock(),
+        )
         await app.commit({1})
         app.topics.commit.assert_called_with({1})
 
@@ -1079,24 +1112,33 @@ class Test_App:
 
     def test_monitor(self, *, app):
         assert app._monitor is None
-        app.conf.Monitor = Mock(name="Monitor", return_value=Mock(autospec=Monitor),)
+        app.conf.Monitor = Mock(
+            name="Monitor",
+            return_value=Mock(autospec=Monitor),
+        )
         monitor = app.monitor
         app.conf.Monitor.assert_called_once_with(loop=app.loop, beacon=app.beacon)
         assert monitor is app.conf.Monitor()
         assert app.monitor is monitor
         assert app._monitor is monitor
 
-        monitor2 = app.monitor = Mock(name="monitor2", autospec=Monitor,)
+        monitor2 = app.monitor = Mock(
+            name="monitor2",
+            autospec=Monitor,
+        )
         assert app._monitor is monitor2
         assert app.monitor is monitor2
 
     def test_fetcher(self, *, app):
         app.transport.Fetcher = Mock(
-            name="Fetcher", return_value=Mock(autospec=Fetcher),
+            name="Fetcher",
+            return_value=Mock(autospec=Fetcher),
         )
         fetcher = app._fetcher
         app.transport.Fetcher.assert_called_once_with(
-            app, loop=app.loop, beacon=app.consumer.beacon,
+            app,
+            loop=app.loop,
+            beacon=app.consumer.beacon,
         )
         assert fetcher is app.transport.Fetcher()
 
@@ -1152,7 +1194,12 @@ class TestAppConfiguration:
         assert app.conf is conf
 
     @pytest.mark.parametrize(
-        "config_source", [ConfigClass, CONFIG_DICT, CONFIG_PATH,],
+        "config_source",
+        [
+            ConfigClass,
+            CONFIG_DICT,
+            CONFIG_PATH,
+        ],
     )
     def test_config_From_object(self, config_source, *, app):
         on_before = app.on_before_configured.connect(Mock(name="on_before"))

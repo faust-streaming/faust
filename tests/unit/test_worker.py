@@ -99,7 +99,10 @@ class Test_Worker:
         worker._on_startup_end_spinner.assert_called_once_with()
 
     def test_on_startup_end_spinner(self, worker):
-        spinner = worker.spinner = Mock(name="spinner", autospec=terminal.Spinner,)
+        spinner = worker.spinner = Mock(
+            name="spinner",
+            autospec=terminal.Spinner,
+        )
         spinner.file.isatty.return_value = True
         worker.say = Mock(name="say")
         worker._on_startup_end_spinner()
@@ -113,7 +116,10 @@ class Test_Worker:
         worker.log.info.assert_called_once_with("Ready")
 
     def test_on_startup_end_spinner__notatty(self, worker):
-        spinner = worker.spinner = Mock(name="spinner", autospec=terminal.Spinner,)
+        spinner = worker.spinner = Mock(
+            name="spinner",
+            autospec=terminal.Spinner,
+        )
         spinner.file.isatty.return_value = False
         worker.say = Mock(name="say")
         worker._on_startup_end_spinner()
@@ -206,7 +212,10 @@ class Test_Worker:
     @pytest.mark.asyncio
     async def test_on_execute(self, worker):
         worker._setproctitle = Mock(name="setproctitle")
-        worker.spinner = Mock(name="spinner", autospec=terminal.Spinner,)
+        worker.spinner = Mock(
+            name="spinner",
+            autospec=terminal.Spinner,
+        )
         worker._say = Mock(name="say")
         await worker.on_execute()
         worker._setproctitle.assert_called_with("init")
@@ -253,5 +262,9 @@ class Test_Worker:
     def test_setup_spinner_handler__when_no_spinner(self, worker):
         worker.spinner = None
         worker._setup_spinner_handler(
-            Mock(name="logger", autospec=logging.Logger,), logging.INFO,
+            Mock(
+                name="logger",
+                autospec=logging.Logger,
+            ),
+            logging.INFO,
         )

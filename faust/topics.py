@@ -436,7 +436,10 @@ class Topic(SerializedChannel, TopicT):
                 ),
             )
             callback = partial(
-                self._on_published, message=fut, state=state, producer=producer,
+                self._on_published,
+                message=fut,
+                state=state,
+                producer=producer,
             )
             fut2.add_done_callback(cast(Callable, callback))
             return fut2

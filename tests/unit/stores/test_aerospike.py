@@ -94,7 +94,8 @@ class TestAerospikeStore:
             store._get(b"test_get")
 
     def test_set_success(
-        self, store,
+        self,
+        store,
     ):
         with patch("faust.stores.aerospike.aerospike", MagicMock()) as aero:
 

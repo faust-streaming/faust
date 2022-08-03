@@ -75,7 +75,9 @@ class Test_Topic:
         payload = topic.schema.loads_key(app, message)
 
         app.serializers.loads_key.assert_called_once_with(
-            "str", message.key, serializer="msgpack",
+            "str",
+            message.key,
+            serializer="msgpack",
         )
 
         assert payload == app.serializers.loads_key.return_value
@@ -88,7 +90,9 @@ class Test_Topic:
         payload = topic.schema.loads_value(app, message)
 
         app.serializers.loads_value.assert_called_once_with(
-            "str", message.value, serializer="msgpack",
+            "str",
+            message.value,
+            serializer="msgpack",
         )
 
         assert payload == app.serializers.loads_value.return_value
@@ -245,7 +249,9 @@ class Test_Topic:
 
         message.set_exception.assert_called_once_with(exc)
         app.sensors.on_send_error.assert_called_once_with(
-            producer, exc, state,
+            producer,
+            exc,
+            state,
         )
 
     def test_aiter_when_iterator(self, *, topic):

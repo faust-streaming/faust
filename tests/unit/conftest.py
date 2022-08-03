@@ -38,5 +38,6 @@ def web(app):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "conf: Faust app configuration marker",
+        "markers",
+        "conf: Faust app configuration marker",
     )

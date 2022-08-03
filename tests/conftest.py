@@ -135,21 +135,56 @@ def mock_http_client(*, app, monkeypatch, request) -> ClientSession:
         autospec=Response,
         text=AsyncMock(return_value=options.text),
         read=AsyncMock(return_value=options.text),
-        json=AsyncMock(return_value=options.json, side_effect=options.json_iterator,),
+        json=AsyncMock(
+            return_value=options.json,
+            side_effect=options.json_iterator,
+        ),
         status_code=options.status_code,
         raise_for_status=raise_for_status,
     )
     session = Mock(
         name="http_client",
         autospec=ClientSession,
-        request=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        get=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        post=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        put=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        delete=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        patch=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        options=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
-        head=Mock(return_value=AsyncContextManagerMock(return_value=response,),),
+        request=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        get=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        post=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        put=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        delete=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        patch=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        options=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
+        head=Mock(
+            return_value=AsyncContextManagerMock(
+                return_value=response,
+            ),
+        ),
     )
     session.marks = options
     monkeypatch.setattr(app, "_http_client", session)
@@ -242,14 +277,18 @@ def tasks_not_lingering(request, loop, event_loop, _recorded_tasks_at_startup):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "allow_lingering_tasks: Allow test to start background tasks",
+        "markers",
+        "allow_lingering_tasks: Allow test to start background tasks",
     )
     config.addinivalue_line(
-        "markers", "allow_lingering_tasks: Allow test to start background tasks",
+        "markers",
+        "allow_lingering_tasks: Allow test to start background tasks",
     )
     config.addinivalue_line(
-        "markers", "time: Set the current time",
+        "markers",
+        "time: Set the current time",
     )
     config.addinivalue_line(
-        "markers", "http_session: Set mock aiohttp session result",
+        "markers",
+        "http_session: Set mock aiohttp session result",
     )

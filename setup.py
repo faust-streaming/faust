@@ -200,13 +200,24 @@ def do_setup(**kwargs):
         install_requires=reqs("requirements.txt"),
         tests_require=reqs("test.txt"),
         extras_require=extras_require(),
-        entry_points={"console_scripts": ["faust = faust.cli.faust:cli",],},
+        entry_points={
+            "console_scripts": [
+                "faust = faust.cli.faust:cli",
+            ],
+        },
         project_urls={
             "Bug Reports": "https://github.com/faust-streaming/faust/issues",
             "Source": "https://github.com/faust-streaming/faust",
             "Documentation": "https://fauststream.com/en/latest",
         },
-        keywords=["stream", "processing", "asyncio", "distributed", "queue", "kafka",],
+        keywords=[
+            "stream",
+            "processing",
+            "asyncio",
+            "distributed",
+            "queue",
+            "kafka",
+        ],
         classifiers=[
             "Framework :: AsyncIO",
             "Development Status :: 5 - Production/Stable",

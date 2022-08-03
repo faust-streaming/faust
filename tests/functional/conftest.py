@@ -19,7 +19,11 @@ class AppMarks(NamedTuple):
 
 
 def create_appmarks(name="funtest", store="memory://", cache="memory://", **rest):
-    options = AppMarks(name=name, store=store, cache=cache,)
+    options = AppMarks(
+        name=name,
+        store=store,
+        cache=cache,
+    )
     return options, rest
 
 
@@ -31,7 +35,12 @@ def app(event_loop, request):
     os.environ.pop("FAUST_WORKDIR", None)
     marks = request.node.get_closest_marker("app")
     options, rest = create_appmarks(**((marks.kwargs or {}) if marks else {}))
-    app = faust.App(options.name, store=options.store, cache=options.cache, **rest,)
+    app = faust.App(
+        options.name,
+        store=options.store,
+        cache=options.cache,
+        **rest,
+    )
     app.finalize()
     set_current_span(None)
     try:
@@ -108,8 +117,10 @@ def mocked_redis(*, event_loop, monkeypatch):
 
 def pytest_configure(config):
     config.addinivalue_line(
-        "markers", "app: App instance to use for tests",
+        "markers",
+        "app: App instance to use for tests",
     )
     config.addinivalue_line(
-        "markers", "logging: Configure logging setup to use for tests",
+        "markers",
+        "logging: Configure logging setup to use for tests",
     )

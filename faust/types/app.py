@@ -475,7 +475,10 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def FlowControlQueue(
-        self, maxsize: Optional[int] = None, *, clear_on_resume: bool = False,
+        self,
+        maxsize: Optional[int] = None,
+        *,
+        clear_on_resume: bool = False,
     ) -> ThrowableQueue:
         ...
 

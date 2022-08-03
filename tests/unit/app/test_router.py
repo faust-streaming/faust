@@ -50,7 +50,8 @@ class Test_Router:
             is assignor.external_key_store.return_value
         )
         assignor.external_key_store.assert_called_once_with(
-            topic.get_topic_name(), topic.prepare_key.return_value[0],
+            topic.get_topic_name(),
+            topic.prepare_key.return_value[0],
         )
 
     def test_table_metadata(self, *, router, app, assignor):

@@ -38,7 +38,10 @@ def test_call_command():
         cli.side_effect = SystemExit(3)
         exitcode, stdout, stderr = call_command("foo", ["x", "y"])
         cli.assert_called_once_with(
-            args=["foo", "x", "y"], side_effects=False, stdout=stdout, stderr=stderr,
+            args=["foo", "x", "y"],
+            side_effects=False,
+            stdout=stdout,
+            stderr=stderr,
         )
         assert exitcode == 3
 
@@ -47,7 +50,10 @@ def test_call_command__no_exit():
     with patch("faust.cli.base.cli") as cli:
         exitcode, stdout, stderr = call_command("foo", ["x", "y"])
         cli.assert_called_once_with(
-            args=["foo", "x", "y"], side_effects=False, stdout=stdout, stderr=stderr,
+            args=["foo", "x", "y"],
+            side_effects=False,
+            stdout=stdout,
+            stderr=stderr,
         )
         assert exitcode == 0
 
@@ -57,10 +63,16 @@ def test_call_command__custom_ins():
     o_err = io.StringIO()
     with patch("faust.cli.base.cli") as cli:
         exitcode, stdout, stderr = call_command(
-            "foo", ["x", "y"], stdout=o_out, stderr=o_err,
+            "foo",
+            ["x", "y"],
+            stdout=o_out,
+            stderr=o_err,
         )
         cli.assert_called_once_with(
-            args=["foo", "x", "y"], side_effects=False, stdout=stdout, stderr=stderr,
+            args=["foo", "x", "y"],
+            side_effects=False,
+            stdout=stdout,
+            stderr=stderr,
         )
         assert exitcode == 0
         assert stdout is o_out
@@ -329,7 +341,9 @@ class Test_Command:
             res = command.as_service(loop, 1, kw=2)
             assert res is Service.from_awaitable.return_value
             Service.from_awaitable.assert_called_once_with(
-                command.execute.return_value, name=type(command).__name__, loop=loop,
+                command.execute.return_value,
+                name=type(command).__name__,
+                loop=loop,
             )
             command.execute.assert_called_once_with(1, kw=2)
 
@@ -569,7 +583,11 @@ class Test_AppCommand:
             with pytest.raises(ImportError):
                 command.import_relative_to_app("foo")
             symbol_by_name.assert_has_calls(
-                [call("foo"), call("root.moo.models.foo"), call("root.moo.foo"),]
+                [
+                    call("foo"),
+                    call("root.moo.models.foo"),
+                    call("root.moo.foo"),
+                ]
             )
 
     def test_import_relative_to_app__with_origin_l1(self, *, command, ctx):
@@ -579,7 +597,11 @@ class Test_AppCommand:
             symbol_by_name.side_effect = [ImportError(), ImportError(), "x"]
             assert command.import_relative_to_app("foo") == "x"
             symbol_by_name.assert_has_calls(
-                [call("foo"), call("root.moo.models.foo"), call("root.moo.foo"),]
+                [
+                    call("foo"),
+                    call("root.moo.models.foo"),
+                    call("root.moo.foo"),
+                ]
             )
 
     def test_import_relative_to_app__with_origin_l2(self, *, command, ctx):
@@ -589,7 +611,10 @@ class Test_AppCommand:
             symbol_by_name.side_effect = [ImportError(), "x"]
             assert command.import_relative_to_app("foo") == "x"
             symbol_by_name.assert_has_calls(
-                [call("foo"), call("root.moo.models.foo"),]
+                [
+                    call("foo"),
+                    call("root.moo.models.foo"),
+                ]
             )
 
     def test_to_topic__missing(self, *, command):
@@ -613,7 +638,9 @@ class Test_AppCommand:
             ret = command.abbreviate_fqdn("foo.bar.baz", prefix="prefix")
             assert ret is abbr_fqdn.return_value
             abbr_fqdn.assert_called_once_with(
-                ctx.find_root().app.conf.origin, "foo.bar.baz", prefix="prefix",
+                ctx.find_root().app.conf.origin,
+                "foo.bar.baz",
+                prefix="prefix",
             )
 
     def test_abbreviate_fqdn__no_origin(self, *, command, ctx):

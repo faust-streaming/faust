@@ -403,7 +403,11 @@ class Model(ModelT):
                 setattr(cls, meth_name, meth)
 
     def __abstract_init__(self) -> None:
-        raise NotImplementedError(E_ABSTRACT_INSTANCE.format(name=type(self).__name__,))
+        raise NotImplementedError(
+            E_ABSTRACT_INSTANCE.format(
+                name=type(self).__name__,
+            )
+        )
 
     @classmethod
     @abc.abstractmethod

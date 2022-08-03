@@ -161,7 +161,9 @@ class CopartitionedAssignor:
         return assignemnt.num_assigned(active) == client_limit
 
     def _find_promotable_standby(
-        self, partition: int, candidates: Iterator[CopartitionedAssignment],
+        self,
+        partition: int,
+        candidates: Iterator[CopartitionedAssignment],
     ) -> Optional[CopartitionedAssignment]:
         # Round robin to find standby until we make a full cycle
         for _ in range(self._num_clients):

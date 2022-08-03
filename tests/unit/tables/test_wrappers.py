@@ -86,7 +86,10 @@ class Test_WindowSet:
         ret = wset.apply(operator.add, "val")
         wset.wrapper.get_timestamp.assert_called_once_with(wset.event)
         wset.table._apply_window_op.assert_called_once_with(
-            operator.add, "k", "val", wset.wrapper.get_timestamp(),
+            operator.add,
+            "k",
+            "val",
+            wset.wrapper.get_timestamp(),
         )
         assert ret is wset
 
@@ -102,7 +105,10 @@ class Test_WindowSet:
         ret = wset.apply(operator.add, "val", event2)
         get_timestamp.assert_called_once_with(event2)
         wset.table._apply_window_op.assert_called_once_with(
-            operator.add, "k", "val", get_timestamp(),
+            operator.add,
+            "k",
+            "val",
+            get_timestamp(),
         )
         assert ret is wset
 
@@ -256,7 +262,11 @@ class Test_WindowWrapper:
 
     @pytest.mark.parametrize(
         "input,expected",
-        [(DATETIME, DATETIME_TS), (303.333, 303.333), (None, 99999.6),],
+        [
+            (DATETIME, DATETIME_TS),
+            (303.333, 303.333),
+            (None, 99999.6),
+        ],
     )
     def test_get_timestamp(self, input, expected, *, event, wtable):
         event.message.timestamp = 99999.6
@@ -299,7 +309,9 @@ class Test_WindowWrapper:
         wtable["foo"] = 300
         wtable.get_timestamp.assert_called_once_with()
         table._set_windowed.assert_called_once_with(
-            "foo", 300, wtable.get_timestamp(),
+            "foo",
+            300,
+            wtable.get_timestamp(),
         )
 
     def test_setitem__key_is_WindowSet(self, *, wtable):
@@ -311,7 +323,8 @@ class Test_WindowWrapper:
         del wtable["foo"]
         wtable.get_timestamp.assert_called_once_with()
         table._del_windowed.assert_called_once_with(
-            "foo", wtable.get_timestamp(),
+            "foo",
+            wtable.get_timestamp(),
         )
 
     def test_len__no_key_index_raises(self, *, wtable):
@@ -327,7 +340,13 @@ class Test_WindowWrapper:
             list(wtable._keys())
 
     @pytest.mark.parametrize(
-        "input", [datetime.now(), 103.33, User.id, lambda s: s,],
+        "input",
+        [
+            datetime.now(),
+            103.33,
+            User.id,
+            lambda s: s,
+        ],
     )
     def test_relative_handler(self, input, *, wtable):
         wtable.get_relative_timestamp = input

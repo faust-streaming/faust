@@ -9,7 +9,11 @@ def test_urllist_URL():
 
 
 @pytest.mark.parametrize(
-    "value", [None, "",],
+    "value",
+    [
+        None,
+        "",
+    ],
 )
 def test_urllist_empty_raises(value):
     with pytest.raises(ValueError):
@@ -55,7 +59,10 @@ def test_urllist_strsep_no_scheme():
 
 def test_urllist_list_of_strings():
     assert urllist(
-        ["kafka://kafka1.example.com:9092", "kafka://kafka2.example.com:9092",]
+        [
+            "kafka://kafka1.example.com:9092",
+            "kafka://kafka2.example.com:9092",
+        ]
     ) == [
         URL("kafka://kafka1.example.com:9092"),
         URL("kafka://kafka2.example.com:9092"),
@@ -72,5 +79,14 @@ def test_urllist_URLs():
 
 def test_urllist_URLs_no_scheme():
     assert urllist(
-        [URL("localhost"), URL("bar.com"), URL("example.com"),], default_scheme="foo",
-    ) == [URL("foo://localhost"), URL("foo://bar.com"), URL("foo://example.com"),]
+        [
+            URL("localhost"),
+            URL("bar.com"),
+            URL("example.com"),
+        ],
+        default_scheme="foo",
+    ) == [
+        URL("foo://localhost"),
+        URL("foo://bar.com"),
+        URL("foo://example.com"),
+    ]

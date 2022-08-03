@@ -118,7 +118,10 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
         valid_assignment[str(client)] = CopartitionedAssignment(topics=_topics)
 
     new_assignments = CopartitionedAssignor(
-        _topics, valid_assignment, partitions, replicas=replicas,
+        _topics,
+        valid_assignment,
+        partitions,
+        replicas=replicas,
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)
@@ -154,7 +157,10 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
         del valid_assignment[str(client)]
 
     new_assignments = CopartitionedAssignor(
-        _topics, valid_assignment, partitions, replicas=replicas,
+        _topics,
+        valid_assignment,
+        partitions,
+        replicas=replicas,
     ).get_assignment()
 
     assert is_valid(new_assignments, partitions, replicas)

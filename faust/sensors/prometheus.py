@@ -358,7 +358,13 @@ class PrometheusMonitor(Monitor):
         return state
 
     def _stream_label(self, stream: StreamT) -> str:
-        return self._normalize(stream.shortlabel.lstrip("Stream:"),).strip("_").lower()
+        return (
+            self._normalize(
+                stream.shortlabel.lstrip("Stream:"),
+            )
+            .strip("_")
+            .lower()
+        )
 
     def on_stream_event_out(
         self,

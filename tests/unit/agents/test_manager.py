@@ -83,7 +83,9 @@ class Test_AgentManager:
     async def test_wait_until_agents_started(self, *, agents):
         agents.wait_for_stopped = AsyncMock()
         await agents.wait_until_agents_started()
-        agents.wait_for_stopped.assert_called_once_with(agents._agents_started,)
+        agents.wait_for_stopped.assert_called_once_with(
+            agents._agents_started,
+        )
 
     @pytest.mark.asyncio
     async def test_wait_until_agents_started__producer_only(self, *, app, agents):
@@ -109,7 +111,8 @@ class Test_AgentManager:
         revoked = {TP("t1", 0), TP("t1", 1), TP("t4", 3)}
         newly_assigned = {TP("t2", 0)}
         await many.on_rebalance(
-            revoked=revoked, newly_assigned=newly_assigned,
+            revoked=revoked,
+            newly_assigned=newly_assigned,
         )
         agent1.on_partitions_revoked.assert_called_once_with(
             {TP("t1", 0), TP("t1", 1)},
@@ -117,4 +120,6 @@ class Test_AgentManager:
         agent2.on_partitions_revoked.assert_called_once_with(
             {TP("t1", 0), TP("t1", 1)},
         )
-        agent2.on_partitions_assigned.assert_called_once_with(newly_assigned,)
+        agent2.on_partitions_assigned.assert_called_once_with(
+            newly_assigned,
+        )

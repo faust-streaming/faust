@@ -92,7 +92,9 @@ BOOLEAN_TERMS: Mapping[str, bool] = {
 }
 
 AutodiscoverArg = Union[
-    bool, Iterable[str], Callable[[], Iterable[str]],
+    bool,
+    Iterable[str],
+    Callable[[], Iterable[str]],
 ]
 
 DictArg = Union[str, Mapping[str, T]]
@@ -439,7 +441,8 @@ class Param(Generic[IT, OT], property):
         if self.version_removed:
             alt_removal = self.deprecation_removal_warning.format(self=self)
         return self.deprecation_warning_template.format(
-            self=self, alt_removal=alt_removal,
+            self=self,
+            alt_removal=alt_removal,
         )
 
     def validate_before(self, value: IT = None) -> None:

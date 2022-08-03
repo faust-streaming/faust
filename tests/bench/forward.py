@@ -6,8 +6,16 @@ sys.path.insert(0, ".")
 from t.bench.base import Benchmark  # noqa
 
 app = faust.App("bench-forward")
-topic = app.topic("bench-forward-1st", value_serializer="raw", value_type=int,)
-consume_topic = app.topic("bench-forward-2nd", value_serializer="raw", value_type=int,)
+topic = app.topic(
+    "bench-forward-1st",
+    value_serializer="raw",
+    value_type=int,
+)
+consume_topic = app.topic(
+    "bench-forward-2nd",
+    value_serializer="raw",
+    value_type=int,
+)
 
 # Producer sends to topic1 (1st)
 # Agent forwarder consumes from topic1 and forwards to topic2

@@ -109,7 +109,10 @@ class Signal(BaseSignal[VT]):
         await self.case.app.bus.send(
             key=key,
             value=SignalEvent(
-                signal_name=self.name, case_name=self.case.name, key=key, value=value,
+                signal_name=self.name,
+                case_name=self.case.name,
+                key=key,
+                value=value,
             ),
         )
 
@@ -128,7 +131,9 @@ class Signal(BaseSignal[VT]):
         event = await self._wait_for_message_by_key(key=k, timeout=timeout_s)
         time_end = monotonic()
         await runner.on_signal_received(
-            self, time_start=time_start, time_end=time_end,
+            self,
+            time_start=time_start,
+            time_end=time_end,
         )
         self._verify_event(event, k, self.name, self.case.name)
         return cast(VT, maybe_model(event.value))

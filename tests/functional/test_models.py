@@ -474,7 +474,11 @@ def test_submodels():
         assert acc in expected_set
     assert AccountMap.loads(
         AccountMap(accounts={"a": a1, "b": a2, "c": a3}).dumps()
-    ).accounts == {"a": a1, "b": a2, "c": a3,}
+    ).accounts == {
+        "a": a1,
+        "b": a2,
+        "c": a3,
+    }
 
 
 def test_submodels_forward_reference():
@@ -490,7 +494,11 @@ def test_submodels_forward_reference():
     ) == sorted({a1, a2, a3})
     assert AccountMap.loads(
         FREFAccountMap(accounts={"a": a1, "b": a2, "c": a3}).dumps()
-    ).accounts == {"a": a1, "b": a2, "c": a3,}
+    ).accounts == {
+        "a": a1,
+        "b": a2,
+        "c": a3,
+    }
 
 
 def test_derive():
@@ -782,7 +790,9 @@ def test_default_multiple_levels_no_blessed_key():
 
     event = Event(
         account=Account(
-            first_name="George", last_name="Costanza", address=Address("US"),
+            first_name="George",
+            last_name="Costanza",
+            address=Address("US"),
         )
     )
     s = event.loads(event.dumps(serializer="json"), serializer="json")
@@ -842,7 +852,13 @@ def test__polymorphic_fields_deeply_nested():
     class AdjustRecord(BaseAttribution):
         event: Event
 
-    x = AdjustRecord(Event(category="foo", event="bar", data=AdjustData("baz"),))
+    x = AdjustRecord(
+        Event(
+            category="foo",
+            event="bar",
+            data=AdjustData("baz"),
+        )
+    )
     value = x.dumps(serializer="json")
     value_dict = json.loads(value)
     value_dict["event"]["__faust"]["ns"] = "x.y.z"
@@ -867,7 +883,13 @@ def test_compat_blessed_key_deeply_nested():
     class AdjustRecord(BaseAttribution):
         event: Event
 
-    x = AdjustRecord(Event(category="foo", event="bar", data=AdjustData("baz"),))
+    x = AdjustRecord(
+        Event(
+            category="foo",
+            event="bar",
+            data=AdjustData("baz"),
+        )
+    )
     value = x.dumps(serializer="json")
     value_dict = json.loads(value)
     value_dict["event"]["__faust"]["ns"] = "x.y.z"
@@ -1063,7 +1085,11 @@ def test_optional_modelfield_with_coercion():
 
 @pytest.mark.parametrize(
     "flag,expected_default",
-    [("isodates", False), ("include_metadata", True), ("polymorphic_fields", False),],
+    [
+        ("isodates", False),
+        ("include_metadata", True),
+        ("polymorphic_fields", False),
+    ],
 )
 def test_subclass_inherit_flags(flag, expected_default):
     class BaseX(Record):

@@ -95,7 +95,8 @@ class TestExecution(Record, isodates=True):
     def shortident(self) -> str:
         """Return short identifier for this test used in logs."""
         return self._build_ident(
-            self.short_case_name, abbr(self.id, max=15, suffix="[...]"),
+            self.short_case_name,
+            abbr(self.id, max=15, suffix="[...]"),
         )
 
     def _build_ident(self, case_name: str, id: str) -> str:

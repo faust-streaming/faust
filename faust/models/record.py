@@ -481,7 +481,13 @@ class Record(Model, abstract=True):  # type: ignore
             name="__init__",
             args=signature,
             body=list(
-                chain(preamble, data_setters, data_rest, init_setters, postamble,)
+                chain(
+                    preamble,
+                    data_setters,
+                    data_rest,
+                    init_setters,
+                    postamble,
+                )
             ),
             closures=closures,
             outer_args=["Model"],
@@ -491,7 +497,11 @@ class Record(Model, abstract=True):  # type: ignore
         # as .__sourcecode__ on returned method
         # (print(Model.__init__.__sourcecode__)
         return codegen.build_closure(
-            "__outer__", sourcecode, cls, globals={}, locals={},
+            "__outer__",
+            sourcecode,
+            cls,
+            globals={},
+            locals={},
         )
 
     @classmethod

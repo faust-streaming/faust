@@ -92,7 +92,8 @@ class TestCase:
         t = await case.trigger("id1", 30, kw=2)
         assert t.id == "id1"
         case.app.pending_tests.send.coro.assert_called_once_with(
-            key="id1", value=t,
+            key="id1",
+            value=t,
         )
 
     def test_now(self, *, case):
@@ -106,7 +107,8 @@ class TestCase:
         case.signals[event.signal_name] = Mock(resolve=AsyncMock())
         await case.resolve_signal(key, event)
         case.signals[event.signal_name].resolve.coro.assert_called_once_with(
-            key, event,
+            key,
+            event,
         )
 
     @pytest.mark.asyncio
@@ -127,7 +129,11 @@ class TestCase:
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
         "started,last_received,frequency",
-        [(100.0, None, None), (100.0, 50.0, 10.0), (100.0, 50.0, None),],
+        [
+            (100.0, None, None),
+            (100.0, 50.0, 10.0),
+            (100.0, 50.0, None),
+        ],
     )
     async def test_on_test_start(
         self, started, last_received, frequency, *, case, runner
@@ -479,7 +485,10 @@ class TestCase:
 
     @pytest.mark.parametrize(
         "now,failed,expected",
-        ((300.0, 100.0, pytest.approx(200.0)), (300.0, None, None),),
+        (
+            (300.0, 100.0, pytest.approx(200.0)),
+            (300.0, None, None),
+        ),
     )
     def test_seconds_since_last_fail(self, now, failed, expected, *, case):
         with self.seconds_since_last_fail(case, now=now, failed=failed):
@@ -510,7 +519,9 @@ class TestCase:
         response = await fut
         assert response is case.url_request.coro.return_value
         case.url_request.coro.assert_called_once_with(
-            method, url, **kwargs,
+            method,
+            url,
+            **kwargs,
         )
 
     @pytest.mark.asyncio

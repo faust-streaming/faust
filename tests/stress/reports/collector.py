@@ -55,7 +55,11 @@ async def dashboard(web, request, template_name="dashboard.html"):
                 "report": report_by_category,
                 "errors": errors,
                 "state_counts": [
-                    {"name": state, "count": count, "color": color_for_state[state],}
+                    {
+                        "name": state,
+                        "count": count,
+                        "color": color_for_state[state],
+                    }
                     for state, count in state_counts.items()
                 ],
             }

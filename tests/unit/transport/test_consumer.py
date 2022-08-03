@@ -30,7 +30,11 @@ TP3 = TP("bar", 3)
 class TestFetcher:
     @pytest.fixture
     def consumer(self):
-        return Mock(name="consumer", autospec=Consumer, _drain_messages=AsyncMock(),)
+        return Mock(
+            name="consumer",
+            autospec=Consumer,
+            _drain_messages=AsyncMock(),
+        )
 
     @pytest.fixture
     def fetcher(self, *, app, consumer):
@@ -76,7 +80,8 @@ class TestFetcher:
         with patch("asyncio.wait_for", AsyncMock()) as wait_for:
             await fetcher.on_stop()
             wait_for.assert_called_once_with(
-                fetcher._drainer, timeout=1.0,
+                fetcher._drainer,
+                timeout=1.0,
             )
 
     @pytest.mark.asyncio
@@ -86,7 +91,8 @@ class TestFetcher:
             wait_for.side_effect = StopIteration()
             await fetcher.on_stop()
             wait_for.assert_called_once_with(
-                fetcher._drainer, timeout=1.0,
+                fetcher._drainer,
+                timeout=1.0,
             )
 
     @pytest.mark.asyncio
@@ -96,7 +102,8 @@ class TestFetcher:
             wait_for.coro.side_effect = asyncio.CancelledError()
             await fetcher.on_stop()
             wait_for.assert_called_once_with(
-                fetcher._drainer, timeout=1.0,
+                fetcher._drainer,
+                timeout=1.0,
             )
 
     @pytest.mark.asyncio
@@ -110,7 +117,8 @@ class TestFetcher:
             ]
             await fetcher.on_stop()
             wait_for.assert_called_with(
-                fetcher._drainer, timeout=1.0,
+                fetcher._drainer,
+                timeout=1.0,
             )
             assert wait_for.call_count == 3
 
@@ -118,7 +126,10 @@ class TestFetcher:
 class TestTransactionManager:
     @pytest.fixture()
     def consumer(self):
-        return Mock(name="consumer", spec=Consumer,)
+        return Mock(
+            name="consumer",
+            spec=Consumer,
+        )
 
     @pytest.fixture()
     def producer(self):
@@ -135,11 +146,19 @@ class TestTransactionManager:
 
     @pytest.fixture()
     def transport(self, *, app):
-        return Mock(name="transport", spec=Transport, app=app,)
+        return Mock(
+            name="transport",
+            spec=Transport,
+            app=app,
+        )
 
     @pytest.fixture()
     def manager(self, *, consumer, producer, transport):
-        return TransactionManager(transport, consumer=consumer, producer=producer,)
+        return TransactionManager(
+            transport,
+            consumer=consumer,
+            producer=producer,
+        )
 
     @pytest.mark.asyncio
     async def test_on_partitions_revoked(self, *, manager):
@@ -178,7 +197,12 @@ class TestTransactionManager:
     async def test__stop_transactions(self, *, manager, producer):
         await manager._stop_transactions(["0-0", "1-0"])
         producer.stop_transaction.assert_has_calls(
-            [call("0-0"), call.coro("0-0"), call("1-0"), call.coro("1-0"),]
+            [
+                call("0-0"),
+                call.coro("0-0"),
+                call("1-0"),
+                call.coro("1-0"),
+            ]
         )
 
     @pytest.mark.asyncio
@@ -186,7 +210,12 @@ class TestTransactionManager:
         manager._start_new_producer = AsyncMock()
         await manager._start_transactions(["0-0", "1-0"])
         producer.maybe_begin_transaction.assert_has_calls(
-            [call("0-0"), call.coro("0-0"), call("1-0"), call.coro("1-0"),]
+            [
+                call("0-0"),
+                call.coro("0-0"),
+                call("1-0"),
+                call.coro("1-0"),
+            ]
         )
 
     @pytest.mark.asyncio
@@ -199,7 +228,13 @@ class TestTransactionManager:
         await manager.send("t", "k", "v", partition=None, headers=None, timestamp=None)
         manager.consumer.key_partition.assert_called_once_with("t", "k", None)
         producer.send.assert_called_once_with(
-            "t", "k", "v", 1, None, None, transactional_id="testid-3-1",
+            "t",
+            "k",
+            "v",
+            1,
+            None,
+            None,
+            transactional_id="testid-3-1",
         )
 
     @pytest.mark.asyncio
@@ -212,7 +247,13 @@ class TestTransactionManager:
         await manager.send("t", "k", "v", partition=None, headers=None, timestamp=None)
         manager.consumer.key_partition.assert_called_once_with("t", "k", None)
         producer.send.assert_called_once_with(
-            "t", "k", "v", None, None, None, transactional_id=None,
+            "t",
+            "k",
+            "v",
+            None,
+            None,
+            None,
+            transactional_id=None,
         )
 
     def test_send_soon(self, *, manager):
@@ -231,7 +272,12 @@ class TestTransactionManager:
 
         await manager.send_and_wait("t", "k", "v", 3, 43.2, {})
         on_send.assert_called_once_with(
-            "t", "k", "v", 3, 43.2, {},
+            "t",
+            "k",
+            "v",
+            3,
+            43.2,
+            {},
         )
 
     @pytest.mark.asyncio
@@ -251,10 +297,18 @@ class TestTransactionManager:
         )
         producer.commit_transactions.assert_called_once_with(
             {
-                "testid-1-0": {TP("foo", 0): 3003,},
-                "testid-1-3": {TP("foo", 3): 4004,},
-                "testid-1-1": {TP("foo", 1): 4005,},
-                "testid-2-0": {TP("bar", 0): 3004,},
+                "testid-1-0": {
+                    TP("foo", 0): 3003,
+                },
+                "testid-1-3": {
+                    TP("foo", 3): 4004,
+                },
+                "testid-1-1": {
+                    TP("foo", 1): 4005,
+                },
+                "testid-2-0": {
+                    TP("bar", 0): 3004,
+                },
             },
             "testid",
             start_new_transaction=False,
@@ -410,7 +464,10 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_getmany__flow_inactive(self, *, consumer):
         consumer._wait_next_records = AsyncMock(
-            return_value=({TP1: ["A", "B", "C"]}, {TP1},)
+            return_value=(
+                {TP1: ["A", "B", "C"]},
+                {TP1},
+            )
         )
         consumer.flow_active = False
         assert [a async for a in consumer.getmany(1.0)] == []
@@ -418,7 +475,10 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_getmany__flow_inactive2(self, *, consumer):
         consumer._wait_next_records = AsyncMock(
-            return_value=({TP1: ["A", "B", "C"], TP2: ["D"]}, {TP1},)
+            return_value=(
+                {TP1: ["A", "B", "C"], TP2: ["D"]},
+                {TP1},
+            )
         )
         consumer.scheduler = Mock()
 
@@ -499,12 +559,20 @@ class TestConsumer:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "client_only", [False, True,],
+        "client_only",
+        [
+            False,
+            True,
+        ],
     )
     async def test__wait_next_records(self, client_only, *, consumer):
         consumer.app.client_only = client_only
         self._setup_records(
-            consumer, active_partitions={TP1}, records={TP1: ["A", "B", "C"],},
+            consumer,
+            active_partitions={TP1},
+            records={
+                TP1: ["A", "B", "C"],
+            },
         )
         expected_active = None if client_only else {TP1}
         ret = await consumer._wait_next_records(1.0)
@@ -537,7 +605,9 @@ class TestConsumer:
         consumer.flow_active = flow_active
         consumer._active_partitions = active_partitions
         consumer._buffered_partitions = buffered_partitions or set()
-        consumer._getmany = AsyncMock(return_value={} if records is None else records,)
+        consumer._getmany = AsyncMock(
+            return_value={} if records is None else records,
+        )
 
     @pytest.mark.asyncio
     async def test__wait_for_ack(self, *, consumer):
@@ -546,7 +616,8 @@ class TestConsumer:
             consumer._waiting_for_ack.set_result(None)
 
         await asyncio.gather(
-            consumer._wait_for_ack(timeout=1.0), set_ack(),
+            consumer._wait_for_ack(timeout=1.0),
+            set_ack(),
         )
 
     @pytest.mark.asyncio
@@ -571,7 +642,12 @@ class TestConsumer:
     async def test_perform_seek(self, *, consumer):
         consumer._read_offset.update(TP1=3001, TP2=3002)
         consumer._committed_offset.update(TP1=301, TP2=302)
-        consumer.seek_to_committed = AsyncMock(return_value={TP1: 4001, TP2: 0,})
+        consumer.seek_to_committed = AsyncMock(
+            return_value={
+                TP1: 4001,
+                TP2: 0,
+            }
+        )
 
         await consumer.perform_seek()
 
@@ -681,7 +757,11 @@ class TestConsumer:
         )
 
     @pytest.mark.parametrize(
-        "offset", [1, 303,],
+        "offset",
+        [
+            1,
+            303,
+        ],
     )
     def test_ack(self, offset, *, consumer, message):
         message.acked = False
@@ -751,7 +831,8 @@ class TestConsumer:
         await consumer.force_commit({TP1})
         oci.assert_called_once_with(consumer)
         consumer._commit_tps.assert_called_once_with(
-            [TP1], start_new_transaction=True,
+            [TP1],
+            start_new_transaction=True,
         )
         occ.assert_called_once_with(consumer, oci())
 
@@ -766,14 +847,19 @@ class TestConsumer:
             TP2: 30,
         }
         await consumer._commit_tps(
-            {TP1, TP2}, start_new_transaction=False,
+            {TP1, TP2},
+            start_new_transaction=False,
         )
 
         consumer._handle_attached.assert_called_once_with(
-            {TP1: 4, TP2: 30,}
+            {
+                TP1: 4,
+                TP2: 30,
+            }
         )
         consumer._commit_offsets.assert_called_once_with(
-            {TP1: 4, TP2: 30}, start_new_transaction=False,
+            {TP1: 4, TP2: 30},
+            start_new_transaction=False,
         )
 
     @pytest.mark.asyncio
@@ -787,7 +873,8 @@ class TestConsumer:
             TP2: 30,
         }
         await consumer._commit_tps(
-            {TP1, TP2}, start_new_transaction=True,
+            {TP1, TP2},
+            start_new_transaction=True,
         )
 
         consumer.crash.assert_called_once_with(exc)
@@ -797,7 +884,8 @@ class TestConsumer:
         consumer._filter_committable_offsets = Mock(name="filt")
         consumer._filter_committable_offsets.return_value = {}
         await consumer._commit_tps(
-            {TP1, TP2}, start_new_transaction=True,
+            {TP1, TP2},
+            start_new_transaction=True,
         )
 
     def test_filter_committable_offsets(self, *, consumer):
@@ -819,21 +907,36 @@ class TestConsumer:
         consumer.app = Mock(
             name="app",
             autospec=App,
-            _attachments=Mock(autospec=Attachments, publish_for_tp_offset=AsyncMock(),),
-            producer=Mock(autospec=Service, wait_many=AsyncMock(),),
+            _attachments=Mock(
+                autospec=Attachments,
+                publish_for_tp_offset=AsyncMock(),
+            ),
+            producer=Mock(
+                autospec=Service,
+                wait_many=AsyncMock(),
+            ),
         )
         await consumer._handle_attached(
-            {TP1: 3003, TP2: 6006,}
+            {
+                TP1: 3003,
+                TP2: 6006,
+            }
         )
         consumer.app._attachments.publish_for_tp_offset.coro.assert_has_calls(
-            [call(TP1, 3003), call(TP2, 6006),]
+            [
+                call(TP1, 3003),
+                call(TP2, 6006),
+            ]
         )
 
         consumer.app.producer.wait_many.coro.assert_called_with(ANY)
         att = consumer.app._attachments
         att.publish_for_tp_offset.coro.return_value = None
         await consumer._handle_attached(
-            {TP1: 3003, TP2: 6006,}
+            {
+                TP1: 3003,
+                TP2: 6006,
+            }
         )
 
     @pytest.mark.asyncio
@@ -842,10 +945,16 @@ class TestConsumer:
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.producer.flush = AsyncMock()
         await consumer._commit_offsets(
-            {TP1: 3003, TP2: 6006,}
+            {
+                TP1: 3003,
+                TP2: 6006,
+            }
         )
         consumer._commit.assert_called_once_with(
-            {TP1: 3003, TP2: 6006,}
+            {
+                TP1: 3003,
+                TP2: 6006,
+            }
         )
 
     @pytest.mark.asyncio
@@ -856,7 +965,11 @@ class TestConsumer:
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.tables = Mock(name="app.tables")
         await consumer._commit_offsets(
-            {TP1: 3003, TP2: 6006, TP3: 7007,}
+            {
+                TP1: 3003,
+                TP2: 6006,
+                TP3: 7007,
+            }
         )
         consumer.app.tables.on_commit.assert_not_called()
 
@@ -866,9 +979,16 @@ class TestConsumer:
         consumer.app.producer.flush = AsyncMock()
         consumer.transactions.commit = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
-        ret = await consumer._commit_offsets({TP1: 3003, TP2: 6006, TP3: 7007,})
+        ret = await consumer._commit_offsets(
+            {
+                TP1: 3003,
+                TP2: 6006,
+                TP3: 7007,
+            }
+        )
         consumer.transactions.commit.assert_called_once_with(
-            {TP1: 3003, TP2: 6006}, start_new_transaction=True,
+            {TP1: 3003, TP2: 6006},
+            start_new_transaction=True,
         )
         assert ret is consumer.transactions.commit.coro()
 
@@ -876,7 +996,13 @@ class TestConsumer:
     async def test_commit_offsets__no_committable_offsets(self, *, consumer):
         consumer.current_assignment.clear()
         consumer.app.producer.flush = AsyncMock()
-        assert not await consumer._commit_offsets({TP1: 3003, TP2: 6006, TP3: 7007,})
+        assert not await consumer._commit_offsets(
+            {
+                TP1: 3003,
+                TP2: 6006,
+                TP3: 7007,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test_commit__already_committing(self, *, consumer):
@@ -890,10 +1016,12 @@ class TestConsumer:
         consumer.maybe_wait_for_commit_to_finish = AsyncMock(return_value=False)
         consumer.force_commit = AsyncMock()
         ret = await consumer.commit(
-            topics, start_new_transaction=start_new_transaction,
+            topics,
+            start_new_transaction=start_new_transaction,
         )
         consumer.force_commit.assert_called_once_with(
-            topics, start_new_transaction=start_new_transaction,
+            topics,
+            start_new_transaction=start_new_transaction,
         )
         assert ret is consumer.force_commit.coro()
         assert consumer._commit_fut is None
@@ -1055,7 +1183,8 @@ class Test_ConsumerThread:
     async def test_on_partitions_revoked(self, *, thread, consumer):
         await thread.on_partitions_revoked({TP1, TP2})
         consumer.threadsafe_partitions_revoked.assert_called_once_with(
-            thread.thread_loop, {TP1, TP2},
+            thread.thread_loop,
+            {TP1, TP2},
         )
 
     @pytest.mark.asyncio
@@ -1126,7 +1255,10 @@ class Test_ThreadDelegateConsumer:
             return done_future()
 
         consumer._method_queue = Mock(
-            name="_method_queue", spec=MethodQueue, call=_call, _call=Mock(),
+            name="_method_queue",
+            spec=MethodQueue,
+            call=_call,
+            _call=Mock(),
         )
         return consumer
 
@@ -1136,7 +1268,9 @@ class Test_ThreadDelegateConsumer:
         await consumer.threadsafe_partitions_revoked(loop, {})
         loop.create_future.assert_called_once_with()
         consumer._method_queue._call.assert_called_once_with(
-            loop.create_future(), consumer.on_partitions_revoked, {},
+            loop.create_future(),
+            consumer.on_partitions_revoked,
+            {},
         )
 
     @pytest.mark.asyncio
@@ -1153,14 +1287,17 @@ class Test_ThreadDelegateConsumer:
     async def test__getmany(self, *, consumer):
         ret = await consumer._getmany({TP1, TP2}, timeout=30.334)
         consumer._thread.getmany.assert_called_once_with(
-            {TP1, TP2}, 30.334,
+            {TP1, TP2},
+            30.334,
         )
         assert ret is consumer._thread.getmany.coro.return_value
 
     @pytest.mark.asyncio
     async def test_subscribe(self, *, consumer):
         await consumer.subscribe(topics=["a", "b", "c"])
-        consumer._thread.subscribe.assert_called_once_with(topics=["a", "b", "c"],)
+        consumer._thread.subscribe.assert_called_once_with(
+            topics=["a", "b", "c"],
+        )
 
     @pytest.mark.asyncio
     async def test_seek_to_committed(self, *, consumer):
@@ -1214,7 +1351,9 @@ class Test_ThreadDelegateConsumer:
     @pytest.mark.asyncio
     async def test_commit(self, *, consumer):
         ret = await consumer._commit({TP1: 301, TP2: 302})
-        consumer._thread.commit.assert_called_once_with({TP1: 301, TP2: 302},)
+        consumer._thread.commit.assert_called_once_with(
+            {TP1: 301, TP2: 302},
+        )
         assert ret is consumer._thread.commit.coro.return_value
 
     @pytest.mark.asyncio
@@ -1237,7 +1376,9 @@ class Test_ThreadDelegateConsumer:
     async def test_key_partition(self, *, consumer):
         ret = consumer.key_partition("topic", "key", partition=3)
         consumer._thread.key_partition.assert_called_once_with(
-            "topic", "key", partition=3,
+            "topic",
+            "key",
+            partition=3,
         )
         assert ret is consumer._thread.key_partition()
 
@@ -1257,7 +1398,11 @@ class Test_ThreadDelegateConsumer:
             await consumer.verify_all_partitions_active()
 
             consumer.verify_event_path.assert_has_calls(
-                [call(now, TP1), call(now, TP2), call(now, TP3),]
+                [
+                    call(now, TP1),
+                    call(now, TP2),
+                    call(now, TP3),
+                ]
             )
 
     @pytest.mark.asyncio

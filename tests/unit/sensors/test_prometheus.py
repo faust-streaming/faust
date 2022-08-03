@@ -134,7 +134,10 @@ class TestPrometheusMonitor:
         monitor.on_stream_event_out(TP1, 401, stream, event, state)
 
         self.assert_has_sample_value(
-            metrics.total_active_events, "test_total_active_events", {}, n_events - 1,
+            metrics.total_active_events,
+            "test_total_active_events",
+            {},
+            n_events - 1,
         )
 
     def test_on_stream_event_out_does_not_measure_latency_without_state(
@@ -454,13 +457,21 @@ class TestPrometheusMonitor:
         app: AppT,
     ) -> None:
         self._handle_event(
-            monitor=monitor, topic_partition=TP1, stream=stream, event=event, offset=10,
+            monitor=monitor,
+            topic_partition=TP1,
+            stream=stream,
+            event=event,
+            offset=10,
         )
 
         monitor.on_rebalance_start(app)
         monitor.on_rebalance_end(app, state={"time_start": monitor.time()})
         self._handle_event(
-            monitor=monitor, topic_partition=TP2, stream=stream, event=event, offset=11,
+            monitor=monitor,
+            topic_partition=TP2,
+            stream=stream,
+            event=event,
+            offset=11,
         )
 
         collected_topics = frozenset(

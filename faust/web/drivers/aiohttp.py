@@ -255,7 +255,11 @@ class Web(base.Web):
     def bytes_to_response(self, s: _bytes) -> base.Response:
         """Deserialize byte string back into a response object."""
         status, headers, body = self._bytes_to_response(s)
-        response = Response(body=body, status=status, headers=headers,)
+        response = Response(
+            body=body,
+            status=status,
+            headers=headers,
+        )
         return cast(base.Response, response)
 
     def response_to_bytes(self, response: base.Response) -> _bytes:
@@ -271,7 +275,11 @@ class Web(base.Web):
             raise NotImplementedError("Does not support Payload")
         else:
             body = resp.body
-        return self._response_to_bytes(resp.status, resp.headers, body,)
+        return self._response_to_bytes(
+            resp.status,
+            resp.headers,
+            body,
+        )
 
     def _create_site(self) -> BaseSite:
         return self._new_transport(self.app.conf.web_transport.scheme)
@@ -288,7 +296,10 @@ class Web(base.Web):
         )
 
     def _new_transport_unix(self) -> BaseSite:
-        return UnixSite(self._runner, self.app.conf.web_transport.path,)
+        return UnixSite(
+            self._runner,
+            self.app.conf.web_transport.path,
+        )
 
     async def start_server(self) -> None:
         """Start the web server."""

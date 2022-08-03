@@ -124,7 +124,8 @@ class Channel(ChannelT[T]):
         return cast(
             SchemaT,
             self.app.conf.Schema(  # type: ignore
-                key_type=key_type, value_type=value_type,
+                key_type=key_type,
+                value_type=value_type,
             ),
         )
 
@@ -139,7 +140,8 @@ class Channel(ChannelT[T]):
             if maxsize is None:
                 maxsize = self.app.conf.stream_buffer_maxsize
             self._queue = self.app.FlowControlQueue(
-                maxsize=maxsize, clear_on_resume=True,
+                maxsize=maxsize,
+                clear_on_resume=True,
             )
         return self._queue
 
@@ -614,7 +616,11 @@ class SerializedChannel(Channel[T]):
             )
 
         super().__init__(
-            app, schema=schema, key_type=key_type, value_type=value_type, **kwargs,
+            app,
+            schema=schema,
+            key_type=key_type,
+            value_type=value_type,
+            **kwargs,
         )
         self.key_serializer = self.schema.key_serializer
         self.value_serializer = self.schema.value_serializer

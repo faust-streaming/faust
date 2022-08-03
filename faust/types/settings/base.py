@@ -120,7 +120,9 @@ class SettingsRegistry(abc.ABC):
         warnings.warn(
             AlreadyConfiguredWarning(
                 W_ALREADY_CONFIGURED_KEY.format(
-                    key=key, value=value, old_value=old_value,
+                    key=key,
+                    value=value,
+                    old_value=old_value,
                 )
             ),
             stacklevel=3,

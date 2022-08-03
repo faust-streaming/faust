@@ -565,7 +565,9 @@ class Collection(Service, CollectionT):
         self, key: Any, d: Seconds, event: Optional[EventT] = None
     ) -> Any:
         window = cast(WindowT, self.window)
-        return self._get_key((key, window.delta(self._relative_event(event), d)),)
+        return self._get_key(
+            (key, window.delta(self._relative_event(event), d)),
+        )
 
     async def on_rebalance(
         self,
@@ -622,7 +624,9 @@ class Collection(Service, CollectionT):
     def apply_changelog_batch(self, batch: Iterable[EventT]) -> None:
         """Apply batch of events from changelog topic local table storage."""
         self.data.apply_changelog_batch(
-            batch, to_key=self._to_key, to_value=self._to_value,
+            batch,
+            to_key=self._to_key,
+            to_value=self._to_value,
         )
 
     def _to_key(self, k: Any) -> Any:

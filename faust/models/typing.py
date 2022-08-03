@@ -122,16 +122,33 @@ class NodeType(Enum):
 
 #: Set of user node types.
 USER_TYPES = frozenset(
-    {NodeType.DATETIME, NodeType.DECIMAL, NodeType.USER, NodeType.MODEL,}
+    {
+        NodeType.DATETIME,
+        NodeType.DECIMAL,
+        NodeType.USER,
+        NodeType.MODEL,
+    }
 )
 
 #: Set of generic node types (lists/dicts/etc.).
 GENERIC_TYPES = frozenset(
-    {NodeType.TUPLE, NodeType.SET, NodeType.DICT, NodeType.LIST, NodeType.NAMEDTUPLE,}
+    {
+        NodeType.TUPLE,
+        NodeType.SET,
+        NodeType.DICT,
+        NodeType.LIST,
+        NodeType.NAMEDTUPLE,
+    }
 )
 
 #: Set of types that don't have a field descriptor class.
-NONFIELD_TYPES = frozenset({NodeType.NAMEDTUPLE, NodeType.MODEL, NodeType.USER,})
+NONFIELD_TYPES = frozenset(
+    {
+        NodeType.NAMEDTUPLE,
+        NodeType.MODEL,
+        NodeType.USER,
+    }
+)
 
 
 class TypeInfo(NamedTuple):
@@ -179,7 +196,10 @@ class Variable:
         next_ord = ord(name[-1]) + 1
         if next_ord > 122:
             name = name + "a"
-        return self.clone(name=name[:-1] + chr(next_ord), getitem=None,)
+        return self.clone(
+            name=name[:-1] + chr(next_ord),
+            getitem=None,
+        )
 
 
 class Node(abc.ABC):

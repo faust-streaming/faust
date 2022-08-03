@@ -34,7 +34,12 @@ class MyStore(Store):
     ) -> None:
         ...
 
-    def restore_backup(self, tp, latest: bool = True, backup_id: int = 0,) -> None:
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
         ...
 
 
@@ -63,7 +68,10 @@ class Test_Store:
     @pytest.mark.asyncio
     async def test_on_rebalance(self, *, store):
         await store.on_rebalance(
-            Mock(name="table", autospec=Table), set(), set(), set(),
+            Mock(name="table", autospec=Table),
+            set(),
+            set(),
+            set(),
         )
 
     def test_encode_key(self, *, store):
@@ -130,7 +138,12 @@ class MySerializedStore(SerializedStore):
     ) -> None:
         ...
 
-    def restore_backup(self, tp, latest: bool = True, backup_id: int = 0,) -> None:
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
         ...
 
 

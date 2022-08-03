@@ -31,7 +31,9 @@ async def test_agent_concurrency__duplicates(
     concurrency, num_messages, *, app, logging
 ):
     await AgentConcurrencyCase.run_test(
-        app=app, num_messages=num_messages, concurrency=concurrency,
+        app=app,
+        num_messages=num_messages,
+        concurrency=concurrency,
     )
 
 

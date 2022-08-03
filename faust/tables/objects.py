@@ -189,5 +189,10 @@ class ChangeloggedObjectManager(Store):
     ) -> None:
         raise NotImplementedError
 
-    def restore_backup(self, tp, latest: bool = True, backup_id: int = 0,) -> None:
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
         raise NotImplementedError

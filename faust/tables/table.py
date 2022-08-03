@@ -38,7 +38,8 @@ class Table(TableT[KT, VT], Collection):
     ) -> WindowWrapperT:
         """Wrap table in a hopping window."""
         return self.using_window(
-            windows.HoppingWindow(size, step, expires), key_index=key_index,
+            windows.HoppingWindow(size, step, expires),
+            key_index=key_index,
         )
 
     def tumbling(
@@ -46,7 +47,8 @@ class Table(TableT[KT, VT], Collection):
     ) -> WindowWrapperT:
         """Wrap table in a tumbling window."""
         return self.using_window(
-            windows.TumblingWindow(size, expires), key_index=key_index,
+            windows.TumblingWindow(size, expires),
+            key_index=key_index,
         )
 
     def __missing__(self, key: KT) -> VT:

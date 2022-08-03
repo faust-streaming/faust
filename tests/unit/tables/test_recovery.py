@@ -140,7 +140,9 @@ class TestRecovery:
 
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(
-            coro, recovery.signal_recovery_start, timeout=timeout,
+            coro,
+            recovery.signal_recovery_start,
+            timeout=timeout,
         )
         return ret
 
@@ -189,21 +191,51 @@ class TestRecovery:
         dest = Counter({TP1: 103, TP4: 10})
         consumer = Mock(
             name="consumer",
-            highwaters=AsyncMock(return_value={TP1: 1001, TP2: 0, TP3: 202,},),
+            highwaters=AsyncMock(
+                return_value={
+                    TP1: 1001,
+                    TP2: 0,
+                    TP3: 202,
+                },
+            ),
         )
         await recovery._build_highwaters(consumer, tps, dest, "title")
-        assert dest == Counter({TP1: 1000, TP2: -1, TP3: 201,})
+        assert dest == Counter(
+            {
+                TP1: 1000,
+                TP2: -1,
+                TP3: 201,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test__build_offsets(self, *, recovery):
         tps = {TP1, TP2, TP3}
-        dest = Counter({TP1: 300, TP2: 101, TP3: 2003,})
+        dest = Counter(
+            {
+                TP1: 300,
+                TP2: 101,
+                TP3: 2003,
+            }
+        )
         consumer = Mock(
             name="consumer",
-            earliest_offsets=AsyncMock(return_value={TP1: 0, TP2: 201, TP3: 3003,},),
+            earliest_offsets=AsyncMock(
+                return_value={
+                    TP1: 0,
+                    TP2: 201,
+                    TP3: 3003,
+                },
+            ),
         )
         await recovery._build_offsets(consumer, tps, dest, "title")
-        assert dest == Counter({TP1: 300, TP2: 200, TP3: 3002,})
+        assert dest == Counter(
+            {
+                TP1: 300,
+                TP2: 200,
+                TP3: 3002,
+            }
+        )
 
     @pytest.mark.asyncio
     async def test__build_offsets_with_none(self, *, recovery, app) -> None:
@@ -225,7 +257,8 @@ class TestRecovery:
     @pytest.mark.asyncio
     async def test__build_offsets_both_none(self, *, recovery, app) -> None:
         consumer = Mock(
-            name="consumer", earliest_offsets=AsyncMock(return_value={TP1: None}),
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: None}),
         )
         tps = {TP1}
         destination = {TP1: None}
@@ -238,7 +271,8 @@ class TestRecovery:
         self, *, recovery, app
     ) -> None:
         consumer = Mock(
-            name="consumer", earliest_offsets=AsyncMock(return_value={TP1: None}),
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: None}),
         )
         tps = {TP1}
         destination = {TP1: 3, TP2: 4, TP3: 5, TP4: 20}
@@ -251,7 +285,10 @@ class TestRecovery:
 
     @pytest.mark.asyncio
     async def test__seek_offsets(self, *, recovery):
-        consumer = Mock(name="consumer", seek_wait=AsyncMock(),)
+        consumer = Mock(
+            name="consumer",
+            seek_wait=AsyncMock(),
+        )
         offsets = {
             TP1: -1,
             TP2: 1001,
@@ -261,7 +298,11 @@ class TestRecovery:
 
         await recovery._seek_offsets(consumer, tps, offsets, "seek")
         consumer.seek_wait.assert_called_once_with(
-            {TP1: 0, TP2: 1001, TP3: 2002,}
+            {
+                TP1: 0,
+                TP2: 1001,
+                TP3: 2002,
+            }
         )
 
     def test_flush_buffers(self, *, recovery):
@@ -303,8 +344,20 @@ class TestRecovery:
         }
 
     def _setup_active_offsets(self, recovery):
-        recovery.active_offsets = Counter({TP1: 1001, TP2: 2002, TP3: 3003,})
-        recovery.active_highwaters = Counter({TP1: 1001, TP2: 3003, TP3: 4004,})
+        recovery.active_offsets = Counter(
+            {
+                TP1: 1001,
+                TP2: 2002,
+                TP3: 3003,
+            }
+        )
+        recovery.active_highwaters = Counter(
+            {
+                TP1: 1001,
+                TP2: 3003,
+                TP3: 4004,
+            }
+        )
 
     def test_standby_stats(self, *, recovery):
         self._setup_standby_offsets(recovery)
@@ -314,8 +367,20 @@ class TestRecovery:
         }
 
     def _setup_standby_offsets(self, recovery):
-        recovery.standby_offsets = Counter({TP1: 1001, TP2: 2002, TP3: 3003,})
-        recovery.standby_highwaters = Counter({TP1: 1001, TP2: 3003, TP3: 4004,})
+        recovery.standby_offsets = Counter(
+            {
+                TP1: 1001,
+                TP2: 2002,
+                TP3: 3003,
+            }
+        )
+        recovery.standby_highwaters = Counter(
+            {
+                TP1: 1001,
+                TP2: 3003,
+                TP3: 4004,
+            }
+        )
 
     def test__is_changelog_tp(self, *, recovery, tables):
         tables.changelog_topics = {TP1.topic}

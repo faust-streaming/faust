@@ -17,7 +17,8 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from mypy_extensions import DefaultNamedArg
 
     DecodeFunction = Callable[
-        [Message, DefaultNamedArg(bool, "propagate")], Awaitable[EventT],  # noqa: F821
+        [Message, DefaultNamedArg(bool, "propagate")],
+        Awaitable[EventT],  # noqa: F821
     ]
 else:
     DecodeFunction = Callable[..., Awaitable[EventT]]
@@ -111,7 +112,9 @@ class Schema(SchemaT):
         self, app: AppT, key: K, *, serializer: CodecArg = None, headers: OpenHeadersArg
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_key(
-            self.key_type, key, serializer=serializer or self.key_serializer,
+            self.key_type,
+            key,
+            serializer=serializer or self.key_serializer,
         )
         return payload, self.on_dumps_key_prepare_headers(key, headers)
 
@@ -124,7 +127,9 @@ class Schema(SchemaT):
         headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_value(
-            self.value_type, value, serializer=serializer or self.value_serializer,
+            self.value_type,
+            value,
+            serializer=serializer or self.value_serializer,
         )
         return payload, self.on_dumps_value_prepare_headers(value, headers)
 

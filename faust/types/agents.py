@@ -59,7 +59,8 @@ __all__ = [
 _T = TypeVar("_T")
 AgentErrorHandler = Callable[["AgentT", BaseException], Awaitable]
 AgentFun = Callable[
-    [StreamT[_T]], Union[Coroutine[Any, Any, None], Awaitable[None], AsyncIterable],
+    [StreamT[_T]],
+    Union[Coroutine[Any, Any, None], Awaitable[None], AsyncIterable],
 ]
 
 

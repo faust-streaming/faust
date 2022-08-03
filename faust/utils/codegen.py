@@ -36,7 +36,11 @@ def Function(
     return build_function(
         name=name,
         source=build_function_source(
-            name=name, args=args, body=body, return_type=return_type, argsep=argsep,
+            name=name,
+            args=args,
+            body=body,
+            return_type=return_type,
+            argsep=argsep,
         ),
         return_type=return_type,
         globals=globals,

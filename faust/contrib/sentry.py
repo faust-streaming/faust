@@ -110,7 +110,9 @@ def handler_from_dsn(
             dsn=dsn,
             include_paths=include_paths,
             transport=partial(
-                raven_aiohttp.QueuedAioHttpTransport, workers=workers, qsize=qsize,
+                raven_aiohttp.QueuedAioHttpTransport,
+                workers=workers,
+                qsize=qsize,
             ),
             disable_existing_loggers=False,
             **kwargs
@@ -139,6 +141,7 @@ def setup(
                 "faust.contrib.sentry requires the `sentry_sdk` library."
             )
         sentry_sdk.init(
-            dsn=dsn, integrations=[_sdk_aiohttp.AioHttpIntegration()],
+            dsn=dsn,
+            integrations=[_sdk_aiohttp.AioHttpIntegration()],
         )
         app.conf.loghandlers.append(sentry_handler)
