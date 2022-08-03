@@ -17,8 +17,8 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from mypy_extensions import DefaultNamedArg
 
     DecodeFunction = Callable[
-        [Message, DefaultNamedArg(bool, "propagate")],
-        Awaitable[EventT],  # noqa: F821
+        [Message, DefaultNamedArg(bool, "propagate")],  # noqa: F821
+        Awaitable[EventT],
     ]
 else:
     DecodeFunction = Callable[..., Awaitable[EventT]]
