@@ -256,10 +256,7 @@ class TransactionManager(Service, TransactionManagerT):
 
     def _tps_to_transactional_ids(self, tps: Set[TP]) -> Set[str]:
         return {
-            self.transactional_id_format.format(
-                tpg=tpg,
-                group_id=self.app.conf.id,
-            )
+            self.transactional_id_format.format(tpg=tpg, group_id=self.app.conf.id,)
             for tpg in self._tps_to_active_tpgs(tps)
         }
 
@@ -267,9 +264,7 @@ class TransactionManager(Service, TransactionManagerT):
         assignor = self.app.assignor
         return {
             TopicPartitionGroup(
-                tp.topic,
-                tp.partition,
-                assignor.group_for_topic(tp.topic),
+                tp.topic, tp.partition, assignor.group_for_topic(tp.topic),
             )
             for tp in tps
             if not assignor.is_standby(tp)
@@ -293,13 +288,7 @@ class TransactionManager(Service, TransactionManagerT):
             group = self.app.assignor.group_for_topic(topic)
             transactional_id = f"{self.app.conf.id}-{group}-{p}"
         return await self.producer.send(
-            topic,
-            key,
-            value,
-            p,
-            timestamp,
-            headers,
-            transactional_id=transactional_id,
+            topic, key, value, p, timestamp, headers, transactional_id=transactional_id,
         )
 
     def send_soon(self, fut: FutureMessage) -> None:
@@ -782,8 +771,7 @@ class Consumer(Service, ConsumerT):
                 # fetching all partitions in the beginning when none of the
                 # partitions is paused/resumed.
                 records = await self._getmany(
-                    active_partitions=active_partitions,
-                    timeout=timeout,
+                    active_partitions=active_partitions, timeout=timeout,
                 )
             else:
                 # We should still release to the event loop
@@ -849,8 +837,7 @@ class Consumer(Service, ConsumerT):
                 remaining = [(m.refcount, m) for m in self._unacked_messages]
                 self.log.warning("wait_empty: Waiting for tasks %r", remaining)
                 self.log.info(
-                    "Agent tracebacks:\n%s",
-                    self.app.agents.human_tracebacks(),
+                    "Agent tracebacks:\n%s", self.app.agents.human_tracebacks(),
                 )
             self.log.dev("STILL WAITING FOR ALL STREAMS TO FINISH")
             self.log.dev("WAITING FOR %r EVENTS", len(self._unacked_messages))
@@ -928,8 +915,7 @@ class Consumer(Service, ConsumerT):
         self._commit_fut = asyncio.Future(loop=self.loop)
         try:
             return await self.force_commit(
-                topics,
-                start_new_transaction=start_new_transaction,
+                topics, start_new_transaction=start_new_transaction,
             )
         finally:
             # set commit_fut to None so that next call will commit.
@@ -1043,8 +1029,7 @@ class Consumer(Service, ConsumerT):
             on_timeout.info("+consumer.commit()")
             if self.in_transaction:
                 did_commit = await self.transactions.commit(
-                    committable_offsets,
-                    start_new_transaction=start_new_transaction,
+                    committable_offsets, start_new_transaction=start_new_transaction,
                 )
             else:
                 await self.app.producer.flush()
@@ -1373,9 +1358,7 @@ class ThreadDelegateConsumer(Consumer):
     ) -> None:
         """Call rebalancing callback in a thread-safe manner."""
         promise = await self._method_queue.call(
-            receiver_loop.create_future(),
-            self.on_partitions_revoked,
-            revoked,
+            receiver_loop.create_future(), self.on_partitions_revoked, revoked,
         )
         # wait for main-thread to finish processing request
         await promise

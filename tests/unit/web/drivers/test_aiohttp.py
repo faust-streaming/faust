@@ -98,11 +98,7 @@ class Test_ServerThread:
 
     @pytest.mark.asyncio
     async def test_on_thread_start(self, *, thread):
-        thread.web = Mock(
-            name="web",
-            autospec=base.Web,
-            stop_server=AsyncMock(),
-        )
+        thread.web = Mock(name="web", autospec=base.Web, stop_server=AsyncMock(),)
         await thread.on_thread_stop()
 
         thread.web.stop_server.assert_called_once()
@@ -153,12 +149,7 @@ class Test_Web:
         with patch("faust.utils.json.dumps") as dumps:
             dumps.return_value = "foo"
             payload = {"foo": "bar"}
-            response = web.json(
-                payload,
-                status=101,
-                reason="bar",
-                headers={"k": "v"},
-            )
+            response = web.json(payload, status=101, reason="bar", headers={"k": "v"},)
             dumps.assert_called_once_with(payload)
             web.text.assert_called_once_with(
                 dumps.return_value,
@@ -248,10 +239,7 @@ class Test_Web:
         web.web_app = Mock(name="web.web_app", autospec=Application)
         web._runner = Mock(name="runner", setup=AsyncMock())
         web._create_site = Mock(
-            name="create_site",
-            return_value=Mock(
-                start=AsyncMock(),
-            ),
+            name="create_site", return_value=Mock(start=AsyncMock(),),
         )
 
         await web.start_server()
@@ -274,9 +262,7 @@ class Test_Web:
         web.web_app = None
         await web._cleanup_app()
         web.web_app = Mock(
-            name="web.web_app",
-            autospec=Application,
-            cleanup=AsyncMock(),
+            name="web.web_app", autospec=Application, cleanup=AsyncMock(),
         )
         await web._cleanup_app()
         web.web_app.cleanup.assert_called_once_with()
@@ -285,9 +271,7 @@ class Test_Web:
         web.web_app = Mock(name="web.web_app", autospec=Application)
         web.add_static("/prefix/", Path(DATAPATH), kw1=3)
         web.web_app.router.add_static.assert_called_once_with(
-            "/prefix/",
-            str(Path(DATAPATH)),
-            kw1=3,
+            "/prefix/", str(Path(DATAPATH)), kw1=3,
         )
 
     def test_route__with_cors_options(self, *, web):
@@ -308,9 +292,7 @@ class Test_Web:
         web._cors = Mock()
 
         web.route(
-            pattern="/foo/",
-            handler=handler,
-            cors_options=cors_options,
+            pattern="/foo/", handler=handler, cors_options=cors_options,
         )
 
         web.web_app.router.add_route.assert_has_calls(
@@ -338,10 +320,7 @@ class Test_Web:
         with patch("faust.web.drivers.aiohttp.TCPSite") as TCPSite:
             ret = web._create_site()
             TCPSite.assert_called_once_with(
-                web._runner,
-                app.conf.web_bind,
-                app.conf.web_port,
-                ssl_context=None,
+                web._runner, app.conf.web_bind, app.conf.web_port, ssl_context=None,
             )
             assert ret is TCPSite()
 
@@ -350,8 +329,7 @@ class Test_Web:
         with patch("faust.web.drivers.aiohttp.UnixSite") as UnixSite:
             ret = web._create_site()
             UnixSite.assert_called_once_with(
-                web._runner,
-                "/etc/foobar",
+                web._runner, "/etc/foobar",
             )
             assert ret is UnixSite()
 

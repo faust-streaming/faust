@@ -57,10 +57,7 @@ class Test_Conductor:
         con.app = Mock(
             name="app",
             autospec=App,
-            consumer=Mock(
-                autospec=Consumer,
-                commit=AsyncMock(),
-            ),
+            consumer=Mock(autospec=Consumer, commit=AsyncMock(),),
         )
         await con.commit({TP1})
 

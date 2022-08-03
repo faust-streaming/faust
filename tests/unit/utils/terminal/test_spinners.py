@@ -54,10 +54,7 @@ class Test_Spinner:
         s = self.spinner(isatty=True)
         s.write("f")
         s.file.write.assert_has_calls(
-            [
-                call("f"),
-                call(""),
-            ]
+            [call("f"), call(""),]
         )
         s.file.flush.assert_called_once_with()
 
@@ -71,10 +68,7 @@ class Test_Spinner:
         with patch("atexit.register") as atexit_register:
             s.begin()
             s.file.write.assert_has_calls(
-                [
-                    call(s.cursor_hide),
-                    call(""),
-                ]
+                [call(s.cursor_hide), call(""),]
             )
             s.file.flush.assert_called_once_with()
             atexit_register.assert_called_with(type(s)._finish, s.file, at_exit=True)
@@ -83,12 +77,7 @@ class Test_Spinner:
         s = self.spinner()
         s.finish()
         s.file.write.assert_has_calls(
-            [
-                call(s.bell),
-                call(""),
-                call(s.cursor_show),
-                call(""),
-            ]
+            [call(s.bell), call(""), call(s.cursor_show), call(""),]
         )
         s.file.flush.assert_called_once_with()
         assert s.stopped
@@ -105,8 +94,5 @@ def test_SpinnerHandler():
 
 def test_SpinnerHandler__no_spinner():
     SpinnerHandler(spinner=None).emit(
-        Mock(
-            name="logrecord",
-            autospec=logging.LogRecord,
-        ),
+        Mock(name="logrecord", autospec=logging.LogRecord,),
     )

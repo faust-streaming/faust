@@ -72,11 +72,7 @@ SEQUENCE_TYPES: TypeTuple[Iterable] = (set, frozenset, deque)
 
 DateTypeTuple = Tuple[Union[Type[datetime.date], Type[datetime.time]], ...]
 DatetimeTypeTuple = Tuple[
-    Union[
-        Type[datetime.time],
-        Type[datetime.datetime],
-    ],
-    ...,
+    Union[Type[datetime.time], Type[datetime.datetime],], ...,
 ]
 
 #: Types that we convert o mapping.
@@ -172,14 +168,12 @@ if orjson is not None:  # pragma: no cover
         **kwargs: Any,
     ) -> str:
         """Serialize to json."""
-        return json_dumps(
-            obj,
-            default=on_default,
-        )
+        return json_dumps(obj, default=on_default,)
 
     def loads(s: str, json_loads: Callable = orjson.loads, **kwargs: Any) -> Any:
         """Deserialize json string."""
         return json_loads(s)
+
 
 else:
 
@@ -191,10 +185,7 @@ else:
     ) -> str:
         """Serialize to json.  See :func:`json.dumps`."""
         return json_dumps(
-            obj,
-            cls=cls,
-            **dict(_JSON_DEFAULT_KWARGS, **kwargs),
-            separators=(",", ":"),
+            obj, cls=cls, **dict(_JSON_DEFAULT_KWARGS, **kwargs), separators=(",", ":"),
         )
 
     def loads(s: str, json_loads: Callable = json.loads, **kwargs: Any) -> Any:

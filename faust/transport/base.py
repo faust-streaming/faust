@@ -76,10 +76,7 @@ class Transport(TransportT):
     ) -> TransactionManagerT:
         """Create new transaction manager."""
         return self.TransactionManager(
-            self,
-            consumer=consumer,
-            producer=producer,
-            **kwargs,
+            self, consumer=consumer, producer=producer, **kwargs,
         )
 
     def create_conductor(self, **kwargs: Any) -> ConductorT:

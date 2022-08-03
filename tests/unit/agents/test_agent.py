@@ -39,11 +39,7 @@ class Test_AgentService:
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
-        "concurrency,index,expected_index",
-        [
-            (1, 3, None),
-            (10, 3, 3),
-        ],
+        "concurrency,index,expected_index", [(1, 3, None), (10, 3, 3),],
     )
     async def test_start_one(self, concurrency, index, expected_index, *, agent):
         agent.concurrency = concurrency
@@ -104,9 +100,7 @@ class Test_AgentService:
         agent._get_active_partitions = Mock(name="_get_active_partitions")
         agent._start_one = AsyncMock(name="_start_one")
         agent.supervisor = Mock(
-            name="supervisor",
-            autospec=SupervisorStrategy,
-            start=AsyncMock(),
+            name="supervisor", autospec=SupervisorStrategy, start=AsyncMock(),
         )
         await agent._on_start_supervisor()
 
@@ -155,9 +149,7 @@ class Test_AgentService:
     @pytest.mark.asyncio
     async def test_stop_supervisor(self, *, agent):
         supervisor = agent.supervisor = Mock(
-            name="supervisor",
-            autospec=SupervisorStrategy,
-            stop=AsyncMock(),
+            name="supervisor", autospec=SupervisorStrategy, stop=AsyncMock(),
         )
         await agent._stop_supervisor()
         assert agent.supervisor is None
@@ -275,9 +267,7 @@ class Test_Agent:
     async def test_on_isolated_partitions_revoked(self, *, agent):
         tp = TP("foo", 0)
         aref = Mock(
-            name="aref",
-            autospec=Actor,
-            on_isolated_partition_revoked=AsyncMock(),
+            name="aref", autospec=Actor, on_isolated_partition_revoked=AsyncMock(),
         )
         agent._actor_by_partition = {tp: aref}
 
@@ -323,13 +313,10 @@ class Test_Agent:
     @pytest.mark.asyncio
     async def test_maybe_start_isolated(self, *, isolated_agent):
         aref = Mock(
-            name="actor",
-            autospec=Actor,
-            on_isolated_partition_assigned=AsyncMock(),
+            name="actor", autospec=Actor, on_isolated_partition_assigned=AsyncMock(),
         )
         isolated_agent._start_isolated = AsyncMock(
-            name="_start_isolated",
-            return_value=aref,
+            name="_start_isolated", return_value=aref,
         )
         tp = TP("foo", 303)
         await isolated_agent._maybe_start_isolated(tp)
@@ -340,9 +327,7 @@ class Test_Agent:
 
     @pytest.mark.asyncio
     async def test_start_isolated(self, *, agent):
-        agent._start_for_partitions = AsyncMock(
-            name="agent._start_for_partitions",
-        )
+        agent._start_for_partitions = AsyncMock(name="agent._start_for_partitions",)
         ret = await agent._start_isolated(TP("foo", 0))
         agent._start_for_partitions.assert_called_once_with({TP("foo", 0)})
         assert ret is agent._start_for_partitions.coro()
@@ -453,8 +438,7 @@ class Test_Agent:
         agent2._sinks = [agent2]
         with pytest.raises(ImproperlyConfigured):
             await agent2._prepare_actor(
-                aref,
-                Mock(name="beacon", autospec=Node),
+                aref, Mock(name="beacon", autospec=Node),
             )
 
     @pytest.mark.asyncio
@@ -476,11 +460,7 @@ class Test_Agent:
     async def test_execute_actor__cancelled_running(self, *, agent):
         agent._on_error = AsyncMock(name="on_error")
         agent.log = Mock(name="log", autospec=CompositeLogger)
-        aref = Mock(
-            name="aref",
-            autospec=Actor,
-            crash=AsyncMock(),
-        )
+        aref = Mock(name="aref", autospec=Actor, crash=AsyncMock(),)
         agent.supervisor = Mock(name="supervisor")
         coro = FutureMock()
         exc = coro.side_effect = asyncio.CancelledError()
@@ -498,11 +478,7 @@ class Test_Agent:
     async def test_execute_actor__raising(self, *, agent):
         agent._on_error = AsyncMock(name="on_error")
         agent.log = Mock(name="log", autospec=CompositeLogger)
-        aref = Mock(
-            name="aref",
-            autospec=Actor,
-            crash=AsyncMock(),
-        )
+        aref = Mock(name="aref", autospec=Actor, crash=AsyncMock(),)
         agent.supervisor = Mock(name="supervisor")
         coro = FutureMock()
         exc = coro.side_effect = KeyError("bar")
@@ -550,10 +526,7 @@ class Test_Agent:
             None, word, word_req.reply_to, word_req.correlation_id
         )
         agent._delegate_to_sinks.coro.assert_has_calls(
-            [
-                call(word),
-                call("bar"),
-            ]
+            [call(word), call("bar"),]
         )
 
     @pytest.mark.asyncio
@@ -597,10 +570,7 @@ class Test_Agent:
 
         agent._reply.assert_called_once_with(None, word, "reply_to", "correlation_id")
         agent._delegate_to_sinks.coro.assert_has_calls(
-            [
-                call(word),
-                call("bar"),
-            ]
+            [call(word), call("bar"),]
         )
 
     @pytest.mark.asyncio
@@ -630,20 +600,14 @@ class Test_Agent:
 
     @pytest.mark.asyncio
     async def test_reply(self, *, agent):
-        agent.app = Mock(
-            name="app",
-            autospec=App,
-            send=AsyncMock(),
-        )
+        agent.app = Mock(name="app", autospec=App, send=AsyncMock(),)
         req = ReqRepRequest("value", "reply_to", "correlation_id")
         await agent._reply("key", "reply", req.reply_to, req.correlation_id)
         agent.app.send.assert_called_once_with(
             req.reply_to,
             key=None,
             value=ReqRepResponse(
-                key="key",
-                value="reply",
-                correlation_id=req.correlation_id,
+                key="key", value="reply", correlation_id=req.correlation_id,
             ),
         )
 
@@ -652,11 +616,7 @@ class Test_Agent:
         agent.send = AsyncMock(name="send")
         await agent.cast("value", key="key", partition=303)
         agent.send.assert_called_once_with(
-            key="key",
-            value="value",
-            partition=303,
-            headers=None,
-            timestamp=None,
+            key="key", value="value", partition=303, headers=None, timestamp=None,
         )
 
     @pytest.mark.asyncio
@@ -665,10 +625,7 @@ class Test_Agent:
             name="app",
             autospec=App,
             maybe_start_client=AsyncMock(),
-            _reply_consumer=Mock(
-                autospec=ReplyConsumer,
-                add=AsyncMock(),
-            ),
+            _reply_consumer=Mock(autospec=ReplyConsumer, add=AsyncMock(),),
         )
         pp = done_future()
         agent.ask_nowait = Mock(name="ask_nowait")
@@ -729,10 +686,7 @@ class Test_Agent:
     async def test_ask_nowait__missing_reply_to(self, *, agent):
         with pytest.raises(TypeError):
             await agent.ask_nowait(
-                value="value",
-                key="key",
-                partition=3034,
-                reply_to=None,
+                value="value", key="key", partition=3034, reply_to=None,
             )
 
     def test_create_req(self, *, agent):
@@ -786,28 +740,19 @@ class Test_Agent:
     def test_create_req__requires_reply_to(self, *, agent):
         with pytest.raises(TypeError):
             agent._create_req(
-                key=b"key",
-                value=b"value",
-                reply_to=None,
+                key=b"key", value=b"value", reply_to=None,
             )
 
     @pytest.mark.parametrize(
         "value,expected_class",
-        [
-            (b"value", ReqRepResponse),
-            (Word("foo"), ModelReqRepResponse),
-        ],
+        [(b"value", ReqRepResponse), (Word("foo"), ModelReqRepResponse),],
     )
     def test_response_class(self, value, expected_class, *, agent):
         assert agent._response_class(value) is expected_class
 
     @pytest.mark.asyncio
     async def test_send(self, *, agent):
-        agent.channel = Mock(
-            name="channel",
-            autospec=Channel,
-            send=AsyncMock(),
-        )
+        agent.channel = Mock(name="channel", autospec=Channel, send=AsyncMock(),)
         agent._create_req = Mock(name="_create_req")
         agent._create_req.return_value = ("V", {"k2": "v2"})
         callback = Mock(name="callback")
@@ -827,11 +772,7 @@ class Test_Agent:
         )
 
         agent._create_req.assert_called_once_with(
-            b"key",
-            b"value",
-            "reply_to",
-            "correlation_id",
-            {"k": "v"},
+            b"key", b"value", "reply_to", "correlation_id", {"k": "v"},
         )
 
         agent.channel.send.assert_called_once_with(
@@ -849,11 +790,7 @@ class Test_Agent:
 
     @pytest.mark.asyncio
     async def test_send__without_reply_to(self, *, agent):
-        agent.channel = Mock(
-            name="channel",
-            autospec=Channel,
-            send=AsyncMock(),
-        )
+        agent.channel = Mock(name="channel", autospec=Channel, send=AsyncMock(),)
         agent._create_req = Mock(name="_create_req")
         callback = Mock(name="callback")
 

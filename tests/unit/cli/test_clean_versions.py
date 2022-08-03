@@ -19,18 +19,10 @@ class Test_clean_versions:
 
     def test_remove_old_versiondirs(self, *, app, command):
         app.conf.find_old_versiondirs = Mock(
-            return_value=[
-                Path("A1"),
-                Path("B2"),
-                Path("C3"),
-            ]
+            return_value=[Path("A1"), Path("B2"), Path("C3"),]
         )
         with patch("faust.cli.clean_versions.rmtree") as rmtree:
             command.remove_old_versiondirs()
             rmtree.assert_has_calls(
-                [
-                    call("A1"),
-                    call("B2"),
-                    call("C3"),
-                ]
+                [call("A1"), call("B2"), call("C3"),]
             )

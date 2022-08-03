@@ -293,8 +293,7 @@ class Recovery(Service):
         rebalancing_span = cast(_App, self.app)._rebalancing_span
         if app.tracer and rebalancing_span:
             self._recovery_span = app.tracer.get_tracer("_faust").start_span(
-                "recovery",
-                child_of=rebalancing_span,
+                "recovery", child_of=rebalancing_span,
             )
             app._span_add_default_tags(self._recovery_span)
         self.signal_recovery_start.set()
@@ -408,9 +407,7 @@ class Recovery(Service):
                         ):
                             raise ConsistencyError(
                                 E_PERSISTED_OFFSET.format(
-                                    tp,
-                                    active_offsets[tp],
-                                    active_highwaters[tp],
+                                    tp, active_offsets[tp], active_highwaters[tp],
                                 ),
                             )
 
@@ -496,10 +493,7 @@ class Recovery(Service):
                     self.log.dev("Build standby highwaters")
                     await self._wait(
                         T(self._build_highwaters)(
-                            consumer,
-                            standby_tps,
-                            standby_highwaters,
-                            "standby",
+                            consumer, standby_tps, standby_highwaters, "standby",
                         ),
                         timeout=self.app.conf.broker_request_timeout,
                     )
@@ -512,9 +506,7 @@ class Recovery(Service):
                             ):
                                 raise ConsistencyError(
                                     E_PERSISTED_OFFSET.format(
-                                        tp,
-                                        standby_offsets[tp],
-                                        standby_highwaters[tp],
+                                        tp, standby_offsets[tp], standby_highwaters[tp],
                                     ),
                                 )
 
@@ -609,8 +601,7 @@ class Recovery(Service):
         # This needs to happen if all goes well
         callback_coros = [
             table.on_recovery_completed(
-                self.actives_for_table[table],
-                self.standbys_for_table[table],
+                self.actives_for_table[table], self.standbys_for_table[table],
             )
             for table in self.tables.values()
         ]
@@ -933,29 +924,14 @@ class Recovery(Service):
     def _stats_to_logtable(self, title: str, stats: RecoveryStatsMapping) -> str:
         table_data = [
             list(
-                map(
-                    str,
-                    [
-                        tp.topic,
-                        tp.partition,
-                        s.highwater,
-                        s.offset,
-                        s.remaining,
-                    ],
-                )
+                map(str, [tp.topic, tp.partition, s.highwater, s.offset, s.remaining,],)
             )
             for tp, s in sorted(stats.items())
         ]
         return terminal.logtable(
             list(self._consolidate_table_keys(table_data)),
             title=title,
-            headers=[
-                "topic",
-                "partition",
-                "need offset",
-                "have offset",
-                "remaining",
-            ],
+            headers=["topic", "partition", "need offset", "have offset", "remaining",],
         )
 
     @Service.task

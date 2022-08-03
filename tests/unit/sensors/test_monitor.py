@@ -98,23 +98,13 @@ class TestMonitor:
         )
 
     def test_init_max_commit_latency_history__default(self):
-        assert (
-            Monitor(
-                max_commit_latency_history=33,
-            ).max_commit_latency_history
-            == 33
-        )
+        assert Monitor(max_commit_latency_history=33,).max_commit_latency_history == 33
 
     def test_init_max_send_latency_history(self):
         assert Monitor().max_send_latency_history == Monitor.max_send_latency_history
 
     def test_init_max_send_latency_history__default(self):
-        assert (
-            Monitor(
-                max_send_latency_history=33,
-            ).max_send_latency_history
-            == 33
-        )
+        assert Monitor(max_send_latency_history=33,).max_send_latency_history == 33
 
     def test_init_max_assignment_latency_history(self):
         assert (
@@ -124,9 +114,7 @@ class TestMonitor:
 
     def test_init_max_assignment_latency_history__default(self):
         assert (
-            Monitor(
-                max_assignment_latency_history=33,
-            ).max_assignment_latency_history
+            Monitor(max_assignment_latency_history=33,).max_assignment_latency_history
             == 33
         )
 
@@ -274,9 +262,7 @@ class TestMonitor:
     def test_on_send_completed(self, *, mon, time):
         other_time = 56.7
         mon.on_send_completed(
-            Mock(name="producer", autospec=Producer),
-            other_time,
-            Mock(name="metadata"),
+            Mock(name="producer", autospec=Producer), other_time, Mock(name="metadata"),
         )
         assert mon.send_latency[-1] == time() - other_time
 

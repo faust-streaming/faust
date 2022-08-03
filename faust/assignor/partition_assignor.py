@@ -149,9 +149,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
 
     @classmethod
     def _group_co_subscribed(
-        cls,
-        topics: Set[str],
-        subscriptions: MemberSubscriptionMapping,
+        cls, topics: Set[str], subscriptions: MemberSubscriptionMapping,
     ) -> Iterable[Set[str]]:
         topic_subscriptions: MutableMapping[str, Set[str]] = defaultdict(set)
         for client, subscription in subscriptions.items():

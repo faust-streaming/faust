@@ -85,8 +85,7 @@ class Stresser(object):
             if worker not in self._worker_procs:
                 print(f"Starting worker {worker}")
                 self._worker_procs[worker] = await self._exec_worker(
-                    web_port=8080 + worker,
-                    stdout=f,
+                    web_port=8080 + worker, stdout=f,
                 )
 
     async def _exec_worker(
@@ -139,9 +138,7 @@ class Stresser(object):
         if producer not in self._producer_procs:
             with open(f"producer_{producer}.logs", "a") as f:
                 print(f"Starting producer: {producer}")
-                self._producer_procs[producer] = await self._exec_producer(
-                    stdout=f,
-                )
+                self._producer_procs[producer] = await self._exec_producer(stdout=f,)
 
     async def _exec_producer(
         self,

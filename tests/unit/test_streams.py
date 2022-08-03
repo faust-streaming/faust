@@ -126,11 +126,7 @@ class Test_Stream:
     @pytest.mark.allow_lingering_tasks(count=1)
     async def test_aiter_tracked(self, *, stream, app):
         print("TEST AITER TRACKED")
-        event = await self._assert_stream_aiter(
-            stream,
-            side_effect=None,
-            raises=None,
-        )
+        event = await self._assert_stream_aiter(stream, side_effect=None, raises=None,)
         if not event.ack.called:
             assert event.message.refcount == 0
             assert event.message.acked
@@ -141,9 +137,7 @@ class Test_Stream:
     @pytest.mark.allow_lingering_tasks(count=1)
     async def test_aiter_tracked__CancelledError(self, *, stream, app):
         event = await self._assert_stream_aiter(
-            stream,
-            side_effect=asyncio.CancelledError(),
-            raises=asyncio.CancelledError,
+            stream, side_effect=asyncio.CancelledError(), raises=asyncio.CancelledError,
         )
         if not event.ack.called:
             assert event.message.refcount == 0
@@ -193,9 +187,7 @@ class Test_Stream:
             await asyncio.sleep(0)
             await asyncio.sleep(0)
         s._on_message_in.assert_called_once_with(
-            event.message.tp,
-            event.message.offset,
-            event.message,
+            event.message.tp, event.message.offset, event.message,
         )
         return event
 
@@ -207,15 +199,10 @@ class Test_Stream:
         stream._on_message_out = Mock()
         assert await stream.ack(event)
         stream._on_stream_event_out.assert_called_once_with(
-            event.message.tp,
-            event.message.offset,
-            stream,
-            event,
+            event.message.tp, event.message.offset, stream, event,
         )
         stream._on_message_out.assert_called_once_with(
-            event.message.tp,
-            event.message.offset,
-            event.message,
+            event.message.tp, event.message.offset, event.message,
         )
 
     @pytest.mark.asyncio

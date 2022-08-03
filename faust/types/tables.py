@@ -70,14 +70,7 @@ RelativeHandler = Callable[[Optional[EventT]], Union[float, datetime]]
 RecoverCallback = Callable[[], Awaitable[None]]
 ChangelogEventCallback = Callable[[EventT], Awaitable[None]]
 WindowCloseCallback = Callable[[Any, Any], Union[None, Awaitable[None]]]
-RelativeArg = Optional[
-    Union[
-        _FieldDescriptorT,
-        RelativeHandler,
-        datetime,
-        float,
-    ]
-]
+RelativeArg = Optional[Union[_FieldDescriptorT, RelativeHandler, datetime, float,]]
 CollectionTps = MutableMapping["CollectionT", Set[TP]]
 
 KT = TypeVar("KT")

@@ -86,7 +86,5 @@ def get_reporting_app() -> DashboardApp:
     from ..app import create_app
 
     return create_app(
-        "f-stress-systemcheck",
-        base=DashboardApp,
-        origin="t.stress.reports",
+        "f-stress-systemcheck", base=DashboardApp, origin="t.stress.reports",
     )

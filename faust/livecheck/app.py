@@ -237,10 +237,7 @@ class LiveCheck(faust.App):
             case_cls = type(
                 cls.__name__,
                 (cls, base_case),
-                {
-                    "__module__": cls.__module__,
-                    "app": self,
-                },
+                {"__module__": cls.__module__, "app": self,},
             )
 
             signal_types = dict(self._extract_signals(case_cls, base_case))
@@ -325,15 +322,13 @@ class LiveCheck(faust.App):
             await self.add_runtime_dependency(case)
 
     def _install_bus_agent(self) -> AgentT:
-        return self.agent(
-            channel=self.bus,
-            concurrency=self.bus_concurrency,
-        )(self._populate_signals)
+        return self.agent(channel=self.bus, concurrency=self.bus_concurrency,)(
+            self._populate_signals
+        )
 
     def _install_test_execution_agent(self) -> AgentT:
         return self.agent(
-            channel=self.pending_tests,
-            concurrency=self.test_concurrency,
+            channel=self.pending_tests, concurrency=self.test_concurrency,
         )(self._execute_tests)
 
     async def _populate_signals(self, events: StreamT[SignalEvent]) -> None:
@@ -378,26 +373,14 @@ class LiveCheck(faust.App):
     @cached_property
     def bus(self) -> TopicT:
         """Topic used for signal communication."""
-        return self.topic(
-            self.bus_topic_name,
-            key_type=str,
-            value_type=SignalEvent,
-        )
+        return self.topic(self.bus_topic_name, key_type=str, value_type=SignalEvent,)
 
     @cached_property
     def pending_tests(self) -> TopicT:
         """Topic used to keep pending test executions."""
-        return self.topic(
-            self.test_topic_name,
-            key_type=str,
-            value_type=TestExecution,
-        )
+        return self.topic(self.test_topic_name, key_type=str, value_type=TestExecution,)
 
     @cached_property
     def reports(self) -> TopicT:
         """Topic used to log test reports."""
-        return self.topic(
-            self.report_topic_name,
-            key_type=str,
-            value_type=TestReport,
-        )
+        return self.topic(self.report_topic_name, key_type=str, value_type=TestReport,)

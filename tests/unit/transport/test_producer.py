@@ -34,8 +34,7 @@ class TestProducerBuffer:
         fut.message.channel.publish_message = AsyncMock()
         await buf._send_pending(fut)
         fut.message.channel.publish_message.coro.assert_called_once_with(
-            fut,
-            wait=False,
+            fut, wait=False,
         )
 
     @pytest.mark.asyncio

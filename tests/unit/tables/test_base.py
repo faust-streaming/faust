@@ -79,9 +79,7 @@ class Test_Collection:
     @pytest.mark.asyncio
     async def test_on_start(self, *, table):
         table.changelog_topic = Mock(
-            name="changelog_topic",
-            autospec=Topic,
-            maybe_declare=AsyncMock(),
+            name="changelog_topic", autospec=Topic, maybe_declare=AsyncMock(),
         )
         await table.on_start()
         table.changelog_topic.maybe_declare.assert_called_once_with()
@@ -113,9 +111,7 @@ class Test_Collection:
     @pytest.mark.asyncio
     async def test_need_active_standby_for(self, *, table):
         table._data = Mock(
-            name="_data",
-            autospec=Store,
-            need_active_standby_for=AsyncMock(),
+            name="_data", autospec=Store, need_active_standby_for=AsyncMock(),
         )
         assert (
             await table.need_active_standby_for(TP1)
@@ -145,11 +141,7 @@ class Test_Collection:
         event = Mock(name="event")
         table.changelog_topic.send_soon = Mock(name="send_soon")
         table._send_changelog(
-            event,
-            "k",
-            "v",
-            key_serializer="raw",
-            value_serializer="raw",
+            event, "k", "v", key_serializer="raw", value_serializer="raw",
         )
         table.changelog_topic.send_soon.assert_called_once_with(
             key="k",
@@ -170,8 +162,7 @@ class Test_Collection:
         table._data = Mock(name="data", autospec=Store)
         table._on_changelog_sent(fut)
         table._data.set_persisted_offset.assert_called_once_with(
-            fut.result().topic_partition,
-            fut.result().offset,
+            fut.result().topic_partition, fut.result().offset,
         )
 
     def test_on_changelog_sent__transactions(self, *, table):
@@ -180,9 +171,7 @@ class Test_Collection:
         fut = Mock(name="fut")
         table._on_changelog_sent(fut)
         table.app.tables.persist_offset_on_commit.assert_called_once_with(
-            table.data,
-            fut.result().topic_partition,
-            fut.result().offset,
+            table.data, fut.result().topic_partition, fut.result().offset,
         )
 
     @pytest.mark.asyncio
@@ -210,9 +199,7 @@ class Test_Collection:
                 ("moo", (1.4, 1.6)),
                 ("faa", (1.9, 2.0)),
             ],
-            (TP1, 5.0): [
-                ("bar", (4.1, 4.2)),
-            ],
+            (TP1, 5.0): [("bar", (4.1, 4.2)),],
         }
 
         def get_stale(limit):
@@ -266,9 +253,7 @@ class Test_Collection:
                 ("moo", (1.4, 1.6)),
                 ("faa", (1.9, 2.0)),
             ],
-            (TP1, 5.0): [
-                ("bar", (4.1, 4.2)),
-            ],
+            (TP1, 5.0): [("bar", (4.1, 4.2)),],
         }
 
         def get_stale(limit):
@@ -551,11 +536,7 @@ class Test_Collection:
 
     @pytest.mark.asyncio
     async def test_on_rebalance(self, *, table):
-        table._data = Mock(
-            name="data",
-            autospec=Store,
-            on_rebalance=AsyncMock(),
-        )
+        table._data = Mock(name="data", autospec=Store, on_rebalance=AsyncMock(),)
         generation_id = 1
         await table.on_rebalance({TP1}, set(), set(), generation_id)
         table._data.on_rebalance.assert_called_once_with(
@@ -581,9 +562,7 @@ class Test_Collection:
         table._data = Mock(name="data", autospec=Store)
         table.apply_changelog_batch([1, 2, 3])
         table._data.apply_changelog_batch.assert_called_once_with(
-            [1, 2, 3],
-            to_key=table._to_key,
-            to_value=table._to_value,
+            [1, 2, 3], to_key=table._to_key, to_value=table._to_value,
         )
 
     def test_to_key(self, *, table):

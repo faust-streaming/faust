@@ -131,8 +131,7 @@ class Test_Store:
         store.set_persisted_offset(TP1, 3003)
         db_for_partition.assert_called_once_with(TP1.partition)
         db_for_partition.return_value.put.assert_called_once_with(
-            store.offset_key,
-            b"3003",
+            store.offset_key, b"3003",
         )
 
     @pytest.mark.asyncio
@@ -189,24 +188,14 @@ class Test_Store:
 
         rocks.WriteBatch.return_value.delete.assert_called_once_with("k5")
         rocks.WriteBatch.return_value.put.assert_has_calls(
-            [
-                call("k1", "v1"),
-                call("k2", "v2"),
-                call("k3", "v3"),
-                call("k4", "v4"),
-            ]
+            [call("k1", "v1"), call("k2", "v2"), call("k3", "v3"), call("k4", "v4"),]
         )
 
         for db in dbs.values():
             db.write.assert_called_once_with(rocks.WriteBatch())
 
         store.set_persisted_offset.assert_has_calls(
-            [
-                call(TP1, 1001),
-                call(TP2, 2002),
-                call(TP3, 3003),
-                call(TP4, 4005),
-            ]
+            [call(TP1, 1001), call(TP2, 2002), call(TP3, 3003), call(TP4, 4005),]
         )
 
     @pytest.fixture()
@@ -219,8 +208,7 @@ class Test_Store:
         db_for_partition.assert_called_once_with(current_event.message.partition)
         assert store._key_index[b"key"] == current_event.message.partition
         db_for_partition.return_value.put.assert_called_once_with(
-            b"key",
-            b"value",
+            b"key", b"value",
         )
 
     def test_db_for_partition(self, *, store):
@@ -374,11 +362,7 @@ class Test_Store:
 
     def test__del(self, *, store):
         dbs = store._dbs_for_key = Mock(
-            return_value=[
-                Mock(name="db1"),
-                Mock(name="db2"),
-                Mock(name="db3"),
-            ]
+            return_value=[Mock(name="db1"), Mock(name="db2"), Mock(name="db3"),]
         )
         store._del(b"key")
         for db in dbs.return_value:
@@ -583,10 +567,7 @@ class Test_Store:
     def test__dbs_for_actives(self, *, store, table):
         table.changelog_topic_name = "clog"
         store.app.assignor.assigned_actives = Mock(
-            return_value=[
-                TP("clog", 1),
-                TP("clog", 2),
-            ]
+            return_value=[TP("clog", 1), TP("clog", 2),]
         )
         dbs = store._dbs = {
             1: self.new_db("db1"),
@@ -604,33 +585,16 @@ class Test_Store:
 
     def test__size(self, *, store):
         dbs = self._setup_keys(
-            db1=[
-                store.offset_key,
-                b"foo",
-                b"bar",
-            ],
-            db2=[
-                b"baz",
-                store.offset_key,
-                b"xuz",
-                b"xaz",
-            ],
+            db1=[store.offset_key, b"foo", b"bar",],
+            db2=[b"baz", store.offset_key, b"xuz", b"xaz",],
         )
         store._dbs_for_actives = Mock(return_value=dbs)
         assert store._size() == 5
 
     def test__iterkeys(self, *, store):
         dbs = self._setup_keys(
-            db1=[
-                store.offset_key,
-                b"foo",
-                b"bar",
-            ],
-            db2=[
-                b"baz",
-                store.offset_key,
-                b"xuz",
-            ],
+            db1=[store.offset_key, b"foo", b"bar",],
+            db2=[b"baz", store.offset_key, b"xuz",],
         )
         store._dbs_for_actives = Mock(return_value=dbs)
 
@@ -655,16 +619,8 @@ class Test_Store:
 
     def test__itervalues(self, *, store):
         dbs = self._setup_items(
-            db1=[
-                (store.offset_key, b"1001"),
-                (b"k1", b"foo"),
-                (b"k2", b"bar"),
-            ],
-            db2=[
-                (b"k3", b"baz"),
-                (store.offset_key, b"2002"),
-                (b"k4", b"xuz"),
-            ],
+            db1=[(store.offset_key, b"1001"), (b"k1", b"foo"), (b"k2", b"bar"),],
+            db2=[(b"k3", b"baz"), (store.offset_key, b"2002"), (b"k4", b"xuz"),],
         )
         store._dbs_for_actives = Mock(return_value=dbs)
 
@@ -689,16 +645,8 @@ class Test_Store:
 
     def test__iteritems(self, *, store):
         dbs = self._setup_items(
-            db1=[
-                (store.offset_key, b"1001"),
-                (b"k1", b"foo"),
-                (b"k2", b"bar"),
-            ],
-            db2=[
-                (b"k3", b"baz"),
-                (store.offset_key, b"2002"),
-                (b"k4", b"xuz"),
-            ],
+            db1=[(store.offset_key, b"1001"), (b"k1", b"foo"), (b"k2", b"bar"),],
+            db2=[(b"k3", b"baz"), (store.offset_key, b"2002"), (b"k4", b"xuz"),],
         )
         store._dbs_for_actives = Mock(return_value=dbs)
 

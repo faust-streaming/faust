@@ -226,15 +226,13 @@ class SetTableManager(Service, Generic[KT, VT]):
         if iter(members) is members:
             members = list(members)
         await self.topic.send(
-            key=key,
-            value=SetManagerOperation(action=action, members=members),
+            key=key, value=SetManagerOperation(action=action, members=members),
         )
 
     def _enable(self) -> None:
-        self.agent = self.app.agent(
-            channel=self.topic,
-            name="faust.SetTable.manager",
-        )(self._modify_set)
+        self.agent = self.app.agent(channel=self.topic, name="faust.SetTable.manager",)(
+            self._modify_set
+        )
 
     async def _modify_set(self, stream: StreamT[SetManagerOperation]) -> None:
         actions = self.actions

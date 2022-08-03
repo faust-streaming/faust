@@ -110,9 +110,6 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
 
     @abc.abstractmethod
     def restore_backup(
-        self,
-        tp: Union[TP, int],
-        latest: bool = True,
-        backup_id: int = 0,
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0,
     ) -> None:
         ...

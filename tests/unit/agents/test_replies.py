@@ -37,10 +37,7 @@ class Test_BarrierState:
         assert p.size == 0
 
         await asyncio.gather(
-            self.adder(p),
-            self.fulfiller(p),
-            self.finalizer(p, 1.0),
-            self.joiner(p),
+            self.adder(p), self.fulfiller(p), self.finalizer(p, 1.0), self.joiner(p),
         )
 
     @pytest.mark.asyncio
@@ -190,11 +187,7 @@ class Test_ReplyConsumer:
     @pytest.mark.asyncio
     async def test_start_fetcher(self, *, c):
         c._drain_replies = Mock()
-        c._reply_topic = Mock(
-            return_value=Mock(
-                maybe_declare=AsyncMock(),
-            ),
-        )
+        c._reply_topic = Mock(return_value=Mock(maybe_declare=AsyncMock(),),)
         c.sleep = AsyncMock()
         c.add_future = Mock()
 
@@ -207,9 +200,7 @@ class Test_ReplyConsumer:
         topic = c._reply_topic.return_value
         topic.maybe_declare.assert_called_once_with()
 
-        c.add_future.assert_called_once_with(
-            c._drain_replies.return_value,
-        )
+        c.add_future.assert_called_once_with(c._drain_replies.return_value,)
         c._drain_replies.assert_called_once_with(topic)
         c.sleep.assert_called_once_with(3.0)
 
@@ -227,9 +218,7 @@ class Test_ReplyConsumer:
                 )
             ),
         ]
-        channel = Mock(
-            stream=Mock(return_value=self._response_stream(responses)),
-        )
+        channel = Mock(stream=Mock(return_value=self._response_stream(responses)),)
         p1 = Mock()
         p2 = Mock()
         p3 = Mock()

@@ -83,20 +83,13 @@ class StatsdMonitor(Monitor):
         state = super().on_stream_event_in(tp, offset, stream, event)
         self.client.incr("events", rate=self.rate)
         self.client.incr(
-            f"stream.{self._stream_label(stream)}.events",
-            rate=self.rate,
+            f"stream.{self._stream_label(stream)}.events", rate=self.rate,
         )
         self.client.incr("events_active", rate=self.rate)
         return state
 
     def _stream_label(self, stream: StreamT) -> str:
-        return (
-            self._normalize(
-                stream.shortlabel.lstrip("Stream:"),
-            )
-            .strip("_")
-            .lower()
-        )
+        return self._normalize(stream.shortlabel.lstrip("Stream:"),).strip("_").lower()
 
     def on_stream_event_out(
         self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None

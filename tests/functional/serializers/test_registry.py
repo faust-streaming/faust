@@ -41,9 +41,7 @@ ACCOUNT1_UNBLESSED_JSON = json.dumps(ACCOUNT1_UNBLESSED)
 # Account1 with extra fields
 ACCOUNT1_EXTRA_FIELDS = ACCOUNT1.to_representation()
 ACCOUNT1_EXTRA_FIELDS.update(
-    join_date="12321321312",
-    foo={"a": "A", "b": "B"},
-    bar=[1, 2, 3, 4],
+    join_date="12321321312", foo={"a": "A", "b": "B"}, bar=[1, 2, 3, 4],
 )
 ACCOUNT1_EXTRA_FIELDS_JSON = json.dumps(ACCOUNT1_EXTRA_FIELDS)
 

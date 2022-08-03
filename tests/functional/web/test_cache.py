@@ -33,12 +33,7 @@ class ACachedView(View):
 
     async def _next_response(self, request):
         cache_key = cache.key_for_request(request, None, request.method)
-        return self.json(
-            ResponseModel(
-                key=cache_key,
-                value=next(self.counter),
-            )
-        )
+        return self.json(ResponseModel(key=cache_key, value=next(self.counter),))
 
 
 @blueprint.route("/B/", name="b")
@@ -134,10 +129,7 @@ def test_key_for_request(include_headers, *, app):
     _cache.build_key = Mock(name="build_key")
     _cache.key_for_request(request, prefix="/foo/", include_headers=include_headers)
     _cache.build_key.assert_called_once_with(
-        request,
-        request.method,
-        "/foo/",
-        request.headers if include_headers else {},
+        request, request.method, "/foo/", request.headers if include_headers else {},
     )
 
 
@@ -375,12 +367,7 @@ async def test_redis_get__irrecoverable_errors(*, app, mocked_redis):
 @pytest.mark.app(cache="redis://")
 @pytest.mark.parametrize(
     "operation,delete_error",
-    [
-        ("get", False),
-        ("get", True),
-        ("delete", False),
-        ("delete", True),
-    ],
+    [("get", False), ("get", True), ("delete", False), ("delete", True),],
 )
 async def test_redis_invalidating_error(operation, delete_error, *, app, mocked_redis):
     from aredis.exceptions import DataError

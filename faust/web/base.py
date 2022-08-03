@@ -274,12 +274,7 @@ class Web(Service):
         return self.content_separator.join(
             [
                 str(status).encode(),
-                self.content_separator.join(
-                    [
-                        self._headers_serialize(headers),
-                        body,
-                    ]
-                ),
+                self.content_separator.join([self._headers_serialize(headers), body,]),
             ]
         )
 

@@ -2,9 +2,7 @@ from ...app import create_stress_app
 from ...models import Withdrawal, generate_withdrawals
 
 app = create_stress_app(
-    name="f-stress-simple",
-    version=7,
-    origin="t.stress.tests.simple",
+    name="f-stress-simple", version=7, origin="t.stress.tests.simple",
 )
 
 withdrawals_topic = app.topic("f-stress-withdrawals", value_type=Withdrawal)

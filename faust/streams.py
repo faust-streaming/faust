@@ -133,8 +133,7 @@ class Stream(StreamT[T_co], Service):
         self.app = app
         self.channel = channel
         self.outbox = self.app.FlowControlQueue(
-            maxsize=self.app.conf.stream_buffer_maxsize,
-            clear_on_resume=True,
+            maxsize=self.app.conf.stream_buffer_maxsize, clear_on_resume=True,
         )
         self._passive_started = asyncio.Event()
         self.join_strategy = join_strategy
@@ -270,9 +269,7 @@ class Stream(StreamT[T_co], Service):
 
     def noack(self) -> "StreamT":
         """Create new stream where acks are manual."""
-        self._next = new_stream = self.clone(
-            enable_acks=False,
-        )
+        self._next = new_stream = self.clone(enable_acks=False,)
         return new_stream
 
     async def items(self) -> AsyncIterator[Tuple[K, T_co]]:

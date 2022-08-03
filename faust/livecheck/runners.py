@@ -59,10 +59,7 @@ class TestRunner:
         self.ended = None
         self.runtime = None
         self.logs = []
-        self.log = CompositeLogger(
-            self.case.log.logger,
-            formatter=self._format_log,
-        )
+        self.log = CompositeLogger(self.case.log.logger, formatter=self._format_log,)
         self.signal_latency = {}
 
     async def execute(self) -> None:
@@ -189,9 +186,7 @@ class TestRunner:
         self.error = None
         self.state = State.DO_NOT_SHARE
         human_secs = humanize_seconds(
-            self.runtime or 0.0,
-            microseconds=True,
-            now="~0.0 seconds",
+            self.runtime or 0.0, microseconds=True, now="~0.0 seconds",
         )
         self.log_info("Test OK in %s √", human_secs)
         self._flush_logs()

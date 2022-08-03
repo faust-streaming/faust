@@ -6,13 +6,7 @@ from faust.cli.params import CaseInsensitiveChoice, TCPPort, URLParam
 
 
 def test_CaseInsensitiveChoice():
-    choices = CaseInsensitiveChoice(
-        [
-            "FOO",
-            "BAR",
-            "baz",
-        ]
-    )
+    choices = CaseInsensitiveChoice(["FOO", "BAR", "baz",])
 
     assert choices.convert("FOO", None, None) == "FOO"
     assert choices.convert("foo", None, None) == "foo"

@@ -22,8 +22,7 @@ class Test_Blueprint:
         app = Mock(name="app")
         bp.register(app, url_prefix="/foo/")
         app.web.add_static.assert_called_once_with(
-            "/foo/static/",
-            Path("/opt/static/"),
+            "/foo/static/", Path("/opt/static/"),
         )
 
     def test_apply_static__already_prefixed(self, *, bp):

@@ -65,10 +65,7 @@ class AgentManager(Service, AgentManagerT, ManagedUserDict):
             [
                 self.traceback_header,
                 "\n".join(
-                    self.traceback_format.format(
-                        name=name,
-                        traceback=traceback,
-                    )
+                    self.traceback_format.format(name=name, traceback=traceback,)
                     for name, traceback in self.actor_tracebacks().items()
                 ),
                 self.traceback_footer,

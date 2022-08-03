@@ -491,8 +491,7 @@ class Monitor(Sensor, KeywordReduce):
             time_total = time_out - time_in
             self.events_active -= 1
             state.update(
-                time_out=time_out,
-                time_total=time_total,
+                time_out=time_out, time_total=time_total,
             )
             self.events_runtime.append(time_total)
 
@@ -606,8 +605,7 @@ class Monitor(Sensor, KeywordReduce):
         time_return = self.time()
         latency_return = time_return - time_start
         state.update(
-            time_return=time_return,
-            latency_return=latency_return,
+            time_return=time_return, latency_return=latency_return,
         )
         self.rebalance_return_latency.append(latency_return)
 
@@ -617,8 +615,7 @@ class Monitor(Sensor, KeywordReduce):
         time_end = self.time()
         latency_end = time_end - time_start
         state.update(
-            time_end=time_end,
-            latency_end=latency_end,
+            time_end=time_end, latency_end=latency_end,
         )
         self.rebalance_end_latency.append(latency_end)
         self._clear_topic_related_sensors()
@@ -644,9 +641,7 @@ class Monitor(Sensor, KeywordReduce):
         time_end = self.time()
         latency_end = time_end - time_start
         state.update(
-            time_end=time_end,
-            latency_end=latency_end,
-            status_code=status_code,
+            time_end=time_end, latency_end=latency_end, status_code=status_code,
         )
         self.http_response_latency.append(latency_end)
         self.http_response_codes[status_code] += 1

@@ -53,20 +53,12 @@ class PartitionsNotStarved(checks.Check):
         self.prev_value = copy(current_value)
 
 
+app.add_system_check(PartitionsNotStarved("starved-partitions"),)
 app.add_system_check(
-    PartitionsNotStarved("starved-partitions"),
+    checks.Stationary("table-found-double-count", get_value=lambda: found_duplicates,),
 )
 app.add_system_check(
-    checks.Stationary(
-        "table-found-double-count",
-        get_value=lambda: found_duplicates,
-    ),
-)
-app.add_system_check(
-    checks.Stationary(
-        "table-found-missing-update",
-        get_value=lambda: found_gaps,
-    ),
+    checks.Stationary("table-found-missing-update", get_value=lambda: found_gaps,),
 )
 
 partitions_sent_counter = Counter()

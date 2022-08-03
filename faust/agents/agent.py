@@ -264,9 +264,7 @@ class Agent(AgentT, Service):
         stream: Optional[StreamT] = None,
     ) -> ActorT:
         aref = await self._start_one(
-            index=index,
-            active_partitions=active_partitions,
-            stream=stream,
+            index=index, active_partitions=active_partitions, stream=stream,
         )
         self.supervisor.add(aref)
         await aref.maybe_start()
@@ -312,9 +310,7 @@ class Agent(AgentT, Service):
         channel: ChannelT = cast(ChannelT, None)
         for i in range(self.concurrency):
             res = await self._start_one(
-                index=i,
-                active_partitions=active_partitions,
-                channel=channel,
+                index=i, active_partitions=active_partitions, channel=channel,
             )
             if channel is None:
                 # First concurrency actor creates channel,
@@ -609,8 +605,7 @@ class Agent(AgentT, Service):
         """Create underlying stream used by this agent."""
         if channel is None:
             channel = cast(TopicT, self.channel_iterator).clone(
-                is_iterator=False,
-                active_partitions=active_partitions,
+                is_iterator=False, active_partitions=active_partitions,
             )
         if active_partitions is not None:
             assert channel.active_partitions == active_partitions
@@ -733,14 +728,10 @@ class Agent(AgentT, Service):
     ) -> None:
         assert reply_to
         response = self._response_class(value)(
-            key=key,
-            value=value,
-            correlation_id=correlation_id,
+            key=key, value=value, correlation_id=correlation_id,
         )
         await self.app.send(
-            reply_to,
-            key=None,
-            value=response,
+            reply_to, key=None, value=response,
         )
 
     def _response_class(self, value: Any) -> Type[ReqRepResponse]:
@@ -858,9 +849,7 @@ class Agent(AgentT, Service):
         else:
             # wrap value in envelope
             req = self._request_class(value)(
-                value=value,
-                reply_to=topic_name,
-                correlation_id=correlation_id,
+                value=value, reply_to=topic_name, correlation_id=correlation_id,
             )
             return req, open_headers
 
@@ -971,8 +960,7 @@ class Agent(AgentT, Service):
         all values have been processed.
         """
         return await self.kvjoin(
-            ((key, value) async for value in aiter(values)),
-            reply_to=reply_to,
+            ((key, value) async for value in aiter(values)), reply_to=reply_to,
         )
 
     async def kvjoin(

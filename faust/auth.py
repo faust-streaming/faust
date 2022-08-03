@@ -77,9 +77,7 @@ class GSSAPICredentials(Credentials):
 
     def __repr__(self) -> str:
         return "<{0}: kerberos service={1!r} domain={2!r}".format(
-            type(self).__name__,
-            self.kerberos_service_name,
-            self.kerberos_domain_name,
+            type(self).__name__, self.kerberos_service_name, self.kerberos_domain_name,
         )
 
 
@@ -100,10 +98,7 @@ class SSLCredentials(Credentials):
     ) -> None:
         if context is None:
             context = ssl.create_default_context(
-                purpose=purpose,
-                cafile=cafile,
-                capath=capath,
-                cadata=cadata,
+                purpose=purpose, cafile=cafile, capath=capath, cadata=cadata,
             )
         self.context = context
 

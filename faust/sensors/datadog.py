@@ -162,8 +162,7 @@ class DatadogMonitor(Monitor):
         self.client.increment("messages_received", labels=labels)
         self.client.increment("messages_active", labels=labels)
         self.client.increment(
-            "topic_messages_received",
-            labels={"topic": tp.topic},
+            "topic_messages_received", labels={"topic": tp.topic},
         )
         self.client.gauge("read_offset", offset, labels=labels)
 
@@ -200,32 +199,28 @@ class DatadogMonitor(Monitor):
         """Call when value in table is retrieved."""
         super().on_table_get(table, key)
         self.client.increment(
-            "table_keys_retrieved",
-            labels=self._format_label(table=table),
+            "table_keys_retrieved", labels=self._format_label(table=table),
         )
 
     def on_table_set(self, table: CollectionT, key: Any, value: Any) -> None:
         """Call when new value for key in table is set."""
         super().on_table_set(table, key, value)
         self.client.increment(
-            "table_keys_updated",
-            labels=self._format_label(table=table),
+            "table_keys_updated", labels=self._format_label(table=table),
         )
 
     def on_table_del(self, table: CollectionT, key: Any) -> None:
         """Call when key in a table is deleted."""
         super().on_table_del(table, key)
         self.client.increment(
-            "table_keys_deleted",
-            labels=self._format_label(table=table),
+            "table_keys_deleted", labels=self._format_label(table=table),
         )
 
     def on_commit_completed(self, consumer: ConsumerT, state: Any) -> None:
         """Call when consumer commit offset operation completed."""
         super().on_commit_completed(consumer, state)
         self.client.timing(
-            "commit_latency",
-            self.ms_since(cast(float, state)),
+            "commit_latency", self.ms_since(cast(float, state)),
         )
 
     def on_send_initiated(
@@ -238,8 +233,7 @@ class DatadogMonitor(Monitor):
     ) -> Any:
         """Call when message added to producer buffer."""
         self.client.increment(
-            "topic_messages_sent",
-            labels={"topic": topic},
+            "topic_messages_sent", labels={"topic": topic},
         )
         return super().on_send_initiated(producer, topic, message, keysize, valsize)
 
@@ -250,8 +244,7 @@ class DatadogMonitor(Monitor):
         super().on_send_completed(producer, state, metadata)
         self.client.increment("messages_sent")
         self.client.timing(
-            "send_latency",
-            self.ms_since(cast(float, state)),
+            "send_latency", self.ms_since(cast(float, state)),
         )
 
     def on_send_error(
@@ -261,8 +254,7 @@ class DatadogMonitor(Monitor):
         super().on_send_error(producer, exc, state)
         self.client.increment("messages_send_failed")
         self.client.timing(
-            "send_latency_for_error",
-            self.ms_since(cast(float, state)),
+            "send_latency_for_error", self.ms_since(cast(float, state)),
         )
 
     def on_assignment_error(
@@ -272,8 +264,7 @@ class DatadogMonitor(Monitor):
         super().on_assignment_error(assignor, state, exc)
         self.client.increment("assignments_error")
         self.client.timing(
-            "assignment_latency",
-            self.ms_since(state["time_start"]),
+            "assignment_latency", self.ms_since(state["time_start"]),
         )
 
     def on_assignment_completed(
@@ -283,8 +274,7 @@ class DatadogMonitor(Monitor):
         super().on_assignment_completed(assignor, state)
         self.client.increment("assignments_complete")
         self.client.timing(
-            "assignment_latency",
-            self.ms_since(state["time_start"]),
+            "assignment_latency", self.ms_since(state["time_start"]),
         )
 
     def on_rebalance_start(self, app: AppT) -> Dict:
@@ -364,13 +354,7 @@ class DatadogMonitor(Monitor):
         return {"stream": self._stream_label(stream)}
 
     def _stream_label(self, stream: StreamT) -> str:
-        return (
-            self._normalize(
-                stream.shortlabel.lstrip("Stream:"),
-            )
-            .strip("_")
-            .lower()
-        )
+        return self._normalize(stream.shortlabel.lstrip("Stream:"),).strip("_").lower()
 
     def _format_table_label(self, table: CollectionT) -> Dict:
         return {"table": table.name}

@@ -57,8 +57,7 @@ __all__ = [
 ]
 
 ViewHandlerMethod = Callable[
-    [Arg(Request), VarArg(Any), KwArg(Any)],
-    Awaitable[Response],
+    [Arg(Request), VarArg(Any), KwArg(Any)], Awaitable[Response],
 ]
 
 ViewHandler2ArgsFun = Callable[

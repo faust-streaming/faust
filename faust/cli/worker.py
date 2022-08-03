@@ -114,10 +114,7 @@ class worker(AppCommand):
         return self._format_banner_table(self._banner_data(worker))
 
     def _format_banner_table(self, data: TableDataT) -> str:
-        table = self.table(
-            [(x, str(y)) for x, y in data],
-            title=self._banner_title(),
-        )
+        table = self.table([(x, str(y)) for x, y in data], title=self._banner_title(),)
         table.inner_heading_row_border = False
         table.inner_row_border = False
         return table.table

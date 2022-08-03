@@ -216,8 +216,7 @@ please use the `query_param` keyword argument instead.
 # This means @app.task attempts to do the right thing depending
 # on how it's used. All the frameworks do this, but we have to also type it.
 TaskDecoratorRet = Union[
-    Callable[[TaskArg], TaskArg],
-    TaskArg,
+    Callable[[TaskArg], TaskArg], TaskArg,
 ]
 
 
@@ -294,10 +293,7 @@ class BootStrategy(BootStrategyT):
 
     def producer_only(self) -> Iterable[ServiceT]:
         """Return services to start when app is in producer_only mode."""
-        return self._chain(
-            self.web_server(),
-            self.kafka_producer(),
-        )
+        return self._chain(self.web_server(), self.kafka_producer(),)
 
     def _chain(self, *arguments: Iterable[ServiceT]) -> Iterable[ServiceT]:
         return cast(Iterable[ServiceT], chain.from_iterable(arguments))
@@ -633,10 +629,7 @@ class App(AppT, Service):
 
     def _prepare_subservice(self, service: Union[ServiceT, Type[ServiceT]]) -> ServiceT:
         if inspect.isclass(service):
-            return cast(Type[ServiceT], service)(
-                loop=self.loop,
-                beacon=self.beacon,
-            )
+            return cast(Type[ServiceT], service)(loop=self.loop, beacon=self.beacon,)
         else:
             return cast(ServiceT, service)
 
@@ -948,10 +941,7 @@ class App(AppT, Service):
         return _inner(fun) if fun is not None else _inner
 
     def _task(
-        self,
-        fun: TaskArg,
-        on_leader: bool = False,
-        traced: bool = False,
+        self, fun: TaskArg, on_leader: bool = False, traced: bool = False,
     ) -> TaskArg:
         app = self
 
@@ -1475,8 +1465,7 @@ class App(AppT, Service):
         if rebalancing_span is not None and self.tracer is not None:
             category = f"{self.conf.name}-_faust"
             span = self.tracer.get_tracer(category).start_span(
-                operation_name=name,
-                child_of=rebalancing_span,
+                operation_name=name, child_of=rebalancing_span,
             )
             self._span_add_default_tags(span)
             set_current_span(span)
@@ -1818,10 +1807,7 @@ class App(AppT, Service):
         )
 
     def FlowControlQueue(
-        self,
-        maxsize: Optional[int] = None,
-        *,
-        clear_on_resume: bool = False,
+        self, maxsize: Optional[int] = None, *, clear_on_resume: bool = False,
     ) -> ThrowableQueue:
         """Like :class:`asyncio.Queue`, but can be suspended/resumed."""
         return ThrowableQueue(
@@ -1854,10 +1840,7 @@ class App(AppT, Service):
                 id=id(self),
             )
         else:
-            return APP_REPR_UNFINALIZED.format(
-                name=type(self).__name__,
-                id=id(self),
-            )
+            return APP_REPR_UNFINALIZED.format(name=type(self).__name__, id=id(self),)
 
     def _configure(self, *, silent: bool = False) -> None:
         self.on_before_configured.send()
@@ -1987,9 +1970,7 @@ class App(AppT, Service):
     def tables(self) -> TableManagerT:
         """Map of available tables, and the table manager service."""
         manager = self.conf.TableManager(  # type: ignore
-            app=self,
-            loop=self.loop,
-            beacon=self.beacon,
+            app=self, loop=self.loop, beacon=self.beacon,
         )
         return cast(TableManagerT, manager)
 

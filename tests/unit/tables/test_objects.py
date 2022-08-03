@@ -16,11 +16,7 @@ def key():
 def table():
     return Mock(
         name="table",
-        _new_store_by_url=Mock(
-            return_value=Mock(
-                on_rebalance=AsyncMock(),
-            ),
-        ),
+        _new_store_by_url=Mock(return_value=Mock(on_rebalance=AsyncMock(),),),
     )
 
 
@@ -62,9 +58,7 @@ class Test_ChangeloggedObjectManager:
         man.send_changelog_event(key, 3, "value")
         assert key in man._dirty
         table._send_changelog.assert_called_once_with(
-            current_event(),
-            (3, key),
-            "value",
+            current_event(), (3, key), "value",
         )
 
     def test__getitem__(self, *, man):
@@ -115,10 +109,7 @@ class Test_ChangeloggedObjectManager:
     async def test_on_rebalance(self, *, man, storage, table):
         await man.on_rebalance(table, {TP1}, {TP1}, {TP1})
         man.storage.on_rebalance.assert_called_once_with(
-            table,
-            {TP1},
-            {TP1},
-            {TP1},
+            table, {TP1}, {TP1}, {TP1},
         )
 
     @pytest.mark.asyncio

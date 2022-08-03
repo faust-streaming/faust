@@ -36,13 +36,7 @@ def event():
         timestamp_type=0,
         headers={},
     )
-    return Event(
-        app="test-app",
-        key="key",
-        value="value",
-        headers={},
-        message=message,
-    )
+    return Event(app="test-app", key="key", value="value", headers={}, message=message,)
 
 
 class Test_Table:

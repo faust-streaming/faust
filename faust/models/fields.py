@@ -346,11 +346,7 @@ class NumberField(FieldDescriptor[T]):
         self.min_value = min_value
 
         super().__init__(
-            **kwargs,
-            **{
-                "max_value": max_value,
-                "min_value": min_value,
-            },
+            **kwargs, **{"max_value": max_value, "min_value": min_value,},
         )
 
     def validate(self, value: T) -> Iterable[ValidationError]:
@@ -395,10 +391,7 @@ class DecimalField(NumberField[Decimal]):
 
         super().__init__(
             **kwargs,
-            **{
-                "max_digits": max_digits,
-                "max_decimal_places": max_decimal_places,
-            },
+            **{"max_digits": max_digits, "max_decimal_places": max_decimal_places,},
         )
 
     def to_python(self, value: Any) -> Any:
@@ -539,9 +532,7 @@ class BytesField(CharField[bytes]):
         if errors is not None:
             self.errors = errors
         super().__init__(
-            encoding=self.encoding,
-            errors=self.errors,
-            **kwargs,
+            encoding=self.encoding, errors=self.errors, **kwargs,
         )
 
     def prepare_value(

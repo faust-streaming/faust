@@ -76,10 +76,7 @@ class Section:
 
         def inner(fun: Callable) -> OT:
             setting = param(
-                name=fun.__name__,
-                section=self,
-                help=fun.__doc__,
-                **kwargs,
+                name=fun.__name__, section=self, help=fun.__doc__, **kwargs,
             )
             return cast(OT, setting)
 
@@ -92,9 +89,7 @@ class Section:
 SECTIONS: Dict[SectionType, Section] = {}
 
 Common = Section(
-    type=SectionType.COMMON,
-    title="Commonly Used Settings",
-    refid="settings-common",
+    type=SectionType.COMMON, title="Commonly Used Settings", refid="settings-common",
 )
 
 Serialization = Section(
@@ -103,16 +98,10 @@ Serialization = Section(
     refid="settings-serialization",
 )
 
-Topic = Section(
-    type=SectionType.TOPIC,
-    title="Topic Settings",
-    refid="settings-topic",
-)
+Topic = Section(type=SectionType.TOPIC, title="Topic Settings", refid="settings-topic",)
 
 Broker = Section(
-    type=SectionType.BROKER,
-    title="Advanced Broker Settings",
-    refid="settings-broker",
+    type=SectionType.BROKER, title="Advanced Broker Settings", refid="settings-broker",
 )
 
 Consumer = Section(
@@ -128,21 +117,15 @@ Producer = Section(
 )
 
 Table = Section(
-    type=SectionType.TABLE,
-    title="Advanced Table Settings",
-    refid="settings-table",
+    type=SectionType.TABLE, title="Advanced Table Settings", refid="settings-table",
 )
 
 Stream = Section(
-    type=SectionType.STREAM,
-    title="Advanced Stream Settings",
-    refid="setting-stream",
+    type=SectionType.STREAM, title="Advanced Stream Settings", refid="setting-stream",
 )
 
 Worker = Section(
-    type=SectionType.WORKER,
-    title="Advanced Worker Settings",
-    refid="settings-worker",
+    type=SectionType.WORKER, title="Advanced Worker Settings", refid="settings-worker",
 )
 
 WebServer = Section(
@@ -152,19 +135,11 @@ WebServer = Section(
 )
 
 Agent = Section(
-    type=SectionType.AGENT,
-    title="Advanced Agent Settings",
-    refid="settings-agent",
+    type=SectionType.AGENT, title="Advanced Agent Settings", refid="settings-agent",
 )
 
-RPC = Section(
-    type=SectionType.RPC,
-    title="Agent RPC Settings",
-    refid="settings-rpc",
-)
+RPC = Section(type=SectionType.RPC, title="Agent RPC Settings", refid="settings-rpc",)
 
 Extension = Section(
-    type=SectionType.EXTENSION,
-    title="Extension Settings",
-    refid="settings-extending",
+    type=SectionType.EXTENSION, title="Extension Settings", refid="settings-extending",
 )

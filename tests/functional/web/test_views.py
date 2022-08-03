@@ -30,8 +30,7 @@ class GivesView(web.View):
 class OptionsView(web.View):
     async def options(self, request):
         return self.json(
-            None,
-            headers={"Access-Control-Allow-Methods": "GET, OPTIONS"},
+            None, headers={"Access-Control-Allow-Methods": "GET, OPTIONS"},
         )
 
 

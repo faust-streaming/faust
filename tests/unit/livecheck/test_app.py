@@ -71,11 +71,7 @@ class Test_LiveCheck:
         original_headers = list(headers)
         with current_test_stack.push(execution):
             livecheck.on_produce_attach_test_headers(
-                sender=app,
-                key=b"k",
-                value=b"v",
-                partition=3,
-                headers=headers,
+                sender=app, key=b"k", value=b"v", partition=3, headers=headers,
             )
             kafka_headers = {
                 k: want_bytes(v) for k, v in execution.as_headers().items()
@@ -86,11 +82,7 @@ class Test_LiveCheck:
         assert livecheck.current_test is None
         headers = []
         livecheck.on_produce_attach_test_headers(
-            sender=app,
-            key=b"k",
-            value=b"v",
-            partition=3,
-            headers=headers,
+            sender=app, key=b"k", value=b"v", partition=3, headers=headers,
         )
         assert not headers
 
@@ -99,11 +91,7 @@ class Test_LiveCheck:
         with current_test_stack.push(test):
             with pytest.raises(TypeError):
                 livecheck.on_produce_attach_test_headers(
-                    sender=app,
-                    key=b"k",
-                    value=b"v",
-                    partition=3,
-                    headers=None,
+                    sender=app, key=b"k", value=b"v", partition=3, headers=None,
                 )
 
     def test_case_decorator(self, *, livecheck):
@@ -171,10 +159,7 @@ class Test_LiveCheck:
         await livecheck.on_started()
 
         livecheck.add_runtime_dependency.assert_has_calls(
-            [
-                call.coro(case1),
-                call.coro(case2),
-            ]
+            [call.coro(case1), call.coro(case2),]
         )
 
     def test__install_bus_agent(self, *, livecheck):
@@ -182,8 +167,7 @@ class Test_LiveCheck:
         ag = livecheck._install_bus_agent()
         assert ag is livecheck.agent.return_value.return_value
         livecheck.agent.assert_called_once_with(
-            channel=livecheck.bus,
-            concurrency=livecheck.bus_concurrency,
+            channel=livecheck.bus, concurrency=livecheck.bus_concurrency,
         )
 
     def test__install_test_execution_agent(self, *, livecheck):
@@ -191,28 +175,19 @@ class Test_LiveCheck:
         ag = livecheck._install_test_execution_agent()
         assert ag is livecheck.agent.return_value.return_value
         livecheck.agent.assert_called_once_with(
-            channel=livecheck.pending_tests,
-            concurrency=livecheck.test_concurrency,
+            channel=livecheck.pending_tests, concurrency=livecheck.test_concurrency,
         )
 
     @pytest.mark.asyncio
     async def test__populate_signals(self, *, livecheck, execution):
         events = Mock()
         signal = SignalEvent(
-            signal_name="foo",
-            case_name=execution.case_name,
-            key=b"k",
-            value=b"v",
+            signal_name="foo", case_name=execution.case_name, key=b"k", value=b"v",
         )
         signal2 = SignalEvent(
-            signal_name="foo",
-            case_name="bar",
-            key=b"k2",
-            value=b"v2",
+            signal_name="foo", case_name="bar", key=b"k2", value=b"v2",
         )
-        case = livecheck.cases[execution.case_name] = Mock(
-            resolve_signal=AsyncMock(),
-        )
+        case = livecheck.cases[execution.case_name] = Mock(resolve_signal=AsyncMock(),)
         livecheck.cases.pop("bar", None)  # make sure 'bar' is missing
 
         async def iterate_events():
@@ -236,9 +211,7 @@ class Test_LiveCheck:
 
         tests.items.side_effect = iterate_tests
 
-        case = livecheck.cases[execution.case_name] = Mock(
-            execute=AsyncMock(),
-        )
+        case = livecheck.cases[execution.case_name] = Mock(execute=AsyncMock(),)
         livecheck.cases.pop("bar", None)  # ensure 'bar' is missing.
 
         await livecheck._execute_tests(tests)
@@ -280,25 +253,19 @@ class Test_LiveCheck:
         livecheck.topic = Mock()
         assert livecheck.bus is livecheck.topic.return_value
         livecheck.topic.assert_called_once_with(
-            livecheck.bus_topic_name,
-            key_type=str,
-            value_type=SignalEvent,
+            livecheck.bus_topic_name, key_type=str, value_type=SignalEvent,
         )
 
     def test_pending_tests(self, *, livecheck):
         livecheck.topic = Mock()
         assert livecheck.pending_tests is livecheck.topic.return_value
         livecheck.topic.assert_called_once_with(
-            livecheck.test_topic_name,
-            key_type=str,
-            value_type=TestExecution,
+            livecheck.test_topic_name, key_type=str, value_type=TestExecution,
         )
 
     def test_reports(self, *, livecheck):
         livecheck.topic = Mock()
         assert livecheck.reports is livecheck.topic.return_value
         livecheck.topic.assert_called_once_with(
-            livecheck.report_topic_name,
-            key_type=str,
-            value_type=TestReport,
+            livecheck.report_topic_name, key_type=str, value_type=TestReport,
         )

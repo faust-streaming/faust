@@ -36,8 +36,7 @@ class StressApp(faust.App):
 
         self.system_checks.add(
             checks.Increasing(
-                "events_total",
-                get_value=lambda: self.monitor.events_total,
+                "events_total", get_value=lambda: self.monitor.events_total,
             ),
         )
         await self.add_runtime_dependency(self.system_checks)

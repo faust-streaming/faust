@@ -47,33 +47,17 @@ class Test_BooleanField:
 
     def _new_field(self, model, required: bool, **kwargs) -> BooleanField:
         return BooleanField(
-            field="foo",
-            type=bool,
-            required=True,
-            model=model,
-            coerce=True,
-            **kwargs,
+            field="foo", type=bool, required=True, model=model, coerce=True, **kwargs,
         )
 
     @pytest.mark.parametrize(
-        "value",
-        [
-            True,
-            False,
-        ],
+        "value", [True, False,],
     )
     def test_validate_bool(self, value, *, field):
         assert not list(field.validate(value))
 
     @pytest.mark.parametrize(
-        "value",
-        [
-            "",
-            None,
-            12,
-            3.2,
-            object,
-        ],
+        "value", ["", None, 12, 3.2, object,],
     )
     def test_validate_other(self, value, *, field):
         errors = list(field.validate(value))
@@ -120,12 +104,7 @@ class Test_DecimalField:
         assert f4.max_decimal_places is None
 
     @pytest.mark.parametrize(
-        "value",
-        [
-            Decimal("Inf"),
-            Decimal("NaN"),
-            Decimal("sNaN"),
-        ],
+        "value", [Decimal("Inf"), Decimal("NaN"), Decimal("sNaN"),],
     )
     def test_infinite(self, value):
         f = DecimalField(coerce=True, field="foo")
@@ -147,22 +126,14 @@ class Test_DecimalField:
     )
     def test_max_decimal_places__good(self, value, places, digits):
         f = DecimalField(
-            max_decimal_places=places,
-            max_digits=digits,
-            coerce=True,
-            field="foo",
+            max_decimal_places=places, max_digits=digits, coerce=True, field="foo",
         )
         d: Decimal = f.prepare_value(value)
         for error in f.validate(d):
             raise error
 
     @pytest.mark.parametrize(
-        "value",
-        [
-            Decimal(1.12412421421),
-            Decimal(1.12345),
-            Decimal(123456788.12345),
-        ],
+        "value", [Decimal(1.12412421421), Decimal(1.12345), Decimal(123456788.12345),],
     )
     def test_max_decimal_places__bad(self, value):
         f = DecimalField(max_decimal_places=4, coerce=True, field="foo")
@@ -171,11 +142,7 @@ class Test_DecimalField:
 
     @pytest.mark.parametrize(
         "value",
-        [
-            Decimal(12345.12412421421),
-            Decimal(123456.12345),
-            Decimal(123456788.12345),
-        ],
+        [Decimal(12345.12412421421), Decimal(123456.12345), Decimal(123456788.12345),],
     )
     def test_max_digits__bad(self, value):
         f = DecimalField(max_digits=4, coerce=True, field="foo")

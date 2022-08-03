@@ -76,24 +76,16 @@ class Test_settings:
                 expected_value=Path("/foo/bar/bax"),
             ),
             EnvCase(
-                env={"APP_DEBUG": "yes"},
-                setting=Settings.debug,
-                expected_value=True,
+                env={"APP_DEBUG": "yes"}, setting=Settings.debug, expected_value=True,
             ),
             EnvCase(
-                env={"APP_DEBUG": "no"},
-                setting=Settings.debug,
-                expected_value=False,
+                env={"APP_DEBUG": "no"}, setting=Settings.debug, expected_value=False,
             ),
             EnvCase(
-                env={"APP_DEBUG": "0"},
-                setting=Settings.debug,
-                expected_value=False,
+                env={"APP_DEBUG": "0"}, setting=Settings.debug, expected_value=False,
             ),
             EnvCase(
-                env={"APP_DEBUG": ""},
-                setting=Settings.debug,
-                expected_value=False,
+                env={"APP_DEBUG": ""}, setting=Settings.debug, expected_value=False,
             ),
             EnvCase(
                 env={"TIMEZONE": "Europe/Berlin"},
@@ -101,9 +93,7 @@ class Test_settings:
                 expected_value=pytz.timezone("Europe/Berlin"),
             ),
             EnvCase(
-                env={"APP_VERSION": "3"},
-                setting=Settings.version,
-                expected_value=3,
+                env={"APP_VERSION": "3"}, setting=Settings.version, expected_value=3,
             ),
             EnvCase(
                 env={"AGENT_SUPERVISOR": "mode.supervisors.OneForAllSupervisor"},
@@ -426,9 +416,7 @@ class Test_settings:
                 expected_value=URL("http://foo.bar.com:6066"),
             ),
             EnvCase(
-                env={"WEB_PORT": "303"},
-                setting=Settings.web_port,
-                expected_value=303,
+                env={"WEB_PORT": "303"}, setting=Settings.web_port, expected_value=303,
             ),
             EnvCase(
                 env={"WEB_PORT": "303", "WEB_HOST": "foo.bar.com"},
@@ -607,10 +595,7 @@ class Test_settings:
         assert isinstance(app.conf.datadir, Path)
 
     def test_tabledir_is_relative_to_path(self):
-        app = self.assert_config_equivalent(
-            datadir=str(DATADIR),
-            tabledir="moo",
-        )
+        app = self.assert_config_equivalent(datadir=str(DATADIR), tabledir="moo",)
         assert app.conf.tabledir == app.conf.appdir / Path("moo")
 
     def assert_config_equivalent(
@@ -820,12 +805,7 @@ class Test_settings:
     def test_custom_host_port_to_canonical(
         self, web_bind="localhost", web_port=6069, web_host="localhost"
     ):
-        app = self.App(
-            "id",
-            web_bind=web_bind,
-            web_port=web_port,
-            web_host=web_host,
-        )
+        app = self.App("id", web_bind=web_bind, web_port=web_port, web_host=web_host,)
         assert app.conf.canonical_url == URL(
             f"http://{app.conf.web_host}:{app.conf.web_port}"
         )
@@ -900,16 +880,14 @@ class Test_settings:
     def test_consumer_api_version__defaults_to_broker(self):
         expected_broker_version = "0.3333"
         app = self.App(
-            broker_api_version=expected_broker_version,
-            consumer_api_version=None,
+            broker_api_version=expected_broker_version, consumer_api_version=None,
         )
         assert app.conf.consumer_api_version == expected_broker_version
 
     def test_producer_api_version__defaults_to_broker(self):
         expected_broker_version = "0.3333"
         app = self.App(
-            broker_api_version=expected_broker_version,
-            producer_api_version=None,
+            broker_api_version=expected_broker_version, producer_api_version=None,
         )
         assert app.conf.producer_api_version == expected_broker_version
 
@@ -920,22 +898,10 @@ class Test_BootStrategy:
         assert BootStrategy(app, enable_web=True).enable_web
         assert not BootStrategy(app, enable_kafka=False).enable_kafka
         assert BootStrategy(app, enable_kafka=True).enable_kafka
-        assert not BootStrategy(
-            app,
-            enable_kafka_producer=False,
-        ).enable_kafka_producer
-        assert BootStrategy(
-            app,
-            enable_kafka_producer=True,
-        ).enable_kafka_producer
-        assert not BootStrategy(
-            app,
-            enable_kafka_consumer=False,
-        ).enable_kafka_consumer
-        assert BootStrategy(
-            app,
-            enable_kafka_consumer=True,
-        ).enable_kafka_consumer
+        assert not BootStrategy(app, enable_kafka_producer=False,).enable_kafka_producer
+        assert BootStrategy(app, enable_kafka_producer=True,).enable_kafka_producer
+        assert not BootStrategy(app, enable_kafka_consumer=False,).enable_kafka_consumer
+        assert BootStrategy(app, enable_kafka_consumer=True,).enable_kafka_consumer
         assert not BootStrategy(app, enable_sensors=False).enable_sensors
         assert BootStrategy(app, enable_sensors=True).enable_sensors
 

@@ -50,11 +50,7 @@ class Test_AppService:
         )
         expected_components.extend(list(app.agents.values()))
         expected_components.extend(
-            [
-                app.agents,
-                app.topics,
-                app.tables,
-            ]
+            [app.agents, app.topics, app.tables,]
         )
         assert components == expected_components
 
@@ -118,10 +114,7 @@ class Test_AppService:
         await app.on_started_init_extra_tasks()
 
         app.add_future.assert_has_calls(
-            [
-                call(t1()),
-                call(t2()),
-            ]
+            [call(t1()), call(t2()),]
         )
 
         t1_mock.assert_called_with()

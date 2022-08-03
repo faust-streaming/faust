@@ -90,30 +90,25 @@ class TestStatsdMonitor:
         mon.on_stream_event_out(TP1, 401, stream, event, state)
         mon.client.decr.assert_called_once_with("events_active", rate=mon.rate)
         mon.client.timing.assert_called_once_with(
-            "events_runtime",
-            mon.secs_to_ms(mon.events_runtime[-1]),
-            rate=mon.rate,
+            "events_runtime", mon.secs_to_ms(mon.events_runtime[-1]), rate=mon.rate,
         )
 
     def test_on_table_get(self, *, mon, table):
         mon.on_table_get(table, "key")
         mon.client.incr.assert_called_once_with(
-            "table.table1.keys_retrieved",
-            rate=mon.rate,
+            "table.table1.keys_retrieved", rate=mon.rate,
         )
 
     def test_on_table_set(self, *, mon, table):
         mon.on_table_set(table, "key", "value")
         mon.client.incr.assert_called_once_with(
-            "table.table1.keys_updated",
-            rate=mon.rate,
+            "table.table1.keys_updated", rate=mon.rate,
         )
 
     def test_on_table_del(self, *, mon, table):
         mon.on_table_del(table, "key")
         mon.client.incr.assert_called_once_with(
-            "table.table1.keys_deleted",
-            rate=mon.rate,
+            "table.table1.keys_deleted", rate=mon.rate,
         )
 
     def test_on_commit_completed(self, *, mon):
@@ -121,9 +116,7 @@ class TestStatsdMonitor:
         state = mon.on_commit_initiated(consumer)
         mon.on_commit_completed(consumer, state)
         mon.client.timing.assert_called_once_with(
-            "commit_latency",
-            mon.ms_since(float(state)),
-            rate=mon.rate,
+            "commit_latency", mon.ms_since(float(state)), rate=mon.rate,
         )
 
     def test_on_send_initiated_completed(self, *, mon):
@@ -138,23 +131,15 @@ class TestStatsdMonitor:
             ]
         )
         mon.client.timing.assert_called_once_with(
-            "send_latency",
-            mon.ms_since(float(state)),
-            rate=mon.rate,
+            "send_latency", mon.ms_since(float(state)), rate=mon.rate,
         )
 
         mon.on_send_error(producer, KeyError("foo"), state)
         mon.client.incr.assert_has_calls(
-            [
-                call("messages_sent_error", rate=mon.rate),
-            ]
+            [call("messages_sent_error", rate=mon.rate),]
         )
         mon.client.timing.assert_has_calls(
-            [
-                call(
-                    "send_latency_for_error", mon.ms_since(float(state)), rate=mon.rate
-                ),
-            ]
+            [call("send_latency_for_error", mon.ms_since(float(state)), rate=mon.rate),]
         )
 
     def test_on_assignment_start_completed(self, *, mon):
@@ -163,9 +148,7 @@ class TestStatsdMonitor:
         mon.on_assignment_completed(assignor, state)
 
         mon.client.incr.assert_has_calls(
-            [
-                call("assignments_complete", rate=mon.rate),
-            ]
+            [call("assignments_complete", rate=mon.rate),]
         )
         mon.client.timing.assert_has_calls(
             [
@@ -183,9 +166,7 @@ class TestStatsdMonitor:
         mon.on_assignment_error(assignor, state, KeyError())
 
         mon.client.incr.assert_has_calls(
-            [
-                call("assignments_error", rate=mon.rate),
-            ]
+            [call("assignments_error", rate=mon.rate),]
         )
         mon.client.timing.assert_has_calls(
             [
@@ -202,9 +183,7 @@ class TestStatsdMonitor:
         state = mon.on_rebalance_start(app)
 
         mon.client.incr.assert_has_calls(
-            [
-                call("rebalances", rate=mon.rate),
-            ]
+            [call("rebalances", rate=mon.rate),]
         )
 
         mon.on_rebalance_return(app, state)
@@ -216,9 +195,7 @@ class TestStatsdMonitor:
             ]
         )
         mon.client.decr.assert_has_calls(
-            [
-                call("rebalances", rate=mon.rate),
-            ]
+            [call("rebalances", rate=mon.rate),]
         )
         mon.client.timing.assert_has_calls(
             [
@@ -267,9 +244,7 @@ class TestStatsdMonitor:
         mon.on_web_request_end(app, request, response, state, view=view)
 
         mon.client.incr.assert_has_calls(
-            [
-                call(f"http_status_code.{expected_status}", rate=mon.rate),
-            ]
+            [call(f"http_status_code.{expected_status}", rate=mon.rate),]
         )
 
         mon.client.timing.assert_has_calls(
@@ -304,6 +279,5 @@ class TestStatsdMonitor:
     def test_track_tp_end_offsets(self, *, mon):
         mon.track_tp_end_offset(TP("foo", 0), 4004)
         mon.client.gauge.assert_called_once_with(
-            "end_offset.foo.0",
-            4004,
+            "end_offset.foo.0", 4004,
         )

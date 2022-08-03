@@ -47,10 +47,7 @@ TESTED_MODULE = "faust.transport.drivers.aiokafka"
 
 @pytest.fixture()
 def thread():
-    return Mock(
-        name="thread",
-        create_topic=AsyncMock(),
-    )
+    return Mock(name="thread", create_topic=AsyncMock(),)
 
 
 @pytest.fixture()
@@ -96,43 +93,27 @@ class TestConsumerRebalanceListener:
     @pytest.mark.asyncio
     async def test_on_partitions_revoked(self, *, handler, thread):
         await handler.on_partitions_revoked(
-            [
-                TopicPartition("A", 0),
-                TopicPartition("B", 3),
-            ]
+            [TopicPartition("A", 0), TopicPartition("B", 3),]
         )
         thread.on_partitions_revoked.assert_called_once_with(
-            {
-                TP("A", 0),
-                TP("B", 3),
-            }
+            {TP("A", 0), TP("B", 3),}
         )
 
     @pytest.mark.asyncio
     async def test_on_partitions_assigned(self, *, handler, thread):
         thread._ensure_consumer()._coordinator.generation = 1
         await handler.on_partitions_assigned(
-            [
-                TopicPartition("A", 0),
-                TopicPartition("B", 3),
-            ],
+            [TopicPartition("A", 0), TopicPartition("B", 3),],
         )
         thread.on_partitions_assigned.assert_called_once_with(
-            {
-                TP("A", 0),
-                TP("B", 3),
-            },
-            1,
+            {TP("A", 0), TP("B", 3),}, 1,
         )
 
 
 class TestConsumer:
     @pytest.fixture()
     def thread(self):
-        return Mock(
-            name="thread",
-            create_topic=AsyncMock(),
-        )
+        return Mock(name="thread", create_topic=AsyncMock(),)
 
     @pytest.fixture()
     def consumer(
@@ -190,10 +171,7 @@ class TestConsumer:
         assert tp.partition == 3
 
     def test__to_message(self, *, consumer):
-        record = self.mock_record(
-            timestamp=3000,
-            headers=[("a", b"b")],
-        )
+        record = self.mock_record(timestamp=3000, headers=[("a", b"b")],)
         m = consumer._to_message(TopicPartition("t", 3), record)
         assert m.topic == record.topic
         assert m.partition == record.partition
@@ -259,10 +237,7 @@ class AIOKafkaConsumerThreadFixtures:
         tobj = tracer.get_tracer.return_value
 
         def start_span(operation_name=None, **kwargs):
-            span = opentracing.Span(
-                tracer=tobj,
-                context=opentracing.SpanContext(),
-            )
+            span = opentracing.Span(tracer=tobj, context=opentracing.SpanContext(),)
 
             if operation_name is not None:
                 span.operation_name = operation_name
@@ -424,14 +399,10 @@ class Test_VEP_no_fetch_since_start(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
     def test_timed_out(self, *, cthread, now, tp, logger):
-        self._set_started(
-            now - cthread.tp_fetch_request_timeout_secs * 2,
-        )
+        self._set_started(now - cthread.tp_fetch_request_timeout_secs * 2,)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
-            mod.SLOW_PROCESSING_NO_FETCH_SINCE_START,
-            ANY,
-            ANY,
+            mod.SLOW_PROCESSING_NO_FETCH_SINCE_START, ANY, ANY,
         )
 
 
@@ -446,14 +417,10 @@ class Test_VEP_no_response_since_start(Test_verify_event_path_base):
     def test_timed_out(self, *, cthread, _consumer, now, tp, logger):
         assert cthread.verify_event_path(now, tp) is None
         self._set_last_request(now - 5.0)
-        self._set_started(
-            now - cthread.tp_fetch_response_timeout_secs * 2,
-        )
+        self._set_started(now - cthread.tp_fetch_response_timeout_secs * 2,)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
-            mod.SLOW_PROCESSING_NO_RESPONSE_SINCE_START,
-            ANY,
-            ANY,
+            mod.SLOW_PROCESSING_NO_RESPONSE_SINCE_START, ANY, ANY,
         )
 
 
@@ -470,9 +437,7 @@ class Test_VEP_no_recent_fetch(Test_verify_event_path_base):
         self._set_last_request(now - cthread.tp_fetch_request_timeout_secs * 2)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
-            mod.SLOW_PROCESSING_NO_RECENT_FETCH,
-            ANY,
-            ANY,
+            mod.SLOW_PROCESSING_NO_RECENT_FETCH, ANY, ANY,
         )
 
 
@@ -489,9 +454,7 @@ class Test_VEP_no_recent_response(Test_verify_event_path_base):
         self._set_last_response(now - cthread.tp_fetch_response_timeout_secs * 2)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
-            mod.SLOW_PROCESSING_NO_RECENT_RESPONSE,
-            ANY,
-            ANY,
+            mod.SLOW_PROCESSING_NO_RECENT_RESPONSE, ANY, ANY,
         )
 
 
@@ -520,9 +483,7 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         self._set_started(now - cthread.tp_stream_timeout_secs * 2)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
-            mod.SLOW_PROCESSING_NO_HIGHWATER_SINCE_START,
-            ANY,
-            ANY,
+            mod.SLOW_PROCESSING_NO_HIGHWATER_SINCE_START, ANY, ANY,
         )
 
 
@@ -672,8 +633,7 @@ class Test_VEP_no_commit(Test_verify_event_path_base):
         self._set_started(now - cthread.tp_commit_timeout_secs * 4)
         assert cthread.verify_event_path(now, tp) is None
         expected_message = cthread._make_slow_processing_error(
-            mod.SLOW_PROCESSING_NO_RECENT_COMMIT,
-            [mod.SLOW_PROCESSING_CAUSE_COMMIT],
+            mod.SLOW_PROCESSING_NO_RECENT_COMMIT, [mod.SLOW_PROCESSING_CAUSE_COMMIT],
         )
         logger.error.assert_called_once_with(
             expected_message,
@@ -700,8 +660,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     @pytest.mark.asyncio
     async def test_on_start(self, *, cthread, _consumer):
         cthread._create_consumer = Mock(
-            name="_create_consumer",
-            return_value=_consumer,
+            name="_create_consumer", return_value=_consumer,
         )
         await cthread.on_start()
 
@@ -749,18 +708,12 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
 
     def test__create_worker_consumer(self, *, cthread, app):
         self.assert_create_worker_consumer(
-            cthread,
-            app,
-            in_transaction=False,
-            isolation_level="read_uncommitted",
+            cthread, app, in_transaction=False, isolation_level="read_uncommitted",
         )
 
     def test__create_worker_consumer__transaction(self, *, cthread, app):
         self.assert_create_worker_consumer(
-            cthread,
-            app,
-            in_transaction=True,
-            isolation_level="read_committed",
+            cthread, app, in_transaction=True, isolation_level="read_committed",
         )
 
     def assert_create_worker_consumer(
@@ -877,10 +830,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         assert not pending
 
     def test_span_without_operation_name(self, *, cthread):
-        span = opentracing.Span(
-            tracer=Mock("tobj"),
-            context=opentracing.SpanContext(),
-        )
+        span = opentracing.Span(tracer=Mock("tobj"), context=opentracing.SpanContext(),)
 
         assert cthread._on_span_cancelled_early(span) is None
 
@@ -997,9 +947,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread._consumer = _consumer
         await cthread._commit(offsets)
 
-        _consumer.commit.assert_called_once_with(
-            {TP1: OffsetAndMetadata(1001, "")},
-        )
+        _consumer.commit.assert_called_once_with({TP1: OffsetAndMetadata(1001, "")},)
 
     @pytest.mark.asyncio
     async def test__commit__already_rebalancing(self, *, cthread, _consumer):
@@ -1061,10 +1009,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         assert TP1 not in cthread.consumer._read_offset
 
         _consumer.position.assert_has_calls(
-            [
-                call(TP1),
-                call(TP2),
-            ]
+            [call(TP1), call(TP2),]
         )
 
     @pytest.mark.asyncio
@@ -1187,9 +1132,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         )
         assert ret is fetcher.fetched_records.coro.return_value
         fetcher.fetched_records.assert_called_once_with(
-            {TP1},
-            timeout=312.3,
-            max_records=1000,
+            {TP1}, timeout=312.3, max_records=1000,
         )
 
     @pytest.mark.asyncio
@@ -1252,9 +1195,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
 
         cthread.key_partition("topic", "k", None)
         cthread._partitioner.assert_called_once_with(
-            "k",
-            [1, 2, 3],
-            [2, 3],
+            "k", [1, 2, 3], [2, 3],
         )
 
         with pytest.raises(AssertionError):
@@ -1496,12 +1437,8 @@ class TestProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_create_topic(self, *, producer, _producer):
-        _producer.client = Mock(
-            force_metadata_update=AsyncMock(),
-        )
-        producer.transport = Mock(
-            _create_topic=AsyncMock(),
-        )
+        _producer.client = Mock(force_metadata_update=AsyncMock(),)
+        producer.transport = Mock(_create_topic=AsyncMock(),)
         await producer.create_topic(
             "foo",
             100,
@@ -1536,10 +1473,7 @@ class TestProducer(ProducerBaseTest):
     @pytest.mark.asyncio
     async def test_on_start(self, *, producer, loop):
         producer._new_producer = Mock(
-            name="_new_producer",
-            return_value=Mock(
-                start=AsyncMock(),
-            ),
+            name="_new_producer", return_value=Mock(start=AsyncMock(),),
         )
         _producer = producer._new_producer.return_value
         producer.beacon = Mock()
@@ -1565,13 +1499,7 @@ class TestProducer(ProducerBaseTest):
     async def test_send(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            100,
-            {"foo": "bar"},
-            transactional_id="tid",
+            "topic", "k", "v", 3, 100, {"foo": "bar"}, transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
             "topic",
@@ -1587,21 +1515,10 @@ class TestProducer(ProducerBaseTest):
     async def test_send__request_no_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            100,
-            {"foo": "bar"},
-            transactional_id="tid",
+            "topic", "k", "v", 3, 100, {"foo": "bar"}, transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
-            "topic",
-            "v",
-            key="k",
-            partition=3,
-            timestamp_ms=100 * 1000.0,
-            headers=None,
+            "topic", "v", key="k", partition=3, timestamp_ms=100 * 1000.0, headers=None,
         )
 
     @pytest.mark.asyncio
@@ -1609,13 +1526,7 @@ class TestProducer(ProducerBaseTest):
     async def test_send__kafka011_supports_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            100,
-            {"foo": "bar"},
-            transactional_id="tid",
+            "topic", "k", "v", 3, 100, {"foo": "bar"}, transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
             "topic",
@@ -1631,13 +1542,7 @@ class TestProducer(ProducerBaseTest):
     async def test_send__auto_passes_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            100,
-            [("foo", "bar")],
-            transactional_id="tid",
+            "topic", "k", "v", 3, 100, [("foo", "bar")], transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
             "topic",
@@ -1652,42 +1557,20 @@ class TestProducer(ProducerBaseTest):
     async def test_send__no_headers(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            100,
-            None,
-            transactional_id="tid",
+            "topic", "k", "v", 3, 100, None, transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
-            "topic",
-            "v",
-            key="k",
-            partition=3,
-            timestamp_ms=100 * 1000.0,
-            headers=None,
+            "topic", "v", key="k", partition=3, timestamp_ms=100 * 1000.0, headers=None,
         )
 
     @pytest.mark.asyncio
     async def test_send__no_timestamp(self, producer, _producer):
         await producer.begin_transaction("tid")
         await producer.send(
-            "topic",
-            "k",
-            "v",
-            3,
-            None,
-            None,
-            transactional_id="tid",
+            "topic", "k", "v", 3, None, None, transactional_id="tid",
         )
         _producer.send.assert_called_once_with(
-            "topic",
-            "v",
-            key="k",
-            partition=3,
-            timestamp_ms=None,
-            headers=None,
+            "topic", "v", key="k", partition=3, timestamp_ms=None, headers=None,
         )
 
     @pytest.mark.asyncio
@@ -1695,12 +1578,7 @@ class TestProducer(ProducerBaseTest):
         _producer.send.coro.side_effect = KafkaError()
         with pytest.raises(ProducerSendError):
             await producer.send(
-                "topic",
-                "k",
-                "v",
-                3,
-                None,
-                None,
+                "topic", "k", "v", 3, None, None,
             )
 
     @pytest.mark.asyncio
@@ -1709,13 +1587,7 @@ class TestProducer(ProducerBaseTest):
         await producer.begin_transaction("tid")
         with pytest.raises(ProducerSendError):
             await producer.send(
-                "topic",
-                "k",
-                "v",
-                3,
-                None,
-                None,
-                transactional_id="tid",
+                "topic", "k", "v", 3, None, None, transactional_id="tid",
             )
 
     @pytest.mark.asyncio
@@ -1890,11 +1762,7 @@ class TestTransport:
         client = Mock(name="client")
         transport._topic_waiters["foo"] = AsyncMock()
         await transport._create_topic(
-            transport,
-            client,
-            topic="foo",
-            partitions=100,
-            replication=3,
+            transport, client, topic="foo", partitions=100, replication=3,
         )
         transport._topic_waiters["foo"].coro.assert_called_with()
 
@@ -1905,11 +1773,7 @@ class TestTransport:
         with patch("faust.transport.drivers.aiokafka.StampedeWrapper") as SW:
             SW.return_value = AsyncMock()
             await transport._create_topic(
-                transport,
-                client,
-                topic="foo",
-                partitions=100,
-                replication=3,
+                transport, client, topic="foo", partitions=100, replication=3,
             )
             SW.assert_called_once_with(
                 transport._really_create_topic,
@@ -1932,11 +1796,7 @@ class TestTransport:
             SW.return_value.coro.side_effect = KeyError("foo")
             with pytest.raises(KeyError):
                 await transport._create_topic(
-                    transport,
-                    client,
-                    topic="foo",
-                    partitions=100,
-                    replication=3,
+                    transport, client, topic="foo", partitions=100, replication=3,
                 )
             assert "foo" not in transport._topic_waiters
 
@@ -1944,28 +1804,12 @@ class TestTransport:
 @pytest.mark.parametrize(
     "credentials,ssl_context,expected",
     [
-        (
-            None,
-            {},
-            {
-                "security_protocol": "SSL",
-                "ssl_context": {},
-            },
-        ),
-        (
-            None,
-            None,
-            {
-                "security_protocol": "PLAINTEXT",
-            },
-        ),
+        (None, {}, {"security_protocol": "SSL", "ssl_context": {},},),
+        (None, None, {"security_protocol": "PLAINTEXT",},),
         (
             auth.SSLCredentials({}),
             None,
-            {
-                "security_protocol": "SSL",
-                "ssl_context": {},
-            },
+            {"security_protocol": "SSL", "ssl_context": {},},
         ),
         (
             auth.SASLCredentials(username="foo", password="bar"),

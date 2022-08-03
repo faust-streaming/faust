@@ -858,10 +858,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         self._log_slow_processing(
             msg,
             *args,
-            causes=[
-                SLOW_PROCESSING_CAUSE_STREAM,
-                SLOW_PROCESSING_CAUSE_AGENT,
-            ],
+            causes=[SLOW_PROCESSING_CAUSE_STREAM, SLOW_PROCESSING_CAUSE_AGENT,],
             setting="stream_processing_timeout",
             current_value=app.conf.stream_processing_timeout,
         )
@@ -1005,9 +1002,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         with fetcher._subscriptions.fetch_context():
             try:
                 return await fetcher.fetched_records(
-                    active_partitions,
-                    timeout=timeout,
-                    max_records=max_records,
+                    active_partitions, timeout=timeout, max_records=max_records,
                 )
             finally:
                 pass
@@ -1489,8 +1484,7 @@ class Transport(base.Transport):
                 raise NotReady("Not connected to Kafka Broker")
             request = MetadataRequest_v1([])
             wait_result = await owner.wait(
-                client.send(node_id, request),
-                timeout=timeout,
+                client.send(node_id, request), timeout=timeout,
             )
             if wait_result.stopped:
                 owner.log.info("Shutting down - skipping creation.")
@@ -1543,8 +1537,7 @@ class Transport(base.Transport):
             False,
         )
         wait_result = await owner.wait(
-            client.send(controller_node, request),
-            timeout=timeout,
+            client.send(controller_node, request), timeout=timeout,
         )
         if wait_result.stopped:
             owner.log.debug("Shutting down - skipping creation.")

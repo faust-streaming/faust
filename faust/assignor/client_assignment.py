@@ -74,10 +74,7 @@ class CopartitionedAssignment:
         )
 
     def __repr__(self) -> str:
-        return R_COPART_ASSIGNMENT.format(
-            name=type(self).__name__,
-            self=self,
-        )
+        return R_COPART_ASSIGNMENT.format(name=type(self).__name__, self=self,)
 
 
 class ClientAssignment(

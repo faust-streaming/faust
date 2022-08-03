@@ -23,14 +23,7 @@ def test_parse_error():
 
 
 @pytest.mark.parametrize(
-    "tz",
-    [
-        "Z",
-        "+00:10",
-        "-01:20",
-        "+0300",
-        "-0600",
-    ],
+    "tz", ["Z", "+00:10", "-01:20", "+0300", "-0600",],
 )
 def test_parse_tz(tz):
     assert parse_tz(tz) is not None
