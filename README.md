@@ -334,13 +334,13 @@ The following configuration options should be passed in as keys to the options p
 
 ## Downloading and installing from source
 
-Download the latest version of Faust from http://pypi.org/project/faust
+Download the latest version of Faust from https://pypi.org/project/faust-streaming/
 
 You can install it by doing:
 
 ```sh
-$ tar xvfz faust-0.0.0.tar.gz
-$ cd faust-0.0.0
+$ tar xvfz faust-streaming-0.0.0.tar.gz
+$ cd faust-streaming-0.0.0
 $ python setup.py build
 # python setup.py install
 ```
@@ -407,8 +407,15 @@ introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this
 
-You may need to increase the limit for the maximum number of open files. The
-following post explains how to do so on OS X: https://blog.dekstroza.io/ulimit-shenanigans-on-osx-el-capitan/
+You may need to increase the limit for the maximum number of open files. 
+On macOS and Linux you can use: 
+
+```ulimit -n max_open_files``` to increase the open files limit to max_open_files.
+
+On docker, you can use the --ulimit flag:
+
+```docker run --ulimit nofile=50000:100000 <image-tag>``` 
+where 50000 is the soft limit, and 100000 is the hard limit [See the difference](https://unix.stackexchange.com/a/29579).
 
 ### What kafka versions faust supports
 
