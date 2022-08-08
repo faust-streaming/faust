@@ -474,7 +474,8 @@ class Recovery(Service):
                 # The changelog partitions only in the active_tps set need to be resumed
                 active_only_partitions = active_tps - standby_tps
                 if len(active_only_partitions) == 1:
-                    # Support for the specific scenario where recovery_buffer=1 for a single partition
+                    # Support for the specific scenario where recovery_buffer=1
+                    # for a single partition
                     T(consumer.resume_partitions)(
                         [
                             tp
