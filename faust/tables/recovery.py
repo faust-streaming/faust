@@ -480,8 +480,8 @@ class Recovery(Service):
                         for tp in active_only_partitions
                         if self.tp_to_table[tp].recovery_buffer_size == 1
                     ]
-                    T(consumer.resume_partitions)(tps_resuming)
                     if tps_resuming:
+                        T(consumer.resume_partitions)(tps_resuming)
                         T(self.app.flow_control.resume)()
                         T(consumer.resume_flow)()
 
