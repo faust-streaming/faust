@@ -334,13 +334,13 @@ The following configuration options should be passed in as keys to the options p
 
 ## Downloading and installing from source
 
-Download the latest version of Faust from http://pypi.org/project/faust
+Download the latest version of Faust from https://pypi.org/project/faust-streaming/
 
 You can install it by doing:
 
 ```sh
-$ tar xvfz faust-0.0.0.tar.gz
-$ cd faust-0.0.0
+$ tar xvfz faust-streaming-0.0.0.tar.gz
+$ cd faust-streaming-0.0.0
 $ python setup.py build
 # python setup.py install
 ```

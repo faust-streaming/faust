@@ -206,7 +206,7 @@ class Stream(StreamT[T_co], Service):
         seen: Set[StreamT] = set()
         while node:
             if node in seen:
-                raise RuntimeError("Loop in Stream.{dir_.attr}: Call support!")
+                raise RuntimeError(f"Loop in Stream.{dir_.attr}: Call support!")
             seen.add(node)
             yield node
             node = dir_.getter(node)
