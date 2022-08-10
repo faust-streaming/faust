@@ -138,7 +138,10 @@ class RocksDBOptions:
 
 
 class Store(base.SerializedStore):
-    """RocksDB table storage."""
+    """RocksDB table storage.
+    Pass 'options={'read_only': True}' as an option into a Table class
+    to allow a RocksDB store be used by multiple apps.
+    """
 
     offset_key = b"__faust\0offset__"
 
@@ -161,6 +164,7 @@ class Store(base.SerializedStore):
         *,
         key_index_size: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
+        read_only: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
         if rocksdb is None:
@@ -177,6 +181,7 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
+        self.read_only = self.options.pop("read_only", read_only)
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
@@ -364,7 +369,10 @@ class Store(base.SerializedStore):
             return db
 
     def _open_for_partition(self, partition: int) -> DB:
-        return self.rocksdb_options.open(self.partition_path(partition))
+        path = self.partition_path(partition)
+        return self.rocksdb_options.open(
+            path, read_only=self.read_only if os.path.isfile(path) else False
+        )
 
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()
