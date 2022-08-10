@@ -1,0 +1,50 @@
+# vim:ts=2:sw=2:et:ai:sts=2
+name: 'Build distribution'
+
+on:
+  # Only run when release is created in the master branch
+  release:
+    types: [created]
+    branches:
+      - 'master'
+
+jobs:
+  build_sdist:
+    name: 'Build source distribution'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@v2
+        name: 'Checkout source repository'
+
+      - uses: actions/setup-python@v4
+        name: 'Set up Python 3.10'
+        with:
+          python-version: '3.10'
+
+      - name: 'Build sdist'
+        run: >
+          pip3 install pkgconfig cython --upgrade &&
+          python3 setup.py sdist
+
+      - uses: actions/upload-artifact@v2
+        name: 'Upload build artifacts'
+        with:
+          path: 'dist/*.tar.gz'
+
+  upload_pypi:
+    name: 'Upload packages'
+    needs: ['build_wheels', 'build_sdist']
+    runs-on: 'ubuntu-latest'
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - uses: actions/download-artifact@v2
+        name: 'Download artifacts'
+        with:
+          name: 'artifact'
+          path: 'dist'
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        name: "Publish package to PyPI"
+        with:
+          user: '__token__'
+          password: '${{ secrets.PYPI_API_TOKEN }}'
