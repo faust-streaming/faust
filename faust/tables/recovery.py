@@ -474,9 +474,16 @@ class Recovery(Service):
                 # The changelog partitions only in the active_tps set need to be resumed
                 active_only_partitions = active_tps - standby_tps
                 if active_only_partitions:
-                    T(consumer.resume_partitions)(active_only_partitions)
-                    T(self.app.flow_control.resume)()
-                    T(consumer.resume_flow)()
+                    # Support for the specific scenario where recovery_buffer=1
+                    tps_resuming = [
+                        tp
+                        for tp in active_only_partitions
+                        if self.tp_to_table[tp].recovery_buffer_size == 1
+                    ]
+                    if tps_resuming:
+                        T(consumer.resume_partitions)(tps_resuming)
+                        T(self.app.flow_control.resume)()
+                        T(consumer.resume_flow)()
 
                 self.log.info("Recovery complete")
                 if span:
