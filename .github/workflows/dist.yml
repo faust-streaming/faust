@@ -9,9 +9,12 @@ on:
       - 'master'
 
 jobs:
-  build_wheels_macos:
-    name: 'Build wheels for macOS'
-    runs-on: macos-11
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-11]
 
     steps:
       - uses: actions/checkout@v3
@@ -19,13 +22,10 @@ jobs:
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.8.1
         env:
-          CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_PLATFORM: macos
           CIBW_BUILD: 'cp3*'
           CIBW_BEFORE_BUILD: pip3 install Cython
 
       - uses: actions/upload-artifact@v3
-        name: 'Upload build artifacts'
         with:
           path: ./wheelhouse/*.whl
 
@@ -53,7 +53,7 @@ jobs:
 
   upload_pypi:
     name: 'Upload packages'
-    needs: ['build_wheels_macos', 'build_sdist']
+    needs: ['build_wheels', 'build_sdist']
     runs-on: 'ubuntu-latest'
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
