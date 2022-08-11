@@ -84,7 +84,7 @@ cdef class StreamIterator:
         event = None
 
         while value is None and event is None:
-            await sleep(0, loop=self.loop)
+            await sleep(0)
             need_slow_get, channel_value = self._try_get_quick_value()
             if need_slow_get:
                 channel_value = await self.chan_slow_get()
@@ -109,7 +109,8 @@ cdef class StreamIterator:
             object consumer
         consumer = self.consumer
         last_stream_to_ack = False
-        if do_ack and event is not None:
+        # if do_ack and event is not None:
+        if event is not None and (do_ack or event.value is self._skipped_value):
             message = event.message
             if not message.acked:
                 refcount = message.refcount

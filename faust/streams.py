@@ -134,10 +134,9 @@ class Stream(StreamT[T_co], Service):
         self.channel = channel
         self.outbox = self.app.FlowControlQueue(
             maxsize=self.app.conf.stream_buffer_maxsize,
-            loop=self.loop,
             clear_on_resume=True,
         )
-        self._passive_started = asyncio.Event(loop=self.loop)
+        self._passive_started = asyncio.Event()
         self.join_strategy = join_strategy
         self.combined = combined if combined is not None else []
         self.concurrency_index = concurrency_index
@@ -207,7 +206,7 @@ class Stream(StreamT[T_co], Service):
         seen: Set[StreamT] = set()
         while node:
             if node in seen:
-                raise RuntimeError("Loop in Stream.{dir_.attr}: Call support!")
+                raise RuntimeError(f"Loop in Stream.{dir_.attr}: Call support!")
             seen.add(node)
             yield node
             node = dir_.getter(node)
@@ -318,8 +317,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -395,8 +394,8 @@ class Stream(StreamT[T_co], Service):
     async def take_with_timestamp(
         self, max_: int, within: Seconds, timestamp_field_name: str
     ) -> AsyncIterable[Sequence[T_co]]:
-        """Buffer n values at a time and yield a list of buffered values with the timestamp
-           when the message was added to kafka.
+        """Buffer n values at a time and yield a list of buffered values with the
+           timestamp when the message was added to kafka.
 
         Arguments:
             max_: Max number of messages to receive. When more than this
@@ -415,8 +414,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -518,8 +517,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -691,7 +690,6 @@ class Stream(StreamT[T_co], Service):
         async def echoing(value: T) -> T:
             await asyncio.wait(
                 [maybe_forward(value, channel) for channel in _channels],
-                loop=self.loop,
                 return_when=asyncio.ALL_COMPLETED,
             )
             return value
@@ -997,7 +995,6 @@ class Stream(StreamT[T_co], Service):
 
     async def _py_aiter(self) -> AsyncIterator[T_co]:
         self._finalized = True
-        loop = self.loop
         started_by_aiter = await self.maybe_start()
         on_merge = self.on_merge
         on_stream_event_out = self._on_stream_event_out
@@ -1049,7 +1046,7 @@ class Stream(StreamT[T_co], Service):
                 value: Any = None
                 # we iterate until on_merge gives value.
                 while value is None and event is None:
-                    await sleep(0, loop=loop)
+                    await sleep(0)
                     # get message from channel
                     # This inlines ThrowableQueue.get for performance:
                     # We selectively call `await Q.put`/`Q.put_nowait`,
@@ -1116,16 +1113,19 @@ class Stream(StreamT[T_co], Service):
                                 value = await _maybe_async(processor(value))
                         value = await on_merge(value)
                     except Skip:
+                        # We want to ack the filtered message
+                        # otherwise the lag would increase
                         value = skipped_value
 
-                if value is skipped_value:
-                    continue
-                self.events_total += 1
                 try:
-                    yield value
+                    if value is not skipped_value:
+                        self.events_total += 1
+                        yield value
                 finally:
                     self.current_event = None
-                    if do_ack and event is not None:
+                    # We want to ack the filtered out message
+                    # otherwise the lag would increase
+                    if event is not None and (do_ack or value is skipped_value):
                         # This inlines self.ack
                         last_stream_to_ack = event.ack()
                         message = event.message
@@ -1134,6 +1134,7 @@ class Stream(StreamT[T_co], Service):
                         on_stream_event_out(tp, offset, self, event, sensor_state)
                         if last_stream_to_ack:
                             on_message_out(tp, offset, message)
+
         except StopAsyncIteration:
             # We are not allowed to propagate StopAsyncIteration in __aiter__
             # (if we do, it'll be converted to RuntimeError by CPython).

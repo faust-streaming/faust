@@ -76,8 +76,7 @@ class BarrierState(ReplyPromise):
 
     def __post_init__(self) -> None:
         self.pending = set()
-        loop: asyncio.AbstractEventLoop = self._loop
-        self._results = asyncio.Queue(maxsize=1000, loop=loop)
+        self._results = asyncio.Queue(maxsize=1000)
 
     def _verify_correlation_id(self, correlation_id: str) -> None:
         pass  # barrier does not require a correlation id.

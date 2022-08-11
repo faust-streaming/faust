@@ -16,7 +16,7 @@ class Stresser(object):
         self.producers = set(range(num_producers))
         self._producer_procs = {}
         self.loop = loop
-        self._stop_stresser = asyncio.Event(loop=loop)
+        self._stop_stresser = asyncio.Event()
 
     @property
     def _stopped(self):
@@ -75,7 +75,6 @@ class Stresser(object):
         )
         await asyncio.wait(
             [self._start_worker(worker) for worker in start_workers],
-            loop=self.loop,
             return_when=asyncio.ALL_COMPLETED,
         )
         asyncio.ensure_future(self._run_stresser(), loop=self.loop)
@@ -120,14 +119,12 @@ class Stresser(object):
     async def stop_all(self):
         await asyncio.wait(
             [self._stop_worker(worker) for worker in self._running],
-            loop=self.loop,
             return_when=asyncio.ALL_COMPLETED,
         )
 
     async def stop_all_producers(self):
         await asyncio.wait(
             [self._stop_producer(producer) for producer in self._running_producers],
-            loop=self.loop,
             return_when=asyncio.ALL_COMPLETED,
         )
 

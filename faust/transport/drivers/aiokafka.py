@@ -532,6 +532,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
             rebalance_timeout_ms=int(rebalance_timeout * 1000.0),
             heartbeat_interval_ms=int(conf.broker_heartbeat_interval * 1000.0),
             isolation_level=isolation_level,
+            metadata_max_age_ms=conf.consumer_metadata_max_age_ms,
+            connections_max_idle_ms=conf.consumer_connections_max_idle_ms,
             # traced_from_parent_span=self.traced_from_parent_span,
             # start_rebalancing_span=self.start_rebalancing_span,
             # start_coordinator_span=self.start_coordinator_span,
@@ -1101,6 +1103,8 @@ class Producer(base.Producer):
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
             "api_version": self._api_version,
+            "metadata_max_age_ms": self.app.conf.producer_metadata_max_age_ms,
+            "connections_max_idle_ms": self.app.conf.producer_connections_max_idle_ms,
         }
 
     def _settings_auth(self) -> Mapping[str, Any]:

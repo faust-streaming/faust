@@ -208,7 +208,7 @@ def do_setup(**kwargs):
         project_urls={
             "Bug Reports": "https://github.com/faust-streaming/faust/issues",
             "Source": "https://github.com/faust-streaming/faust",
-            "Documentation": "https://faust.readthedocs.io/",
+            "Documentation": "https://fauststream.com/en/latest",
         },
         keywords=[
             "stream",

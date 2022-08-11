@@ -1,4 +1,4 @@
-REFBASE = 'http://faust.readthedocs.io/en/latest'
+REFBASE = 'https://fauststream.com/en/latest'
 REFS = {
     'slack-channel': 'getting-started/resources.html#slack-channel',
     'bundles': 'introduction/installation.html#bundles',

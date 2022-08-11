@@ -1822,14 +1822,12 @@ class App(AppT, Service):
         maxsize: Optional[int] = None,
         *,
         clear_on_resume: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> ThrowableQueue:
         """Like :class:`asyncio.Queue`, but can be suspended/resumed."""
         return ThrowableQueue(
             maxsize=maxsize,
             flow_control=self.flow_control,
             clear_on_resume=clear_on_resume,
-            loop=loop or self.loop,
         )
 
     def Worker(self, **kwargs: Any) -> _Worker:
