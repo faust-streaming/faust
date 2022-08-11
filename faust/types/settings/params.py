@@ -196,7 +196,7 @@ class Param(Generic[IT, OT], property):
     #: Default template.
     #: If set the default value will be generated from this format string
     #: template.
-    #: For exmaple the :setting:`canonical_url` setting uses
+    #: For example the :setting:`canonical_url` setting uses
     #: ``default_template='http://{conf.web_host}:{conf.web_port}' to
     #: generate a default value from the :setting:`web_host` and
     #: :setting:`web_port` settings.

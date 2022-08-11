@@ -442,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://faust.readthedocs.io
+    https://fauststream.com/en/latest
     """
     return _prepare_cli(*args, **kwargs)
 

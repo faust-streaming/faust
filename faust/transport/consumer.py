@@ -833,7 +833,7 @@ class Consumer(Service, ConsumerT):
         self._waiting_for_ack = asyncio.Future(loop=self.loop)
         try:
             # wait for `ack()` to wake us up
-            await asyncio.wait_for(self._waiting_for_ack, loop=self.loop, timeout=1)
+            await asyncio.wait_for(self._waiting_for_ack, timeout=1)
         except (asyncio.TimeoutError, asyncio.CancelledError):  # pragma: no cover
             pass
         finally:
@@ -1105,6 +1105,18 @@ class Consumer(Service, ConsumerT):
                     acked.extend(stuff_to_add)
                     gap_for_tp.chop(0, new_max_offset)
             acked.sort()
+
+            # We iterate over it until we handle gap in the head of acked queue
+            # then return the previous committed offset.
+            # For example if acked[tp] is:
+            #    34 35 36 37
+            #  ^-- gap
+            # self._committed_offset[tp] is 31
+            # the return value will be None (the same as 31)
+            if self._committed_offset[tp]:
+                if min(acked) - self._committed_offset[tp] > 0:
+                    return None
+
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))

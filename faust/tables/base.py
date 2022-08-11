@@ -4,7 +4,6 @@ import time
 from collections import defaultdict
 from contextlib import suppress
 from datetime import datetime
-from functools import lru_cache
 from heapq import heappop, heappush
 from typing import (
     Any,
@@ -169,6 +168,8 @@ class Collection(Service, CollectionT):
         self._sensor_on_set = self.app.sensors.on_table_set
         self._sensor_on_del = self.app.sensors.on_table_del
 
+        self._verified_source_topics_for_partitions: Set[str] = set()
+
     def _serializer_from_type(self, typ: Optional[ModelArg]) -> Optional[CodecArg]:
         if typ is bytes:
             return "raw"
@@ -312,8 +313,15 @@ class Collection(Service, CollectionT):
             self._verify_source_topic_partitions(event.message.topic)
             return event.message.partition
 
-    @lru_cache()
     def _verify_source_topic_partitions(self, source_topic: str) -> None:
+        # This was formerly wrapped in an lru_cache. The linter sees issues with this
+        # as an instance stays cached.
+        # This is why we implement a non lru_cached lookup which checks if the
+        # function has already been executed once on the instance level.
+
+        if source_topic in self._verified_source_topics_for_partitions:
+            return
+
         change_topic = self.changelog_topic_name
         source_n = self.app.consumer.topic_partitions(source_topic)
         if source_n is not None:
@@ -329,6 +337,8 @@ class Collection(Service, CollectionT):
                             change_n=change_n,
                         ),
                     )
+
+        self._verified_source_topics_for_partitions.add(source_topic)
 
     def _on_changelog_sent(self, fut: FutureMessage) -> None:
         # This is what keeps the offset in RocksDB so that at startup
