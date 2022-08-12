@@ -116,8 +116,11 @@ class Test_Router:
         app.router.key_store = Mock()
         app.router.key_store.return_value = URL(f"{routed_url}:{routed_port}")
         await router.route_req("foo", "k", web, request)
+
         mock_http_client.request.assert_called_once_with(
-            request_method, request.url.with_host(routed_url).with_port(routed_port)
+            method=request_method,
+            headers=request.headers,
+            url=request.url.with_host(routed_url).with_port(routed_port),
         )
 
     @pytest.mark.asyncio

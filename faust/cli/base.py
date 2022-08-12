@@ -412,7 +412,7 @@ class _Group(click.Group):
         self,
         info_name: str,
         args: str,
-        app: AppT = None,
+        app: Optional[AppT] = None,
         parent: click.Context = None,
         stdout: IO = None,
         stderr: IO = None,
@@ -442,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://faust.readthedocs.io
+    https://fauststream.com/en/latest
     """
     return _prepare_cli(*args, **kwargs)
 
@@ -644,7 +644,7 @@ class Command(abc.ABC):
         )
 
     def worker_for_service(
-        self, service: ServiceT, loop: asyncio.AbstractEventLoop = None
+        self, service: ServiceT, loop: Optional[asyncio.AbstractEventLoop] = None
     ) -> Worker:
         """Create :class:`faust.Worker` instance for this command."""
         return self._Worker(
@@ -670,7 +670,7 @@ class Command(abc.ABC):
     def tabulate(
         self,
         data: terminal.TableDataT,
-        headers: Sequence[str] = None,
+        headers: Optional[Sequence[str]] = None,
         wrap_last_row: bool = True,
         title: str = "",
         **kwargs: Any,
@@ -698,7 +698,7 @@ class Command(abc.ABC):
         return table.table
 
     def _tabulate_json(
-        self, data: terminal.TableDataT, headers: Sequence[str] = None
+        self, data: terminal.TableDataT, headers: Optional[Sequence[str]] = None
     ) -> str:
         if headers:
             return json.dumps([dict(zip(headers, row)) for row in data])
@@ -836,7 +836,7 @@ class AppCommand(Command):
         else:
             return self._app_from_str(self.state.app)
 
-    def _app_from_str(self, appstr: str = None) -> Optional[AppT]:
+    def _app_from_str(self, appstr: Optional[str] = None) -> Optional[AppT]:
         if appstr:
             return find_app(appstr)
         else:

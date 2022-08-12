@@ -197,9 +197,9 @@ class View:
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create text response, using "text/plain" content-type."""
@@ -215,9 +215,9 @@ class View:
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
@@ -233,9 +233,9 @@ class View:
         self,
         value: Any,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create new JSON response.
@@ -257,9 +257,9 @@ class View:
         self,
         value: _bytes,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create new ``bytes`` response - for binary data."""

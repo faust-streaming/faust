@@ -88,7 +88,9 @@ class CacheBackend(base.CacheBackend):
     async def _get(self, key: str) -> Optional[bytes]:
         return self.storage.get(key)
 
-    async def _set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def _set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         if timeout is not None:
             self.storage.setex(key, timeout, want_bytes(value))
         else:

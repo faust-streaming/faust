@@ -81,37 +81,39 @@ class Settings(base.SettingsRegistry):
         autodiscover: AutodiscoverArg = None,
         datadir: typing.Union[str, Path] = None,
         tabledir: typing.Union[str, Path] = None,
-        debug: bool = None,
-        env_prefix: str = None,
-        id_format: str = None,
-        origin: str = None,
+        debug: Optional[bool] = None,
+        env_prefix: Optional[str] = None,
+        id_format: Optional[str] = None,
+        origin: Optional[str] = None,
         timezone: typing.Union[str, tzinfo] = None,
-        version: int = None,
+        version: Optional[int] = None,
         # Agent settings:
         agent_supervisor: SymbolArg[Type[SupervisorStrategyT]] = None,
         # Broker settings:
         broker: BrokerArg = None,
         broker_consumer: BrokerArg = None,
         broker_producer: BrokerArg = None,
-        broker_api_version: str = None,
-        broker_check_crcs: bool = None,
-        broker_client_id: str = None,
-        broker_commit_every: int = None,
-        broker_commit_interval: Seconds = None,
-        broker_commit_livelock_soft_timeout: Seconds = None,
+        broker_api_version: Optional[str] = None,
+        broker_check_crcs: Optional[bool] = None,
+        broker_client_id: Optional[str] = None,
+        broker_commit_every: Optional[int] = None,
+        broker_commit_interval: Optional[Seconds] = None,
+        broker_commit_livelock_soft_timeout: Optional[Seconds] = None,
         broker_credentials: CredentialsArg = None,
-        broker_heartbeat_interval: Seconds = None,
-        broker_max_poll_interval: Seconds = None,
-        broker_max_poll_records: int = None,
-        broker_rebalance_timeout: Seconds = None,
-        broker_request_timeout: Seconds = None,
-        broker_session_timeout: Seconds = None,
+        broker_heartbeat_interval: Optional[Seconds] = None,
+        broker_max_poll_interval: Optional[Seconds] = None,
+        broker_max_poll_records: Optional[int] = None,
+        broker_rebalance_timeout: Optional[Seconds] = None,
+        broker_request_timeout: Optional[Seconds] = None,
+        broker_session_timeout: Optional[Seconds] = None,
         ssl_context: ssl.SSLContext = None,
         # Consumer settings:
-        consumer_api_version: str = None,
-        consumer_max_fetch_size: int = None,
-        consumer_auto_offset_reset: str = None,
-        consumer_group_instance_id: str = None,
+        consumer_api_version: Optional[str] = None,
+        consumer_max_fetch_size: Optional[int] = None,
+        consumer_auto_offset_reset: Optional[str] = None,
+        consumer_group_instance_id: Optional[str] = None,
+        consumer_metadata_max_age_ms: Optional[int] = None,
+        consumer_connections_max_idle_ms: Optional[int] = None,
         # Topic serialization settings:
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
@@ -119,51 +121,53 @@ class Settings(base.SettingsRegistry):
         logging_config: Mapping = None,
         loghandlers: List[logging.Handler] = None,
         # Producer settings:
-        producer_acks: int = None,
-        producer_api_version: str = None,
-        producer_compression_type: str = None,
-        producer_linger_ms: int = None,
-        producer_max_batch_size: int = None,
-        producer_max_request_size: int = None,
+        producer_acks: Optional[int] = None,
+        producer_api_version: Optional[str] = None,
+        producer_compression_type: Optional[str] = None,
+        producer_linger_ms: Optional[int] = None,
+        producer_max_batch_size: Optional[int] = None,
+        producer_max_request_size: Optional[int] = None,
         producer_partitioner: SymbolArg[PartitionerT] = None,
-        producer_request_timeout: Seconds = None,
+        producer_request_timeout: Optional[Seconds] = None,
         producer_threaded: bool = False,
+        producer_metadata_max_age_ms: Optional[int] = None,
+        producer_connections_max_idle_ms: Optional[int] = None,
         # RPC settings:
-        reply_create_topic: bool = None,
-        reply_expires: Seconds = None,
-        reply_to: str = None,
-        reply_to_prefix: str = None,
+        reply_create_topic: Optional[bool] = None,
+        reply_expires: Optional[Seconds] = None,
+        reply_to: Optional[str] = None,
+        reply_to_prefix: Optional[str] = None,
         # Stream settings:
         processing_guarantee: Union[str, ProcessingGuarantee] = None,
-        stream_buffer_maxsize: int = None,
-        stream_processing_timeout: Seconds = None,
-        stream_publish_on_commit: bool = None,
-        stream_recovery_delay: Seconds = None,
-        stream_wait_empty: bool = None,
+        stream_buffer_maxsize: Optional[int] = None,
+        stream_processing_timeout: Optional[Seconds] = None,
+        stream_publish_on_commit: Optional[bool] = None,
+        stream_recovery_delay: Optional[Seconds] = None,
+        stream_wait_empty: Optional[bool] = None,
         # Table settings:
         store: URLArg = None,
-        table_cleanup_interval: Seconds = None,
-        table_key_index_size: int = None,
-        table_standby_replicas: int = None,
+        table_cleanup_interval: Optional[Seconds] = None,
+        table_key_index_size: Optional[int] = None,
+        table_standby_replicas: Optional[int] = None,
         # Topic settings:
-        topic_allow_declare: bool = None,
-        topic_disable_leader: bool = None,
-        topic_partitions: int = None,
-        topic_replication_factor: int = None,
+        topic_allow_declare: Optional[bool] = None,
+        topic_disable_leader: Optional[bool] = None,
+        topic_partitions: Optional[int] = None,
+        topic_replication_factor: Optional[int] = None,
         # Web server settings:
         cache: URLArg = None,
         canonical_url: URLArg = None,
         web: URLArg = None,
-        web_bind: str = None,
+        web_bind: Optional[str] = None,
         web_cors_options: typing.Mapping[str, ResourceOptions] = None,
-        web_enabled: bool = None,
-        web_host: str = None,
-        web_in_thread: bool = None,
-        web_port: int = None,
+        web_enabled: Optional[bool] = None,
+        web_host: Optional[str] = None,
+        web_in_thread: Optional[bool] = None,
+        web_port: Optional[int] = None,
         web_ssl_context: ssl.SSLContext = None,
         web_transport: URLArg = None,
         # Worker settings:
-        worker_redirect_stdouts: bool = None,
+        worker_redirect_stdouts: Optional[bool] = None,
         worker_redirect_stdouts_level: Severity = None,
         # Extension settings:
         Agent: SymbolArg[Type[AgentT]] = None,
@@ -185,8 +189,8 @@ class Settings(base.SettingsRegistry):
         HttpClient: SymbolArg[Type[HttpClientT]] = None,
         Monitor: SymbolArg[Type[SensorT]] = None,
         # Deprecated settings:
-        stream_ack_cancelled_tasks: bool = None,
-        stream_ack_exceptions: bool = None,
+        stream_ack_cancelled_tasks: Optional[bool] = None,
+        stream_ack_exceptions: Optional[bool] = None,
         url: URLArg = None,
         **kwargs: Any,
     ) -> None:
@@ -202,7 +206,10 @@ class Settings(base.SettingsRegistry):
         self.id = id
 
     def _init_env_prefix(
-        self, env: Mapping[str, str] = None, env_prefix: str = None, **kwargs: Any
+        self,
+        env: Mapping[str, str] = None,
+        env_prefix: Optional[str] = None,
+        **kwargs: Any,
     ) -> None:
         if env is None:
             env = os.environ
@@ -1060,7 +1067,7 @@ class Settings(base.SettingsRegistry):
         params.UnsignedInt,
         version_introduced="1.4",
         env_name="CONSUMER_MAX_FETCH_SIZE",
-        default=1024 ** 2,
+        default=1024**2,
     )
     def consumer_max_fetch_size(self) -> int:
         """Consumer max fetch size.
@@ -1109,6 +1116,37 @@ class Settings(base.SettingsRegistry):
 
         If not set, default assignment strategy is used. Otherwise,
         each consumer instance has to have a unique id.
+        """
+
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def consumer_metadata_max_age_ms(self) -> int:
+        """Consumer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+        """
+
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def consumer_connections_max_idle_ms(self) -> int:
+        """Consumer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
         """
 
     @sections.Serialization.setting(
@@ -1341,6 +1379,38 @@ class Settings(base.SettingsRegistry):
         send_soon function.
         """
 
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def producer_metadata_max_age_ms(self) -> int:
+        """Producer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+
+        """
+
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def producer_connections_max_idle_ms(self) -> int:
+        """Producer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
+        """
+
     @sections.Stream.setting(
         params.Bool,
         version_introduced="0.4.7",
@@ -1543,7 +1613,7 @@ class Settings(base.SettingsRegistry):
             main_topic = app.topic('main')
             deadletter_topic = app.topic('main_deadletter')
 
-            async def send_request(value, timeout: float = None) -> None:
+            async def send_request(value, timeout: Optional[float] = None) -> None:
                 await app.http_client.get('http://foo.com', timeout=timeout)
 
             @app.agent(main_topic)

@@ -56,7 +56,7 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = "",
         value_serializer: CodecArg = "",
-        options: Mapping[str, Any] = None,
+        options: Optional[Mapping[str, Any]] = None,
         **kwargs: Any
     ) -> None:
         ...
@@ -99,5 +99,20 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
     @abc.abstractmethod
     async def on_recovery_completed(
         self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def restore_backup(
+        self,
+        tp: Union[TP, int],
+        latest: bool = True,
+        backup_id: int = 0,
     ) -> None:
         ...

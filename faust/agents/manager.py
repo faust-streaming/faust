@@ -125,7 +125,7 @@ class AgentManager(Service, AgentManagerT, ManagedUserDict):
 
     def _collect_agents_for_update(self, tps: Set[TP]) -> Dict[AgentT, Set[TP]]:
         by_agent: Dict[AgentT, Set[TP]] = defaultdict(set)
-        for topic, tps in tp_set_to_map(tps).items():
+        for topic, tps_of_topic in tp_set_to_map(tps).items():
             for agent in self._by_topic[topic]:
-                by_agent[agent].update(tps)
+                by_agent[agent].update(tps_of_topic)
         return by_agent

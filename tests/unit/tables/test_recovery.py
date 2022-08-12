@@ -238,6 +238,52 @@ class TestRecovery:
         )
 
     @pytest.mark.asyncio
+    async def test__build_offsets_with_none(self, *, recovery, app) -> None:
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(
+                return_value={TP1: 0, TP2: 3, TP3: 5, TP4: None}
+            ),
+        )
+        tps = {TP1, TP2, TP3, TP4}
+        destination = {TP1: None, TP2: 1, TP3: 8, TP4: -1}
+        await recovery._build_offsets(consumer, tps, destination, "some-title")
+        assert len(destination) == 4
+        assert destination[TP1] == -1
+        assert destination[TP2] == 2
+        assert destination[TP3] == 8
+        assert destination[TP4] == -1
+
+    @pytest.mark.asyncio
+    async def test__build_offsets_both_none(self, *, recovery, app) -> None:
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: None}),
+        )
+        tps = {TP1}
+        destination = {TP1: None}
+        await recovery._build_offsets(consumer, tps, destination, "some-title")
+        assert len(destination) == 1
+        assert destination[TP1] == -1
+
+    @pytest.mark.asyncio
+    async def test__build_offsets_partial_consumer_response(
+        self, *, recovery, app
+    ) -> None:
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: None}),
+        )
+        tps = {TP1}
+        destination = {TP1: 3, TP2: 4, TP3: 5, TP4: 20}
+        await recovery._build_offsets(consumer, tps, destination, "some-title")
+        assert len(destination) == 4
+        assert destination[TP1] == 3
+        assert destination[TP2] == 4
+        assert destination[TP3] == 5
+        assert destination[TP4] == 20
+
+    @pytest.mark.asyncio
     async def test__seek_offsets(self, *, recovery):
         consumer = Mock(
             name="consumer",

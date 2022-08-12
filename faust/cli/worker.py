@@ -55,7 +55,7 @@ class worker(AppCommand):
         option(
             "--web-host",
             "-h",
-            default=socket.gethostname(),
+            default=None,
             type=str,
             help=f"Canonical host name for the web server " f"(default: {WEB_BIND})",
         ),
@@ -86,7 +86,7 @@ class worker(AppCommand):
         with_web: bool,
         web_port: Optional[int],
         web_bind: Optional[str],
-        web_host: str,
+        web_host: Optional[str],
         web_transport: URL,
         **kwargs: Any,
     ) -> None:

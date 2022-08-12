@@ -284,7 +284,7 @@ class TransactionManager(Service, TransactionManagerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
         group = transactional_id = None
@@ -314,7 +314,7 @@ class TransactionManager(Service, TransactionManagerT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         fut = await self.send(topic, key, value, partition, timestamp, headers)
@@ -355,11 +355,11 @@ class TransactionManager(Service, TransactionManagerT):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -429,12 +429,14 @@ class Consumer(Service, ConsumerT):
     _commit_every: Optional[int]
     _n_acked: int = 0
 
-    _active_partitions: Optional[Set[TP]]
+    _active_partitions: Set[TP]
     _paused_partitions: Set[TP]
     _buffered_partitions: Set[TP]
 
     flow_active: bool = True
     can_resume_flow: Event
+    suspend_flow: Event
+    not_waiting_next_records: Event
 
     def __init__(
         self,
@@ -443,9 +445,9 @@ class Consumer(Service, ConsumerT):
         on_partitions_revoked: PartitionsRevokedCallback,
         on_partitions_assigned: PartitionsAssignedCallback,
         *,
-        commit_interval: float = None,
-        commit_livelock_soft_timeout: float = None,
-        loop: asyncio.AbstractEventLoop = None,
+        commit_interval: Optional[float] = None,
+        commit_livelock_soft_timeout: Optional[float] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
         **kwargs: Any,
     ) -> None:
         assert callback is not None
@@ -475,6 +477,9 @@ class Consumer(Service, ConsumerT):
         self._end_offset_monitor_interval = self.commit_interval * 2
         self.randomly_assigned_topics = set()
         self.can_resume_flow = Event()
+        self.suspend_flow = Event()
+        self.not_waiting_next_records = Event()
+        self.not_waiting_next_records.set()
         self._reset_state()
         super().__init__(loop=loop or self.transport.loop, **kwargs)
         self.transactions = self.transport.create_transaction_manager(
@@ -493,10 +498,12 @@ class Consumer(Service, ConsumerT):
         return []
 
     def _reset_state(self) -> None:
-        self._active_partitions = None
+        self._active_partitions = set()
         self._paused_partitions = set()
         self._buffered_partitions = set()
         self.can_resume_flow.clear()
+        self.suspend_flow.clear()
+        self.not_waiting_next_records.set()
         self.flow_active = True
         self._time_start = monotonic()
 
@@ -513,9 +520,12 @@ class Consumer(Service, ConsumerT):
         return tps
 
     def _set_active_tps(self, tps: Set[TP]) -> Set[TP]:
-        xtps = self._active_partitions = ensure_TPset(tps)  # copy
-        xtps.difference_update(self._paused_partitions)
-        return xtps
+        if self._active_partitions is None:
+            self._active_partitions = set()
+        self._active_partitions.clear()
+        self._active_partitions.update(ensure_TPset(tps))
+        self._active_partitions.difference_update(self._paused_partitions)
+        return self._active_partitions
 
     def on_buffer_full(self, tp: TP) -> None:
         # do not remove the partition when in recovery
@@ -573,11 +583,25 @@ class Consumer(Service, ConsumerT):
         """Block consumer from processing any more messages."""
         self.flow_active = False
         self.can_resume_flow.clear()
+        self.suspend_flow.set()
 
     def resume_flow(self) -> None:
         """Allow consumer to process messages."""
         self.flow_active = True
         self.can_resume_flow.set()
+        self.suspend_flow.clear()
+
+    async def wait_for_stopped_flow(self) -> None:
+        """Wait until the consumer is not waiting on any newly fetched records.
+
+        Useful for scenarios where the consumer needs to be stopped to change the
+        position of the fetcher to something other than the committed offset. There is a
+        chance that getmany forces a seek to the committed offsets if the fetcher
+        returns while the consumer is stopped. This can be prevented by waiting for the
+        fetcher to finish (by default every second).
+        """
+        if not self.not_waiting_next_records.is_set():
+            await self.not_waiting_next_records.wait()
 
     def pause_partitions(self, tps: Iterable[TP]) -> None:
         """Pause fetching from partitions."""
@@ -696,7 +720,9 @@ class Consumer(Service, ConsumerT):
         # has 1 partition, then t2 will end up being starved most of the time.
         #
         # We solve this by going round-robin through each topic.
+
         records, active_partitions = await self._wait_next_records(timeout)
+        generation_id = self.app.consumer_generation_id
         if records is None or self.should_stop:
             return
 
@@ -705,6 +731,14 @@ class Consumer(Service, ConsumerT):
         if self.flow_active:
             for tp, record in records_it:
                 if not self.flow_active:
+                    break
+                new_generation_id = self.app.consumer_generation_id
+                if new_generation_id != generation_id:
+                    self.log.dev(
+                        "Generation id changed from %r to %r. Cancelling getmany.",
+                        generation_id,
+                        new_generation_id,
+                    )
                     break
                 if (
                     active_partitions is None
@@ -715,35 +749,48 @@ class Consumer(Service, ConsumerT):
                     self.app.monitor.track_tp_end_offset(tp, highwater_mark)
                     # convert timestamp to seconds from int milliseconds.
                     yield tp, to_message(tp, record)
+        else:
+            self.log.dev(
+                "getmany called while flow not active. Seek back to committed offsets."
+            )
+            try:
+                await self.perform_seek()
+            except Exception as ex:
+                self.log.warning(f"exception performing seek when flow not active {ex}")
 
     async def _wait_next_records(
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
         if not self.flow_active:
             await self.wait(self.can_resume_flow)
-        # Implementation for the Fetcher service.
 
-        is_client_only = self.app.client_only
+        try:
+            # Set signal that _wait_next_records is waiting on the fetcher service.
+            self.not_waiting_next_records.set()
+            # Implementation for the Fetcher service.
+            is_client_only = self.app.client_only
 
-        active_partitions: Optional[Set[TP]]
-        if is_client_only:
-            active_partitions = None
-        else:
-            active_partitions = self._get_active_partitions()
+            active_partitions: Optional[Set[TP]]
+            if is_client_only:
+                active_partitions = None
+            else:
+                active_partitions = self._get_active_partitions()
 
-        records: RecordMap = {}
-        if is_client_only or active_partitions:
-            # Fetch records only if active partitions to avoid the risk of
-            # fetching all partitions in the beginning when none of the
-            # partitions is paused/resumed.
-            records = await self._getmany(
-                active_partitions=active_partitions,
-                timeout=timeout,
-            )
-        else:
-            # We should still release to the event loop
-            await self.sleep(1)
-        return records, active_partitions
+            records: RecordMap = {}
+            if is_client_only or active_partitions:
+                # Fetch records only if active partitions to avoid the risk of
+                # fetching all partitions in the beginning when none of the
+                # partitions is paused/resumed.
+                records = await self._getmany(
+                    active_partitions=active_partitions,
+                    timeout=timeout,
+                )
+            else:
+                # We should still release to the event loop
+                await self.sleep(1)
+            return records, active_partitions
+        finally:
+            self.not_waiting_next_records.set()
 
     @abc.abstractmethod
     def _to_message(self, tp: TP, record: Any) -> ConsumerMessage:
@@ -785,7 +832,7 @@ class Consumer(Service, ConsumerT):
         self._waiting_for_ack = asyncio.Future(loop=self.loop)
         try:
             # wait for `ack()` to wake us up
-            await asyncio.wait_for(self._waiting_for_ack, loop=self.loop, timeout=1)
+            await asyncio.wait_for(self._waiting_for_ack, timeout=1)
         except (asyncio.TimeoutError, asyncio.CancelledError):  # pragma: no cover
             pass
         finally:
@@ -1000,6 +1047,7 @@ class Consumer(Service, ConsumerT):
                     start_new_transaction=start_new_transaction,
                 )
             else:
+                await self.app.producer.flush()
                 did_commit = await self._commit(committable_offsets)
             on_timeout.info("-consumer.commit()")
             if did_commit:
@@ -1049,6 +1097,18 @@ class Consumer(Service, ConsumerT):
                 acked.extend(gaps)
                 gap_for_tp[:gap_index] = []
             acked.sort()
+
+            # We iterate over it until we handle gap in the head of acked queue
+            # then return the previous committed offset.
+            # For example if acked[tp] is:
+            #    34 35 36 37
+            #  ^-- gap
+            # self._committed_offset[tp] is 31
+            # the return value will be None (the same as 31)
+            if self._committed_offset[tp]:
+                if min(acked) - self._committed_offset[tp] > 0:
+                    return None
+
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
@@ -1120,7 +1180,9 @@ class Consumer(Service, ConsumerT):
                                 if self._n_acked >= commit_every:
                                     self._n_acked = 0
                                     await self.commit()
-                            await callback(message)
+                            await self.wait_first(
+                                callback(message), self.suspend_flow.wait()
+                            )
                             set_read_offset(tp, offset)
                         else:
                             self.log.dev(
@@ -1250,11 +1312,11 @@ class ConsumerThread(QueueServiceThread):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1274,7 +1336,7 @@ class ConsumerThread(QueueServiceThread):
 
     @abc.abstractmethod
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition number."""
         ...
@@ -1386,7 +1448,7 @@ class ThreadDelegateConsumer(Consumer):
         self._thread.close()
 
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition number."""
         return self._thread.key_partition(topic, key, partition=partition)

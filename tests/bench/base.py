@@ -94,7 +94,7 @@ class Benchmark:
                 time_start = monotonic()
                 time_1st = monotonic()
 
-                def on_published(meta):
+                def on_published(meta, time_1st=time_1st):
                     print(f"1ST OK: {meta} AFTER {monotonic() - time_1st}s")
 
                 callback = on_published

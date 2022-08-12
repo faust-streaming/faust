@@ -12,19 +12,19 @@
 
 ## Documentation
 
-- `introduction`: http://faust.readthedocs.io/en/latest/introduction.html
-- `quickstart`: http://faust.readthedocs.io/en/latest/playbooks/quickstart.html
-- `User Guide`: http://faust.readthedocs.io/en/latest/userguide/index.html
+- `introduction`: https://fauststream.com/en/latest/introduction.html
+- `quickstart`: https://fauststream.com/en/latest/playbooks/quickstart.html
+- `User Guide`: https://fauststream.com/en/latest/userguide/index.html
 
 ## Why the fork
 
-We have decided to fork the original `Faust` project because there is a critical process of releasing new versions which causes uncertainty in the community. Everybody is welcome to contribute to this `fork`, and you can be added as a manitainer.
+We have decided to fork the original `Faust` project because there is a critical process of releasing new versions which causes uncertainty in the community. Everybody is welcome to contribute to this `fork`, and you can be added as a maintainer.
 
 We want to:
 
 - Ensure continues release
 - Code quality
-- Use of latests versions of kafka drivers (for now only [aiokafka](https://github.com/aio-libs/aiokafka))
+- Use of latest versions of kafka drivers (for now only [aiokafka](https://github.com/aio-libs/aiokafka))
 - Support kafka transactions
 - Update the documentation
 
@@ -95,7 +95,7 @@ of "number of clicks from the last day," or
 we support tumbling, hopping and sliding windows of time, and old windows
 can be expired to stop data from filling up.
 
-For reliability we use a Kafka topic as "write-ahead-log".
+For reliability, we use a Kafka topic as "write-ahead-log".
 Whenever a key is changed we publish to the changelog.
 Standby nodes consume from this changelog to keep an exact replica
 of the data and enables instant recovery should any of the nodes fail.
@@ -277,15 +277,15 @@ The following bundles are available:
 
 `pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
 
-`pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+`pip install faust[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
 ### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
 `store="aerospike://"`
 
-By default all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
+By default, all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
 to a state store backed by RocksDB.
-The following configuration options should be passed in as keys to the options parameter in [Table](https://faust.readthedocs.io/en/latest/reference/faust.tables.html)
+The following configuration options should be passed in as keys to the options parameter in [Table](https://fauststream.com/en/latest/reference/faust.tables.html)
 `namespace` : aerospike namespace
 
 `ttl`: TTL for all KV's in the table
@@ -334,13 +334,13 @@ The following configuration options should be passed in as keys to the options p
 
 ## Downloading and installing from source
 
-Download the latest version of Faust from http://pypi.org/project/faust
+Download the latest version of Faust from https://pypi.org/project/faust-streaming/
 
 You can install it by doing:
 
 ```sh
-$ tar xvfz faust-0.0.0.tar.gz
-$ cd faust-0.0.0
+$ tar xvfz faust-streaming-0.0.0.tar.gz
+$ cd faust-streaming-0.0.0
 $ python setup.py build
 # python setup.py install
 ```
@@ -355,7 +355,7 @@ you are not currently using a virtualenv.
 You can install the latest snapshot of Faust using the following `pip` command:
 
 ```sh
-pip install https://github.com/robinhood/faust/zipball/master#egg=faust
+pip install https://github.com/faust-streaming/faust/zipball/master#egg=faust
 ```
 
 ## FAQ
@@ -398,7 +398,7 @@ Yes! Use the `tornado.platform.asyncio` [bridge](http://www.tornadoweb.org/en/st
 
 ### Can I use Faust with Twisted
 
-Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documents/17.1.0/api/twisted internet.asyncioreactor.html
+Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documents/current/api/twisted.internet.asyncioreactor.html
 
 ### Will you support Python 2.7 or Python 3.5
 
@@ -407,8 +407,15 @@ introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this
 
-You may need to increase the limit for the maximum number of open files. The
-following post explains how to do so on OS X: https://blog.dekstroza.io/ulimit-shenanigans-on-osx-el-capitan/
+You may need to increase the limit for the maximum number of open files. 
+On macOS and Linux you can use: 
+
+```ulimit -n max_open_files``` to increase the open files limit to max_open_files.
+
+On docker, you can use the --ulimit flag:
+
+```docker run --ulimit nofile=50000:100000 <image-tag>``` 
+where 50000 is the soft limit, and 100000 is the hard limit [See the difference](https://unix.stackexchange.com/a/29579).
 
 ### What kafka versions faust supports
 
@@ -428,7 +435,7 @@ For discussions about the usage, development, and future of Faust, please join t
 ### Bug tracker
 
 If you have any suggestions, bug reports, or annoyances please report them
-to our issue tracker at https://github.com/robinhood/faust/issues/
+to our issue tracker at https://github.com/faust-streaming/faust/issues/
 
 ## License
 
@@ -436,7 +443,7 @@ This software is licensed under the `New BSD License`. See the `LICENSE` file in
 
 ### Contributing
 
-Development of `Faust` happens at [GitHub](https://github.com/robinhood/faust)
+Development of `Faust` happens at [GitHub](https://github.com/faust-streaming/faust)
 
 You're highly encouraged to participate in the development of `Faust`.
 

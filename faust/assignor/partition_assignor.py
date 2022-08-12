@@ -329,6 +329,9 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                     # Only add those partitions as standby which aren't active
                     standby_partitions = all_partitions - active_partitions
                     assignment.standbys[changelog_topic_name] = list(standby_partitions)
+                    # We add all_partitions as active so they are recovered
+                    # in the beginning.
+                    assignment.actives[changelog_topic_name] = list(all_partitions)
         return assignments
 
     def _protocol_assignments(

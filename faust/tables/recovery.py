@@ -195,14 +195,14 @@ class Recovery(Service):
     def signal_recovery_start(self) -> Event:
         """Event used to signal that recovery has started."""
         if self._signal_recovery_start is None:
-            self._signal_recovery_start = Event(loop=self.loop)
+            self._signal_recovery_start = Event()
         return self._signal_recovery_start
 
     @property
     def signal_recovery_end(self) -> Event:
         """Event used to signal that recovery has ended."""
         if self._signal_recovery_end is None:
-            self._signal_recovery_end = Event(loop=self.loop)
+            self._signal_recovery_end = Event()
         return self._signal_recovery_end
 
     async def on_stop(self) -> None:
@@ -304,26 +304,26 @@ class Recovery(Service):
         app = self.app
         consumer = app.consumer
         await app.on_rebalance_complete.send()
-        # Resume partitions and start fetching.
-        self.log.info("Resuming flow...")
-        consumer.resume_flow()
-        app.flow_control.resume()
         assignment = consumer.assignment()
         if self.app.consumer_generation_id != generation_id:
             self.log.warning("Recovery rebalancing again")
             return
         if assignment:
-            self.log.info("Seek stream partitions to committed offsets.")
-            await self._wait(
-                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
-            )
             self.log.dev("Resume stream partitions")
             consumer.resume_partitions(
                 {tp for tp in assignment if not self._is_changelog_tp(tp)}
             )
+            self.log.info("Seek stream partitions to committed offsets.")
+            await self._wait(
+                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
+            )
         else:
             self.log.info("Resuming streams with empty assignment")
         self.completed.set()
+        # Resume partitions and start fetching.
+        self.log.info("Resuming flow...")
+        app.flow_control.resume()
+        consumer.resume_flow()
         # finally make sure the fetcher is running.
         await cast(_App, app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
@@ -440,9 +440,9 @@ class Recovery(Service):
                     T(consumer.resume_partitions)(active_tps)
                     # Resume partitions and start fetching.
                     self.log.info("Resuming flow...")
+                    T(self.app.flow_control.resume)()
                     T(consumer.resume_flow)()
                     await T(cast(_App, self.app)._fetcher.maybe_start)()
-                    T(self.app.flow_control.resume)()
 
                     # Wait for actives to be up to date.
                     # This signal will be set by _slurp_changelogs
@@ -467,9 +467,24 @@ class Recovery(Service):
                     T(consumer.pause_partitions)(active_tps)
                 else:
                     self.log.info("Resuming flow...")
-                    T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
+                    T(consumer.resume_flow)()
                     self._set_recovery_ended()
+
+                # The changelog partitions only in the active_tps set need to be resumed
+                active_only_partitions = active_tps - standby_tps
+                if active_only_partitions:
+                    # Support for the specific scenario where recovery_buffer=1
+                    tps_resuming = [
+                        tp
+                        for tp in active_only_partitions
+                        if self.tp_to_table[tp].recovery_buffer_size == 1
+                    ]
+                    if tps_resuming:
+                        T(consumer.resume_partitions)(tps_resuming)
+                        T(self.app.flow_control.resume)()
+                        T(consumer.resume_flow)()
+
                 self.log.info("Recovery complete")
                 if span:
                     span.set_tag("Recovery-Completed", True)
@@ -519,8 +534,8 @@ class Recovery(Service):
                         self.app._span_add_default_tags(span)
                     self.log.dev("Resume standby partitions")
                     T(consumer.resume_partitions)(standby_tps)
-                    T(consumer.resume_flow)()
                     T(self.app.flow_control.resume)()
+                    T(consumer.resume_flow)()
 
                 # Pause all our topic partitions,
                 # to make sure we don't fetch any more records from them.
@@ -580,7 +595,7 @@ class Recovery(Service):
         else:
             return None
 
-    async def _wait(self, coro: WaitArgT, timeout: int = None) -> None:
+    async def _wait(self, coro: WaitArgT, timeout: Optional[int] = None) -> None:
         signal = self.signal_recovery_start
         wait_result = await self.wait_first(coro, signal, timeout=timeout)
         if wait_result.stopped:
@@ -615,6 +630,9 @@ class Recovery(Service):
                 f"{self.app.consumer_generation_id} param {generation_id}"
             )
             return
+        consumer.resume_partitions(
+            {tp for tp in assignment if not self._is_changelog_tp(tp)}
+        )
         if assignment:
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
@@ -622,11 +640,8 @@ class Recovery(Service):
             )
         self.completed.set()
         self.log.dev("Resume stream partitions")
-        consumer.resume_partitions(
-            {tp for tp in assignment if not self._is_changelog_tp(tp)}
-        )
-        consumer.resume_flow()
         self.app.flow_control.resume()
+        consumer.resume_flow()
         # finally make sure the fetcher is running.
         await cast(_App, self.app)._fetcher.maybe_start()
         self.tables.on_actives_ready()
@@ -690,12 +705,18 @@ class Recovery(Service):
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
         # FIXME To be consistent with the offset -1 logic
-        earliest = {tp: offset - 1 for tp, offset in earliest.items()}
+        earliest = {
+            tp: offset - 1 if offset is not None else None
+            for tp, offset in earliest.items()
+        }
+
         for tp in tps:
             last_value = destination[tp]
-            new_value = earliest[tp]
+            new_value = earliest.get(tp, None)
 
-            if last_value is None:
+            if last_value is None and new_value is None:
+                destination[tp] = -1
+            elif last_value is None:
                 destination[tp] = new_value
             elif new_value is None:
                 destination[tp] = last_value
@@ -754,7 +775,7 @@ class Recovery(Service):
             # the aiokafka consumer position and draining of the queue
             if timeout and self.app.in_transaction and timeout_count > 1:
                 await detect_aborted_tx()
-            if not self.need_recovery() and self.in_recovery:
+            if self.in_recovery and not self.need_recovery():
                 # apply anything stuck in the buffers
                 self.flush_buffers()
                 self._set_recovery_ended()
@@ -843,7 +864,10 @@ class Recovery(Service):
 
                 await _maybe_signal_recovery_end()
 
-                if not self.standby_remaining_total():
+                standby_ready = (
+                    self._standbys_span is None and self.tables.standbys_ready
+                )
+                if not standby_ready and not self.standby_remaining_total():
                     logger.debug("Completed standby partition fetch")
                     if self._standbys_span:
                         finish_span(self._standbys_span)

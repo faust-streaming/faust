@@ -107,9 +107,9 @@ class Blueprint(BlueprintT):
 
     def cache(
         self,
-        timeout: Seconds = None,
+        timeout: Optional[Seconds] = None,
         include_headers: bool = False,
-        key_prefix: str = None,
+        key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
     ) -> CacheT:
         """Cache API."""
@@ -189,7 +189,7 @@ class Blueprint(BlueprintT):
         """Call when web server starts."""
         ...
 
-    def _url_with_prefix(self, url: str, prefix: str = None) -> str:
+    def _url_with_prefix(self, url: str, prefix: Optional[str] = None) -> str:
         if prefix:
             return prefix.rstrip("/") + "/" + url.lstrip("/")
         return url
