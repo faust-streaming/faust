@@ -13,4 +13,4 @@ async def agent_stopper(app) -> None:
 
     # force the exit code of the application not to be 0
     # and prevent offsets from progressing
-    app._crash()
+    app._crash(RuntimeError)
