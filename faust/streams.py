@@ -206,7 +206,7 @@ class Stream(StreamT[T_co], Service):
         seen: Set[StreamT] = set()
         while node:
             if node in seen:
-                raise RuntimeError("Loop in Stream.{dir_.attr}: Call support!")
+                raise RuntimeError(f"Loop in Stream.{dir_.attr}: Call support!")
             seen.add(node)
             yield node
             node = dir_.getter(node)
@@ -394,8 +394,8 @@ class Stream(StreamT[T_co], Service):
     async def take_with_timestamp(
         self, max_: int, within: Seconds, timestamp_field_name: str
     ) -> AsyncIterable[Sequence[T_co]]:
-        """Buffer n values at a time and yield a list of buffered values with the timestamp
-           when the message was added to kafka.
+        """Buffer n values at a time and yield a list of buffered values with the
+           timestamp when the message was added to kafka.
 
         Arguments:
             max_: Max number of messages to receive. When more than this

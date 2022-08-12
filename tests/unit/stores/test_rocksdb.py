@@ -236,7 +236,7 @@ class Test_Store:
     def test_open_for_partition(self, *, store):
         open = store.rocksdb_options.open = Mock(name="options.open")
         assert store._open_for_partition(1) is open.return_value
-        open.assert_called_once_with(store.partition_path(1))
+        open.assert_called_once_with(store.partition_path(1), read_only=False)
 
     def test__get__missing(self, *, store):
         store._get_bucket_for_key = Mock(name="get_bucket_for_key")
