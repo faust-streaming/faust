@@ -159,7 +159,7 @@ Bugs for a package in the Faust ecosystem should be reported to the relevant
 issue tracker.
 
 * :pypi:`Faust` - https://github.com/faust-streaming/faust/issues
-* :pypi:`Mode` - https://github.com/ask/mode/issues
+* :pypi:`Mode` - https://github.com/faust-streaming/mode/issues
 
 If you're unsure of the origin of the bug you can ask the
 :ref:`mailing-list`, or just use the Faust issue tracker.
