@@ -159,7 +159,7 @@ Bugs for a package in the Faust ecosystem should be reported to the relevant
 issue tracker.
 
 * :pypi:`Faust` - https://github.com/faust-streaming/faust/issues
-* :pypi:`Mode` - https://github.com/ask/mode/issues
+* :pypi:`Mode` - https://github.com/faust-streaming/mode/issues
 
 If you're unsure of the origin of the bug you can ask the
 :ref:`mailing-list`, or just use the Faust issue tracker.
@@ -797,16 +797,16 @@ Packages
 :git: https://github.com/faust-streaming/faust
 :CI: http://travis-ci.org/#!/robinhood/faust
 :Windows-CI: https://ci.appveyor.com/project/ask/faust
-:PyPI: :pypi:`faust`
+:PyPI: :pypi:`faust-streaming`
 :docs: https://fauststream.com/en/latest/
 
 ``Mode``
 --------
 
-:git: https://github.com/ask/mode
-:CI: http://travis-ci.org/#!/ask/mode
-:Windows-CI: https://ci.appveyor.com/project/ask/mode
-:PyPI: :pypi:`Mode`
+:git: https://github.com/faust-streaming/mode/
+:CI: https://www.travis-ci.com/#!/faust-streaming/mode
+:Windows-CI: https://ci.appveyor.com/project/faust-streaming/mode
+:PyPI: :pypi:`mode-streaming`
 :docs: http://mode.readthedocs.io/
 
 .. _release-procedure:
