@@ -481,7 +481,7 @@ def _prepare_cli(
             os.environ["F_DATADIR"] = datadir
 
 
-class Command(abc.ABC):
+class Command(abc.ABC):  # noqa: B024
     """Base class for subcommands."""
 
     UsageError: Type[Exception] = click.UsageError
