@@ -43,7 +43,7 @@ T = TypeVar("T")
 # Workaround for https://bugs.python.org/issue29581
 try:
 
-    @typing.no_type_check  # type: ignore
+    @typing.no_type_check  # type: ignore  # noqa: B024
     class _InitSubclassCheck(metaclass=abc.ABCMeta):  # noqa: B024
         ident: int
 
