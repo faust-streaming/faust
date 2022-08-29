@@ -44,7 +44,7 @@ T = TypeVar("T")
 try:
 
     @typing.no_type_check  # type: ignore
-    class _InitSubclassCheck(metaclass=abc.ABCMeta):
+    class _InitSubclassCheck(metaclass=abc.ABCMeta):  # noqa: B024
         ident: int
 
         def __init_subclass__(
@@ -54,7 +54,7 @@ try:
             super().__init__(*args, **kwargs)
 
     @typing.no_type_check  # type: ignore
-    class _UsingKwargsInNew(_InitSubclassCheck, ident=909):
+    class _UsingKwargsInNew(_InitSubclassCheck, ident=909):  # noqa: B024
         ...
 
 except TypeError:
@@ -68,7 +68,7 @@ CoercionHandler = Callable[[Any], Any]
 CoercionMapping = MutableMapping[IsInstanceArgT, CoercionHandler]
 
 
-class ModelOptions(abc.ABC):
+class ModelOptions(abc.ABC):  # noqa: B024
     serializer: Optional[CodecArg] = None
     namespace: str
     include_metadata: bool = True
