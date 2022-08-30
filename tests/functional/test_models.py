@@ -837,7 +837,7 @@ def test_compat_enabled_blessed_key(app):
 
 
 def test__polymorphic_fields_deeply_nested():
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -868,7 +868,7 @@ def test__polymorphic_fields_deeply_nested():
 
 
 def test_compat_blessed_key_deeply_nested():
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -934,7 +934,7 @@ ADTRIBUTE_PAYLOAD = """
 
 
 def test_adtribute_payload(app):
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self) -> None:
             self.data_store = None
 
