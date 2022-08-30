@@ -5,4 +5,4 @@ from .locals import current_test
 from .runners import TestRunner
 from .signals import Signal
 
-__all__ = ['LiveCheck', 'Case', 'Signal', 'TestRunner', 'current_test']
+__all__ = ["LiveCheck", "Case", "Signal", "TestRunner", "current_test"]

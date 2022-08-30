@@ -10,14 +10,16 @@ from typing import (
     Set,
     Tuple,
 )
+
 from mode.utils.compat import OrderedDict
+
 from faust.types import TP
 from faust.types.transports import SchedulingStrategyT
 
 __all__ = [
-    'TopicIndexMap',
-    'DefaultSchedulingStrategy',
-    'TopicBuffer',
+    "TopicIndexMap",
+    "DefaultSchedulingStrategy",
+    "TopicBuffer",
 ]
 
 # But we want to process records from topics in round-robin order.
@@ -25,7 +27,7 @@ __all__ = [
 #   topic_index['topic-name'] = chain(all_topic_partition_buffers)
 # This means we can get the next message available in any topic
 # by doing: next(topic_index['topic_name'])
-TopicIndexMap = MutableMapping[str, 'TopicBuffer']
+TopicIndexMap = MutableMapping[str, "TopicBuffer"]
 
 
 class DefaultSchedulingStrategy(SchedulingStrategyT):
@@ -50,8 +52,7 @@ class DefaultSchedulingStrategy(SchedulingStrategyT):
         """Iterate over records in round-robin order."""
         return self.records_iterator(self.map_from_records(records))
 
-    def records_iterator(self,
-                         index: TopicIndexMap) -> Iterator[Tuple[TP, Any]]:
+    def records_iterator(self, index: TopicIndexMap) -> Iterator[Tuple[TP, Any]]:
         """Iterate over topic index map in round-robin order."""
         to_remove: Set[str] = set()
         sentinel = object()

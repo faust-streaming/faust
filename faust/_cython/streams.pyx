@@ -1,7 +1,9 @@
 # cython: language_level=3
 from asyncio import sleep
 from time import monotonic
+
 from mode.utils.futures import maybe_async, notify
+
 from faust.exceptions import Skip
 from faust.types import ChannelT, EventT
 
@@ -79,13 +81,16 @@ cdef class StreamIterator:
         do_ack = stream.enable_acks
 
         value = None
+        event = None
 
-        while value is None:
-            await sleep(0, loop=self.loop)
+        while value is None and event is None:
+            await sleep(0)
             need_slow_get, channel_value = self._try_get_quick_value()
             if need_slow_get:
                 channel_value = await self.chan_slow_get()
-            value, sensor_state = self._prepare_event(channel_value)
+            event, value, sensor_state = self._prepare_event(channel_value)
+            if value is self._skipped_value:
+                return value, sensor_state
 
             try:
                 for processor in self.processors:
@@ -104,7 +109,8 @@ cdef class StreamIterator:
             object consumer
         consumer = self.consumer
         last_stream_to_ack = False
-        if do_ack and event is not None:
+        # if do_ack and event is not None:
+        if event is not None and (do_ack or event.value is self._skipped_value):
             message = event.message
             if not message.acked:
                 refcount = message.refcount
@@ -119,7 +125,7 @@ cdef class StreamIterator:
                     if self.acks_enabled_for(message.topic):
                         committed = consumer._committed_offset[tp]
                         try:
-                            if committed is None or offset > committed:
+                            if committed is None or offset >= committed:
                                 acked_index = consumer._acked_index[tp]
                                 if offset not in acked_index:
                                     self.unacked.discard(message)
@@ -155,6 +161,20 @@ cdef class StreamIterator:
             offset = message.offset
             consumer = self.consumer
 
+            if (
+                not self.app.flow_control.is_active()
+                or message.generation_id != self.app.consumer_generation_id
+            ):
+                self.app.log.dev(
+                    "Skipping message %r with generation_id %r because "
+                    "app generation_id is %r flow control.is_active %r",
+                    message,
+                    message.generation_id,
+                    self.app.consumer_generation_id,
+                    self.app.flow_control.is_active()
+                )
+                return None, self._skipped_value, stream_state
+
             if topic in self.acking_topics and not message.tracked:
                 message.tracked = True
                 self.add_unacked(message)
@@ -163,10 +183,10 @@ cdef class StreamIterator:
                 stream_state = self.on_stream_event_in(
                     tp, offset, self.stream, event)
             self.stream._set_current_event(event)
-            return (event.value, stream_state)
+            return (event, event.value, stream_state)
         else:
             self.stream._set_current_event(None)
-            return channel_value, stream_state
+            return None, channel_value, stream_state
 
     cdef object _try_get_quick_value(self):
         if self.chan_is_channel:

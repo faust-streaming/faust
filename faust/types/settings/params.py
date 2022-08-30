@@ -27,64 +27,68 @@ from mode.utils.logging import Severity as _Severity
 from yarl import URL as _URL
 
 from faust.exceptions import ImproperlyConfigured
+from faust.types.auth import CredentialsArg, CredentialsT, to_credentials
+from faust.types.codecs import CodecArg, CodecT
 from faust.utils import json
 from faust.utils.urls import URIListArg, urllist
 
-from faust.types.auth import CredentialsArg, CredentialsT, to_credentials
-from faust.types.codecs import CodecArg, CodecT
-
 if typing.TYPE_CHECKING:
-    from .settings import Settings as _Settings
     from .sections import Section as _Section
+    from .settings import Settings as _Settings
 else:
-    class _Section: ...       # noqa
-    class _Settings: ...      # noqa
+
+    class _Section:
+        ...  # noqa
+
+    class _Settings:
+        ...  # noqa
+
 
 __all__ = [
-    'AutodiscoverArg',
-    'DictArg',
-    'URLArg',
-    'BrokerArg',
-    'Param',
-    'Bool',
-    'Str',
-    'Severity',
-    'Int',
-    'UnsignedInt',
-    'Version',
-    'Port',
-    'Seconds',
-    'Credentials',
-    'SSLContext',
-    'Dict',
-    'LogHandlers',
-    'Timezone',
-    'BrokerList',
-    'URL',
-    'Path',
-    'Codec',
-    'Enum',
-    'Symbol',
-    'to_bool',
+    "AutodiscoverArg",
+    "DictArg",
+    "URLArg",
+    "BrokerArg",
+    "Param",
+    "Bool",
+    "Str",
+    "Severity",
+    "Int",
+    "UnsignedInt",
+    "Version",
+    "Port",
+    "Seconds",
+    "Credentials",
+    "SSLContext",
+    "Dict",
+    "LogHandlers",
+    "Timezone",
+    "BrokerList",
+    "URL",
+    "Path",
+    "Codec",
+    "Enum",
+    "Symbol",
+    "to_bool",
 ]
 
 #: Default transport used when no scheme specified.
-DEFAULT_BROKER_SCHEME = 'kafka'
+DEFAULT_BROKER_SCHEME = "kafka"
 
-T = TypeVar('T')
-IT = TypeVar('IT')   # Input type.
-OT = TypeVar('OT')   # Output type.
+T = TypeVar("T")
+IT = TypeVar("IT")  # Input type.
+OT = TypeVar("OT")  # Output type.
 
 BOOLEAN_TERMS: Mapping[str, bool] = {
-    '': False,
-    'false': False,
-    'no': False,
-    '0': False,
-    'true': True,
-    'yes': True,
-    '1': True,
-    'on': True,
-    'off': False,
+    "": False,
+    "false": False,
+    "no": False,
+    "0": False,
+    "true": True,
+    "yes": True,
+    "1": True,
+    "on": True,
+    "off": False,
 }
 
 AutodiscoverArg = Union[
@@ -98,19 +102,20 @@ DictArg = Union[str, Mapping[str, T]]
 URLArg = Union[str, _URL]
 BrokerArg = URIListArg
 
-DEPRECATION_WARNING_TEMPLATE = '''
+DEPRECATION_WARNING_TEMPLATE = """
 Setting {self.name} is deprecated since Faust version \
 {self.version_deprecated}: {self.deprecation_reason}. {alt_removal}
-'''.strip()
+""".strip()
 
-DEPRECATION_REMOVAL_WARNING = '''
+DEPRECATION_REMOVAL_WARNING = """
 Further the setting is scheduled to be removed in Faust version \
 {self.version_removal}.
-'''.strip()
+""".strip()
 
 
-def to_bool(term: Union[str, bool], *,
-            table: Mapping[str, bool] = BOOLEAN_TERMS) -> bool:
+def to_bool(
+    term: Union[str, bool], *, table: Mapping[str, bool] = BOOLEAN_TERMS
+) -> bool:
     """Convert common terms for true/false to bool.
 
     Examples (true/false/yes/no/on/off/1/0).
@@ -121,7 +126,7 @@ def to_bool(term: Union[str, bool], *,
         try:
             return table[term.lower()]
         except KeyError:
-            raise TypeError('Cannot coerce {0!r} to type bool'.format(term))
+            raise TypeError("Cannot coerce {0!r} to type bool".format(term))
     return term
 
 
@@ -191,7 +196,7 @@ class Param(Generic[IT, OT], property):
     #: Default template.
     #: If set the default value will be generated from this format string
     #: template.
-    #: For exmaple the :setting:`canonical_url` setting uses
+    #: For example the :setting:`canonical_url` setting uses
     #: ``default_template='http://{conf.web_host}:{conf.web_port}' to
     #: generate a default value from the :setting:`web_host` and
     #: :setting:`web_port` settings.
@@ -286,27 +291,30 @@ class Param(Generic[IT, OT], property):
     #: for the deprecation warning.
     deprecation_removal_warning: str = DEPRECATION_REMOVAL_WARNING
 
-    def __init__(self, *,
-                 name: str,
-                 env_name: str = None,
-                 default: IT = None,
-                 default_alias: str = None,
-                 default_template: str = None,
-                 allow_none: bool = None,
-                 ignore_default: bool = None,
-                 section: _Section = None,
-                 version_introduced: str = None,
-                 version_deprecated: str = None,
-                 version_removed: str = None,
-                 version_changed: Mapping[str, str] = None,
-                 deprecation_reason: str = None,
-                 related_cli_options: Mapping[str, List[str]] = None,
-                 related_settings: List[Any] = None,
-                 help: str = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        name: str,
+        env_name: Optional[str] = None,
+        default: IT = None,
+        default_alias: Optional[str] = None,
+        default_template: Optional[str] = None,
+        allow_none: Optional[bool] = None,
+        ignore_default: Optional[bool] = None,
+        section: _Section = None,
+        version_introduced: Optional[str] = None,
+        version_deprecated: Optional[str] = None,
+        version_removed: Optional[str] = None,
+        version_changed: Mapping[str, str] = None,
+        deprecation_reason: Optional[str] = None,
+        related_cli_options: Mapping[str, List[str]] = None,
+        related_settings: List[Any] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         assert name
         self.name = name
-        self.storage_name = f'_{name}'
+        self.storage_name = f"_{name}"
         if env_name is not None:
             self.env_name = env_name
         if default is not None:
@@ -396,9 +404,7 @@ class Param(Generic[IT, OT], property):
         """Set class default value for storage attribute."""
         setattr(cls, self.storage_name, self.default)
 
-    def on_init_set_value(self,
-                          conf: _Settings,
-                          provided_value: Optional[IT]) -> None:
+    def on_init_set_value(self, conf: _Settings, provided_value: Optional[IT]) -> None:
         """What happens at ``Settings.__init__`` to store provided value.
 
         Arguments:
@@ -409,9 +415,9 @@ class Param(Generic[IT, OT], property):
         if provided_value is not None:
             self.__set__(conf, provided_value)
 
-    def on_init_set_default(self,
-                            conf: _Settings,
-                            provided_value: Optional[IT]) -> None:
+    def on_init_set_default(
+        self, conf: _Settings, provided_value: Optional[IT]
+    ) -> None:
         """What happens at ``Settings.__init__`` to set default value.
 
         Arguments:
@@ -425,12 +431,13 @@ class Param(Generic[IT, OT], property):
                 default_value = self._on_set_default_(conf)
             if default_value is None and self.default_template:
                 default_value = self.default_template.format(conf=conf)
-            setattr(conf, self.storage_name,
-                    self.prepare_init_default(conf, default_value))
+            setattr(
+                conf, self.storage_name, self.prepare_init_default(conf, default_value)
+            )
 
     def build_deprecation_warning(self) -> str:
         """Build deprecation warning for this setting."""
-        alt_removal = ''
+        alt_removal = ""
         if self.version_removed:
             alt_removal = self.deprecation_removal_warning.format(self=self)
         return self.deprecation_warning_template.format(
@@ -484,6 +491,7 @@ class Param(Generic[IT, OT], property):
 
 class Bool(Param[Any, bool]):
     """Boolean setting type."""
+
     text_type = (bool,)
 
     def to_python(self, conf: _Settings, value: Any) -> bool:
@@ -495,25 +503,30 @@ class Bool(Param[Any, bool]):
 
 class Str(Param[str, str]):
     """String setting type."""
+
     text_type = (str,)
 
 
 class Severity(Param[_Severity, _Severity]):
     """Logging severity setting type."""
+
     text_type = (str, int)
 
 
 class Number(Param[IT, OT]):
     """Number setting type (baseclass for int/float)."""
+
     min_value: Optional[int] = None
     max_value: Optional[int] = None
     number_aliases: Mapping[IT, OT]
 
-    def _init_options(self,
-                      min_value: int = None,
-                      max_value: int = None,
-                      number_aliases: Mapping[IT, OT] = None,
-                      **kwargs: Any) -> None:
+    def _init_options(
+        self,
+        min_value: Optional[int] = None,
+        max_value: Optional[int] = None,
+        number_aliases: Mapping[IT, OT] = None,
+        **kwargs: Any,
+    ) -> None:
         if min_value is not None:
             self.min_value = min_value
         if max_value is not None:
@@ -524,9 +537,7 @@ class Number(Param[IT, OT]):
     def convert(self, conf: _Settings, value: IT) -> OT:
         ...
 
-    def to_python(self,
-                  conf: _Settings,
-                  value: IT) -> OT:
+    def to_python(self, conf: _Settings, value: IT) -> OT:
         """Convert given value to number."""
         try:
             return self.number_aliases[value]
@@ -545,8 +556,9 @@ class Number(Param[IT, OT]):
 
     def _out_of_range(self, value: float) -> ImproperlyConfigured:
         return ImproperlyConfigured(
-            f'Value {value} is out of range for {self.class_name} '
-            f'(min={self.min_value} max={self.max_value})')
+            f"Value {value} is out of range for {self.class_name} "
+            f"(min={self.min_value} max={self.max_value})"
+        )
 
 
 NumberInputArg = Union[str, int, float]
@@ -555,9 +567,7 @@ NumberInputArg = Union[str, int, float]
 class _Int(Number[IT, OT]):
     text_type = (int,)
 
-    def convert(self,
-                conf: _Settings,
-                value: IT) -> OT:
+    def convert(self, conf: _Settings, value: IT) -> OT:
         """Convert given value to int."""
         return cast(OT, int(cast(int, value)))
 
@@ -568,6 +578,7 @@ class Int(_Int[NumberInputArg, int]):
 
 class UnsignedInt(_Int[NumberInputArg, int]):
     """Unsigned integer setting type."""
+
     min_value = 0
 
 
@@ -576,6 +587,7 @@ class Version(Int):
 
     Versions must be greater than ``1``.
     """
+
     min_value = 1
 
 
@@ -584,6 +596,7 @@ class Port(UnsignedInt):
 
     Ports must be in the range 1-65535.
     """
+
     min_value = 1
     max_value = 65535
 
@@ -594,6 +607,7 @@ class Seconds(Param[_Seconds, float]):
     Converts from :class:`float`/:class:`~datetime.timedelta` to
     :class:`float`.
     """
+
     text_type = (float, timedelta)
 
     def to_python(self, conf: _Settings, value: _Seconds) -> float:
@@ -602,26 +616,27 @@ class Seconds(Param[_Seconds, float]):
 
 class Credentials(Param[CredentialsArg, Optional[CredentialsT]]):
     """Authentication credentials setting type."""
+
     text_type = (CredentialsT,)
 
-    def to_python(self,
-                  conf: _Settings,
-                  value: CredentialsArg) -> Optional[CredentialsT]:
+    def to_python(
+        self, conf: _Settings, value: CredentialsArg
+    ) -> Optional[CredentialsT]:
         return to_credentials(value)
 
 
 class SSLContext(Param[ssl.SSLContext, Optional[ssl.SSLContext]]):
     """SSL context setting type."""
+
     text_type = (ssl.SSLContext,)
 
 
 class Dict(Param[DictArg[T], Mapping[str, T]]):
     """Dictionary setting type."""
+
     text_type = (dict,)
 
-    def to_python(self,
-                  conf: _Settings,
-                  value: DictArg[T]) -> Mapping[str, T]:
+    def to_python(self, conf: _Settings, value: DictArg[T]) -> Mapping[str, T]:
         if isinstance(value, str):
             return json.loads(value)
         elif isinstance(value, Mapping):
@@ -631,17 +646,20 @@ class Dict(Param[DictArg[T], Mapping[str, T]]):
 
 class LogHandlers(Param[List[logging.Handler], List[logging.Handler]]):
     """Log handler list setting type."""
+
     text_type = (List[logging.Handler],)
 
     def prepare_init_default(
-            self, conf: _Settings, value: Any) -> List[logging.Handler]:
+        self, conf: _Settings, value: Any
+    ) -> List[logging.Handler]:
         return []
 
 
 class Timezone(Param[Union[str, tzinfo], tzinfo]):
     """Timezone setting type."""
+
     text_type = (tzinfo,)
-    builtin_timezones = {'UTC': timezone.utc}
+    builtin_timezones = {"UTC": timezone.utc}
 
     def to_python(self, conf: _Settings, value: Union[str, tzinfo]) -> tzinfo:
         if isinstance(value, str):
@@ -649,6 +667,7 @@ class Timezone(Param[Union[str, tzinfo], tzinfo]):
                 return cast(tzinfo, self.builtin_timezones[value.lower()])
             except KeyError:
                 import pytz
+
                 return cast(tzinfo, pytz.timezone(value))
         else:
             return value
@@ -656,6 +675,7 @@ class Timezone(Param[Union[str, tzinfo], tzinfo]):
 
 class BrokerList(Param[BrokerArg, List[_URL]]):
     """Broker URL list setting type."""
+
     text_type = (str, _URL, List[str])
     default_scheme = DEFAULT_BROKER_SCHEME
 
@@ -668,6 +688,7 @@ class BrokerList(Param[BrokerArg, List[_URL]]):
 
 class URL(Param[URLArg, _URL]):
     """URL setting type."""
+
     text_type = (str, _URL)
 
     def to_python(self, conf: _Settings, value: URLArg) -> _URL:
@@ -676,6 +697,7 @@ class URL(Param[URLArg, _URL]):
 
 class Path(Param[Union[str, _Path], _Path]):
     """Path setting type."""
+
     text_type = (str, _Path)
     expanduser: bool = True
 
@@ -691,6 +713,7 @@ class Path(Param[Union[str, _Path], _Path]):
 
 class Codec(Param[CodecArg, CodecArg]):
     """Serialization codec setting type."""
+
     text_type = (str, CodecT)
 
 

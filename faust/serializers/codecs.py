@@ -160,7 +160,6 @@ At this point may want to publish this on PyPI to share
 the extension with other Faust users.
 """
 import pickle as _pickle
-
 from base64 import b64decode, b64encode
 from types import ModuleType
 from typing import Any, Dict, MutableMapping, Optional, Tuple, cast
@@ -179,12 +178,12 @@ except ImportError:  # pragma: no cover
 
 
 __all__ = [
-    'Codec',
-    'CodecArg',
-    'register',
-    'get_codec',
-    'dumps',
-    'loads',
+    "Codec",
+    "CodecArg",
+    "register",
+    "get_codec",
+    "dumps",
+    "loads",
 ]
 
 
@@ -205,8 +204,7 @@ class Codec(CodecT):
     #: preserve keyword arguments in copies.
     kwargs: Dict
 
-    def __init__(self, children: Tuple[CodecT, ...] = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, children: Tuple[CodecT, ...] = None, **kwargs: Any) -> None:
         self.children = children or ()
         self.nodes = (self,) + self.children
         self.kwargs = kwargs
@@ -245,10 +243,12 @@ class Codec(CodecT):
         return NotImplemented
 
     def __repr__(self) -> str:
-        return ' | '.join('{0}({1})'.format(
-            type(n).__name__, ', '.join(
-                map(repr,
-                    cast(Codec, n).kwargs.values()))) for n in self.nodes)
+        return " | ".join(
+            "{0}({1})".format(
+                type(n).__name__, ", ".join(map(repr, cast(Codec, n).kwargs.values()))
+            )
+            for n in self.nodes
+        )
 
 
 class json(Codec):
@@ -266,12 +266,12 @@ class yaml(Codec):
 
     def _loads(self, s: bytes) -> Any:
         if _yaml is None:
-            raise ImproperlyConfigured('Missing yaml: pip install PyYAML')
+            raise ImproperlyConfigured("Missing yaml: pip install PyYAML")
         return _yaml.safe_load(want_str(s))
 
     def _dumps(self, s: Any) -> bytes:
         if _yaml is None:
-            raise ImproperlyConfigured('Missing yaml: pip install PyYAML')
+            raise ImproperlyConfigured("Missing yaml: pip install PyYAML")
         return want_bytes(_yaml.safe_dump(s))
 
 
@@ -312,11 +312,11 @@ class raw(Codec):
 
 #: Codec registry, mapping of name to :class:`Codec` instance.
 codecs: MutableMapping[str, CodecT] = {
-    'json': json(),
-    'pickle': pickle(),
-    'binary': binary(),
-    'raw': raw(),
-    'yaml': yaml(),
+    "json": json(),
+    "pickle": pickle(),
+    "binary": binary(),
+    "raw": raw(),
+    "yaml": yaml(),
 }
 
 #: Cached extension classes.
@@ -330,22 +330,18 @@ def register(name: str, codec: CodecT) -> None:
     codecs[name] = codec
 
 
-def _maybe_load_extension_classes(
-        namespace: str = 'faust.codecs') -> None:
+def _maybe_load_extension_classes(namespace: str = "faust.codecs") -> None:
     if namespace not in _extensions_finalized:
         _extensions_finalized[namespace] = True
-        codecs.update({
-            name: cls()
-            for name, cls in load_extension_classes(namespace)
-        })
+        codecs.update({name: cls() for name, cls in load_extension_classes(namespace)})
 
 
 def get_codec(name_or_codec: CodecArg) -> CodecT:
     """Get codec by name."""
     _maybe_load_extension_classes()
     if isinstance(name_or_codec, str):
-        if '|' in name_or_codec:
-            nodes = name_or_codec.split('|')
+        if "|" in name_or_codec:
+            nodes = name_or_codec.split("|")
             codec = None
             for node in nodes:
                 if codec:

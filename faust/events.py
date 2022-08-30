@@ -1,6 +1,5 @@
 """Events received in streams."""
 import typing
-
 from types import TracebackType
 from typing import Any, Awaitable, Optional, Type, Union, cast
 
@@ -21,7 +20,10 @@ from faust.types import (
 if typing.TYPE_CHECKING:  # pragma: no cover
     from .app.base import App as _App
 else:
-    class _App: ...  # noqa
+
+    class _App:
+        ...  # noqa
+
 
 USE_EXISTING_KEY = object()
 USE_EXISTING_VALUE = object()
@@ -105,12 +107,14 @@ class Event(EventT):
                         event = current_event()
     """
 
-    def __init__(self,
-                 app: AppT,
-                 key: K,
-                 value: V,
-                 headers: Optional[HeadersArg],
-                 message: Message) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        key: K,
+        value: V,
+        headers: Optional[HeadersArg],
+        message: Message,
+    ) -> None:
         self.app: AppT = app
         self.key: K = key
         self.value: V = value
@@ -125,18 +129,20 @@ class Event(EventT):
 
         self.acked: bool = False
 
-    async def send(self,
-                   channel: Union[str, ChannelT],
-                   key: K = USE_EXISTING_KEY,
-                   value: V = USE_EXISTING_VALUE,
-                   partition: int = None,
-                   timestamp: float = None,
-                   headers: Any = USE_EXISTING_HEADERS,
-                   schema: SchemaT = None,
-                   key_serializer: CodecArg = None,
-                   value_serializer: CodecArg = None,
-                   callback: MessageSentCallback = None,
-                   force: bool = False) -> Awaitable[RecordMetadata]:
+    async def send(
+        self,
+        channel: Union[str, ChannelT],
+        key: K = USE_EXISTING_KEY,
+        value: V = USE_EXISTING_VALUE,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: Any = USE_EXISTING_HEADERS,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Send object to channel."""
         if key is USE_EXISTING_KEY:
             key = self.key
@@ -158,18 +164,20 @@ class Event(EventT):
             force=force,
         )
 
-    async def forward(self,
-                      channel: Union[str, ChannelT],
-                      key: K = USE_EXISTING_KEY,
-                      value: V = USE_EXISTING_VALUE,
-                      partition: int = None,
-                      timestamp: float = None,
-                      headers: Any = USE_EXISTING_HEADERS,
-                      schema: SchemaT = None,
-                      key_serializer: CodecArg = None,
-                      value_serializer: CodecArg = None,
-                      callback: MessageSentCallback = None,
-                      force: bool = False) -> Awaitable[RecordMetadata]:
+    async def forward(
+        self,
+        channel: Union[str, ChannelT],
+        key: K = USE_EXISTING_KEY,
+        value: V = USE_EXISTING_VALUE,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: Any = USE_EXISTING_HEADERS,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Forward original message (will not be reserialized)."""
         if key is USE_EXISTING_KEY:
             key = self.message.key
@@ -193,18 +201,20 @@ class Event(EventT):
             force=force,
         )
 
-    async def _send(self,
-                    channel: Union[str, ChannelT],
-                    key: K = None,
-                    value: V = None,
-                    partition: int = None,
-                    timestamp: float = None,
-                    headers: HeadersArg = None,
-                    schema: SchemaT = None,
-                    key_serializer: CodecArg = None,
-                    value_serializer: CodecArg = None,
-                    callback: MessageSentCallback = None,
-                    force: bool = False) -> Awaitable[RecordMetadata]:
+    async def _send(
+        self,
+        channel: Union[str, ChannelT],
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         return await cast(_App, self.app)._attachments.maybe_put(
             channel,
             key,
@@ -219,18 +229,19 @@ class Event(EventT):
             force=force,
         )
 
-    def _attach(self,
-                channel: Union[ChannelT, str],
-                key: K = None,
-                value: V = None,
-                partition: int = None,
-                timestamp: float = None,
-                headers: HeadersArg = None,
-                schema: SchemaT = None,
-                key_serializer: CodecArg = None,
-                value_serializer: CodecArg = None,
-                callback: MessageSentCallback = None,
-                ) -> Awaitable[RecordMetadata]:
+    def _attach(
+        self,
+        channel: Union[ChannelT, str],
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+    ) -> Awaitable[RecordMetadata]:
         return cast(_App, self.app)._attachments.put(
             self.message,
             channel,
@@ -255,14 +266,16 @@ class Event(EventT):
         return self.message.ack(self.app.consumer)
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: k={self.key!r} v={self.value!r}>'
+        return f"<{type(self).__name__}: k={self.key!r} v={self.value!r}>"
 
     async def __aenter__(self) -> EventT:
         return self
 
-    async def __aexit__(self,
-                        _exc_type: Type[BaseException] = None,
-                        _exc_val: BaseException = None,
-                        _exc_tb: TracebackType = None) -> Optional[bool]:
+    async def __aexit__(
+        self,
+        _exc_type: Type[BaseException] = None,
+        _exc_val: BaseException = None,
+        _exc_tb: TracebackType = None,
+    ) -> Optional[bool]:
         self.ack()
         return None

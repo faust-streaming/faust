@@ -1,23 +1,18 @@
 """Agent replies: waiting for replies, sending them, etc."""
 import asyncio
-
 from collections import defaultdict
-from typing import (
-    Any,
-    AsyncIterator,
-    MutableMapping,
-    MutableSet,
-    NamedTuple,
-    Optional,
-)
+from typing import Any, AsyncIterator, MutableMapping, MutableSet, NamedTuple, Optional
 from weakref import WeakSet
 
 from mode import Service
 
 from faust.types import AppT, ChannelT, TopicT
+
 from .models import ReqRepResponse
 
-__all__ = ['ReplyPromise', 'BarrierState', 'ReplyConsumer']
+__all__ = ["ReplyPromise", "BarrierState", "ReplyConsumer"]
+
+from ..models import maybe_model
 
 
 class ReplyTuple(NamedTuple):
@@ -31,8 +26,7 @@ class ReplyPromise(asyncio.Future):
     reply_to: str
     correlation_id: str
 
-    def __init__(self, reply_to: str, correlation_id: str = '',
-                 **kwargs: Any) -> None:
+    def __init__(self, reply_to: str, correlation_id: str = "", **kwargs: Any) -> None:
         self.reply_to = reply_to
         self._verify_correlation_id(correlation_id)
         self.correlation_id = correlation_id
@@ -44,7 +38,7 @@ class ReplyPromise(asyncio.Future):
 
     def _verify_correlation_id(self, correlation_id: str) -> None:
         if not correlation_id:
-            raise ValueError('ReplyPromise missing correlation_id argument.')
+            raise ValueError("ReplyPromise missing correlation_id argument.")
 
     def fulfill(self, correlation_id: str, value: Any) -> None:
         """Fulfill promise: a reply was received."""
@@ -82,8 +76,7 @@ class BarrierState(ReplyPromise):
 
     def __post_init__(self) -> None:
         self.pending = set()
-        loop: asyncio.AbstractEventLoop = self._loop
-        self._results = asyncio.Queue(maxsize=1000, loop=loop)
+        self._results = asyncio.Queue(maxsize=1000)
 
     def _verify_correlation_id(self, correlation_id: str) -> None:
         pass  # barrier does not require a correlation id.
@@ -184,13 +177,12 @@ class ReplyConsumer(Service):
             await topic.maybe_declare()
             await self.sleep(3.0)
             # then create the future
-            self._fetchers[topic_name] = self.add_future(
-                self._drain_replies(topic))
+            self._fetchers[topic_name] = self.add_future(self._drain_replies(topic))
 
     async def _drain_replies(self, channel: ChannelT) -> None:
         async for reply in channel.stream():
             for promise in self._waiting[reply.correlation_id]:
-                promise.fulfill(reply.correlation_id, reply.value)
+                promise.fulfill(reply.correlation_id, maybe_model(reply.value))
 
     def _reply_topic(self, topic: str) -> TopicT:
         return self.app.topic(

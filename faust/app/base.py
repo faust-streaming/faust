@@ -11,7 +11,6 @@ import re
 import sys
 import typing
 import warnings
-
 from datetime import tzinfo
 from functools import wraps
 from itertools import chain
@@ -41,7 +40,6 @@ from typing import (
 )
 
 import opentracing
-
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping
@@ -50,34 +48,16 @@ from mode.utils.futures import stampede
 from mode.utils.imports import import_from_cwd, smart_import
 from mode.utils.logging import flight_recorder, get_logger
 from mode.utils.objects import cached_property, qualname, shortlabel
-from mode.utils.typing import NoReturn
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
+from mode.utils.typing import NoReturn
 
 from faust import transport
-from faust.agents import (
-    AgentFun,
-    AgentManager,
-    AgentT,
-    ReplyConsumer,
-    SinkT,
-)
+from faust.agents import AgentFun, AgentManager, AgentT, ReplyConsumer, SinkT
 from faust.channels import Channel, ChannelT
 from faust.exceptions import ConsumerNotStarted, ImproperlyConfigured, SameNode
 from faust.fixups import FixupT, fixups
 from faust.sensors import Monitor, SensorDelegate
-from faust.utils import cron, venusian
-from faust.utils.tracing import (
-    call_with_trace,
-    noop_span,
-    operation_name_from_fun,
-    set_current_span,
-    traced_from_parent_span,
-)
-from faust.web import drivers as web_drivers
-from faust.web.cache import backends as cache_backends
-from faust.web.views import View
-
 from faust.types._env import STRICT
 from faust.types.app import AppT, BootStrategyT, TaskArg, TracerT
 from faust.types.assignor import LeaderAssignorT, PartitionAssignorT
@@ -99,12 +79,7 @@ from faust.types.transports import (
     TPorTopicSet,
     TransportT,
 )
-from faust.types.tuples import (
-    Message,
-    MessageSentCallback,
-    RecordMetadata,
-    TP,
-)
+from faust.types.tuples import TP, Message, MessageSentCallback, RecordMetadata
 from faust.types.web import (
     CacheBackendT,
     HttpClientT,
@@ -117,6 +92,17 @@ from faust.types.web import (
     Web,
 )
 from faust.types.windows import WindowT
+from faust.utils import cron, venusian
+from faust.utils.tracing import (
+    call_with_trace,
+    noop_span,
+    operation_name_from_fun,
+    set_current_span,
+    traced_from_parent_span,
+)
+from faust.web import drivers as web_drivers
+from faust.web.cache import backends as cache_backends
+from faust.web.views import View
 
 from ._attached import Attachments
 
@@ -126,36 +112,45 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.transport.consumer import Fetcher as _Fetcher
     from faust.worker import Worker as _Worker
 else:
-    class _AppCommand: ...  # noqa
-    class _LiveCheck: ...   # noqa
-    class _Fetcher: ...     # noqa
-    class _Worker: ...      # noqa
 
-__all__ = ['App', 'BootStrategy']
+    class _AppCommand:
+        ...  # noqa
+
+    class _LiveCheck:
+        ...  # noqa
+
+    class _Fetcher:
+        ...  # noqa
+
+    class _Worker:
+        ...  # noqa
+
+
+__all__ = ["App", "BootStrategy"]
 
 logger = get_logger(__name__)
 
-_T = TypeVar('_T')
+_T = TypeVar("_T")
 
 #: Format string for ``repr(app)``.
-APP_REPR_FINALIZED = '''
+APP_REPR_FINALIZED = """
 <{name}({c.id}): {c.broker} {s.state} agents({agents}) {id:#x}>
-'''.strip()
+""".strip()
 
-APP_REPR_UNFINALIZED = '''
+APP_REPR_UNFINALIZED = """
 <{name}: <non-finalized> {id:#x}>
-'''.strip()
+""".strip()
 
 # Venusian (pypi): This is used for "autodiscovery" of user code,
 # CLI commands, and much more.
 # Named after same concept from Django: the Django Admin autodiscover function
 # that finds custom admin configuration in ``{app}/admin.py`` modules.
 
-SCAN_AGENT = 'faust.agent'
-SCAN_COMMAND = 'faust.command'
-SCAN_PAGE = 'faust.page'
-SCAN_SERVICE = 'faust.service'
-SCAN_TASK = 'faust.task'
+SCAN_AGENT = "faust.agent"
+SCAN_COMMAND = "faust.command"
+SCAN_PAGE = "faust.page"
+SCAN_SERVICE = "faust.service"
+SCAN_TASK = "faust.task"
 
 #: Default decorator categories for :pypi`venusian` to scan for when
 #: autodiscovering things like @app.agent decorators.
@@ -171,11 +166,11 @@ SCAN_CATEGORIES: Iterable[str] = [
 #: for modules that :pypi:`venusian` should ignore when autodiscovering
 #: decorators.
 SCAN_IGNORE: Iterable[Any] = [
-    re.compile('test_.*').search,
-    '.__main__',
+    re.compile("test_.*").search,
+    ".__main__",
 ]
 
-E_NEED_ORIGIN = '''
+E_NEED_ORIGIN = """
 `origin` argument to faust.App is mandatory when autodiscovery enabled.
 
 This parameter sets the canonical path to the project package,
@@ -193,18 +188,18 @@ origin will be "project":
         id='myid',
         origin='project',
     )
-'''
+"""
 
-W_OPTION_DEPRECATED = '''\
+W_OPTION_DEPRECATED = """\
 Argument {old!r} is deprecated and scheduled for removal in Faust 1.0.
 
 Please use {new!r} instead.
-'''
+"""
 
-W_DEPRECATED_SHARD_PARAM = '''\
+W_DEPRECATED_SHARD_PARAM = """\
 The second argument to `@table_route` is deprecated,
 please use the `query_param` keyword argument instead.
-'''
+"""
 
 # @app.task decorator may be called in several ways:
 #
@@ -245,12 +240,16 @@ class BootStrategy(BootStrategyT):
     enable_web: Optional[bool] = None
     enable_sensors: bool = True
 
-    def __init__(self, app: AppT, *,
-                 enable_web: bool = None,
-                 enable_kafka: bool = None,
-                 enable_kafka_producer: bool = None,
-                 enable_kafka_consumer: bool = None,
-                 enable_sensors: bool = None) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        enable_web: Optional[bool] = None,
+        enable_kafka: Optional[bool] = None,
+        enable_kafka_producer: Optional[bool] = None,
+        enable_kafka_consumer: Optional[bool] = None,
+        enable_sensors: Optional[bool] = None,
+    ) -> None:
         self.app = app
 
         if enable_kafka is not None:
@@ -311,9 +310,12 @@ class BootStrategy(BootStrategyT):
 
     def kafka_producer(self) -> Iterable[ServiceT]:
         """Return list of services required to start Kafka producer."""
+        producers = []
         if self._should_enable_kafka_producer():
-            return [self.app.producer]
-        return []
+            producers.append(self.app.producer)
+            if self.app.conf.producer_threaded:
+                producers.append(self.app.producer.threaded_producer)
+        return producers
 
     def _should_enable_kafka_producer(self) -> bool:
         if self.enable_kafka_producer is None:
@@ -391,6 +393,7 @@ class App(AppT, Service):
         :ref:`application-configuration` -- for supported keyword arguments.
 
     """
+
     SCAN_CATEGORIES: ClassVar[List[str]] = list(SCAN_CATEGORIES)
 
     BootStrategy = BootStrategy
@@ -449,14 +452,16 @@ class App(AppT, Service):
     _rebalancing_span: Optional[opentracing.Span] = None
     _rebalancing_sensor_state: Optional[Dict] = None
 
-    def __init__(self,
-                 id: str,
-                 *,
-                 monitor: Monitor = None,
-                 config_source: Any = None,
-                 loop: asyncio.AbstractEventLoop = None,
-                 beacon: NodeT = None,
-                 **options: Any) -> None:
+    def __init__(
+        self,
+        id: str,
+        *,
+        monitor: Monitor = None,
+        config_source: Any = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        beacon: Optional[NodeT] = None,
+        **options: Any,
+    ) -> None:
         # This is passed to the configuration in self.conf
         self._default_options = (id, options)
 
@@ -518,22 +523,21 @@ class App(AppT, Service):
         #
         # Note: Signals are local-only, and cannot do anything to other
         # processes or machines.
-        self.on_before_configured = (
-            self.on_before_configured.with_default_sender(self))
+        self.on_before_configured = self.on_before_configured.with_default_sender(self)
         self.on_configured = self.on_configured.with_default_sender(self)
-        self.on_after_configured = (
-            self.on_after_configured.with_default_sender(self))
-        self.on_partitions_assigned = (
-            self.on_partitions_assigned.with_default_sender(self))
-        self.on_partitions_revoked = (
-            self.on_partitions_revoked.with_default_sender(self))
+        self.on_after_configured = self.on_after_configured.with_default_sender(self)
+        self.on_partitions_assigned = self.on_partitions_assigned.with_default_sender(
+            self
+        )
+        self.on_partitions_revoked = self.on_partitions_revoked.with_default_sender(
+            self
+        )
         self.on_worker_init = self.on_worker_init.with_default_sender(self)
-        self.on_rebalance_complete = (
-            self.on_rebalance_complete.with_default_sender(self))
-        self.on_before_shutdown = (
-            self.on_before_shutdown.with_default_sender(self))
-        self.on_produce_message = (
-            self.on_produce_message.with_default_sender(self))
+        self.on_rebalance_complete = self.on_rebalance_complete.with_default_sender(
+            self
+        )
+        self.on_before_shutdown = self.on_before_shutdown.with_default_sender(self)
+        self.on_produce_message = self.on_produce_message.with_default_sender(self)
 
     def _init_fixups(self) -> MutableSequence[FixupT]:
         # Returns list of "fixups"
@@ -582,7 +586,8 @@ class App(AppT, Service):
 
         if self.conf.debug:
             logger.warning(
-                '!!! DEBUG is enabled -- disable for production environments')
+                "!!! DEBUG is enabled -- disable for production environments"
+            )
 
     async def on_started(self) -> None:
         """Call when app is fully started."""
@@ -618,15 +623,15 @@ class App(AppT, Service):
             ]
 
     async def on_init_extra_service(
-            self, service: Union[ServiceT, Type[ServiceT]]) -> ServiceT:
+        self, service: Union[ServiceT, Type[ServiceT]]
+    ) -> ServiceT:
         """Call when adding user services to this app."""
         s: ServiceT = self._prepare_subservice(service)
         # start the service now, or when the app is started.
         await self.add_runtime_dependency(s)
         return s
 
-    def _prepare_subservice(
-            self, service: Union[ServiceT, Type[ServiceT]]) -> ServiceT:
+    def _prepare_subservice(self, service: Union[ServiceT, Type[ServiceT]]) -> ServiceT:
         if inspect.isclass(service):
             return cast(Type[ServiceT], service)(
                 loop=self.loop,
@@ -635,11 +640,9 @@ class App(AppT, Service):
         else:
             return cast(ServiceT, service)
 
-    def config_from_object(self,
-                           obj: Any,
-                           *,
-                           silent: bool = False,
-                           force: bool = False) -> None:
+    def config_from_object(
+        self, obj: Any, *, silent: bool = False, force: bool = False
+    ) -> None:
         """Read configuration from object.
 
         Object is either an actual object or the name of a module to import.
@@ -675,7 +678,7 @@ class App(AppT, Service):
             self.finalized = True
             id = self.conf.id
             if not id:
-                raise ImproperlyConfigured('App requires an id!')
+                raise ImproperlyConfigured("App requires an id!")
 
     async def _maybe_close_http_client(self) -> None:
         if self._http_client:
@@ -692,10 +695,12 @@ class App(AppT, Service):
         self.web.init_server()
         self.on_worker_init.send()
 
-    def discover(self,
-                 *extra_modules: str,
-                 categories: Iterable[str] = None,
-                 ignore: Iterable[Any] = SCAN_IGNORE) -> None:
+    def discover(
+        self,
+        *extra_modules: str,
+        categories: Iterable[str] = None,
+        ignore: Iterable[Any] = SCAN_IGNORE,
+    ) -> None:
         """Discover decorators in packages."""
         # based on autodiscovery in Django,
         # but finds @app.agent decorators, and so on.
@@ -712,7 +717,8 @@ class App(AppT, Service):
                     module = importlib.import_module(name)
                 except ModuleNotFoundError:
                     raise ModuleNotFoundError(
-                        f'Unknown module {name} in App.conf.autodiscover list')
+                        f"Unknown module {name} in App.conf.autodiscover list"
+                    )
                 scanner.scan(
                     module,
                     ignore=ignore,
@@ -721,8 +727,12 @@ class App(AppT, Service):
                 )
 
     def _on_autodiscovery_error(self, name: str) -> None:
-        logger.warning('Autodiscovery importing module %r raised error: %r',
-                       name, sys.exc_info()[1], exc_info=True)
+        logger.warning(
+            "Autodiscovery importing module %r raised error: %r",
+            name,
+            sys.exc_info()[1],
+            exc_info=True,
+        )
 
     def _discovery_modules(self) -> List[str]:
         modules: List[str] = []
@@ -732,8 +742,7 @@ class App(AppT, Service):
                 if self.conf.origin is None:
                     raise ImproperlyConfigured(E_NEED_ORIGIN)
             elif callable(autodiscover):
-                modules.extend(
-                    cast(Callable[[], Iterator[str]], autodiscover)())
+                modules.extend(cast(Callable[[], Iterator[str]], autodiscover)())
             else:
                 modules.extend(autodiscover)
             if self.conf.origin:
@@ -743,6 +752,7 @@ class App(AppT, Service):
     def main(self) -> NoReturn:
         """Execute the :program:`faust` umbrella command using this app."""
         from faust.cli.faust import cli
+
         self.finalize()
         self.worker_init()
         if self.conf.autodiscover:
@@ -751,26 +761,28 @@ class App(AppT, Service):
         cli(app=self)
         raise SystemExit(3451)  # for mypy: NoReturn
 
-    def topic(self,
-              *topics: str,
-              pattern: Union[str, Pattern] = None,
-              schema: SchemaT = None,
-              key_type: ModelArg = None,
-              value_type: ModelArg = None,
-              key_serializer: CodecArg = None,
-              value_serializer: CodecArg = None,
-              partitions: int = None,
-              retention: Seconds = None,
-              compacting: bool = None,
-              deleting: bool = None,
-              replicas: int = None,
-              acks: bool = True,
-              internal: bool = False,
-              config: Mapping[str, Any] = None,
-              maxsize: int = None,
-              allow_empty: bool = False,
-              has_prefix: bool = False,
-              loop: asyncio.AbstractEventLoop = None) -> TopicT:
+    def topic(
+        self,
+        *topics: str,
+        pattern: Union[str, Pattern] = None,
+        schema: Optional[SchemaT] = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
+        acks: bool = True,
+        internal: bool = False,
+        config: Optional[Mapping[str, Any]] = None,
+        maxsize: Optional[int] = None,
+        allow_empty: bool = False,
+        has_prefix: bool = False,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> TopicT:
         """Create topic description.
 
         Topics are named channels (for example a Kafka topic),
@@ -780,35 +792,40 @@ class App(AppT, Service):
         See Also:
             :class:`faust.topics.Topic`
         """
-        return cast(TopicT, self.conf.Topic(  # type: ignore
-            self,
-            topics=topics,
-            pattern=pattern,
-            schema=schema,
-            key_type=key_type,
-            value_type=value_type,
-            key_serializer=key_serializer,
-            value_serializer=value_serializer,
-            partitions=partitions,
-            retention=retention,
-            compacting=compacting,
-            deleting=deleting,
-            replicas=replicas,
-            acks=acks,
-            internal=internal,
-            config=config,
-            allow_empty=allow_empty,
-            has_prefix=has_prefix,
-            loop=loop,
-        ))
+        return cast(
+            TopicT,
+            self.conf.Topic(  # type: ignore
+                self,
+                topics=topics,
+                pattern=pattern,
+                schema=schema,
+                key_type=key_type,
+                value_type=value_type,
+                key_serializer=key_serializer,
+                value_serializer=value_serializer,
+                partitions=partitions,
+                retention=retention,
+                compacting=compacting,
+                deleting=deleting,
+                replicas=replicas,
+                acks=acks,
+                internal=internal,
+                config=config,
+                allow_empty=allow_empty,
+                has_prefix=has_prefix,
+                loop=loop,
+            ),
+        )
 
-    def channel(self,
-                *,
-                schema: SchemaT = None,
-                key_type: ModelArg = None,
-                value_type: ModelArg = None,
-                maxsize: int = None,
-                loop: asyncio.AbstractEventLoop = None) -> ChannelT:
+    def channel(
+        self,
+        *,
+        schema: Optional[SchemaT] = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        maxsize: Optional[int] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> ChannelT:
         """Create new channel.
 
         By default this will create an in-memory channel
@@ -828,16 +845,18 @@ class App(AppT, Service):
             loop=loop,
         )
 
-    def agent(self,
-              channel: Union[str, ChannelT[_T]] = None,
-              *,
-              name: str = None,
-              concurrency: int = 1,
-              supervisor_strategy: Type[SupervisorStrategyT] = None,
-              sink: Iterable[SinkT] = None,
-              isolated_partitions: bool = False,
-              use_reply_headers: bool = True,
-              **kwargs: Any) -> Callable[[AgentFun[_T]], AgentT[_T]]:
+    def agent(
+        self,
+        channel: Union[str, ChannelT[_T]] = None,
+        *,
+        name: Optional[str] = None,
+        concurrency: int = 1,
+        supervisor_strategy: Type[SupervisorStrategyT] = None,
+        sink: Iterable[SinkT] = None,
+        isolated_partitions: bool = False,
+        use_reply_headers: bool = True,
+        **kwargs: Any,
+    ) -> Callable[[AgentFun[_T]], AgentT[_T]]:
         """Create Agent from async def function.
 
         It can be a regular async function::
@@ -858,20 +877,25 @@ class App(AppT, Service):
                     yield number * 2
 
         """
+
         def _inner(fun: AgentFun[_T]) -> AgentT[_T]:
-            agent = cast(AgentT, self.conf.Agent(  # type: ignore
-                fun,
-                name=name,
-                app=self,
-                channel=channel,
-                concurrency=concurrency,
-                supervisor_strategy=supervisor_strategy,
-                sink=sink,
-                isolated_partitions=isolated_partitions,
-                on_error=self._on_agent_error,
-                use_reply_headers=use_reply_headers,
-                help=fun.__doc__,
-                **kwargs))
+            agent = cast(
+                AgentT,
+                self.conf.Agent(  # type: ignore
+                    fun,
+                    name=name,
+                    app=self,
+                    channel=channel,
+                    concurrency=concurrency,
+                    supervisor_strategy=supervisor_strategy,
+                    sink=sink,
+                    isolated_partitions=isolated_partitions,
+                    on_error=self._on_agent_error,
+                    use_reply_headers=use_reply_headers,
+                    help=fun.__doc__,
+                    **kwargs,
+                ),
+            )
             self.agents[agent.name] = agent
             # This connects the agent to the topic conductor
             # to make the graph more pretty.
@@ -891,14 +915,12 @@ class App(AppT, Service):
             except MemoryError:
                 raise
             except Exception as exc:
-                self.log.exception('Consumer error callback raised: %r', exc)
+                self.log.exception("Consumer error callback raised: %r", exc)
 
     @no_type_check
-    def task(self,
-             fun: TaskArg = None,
-             *,
-             on_leader: bool = False,
-             traced: bool = True) -> TaskDecoratorRet:
+    def task(
+        self, fun: TaskArg = None, *, on_leader: bool = False, traced: bool = True
+    ) -> TaskDecoratorRet:
         """Define an async def function to be started with the app.
 
         This is like :meth:`timer` but a one-shot task only
@@ -919,14 +941,18 @@ class App(AppT, Service):
             >>> async def on_startup():
             ...     print('STARTING UP')
         """
+
         def _inner(fun: TaskArg) -> TaskArg:
             return self._task(fun, on_leader=on_leader, traced=traced)
+
         return _inner(fun) if fun is not None else _inner
 
-    def _task(self, fun: TaskArg,
-              on_leader: bool = False,
-              traced: bool = False,
-              ) -> TaskArg:
+    def _task(
+        self,
+        fun: TaskArg,
+        on_leader: bool = False,
+        traced: bool = False,
+    ) -> TaskArg:
         app = self
 
         @wraps(fun)
@@ -947,11 +973,14 @@ class App(AppT, Service):
         return _wrapped
 
     @no_type_check
-    def timer(self, interval: Seconds,
-              on_leader: bool = False,
-              traced: bool = True,
-              name: str = None,
-              max_drift_correction: float = 0.1) -> Callable:
+    def timer(
+        self,
+        interval: Seconds,
+        on_leader: bool = False,
+        traced: bool = True,
+        name: Optional[str] = None,
+        max_drift_correction: float = 0.1,
+    ) -> Callable:
         """Define an async def function to be run at periodic intervals.
 
         Like :meth:`task`, but executes periodically until the worker
@@ -983,13 +1012,13 @@ class App(AppT, Service):
             @wraps(fun)
             async def around_timer(*args: Any) -> None:
                 async for sleep_time in self.itertimer(
-                        interval_s,
-                        name=timer_name,
-                        max_drift_correction=max_drift_correction):
+                    interval_s,
+                    name=timer_name,
+                    max_drift_correction=max_drift_correction,
+                ):
                     should_run = not on_leader or self.is_leader()
                     if should_run:
-                        with self.trace(shortlabel(fun),
-                                        trace_enabled=traced):
+                        with self.trace(shortlabel(fun), trace_enabled=traced):
                             await fun(*args)
 
             # If you call @app.task without parents the return value is:
@@ -1000,10 +1029,14 @@ class App(AppT, Service):
 
         return _inner
 
-    def crontab(self, cron_format: str, *,
-                timezone: tzinfo = None,
-                on_leader: bool = False,
-                traced: bool = True) -> Callable:
+    def crontab(
+        self,
+        cron_format: str,
+        *,
+        timezone: tzinfo = None,
+        on_leader: bool = False,
+        traced: bool = True,
+    ) -> Callable:
         """Define periodic task using Crontab description.
 
         This is an ``async def`` function to be run at the fixed times,
@@ -1036,6 +1069,7 @@ class App(AppT, Service):
             >>> async def every_6_30_pm():
             ...     print('6:30pm UTC; ALSO, I AM THE LEADER!')
         """
+
         def _inner(fun: TaskArg) -> TaskArg:
             @wraps(fun)
             async def cron_starter(*args: Any) -> None:
@@ -1045,8 +1079,7 @@ class App(AppT, Service):
                     if not self.should_stop:
                         should_run = not on_leader or self.is_leader()
                         if should_run:
-                            with self.trace(shortlabel(fun),
-                                            trace_enabled=traced):
+                            with self.trace(shortlabel(fun), trace_enabled=traced):
                                 await fun(*args)
 
             return cast(TaskArg, self.task(cron_starter, traced=False))
@@ -1073,10 +1106,12 @@ class App(AppT, Service):
         """Return :const:`True` if we are in leader worker process."""
         return self._leader_assignor.is_leader()
 
-    def stream(self,
-               channel: Union[AsyncIterable, Iterable],
-               beacon: NodeT = None,
-               **kwargs: Any) -> StreamT:
+    def stream(
+        self,
+        channel: Union[AsyncIterable, Iterable],
+        beacon: Optional[NodeT] = None,
+        **kwargs: Any,
+    ) -> StreamT:
         """Create new stream from channel/topic/iterable/async iterable.
 
         Arguments:
@@ -1088,20 +1123,26 @@ class App(AppT, Service):
             faust.Stream:
                 to iterate over events in the stream.
         """
-        return cast(StreamT, self.conf.Stream(  # type: ignore
-            app=self,
-            channel=aiter(channel) if channel is not None else None,
-            beacon=beacon or self.beacon,
-            **kwargs))
+        return cast(
+            StreamT,
+            self.conf.Stream(  # type: ignore
+                app=self,
+                channel=aiter(channel) if channel is not None else None,
+                beacon=beacon or self.beacon,
+                **kwargs,
+            ),
+        )
 
-    def Table(self,
-              name: str,
-              *,
-              default: Callable[[], Any] = None,
-              window: WindowT = None,
-              partitions: int = None,
-              help: str = None,
-              **kwargs: Any) -> TableT:
+    def Table(
+        self,
+        name: str,
+        *,
+        default: Callable[[], Any] = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         """Define new table.
 
         Arguments:
@@ -1122,24 +1163,31 @@ class App(AppT, Service):
             2
         """
         table = self.tables.add(
-            cast(TableT, self.conf.Table(  # type: ignore
-                self,
-                name=name,
-                default=default,
-                beacon=self.tables.beacon,
-                partitions=partitions,
-                help=help,
-                **kwargs)))
+            cast(
+                TableT,
+                self.conf.Table(  # type: ignore
+                    self,
+                    name=name,
+                    default=default,
+                    beacon=self.tables.beacon,
+                    partitions=partitions,
+                    help=help,
+                    **kwargs,
+                ),
+            )
+        )
         return cast(TableT, table.using_window(window) if window else table)
 
-    def GlobalTable(self,
-                    name: str,
-                    *,
-                    default: Callable[[], Any] = None,
-                    window: WindowT = None,
-                    partitions: int = None,
-                    help: str = None,
-                    **kwargs: Any) -> GlobalTableT:
+    def GlobalTable(
+        self,
+        name: str,
+        *,
+        default: Callable[[], Any] = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> GlobalTableT:
         """Define new global table.
 
         Arguments:
@@ -1160,65 +1208,87 @@ class App(AppT, Service):
             2
         """
         gtable = self.tables.add(
-            cast(GlobalTableT, self.conf.GlobalTable(  # type: ignore
-                self,
-                name=name,
-                default=default,
-                beacon=self.tables.beacon,
-                partitions=partitions,
-                # we want to apply standby changes
-                # as they come min (using 1 buffer size).
-                standby_buffer_size=1,
-                is_global=True,
-                help=help,
-                **kwargs)))
-        return cast(GlobalTableT,
-                    gtable.using_window(window) if window else gtable)
+            cast(
+                GlobalTableT,
+                self.conf.GlobalTable(  # type: ignore
+                    self,
+                    name=name,
+                    default=default,
+                    beacon=self.tables.beacon,
+                    partitions=partitions,
+                    # we want to apply standby changes
+                    # as they come min (using 1 buffer size).
+                    standby_buffer_size=1,
+                    is_global=True,
+                    help=help,
+                    **kwargs,
+                ),
+            )
+        )
+        return cast(GlobalTableT, gtable.using_window(window) if window else gtable)
 
-    def SetTable(self,
-                 name: str,
-                 *,
-                 window: WindowT = None,
-                 partitions: int = None,
-                 start_manager: bool = False,
-                 help: str = None,
-                 **kwargs: Any) -> TableT:
+    def SetTable(
+        self,
+        name: str,
+        *,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        start_manager: bool = False,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         """Table of sets."""
         table = self.tables.add(
-            cast(TableT, self.conf.SetTable(  # type: ignore
-                self,
-                name=name,
-                beacon=self.tables.beacon,
-                partitions=partitions,
-                start_manager=start_manager,
-                help=help,
-                **kwargs)))
+            cast(
+                TableT,
+                self.conf.SetTable(  # type: ignore
+                    self,
+                    name=name,
+                    beacon=self.tables.beacon,
+                    partitions=partitions,
+                    start_manager=start_manager,
+                    help=help,
+                    **kwargs,
+                ),
+            )
+        )
         return cast(TableT, table.using_window(window) if window else table)
 
-    def SetGlobalTable(self,
-                       name: str,
-                       *,
-                       window: WindowT = None,
-                       partitions: int = None,
-                       start_manager: bool = False,
-                       help: str = None,
-                       **kwargs: Any) -> TableT:
+    def SetGlobalTable(
+        self,
+        name: str,
+        *,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        start_manager: bool = False,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         """Table of sets (global)."""
         table = self.tables.add(
-            cast(TableT, self.conf.SetGlobalTable(  # type: ignore
-                self,
-                name=name,
-                beacon=self.tables.beacon,
-                partitions=partitions,
-                start_manager=start_manager,
-                help=help,
-                **kwargs)))
+            cast(
+                TableT,
+                self.conf.SetGlobalTable(  # type: ignore
+                    self,
+                    name=name,
+                    beacon=self.tables.beacon,
+                    partitions=partitions,
+                    start_manager=start_manager,
+                    help=help,
+                    **kwargs,
+                ),
+            )
+        )
         return cast(TableT, table.using_window(window) if window else table)
 
-    def page(self, path: str, *,
-             base: Type[View] = View,
-             cors_options: Mapping[str, ResourceOptions] = None,
-             name: str = None) -> Callable[[PageArg], Type[View]]:
+    def page(
+        self,
+        path: str,
+        *,
+        base: Type[View] = View,
+        cors_options: Mapping[str, ResourceOptions] = None,
+        name: Optional[str] = None,
+    ) -> Callable[[PageArg], Type[View]]:
         """Decorate view to be included in the web server."""
         view_base: Type[View] = base if base is not None else View
 
@@ -1228,7 +1298,8 @@ class App(AppT, Service):
                 view = cast(Type[View], fun)
                 if not issubclass(view, View):
                     raise TypeError(
-                        'When decorating class, it must be subclass of View')
+                        "When decorating class, it must be subclass of View"
+                    )
             if view is None:
                 view = view_base.from_handler(cast(ViewHandlerFun, fun))
             view.view_name = name or view.__name__
@@ -1239,30 +1310,31 @@ class App(AppT, Service):
 
         return _decorator
 
-    def table_route(self, table: CollectionT,
-                    shard_param: str = None,
-                    *,
-                    query_param: str = None,
-                    match_info: str = None,
-                    exact_key: str = None) -> ViewDecorator:
+    def table_route(
+        self,
+        table: CollectionT,
+        shard_param: Optional[str] = None,
+        *,
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
+    ) -> ViewDecorator:
         """Decorate view method to route request to table key destination."""
+
         def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
             _query_param = query_param
             if shard_param is not None:
                 warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
                 if query_param:
-                    raise TypeError(
-                        'Cannot specify shard_param and query_param')
+                    raise TypeError("Cannot specify shard_param and query_param")
                 _query_param = shard_param
-            if (_query_param is None and
-                    match_info is None and
-                    exact_key is None):
-                raise TypeError(
-                    'Need one of query_param, shard_param, or exact key')
+            if _query_param is None and match_info is None and exact_key is None:
+                raise TypeError("Need one of query_param, shard_param, or exact key")
 
             @wraps(fun)
-            async def get(view: View, request: Request,
-                          *args: Any, **kwargs: Any) -> Response:
+            async def get(
+                view: View, request: Request, *args: Any, **kwargs: Any
+            ) -> Response:
                 if exact_key:
                     key = exact_key
                 elif match_info:
@@ -1270,26 +1342,70 @@ class App(AppT, Service):
                 elif _query_param:
                     key = request.query[_query_param]
                 else:  # pragma: no cover
-                    raise Exception('cannot get here')
+                    raise Exception("cannot get here")
                 try:
-                    return await self.router.route_req(table.name, key,
-                                                       view.web, request)
+                    return await self.router.route_req(
+                        table.name, key, view.web, request
+                    )
                 except SameNode:
-                    return await fun(  # type: ignore
-                        view, request, *args, **kwargs)
+                    return await fun(view, request, *args, **kwargs)  # type: ignore
 
             return get
 
         return _decorator
 
-    def command(self,
-                *options: Any,
-                base: Optional[Type[_AppCommand]] = None,
-                **kwargs: Any) -> Callable[[Callable], Type[_AppCommand]]:
+    def topic_route(
+        self,
+        topic: CollectionT,
+        shard_param: Optional[str] = None,
+        *,
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
+    ) -> ViewDecorator:
+        """Decorate view method to route request to a topic partition destination."""
+
+        def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
+            _query_param = query_param
+            if shard_param is not None:
+                warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
+                if query_param:
+                    raise TypeError("Cannot specify shard_param and query_param")
+                _query_param = shard_param
+            if _query_param is None and match_info is None and exact_key is None:
+                raise TypeError("Need one of query_param, shard_param, or exact key")
+
+            @wraps(fun)
+            async def get(
+                view: View, request: Request, *args: Any, **kwargs: Any
+            ) -> Response:
+                if exact_key:
+                    key = exact_key
+                elif match_info:
+                    key = request.match_info[match_info]
+                elif _query_param:
+                    key = request.query[_query_param]
+                else:  # pragma: no cover
+                    raise Exception("cannot get here")
+                try:
+                    return await self.router.route_topic_req(
+                        topic, key, view.web, request
+                    )
+                except SameNode:
+                    return await fun(view, request, *args, **kwargs)  # type: ignore
+
+            return get
+
+        return _decorator
+
+    def command(
+        self, *options: Any, base: Optional[Type[_AppCommand]] = None, **kwargs: Any
+    ) -> Callable[[Callable], Type[_AppCommand]]:
         """Decorate ``async def`` function to be used as CLI command."""
         _base: Type[_AppCommand]
         if base is None:
             from faust.cli import base as cli_base
+
             _base = cli_base.AppCommand
         else:
             _base = base
@@ -1301,14 +1417,11 @@ class App(AppT, Service):
 
         return _inner
 
-    def create_event(self,
-                     key: K,
-                     value: V,
-                     headers: HeadersArg,
-                     message: Message) -> EventT:
+    def create_event(
+        self, key: K, value: V, headers: HeadersArg, message: Message
+    ) -> EventT:
         """Create new :class:`faust.Event` object."""
-        event = self.conf.Event(  # type: ignore
-            self, key, value, headers, message)
+        event = self.conf.Event(self, key, value, headers, message)  # type: ignore
         return cast(EventT, event)
 
     async def start_client(self) -> None:
@@ -1320,7 +1433,7 @@ class App(AppT, Service):
         self.client_only = True
         await self.maybe_start()
         self.consumer.stop_flow()
-        await self.topics.wait_for_subscriptions()
+        await self.topics.maybe_wait_for_subscriptions()
         await self.topics.on_client_only_start()
         self.consumer.resume_flow()
         self.flow_control.resume()
@@ -1330,38 +1443,37 @@ class App(AppT, Service):
         if not self.started:
             await self.start_client()
 
-    def trace(self,
-              name: str,
-              trace_enabled: bool = True,
-              **extra_context: Any) -> ContextManager:
+    def trace(
+        self, name: str, trace_enabled: bool = True, **extra_context: Any
+    ) -> ContextManager:
         """Return new trace context to trace operation using OpenTracing."""
         if self.tracer is None or not trace_enabled:
             return nullcontext()
         else:
-            return self.tracer.trace(
-                name=name,
-                **extra_context)
+            return self.tracer.trace(name=name, **extra_context)
 
-    def traced(self, fun: Callable,
-               name: str = None,
-               sample_rate: float = 1.0,
-               **context: Any) -> Callable:
+    def traced(
+        self,
+        fun: Callable,
+        name: Optional[str] = None,
+        sample_rate: float = 1.0,
+        **context: Any,
+    ) -> Callable:
         """Decorate function to be traced using the OpenTracing API."""
         assert fun
         operation: str = name or operation_name_from_fun(fun)
 
         @wraps(fun)
         def wrapped(*args: Any, **kwargs: Any) -> Any:
-            span = self.trace(operation,
-                              sample_rate=sample_rate,
-                              **context)
+            span = self.trace(operation, sample_rate=sample_rate, **context)
             return call_with_trace(span, fun, None, *args, **kwargs)
+
         return wrapped
 
     def _start_span_from_rebalancing(self, name: str) -> opentracing.Span:
         rebalancing_span = self._rebalancing_span
         if rebalancing_span is not None and self.tracer is not None:
-            category = f'{self.conf.name}-_faust'
+            category = f"{self.conf.name}-_faust"
             span = self.tracer.get_tracer(category).start_span(
                 operation_name=name,
                 child_of=rebalancing_span,
@@ -1373,17 +1485,18 @@ class App(AppT, Service):
             return noop_span()
 
     async def send(
-            self,
-            channel: Union[ChannelT, str],
-            key: K = None,
-            value: V = None,
-            partition: int = None,
-            timestamp: float = None,
-            headers: HeadersArg = None,
-            schema: SchemaT = None,
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            callback: MessageSentCallback = None) -> Awaitable[RecordMetadata]:
+        self,
+        channel: Union[ChannelT, str],
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+    ) -> Awaitable[RecordMetadata]:
         """Send event to channel/topic.
 
         Arguments:
@@ -1431,13 +1544,14 @@ class App(AppT, Service):
     def in_transaction(self) -> bool:
         """Return :const:`True` if stream is using transactions."""
         return (
-            self.in_worker and
-            self.conf.processing_guarantee == ProcessingGuarantee.EXACTLY_ONCE
+            self.in_worker
+            and self.conf.processing_guarantee == ProcessingGuarantee.EXACTLY_ONCE
         )
 
     def LiveCheck(self, **kwargs: Any) -> _LiveCheck:
         """Return new LiveCheck instance testing features for this app."""
         from faust.livecheck import LiveCheck
+
         return LiveCheck.for_app(self, **kwargs)
 
     @stampede
@@ -1476,7 +1590,7 @@ class App(AppT, Service):
 
     async def _producer_flush(self, logger: Any) -> None:
         if self._producer is not None:
-            logger.info('Flush producer buffer...')
+            logger.info("Flush producer buffer...")
             await self._producer.flush()
 
     async def _stop_consumer(self) -> None:
@@ -1495,11 +1609,11 @@ class App(AppT, Service):
                     self.flow_control.clear()
                     await self._stop_fetcher()
                     await self._consumer_wait_empty(consumer, self.log)
+                    await self.tables.stop()
 
-    async def _consumer_wait_empty(
-            self, consumer: ConsumerT, logger: Any) -> None:
+    async def _consumer_wait_empty(self, consumer: ConsumerT, logger: Any) -> None:
         if self.conf.stream_wait_empty:
-            logger.info('Wait for streams...')
+            logger.info("Wait for streams...")
             await consumer.wait_empty()
 
     def on_rebalance_start(self) -> None:
@@ -1508,23 +1622,24 @@ class App(AppT, Service):
         self.rebalancing_count += 1
         self._rebalancing_sensor_state = self.sensors.on_rebalance_start(self)
         if self.tracer:
-            category = f'{self.conf.name}-_faust'
+            category = f"{self.conf.name}-_faust"
             tracer = self.tracer.get_tracer(category)
             self._rebalancing_span = tracer.start_span(
-                operation_name='rebalance',
-                tags={'rebalancing_count': self.rebalancing_count},
+                operation_name="rebalance",
+                tags={"rebalancing_count": self.rebalancing_count},
             )
         self.tables.on_rebalance_start()
 
     def _span_add_default_tags(self, span: opentracing.Span) -> None:
-        span.set_tag('faust_app', self.conf.name)
-        span.set_tag('faust_id', self.conf.id)
+        span.set_tag("faust_app", self.conf.name)
+        span.set_tag("faust_id", self.conf.id)
 
     def on_rebalance_return(self) -> None:
         sensor_state = self._rebalancing_sensor_state
         if not sensor_state:
-            self.log.warning('Missing sensor state for rebalance #%s',
-                             self.rebalancing_count)
+            self.log.warning(
+                "Missing sensor state for rebalance #%s", self.rebalancing_count
+            )
         else:
             self.sensors.on_rebalance_return(self, sensor_state)
 
@@ -1537,8 +1652,9 @@ class App(AppT, Service):
         sensor_state = self._rebalancing_sensor_state
         try:
             if not sensor_state:
-                self.log.warning('Missing sensor state for rebalance #%s',
-                                 self.rebalancing_count)
+                self.log.warning(
+                    "Missing sensor state for rebalance end #%s", self.rebalancing_count
+                )
             else:
                 self.sensors.on_rebalance_end(self, sensor_state)
         finally:
@@ -1560,22 +1676,23 @@ class App(AppT, Service):
         with flight_recorder(self.log, timeout=session_timeout) as on_timeout:
             consumer = self.consumer
             try:
-                self.log.dev('ON PARTITIONS REVOKED')
+                self.log.dev("ON PARTITIONS REVOKED")
                 T(self.tables.on_partitions_revoked)(revoked)
                 assignment = consumer.assignment()
                 if assignment:
-                    on_timeout.info('flow_control.suspend()')
+                    on_timeout.info("flow_control.suspend()")
                     T(consumer.stop_flow)()
                     T(self.flow_control.suspend)()
-                    on_timeout.info('consumer.pause_partitions')
+                    on_timeout.info("consumer.pause_partitions")
                     T(consumer.pause_partitions)(assignment)
+
                     # Every agent instance has an incoming buffer of messages
                     # (a asyncio.Queue) -- we clear those to make sure
                     # agents will not start processing them.
                     #
                     # This allows for large buffer sizes
                     # (stream_buffer_maxsize).
-                    on_timeout.info('flow_control.clear()')
+                    on_timeout.info("flow_control.clear()")
                     T(self.flow_control.clear)()
 
                     # even if we clear, some of the agent instances may have
@@ -1585,15 +1702,14 @@ class App(AppT, Service):
                     await T(self._consumer_wait_empty)(consumer, on_timeout)
                     await T(self._producer_flush)(on_timeout)
                     if self.in_transaction:
-                        await T(consumer.transactions.on_partitions_revoked)(
-                            revoked)
+                        await T(consumer.transactions.on_partitions_revoked)(revoked)
                 else:
-                    self.log.dev('ON P. REVOKED NOT COMMITTING: NO ASSIGNMENT')
-                on_timeout.info('+send signal: on_partitions_revoked')
+                    self.log.dev("ON P. REVOKED NOT COMMITTING: NO ASSIGNMENT")
+                on_timeout.info("+send signal: on_partitions_revoked")
                 await T(self.on_partitions_revoked.send)(revoked)
-                on_timeout.info('-send signal: on_partitions_revoked')
+                on_timeout.info("-send signal: on_partitions_revoked")
             except Exception as exc:
-                on_timeout.info('on partitions revoked crashed: %r', exc)
+                on_timeout.info("on partitions revoked crashed: %r", exc)
                 await self.crash(exc)
 
     async def _stop_fetcher(self) -> None:
@@ -1605,7 +1721,9 @@ class App(AppT, Service):
     def _on_rebalance_when_stopped(self) -> None:
         self.consumer.close()
 
-    async def _on_partitions_assigned(self, assigned: Set[TP]) -> None:
+    async def _on_partitions_assigned(
+        self, assigned: Set[TP], generation_id: int = 0
+    ) -> None:
         """Handle new topic partition assignment.
 
         This is called during a rebalance after :meth:`on_partitions_revoked`.
@@ -1621,42 +1739,44 @@ class App(AppT, Service):
         # (Kafka does not send error, it just logs)
         session_timeout = self.conf.broker_session_timeout * 0.95
         self.unassigned = not assigned
-
+        logger.info("Executing _on_partitions_assigned")
         revoked, newly_assigned = self._update_assignment(assigned)
         await asyncio.sleep(0)
-
         with flight_recorder(self.log, timeout=session_timeout) as on_timeout:
             consumer = self.consumer
             try:
-                on_timeout.info('agents.on_rebalance()')
-                await T(self.agents.on_rebalance,
-                        revoked=revoked,
-                        newly_assigned=newly_assigned)(revoked, newly_assigned)
+                on_timeout.info("agents.on_rebalance()")
+                await T(
+                    self.agents.on_rebalance,
+                    revoked=revoked,
+                    newly_assigned=newly_assigned,
+                )(revoked, newly_assigned)
                 # Wait for transport.Conductor to finish
                 # calling Consumer.subscribe
-                on_timeout.info('topics.wait_for_subscriptions()')
+                on_timeout.info("topics.wait_for_subscriptions()")
                 await T(self.topics.maybe_wait_for_subscriptions)()
-                on_timeout.info('consumer.pause_partitions()')
+                on_timeout.info("consumer.pause_partitions()")
                 T(consumer.pause_partitions)(assigned)
-                on_timeout.info('topics.on_partitions_assigned()')
+                on_timeout.info("topics.on_partitions_assigned()")
                 await T(self.topics.on_partitions_assigned)(assigned)
-                on_timeout.info('transactions.on_rebalance()')
+                on_timeout.info("transactions.on_rebalance()")
                 if self.in_transaction:
                     await T(consumer.transactions.on_rebalance)(
-                        assigned, revoked, newly_assigned)
-                on_timeout.info('tables.on_rebalance()')
+                        assigned, revoked, newly_assigned
+                    )
+                on_timeout.info("tables.on_rebalance()")
                 await asyncio.sleep(0)
                 await T(self.tables.on_rebalance)(
-                    assigned, revoked, newly_assigned)
-                on_timeout.info('+send signal: on_partitions_assigned')
+                    assigned, revoked, newly_assigned, generation_id
+                )
+                on_timeout.info("+send signal: on_partitions_assigned")
                 await T(self.on_partitions_assigned.send)(assigned)
-                on_timeout.info('-send signal: on_partitions_assigned')
+                on_timeout.info("-send signal: on_partitions_assigned")
             except Exception as exc:
-                on_timeout.info('on partitions assigned crashed: %r', exc)
+                on_timeout.info("on partitions assigned crashed: %r", exc)
                 await self.crash(exc)
 
-    def _update_assignment(
-            self, assigned: Set[TP]) -> Tuple[Set[TP], Set[TP]]:
+    def _update_assignment(self, assigned: Set[TP]) -> Tuple[Set[TP], Set[TP]]:
         revoked: Set[TP]
         newly_assigned: Set[TP]
         if self._assignment is not None:
@@ -1684,28 +1804,30 @@ class App(AppT, Service):
 
     def _new_transport(self) -> TransportT:
         return transport.by_url(self.conf.broker_consumer[0])(
-            self.conf.broker_consumer, self, loop=self.loop)
+            self.conf.broker_consumer, self, loop=self.loop
+        )
 
     def _new_producer_transport(self) -> TransportT:
         return transport.by_url(self.conf.broker_producer[0])(
-            self.conf.broker_producer, self, loop=self.loop)
+            self.conf.broker_producer, self, loop=self.loop
+        )
 
     def _new_cache_backend(self) -> CacheBackendT:
         return cache_backends.by_url(self.conf.cache)(
-            self, self.conf.cache, loop=self.loop)
+            self, self.conf.cache, loop=self.loop
+        )
 
     def FlowControlQueue(
-            self,
-            maxsize: int = None,
-            *,
-            clear_on_resume: bool = False,
-            loop: asyncio.AbstractEventLoop = None) -> ThrowableQueue:
+        self,
+        maxsize: Optional[int] = None,
+        *,
+        clear_on_resume: bool = False,
+    ) -> ThrowableQueue:
         """Like :class:`asyncio.Queue`, but can be suspended/resumed."""
         return ThrowableQueue(
             maxsize=maxsize,
             flow_control=self.flow_control,
             clear_on_resume=clear_on_resume,
-            loop=loop or self.loop,
         )
 
     def Worker(self, **kwargs: Any) -> _Worker:
@@ -1749,18 +1871,19 @@ class App(AppT, Service):
         appid, defaults = self._default_options
         if self._config_source:
             changes = self._load_settings_from_source(
-                self._config_source, silent=silent)
+                self._config_source, silent=silent
+            )
         conf = {**defaults, **changes}
         return self.Settings(appid, **self._prepare_compat_settings(conf))
 
     def _prepare_compat_settings(self, options: MutableMapping) -> Mapping:
         COMPAT_OPTIONS = {
-            'client_id': 'broker_client_id',
-            'commit_interval': 'broker_commit_interval',
-            'create_reply_topic': 'reply_create_topic',
-            'num_standby_replicas': 'table_standby_replicas',
-            'default_partitions': 'topic_partitions',
-            'replication_factor': 'topic_replication_factor',
+            "client_id": "broker_client_id",
+            "commit_interval": "broker_commit_interval",
+            "create_reply_topic": "reply_create_topic",
+            "num_standby_replicas": "table_standby_replicas",
+            "default_partitions": "topic_partitions",
+            "replication_factor": "topic_replication_factor",
         }
         for old, new in COMPAT_OPTIONS.items():
             val = options.get(new)
@@ -1771,14 +1894,16 @@ class App(AppT, Service):
             else:
                 if val is not None:
                     raise ImproperlyConfigured(
-                        f'Cannot use both compat option {old!r} and {new!r}')
+                        f"Cannot use both compat option {old!r} and {new!r}"
+                    )
                 warnings.warn(
-                    FutureWarning(
-                        W_OPTION_DEPRECATED.format(old=old, new=new)))
+                    FutureWarning(W_OPTION_DEPRECATED.format(old=old, new=new))
+                )
         return options
 
-    def _load_settings_from_source(self, source: Any, *,
-                                   silent: bool = False) -> Mapping:
+    def _load_settings_from_source(
+        self, source: Any, *, silent: bool = False
+    ) -> Mapping:
         if isinstance(source, str):
             try:
                 source = smart_import(source, imp=import_from_cwd)
@@ -1793,7 +1918,8 @@ class App(AppT, Service):
         """Application configuration."""
         if not self.finalized and STRICT:
             raise ImproperlyConfigured(
-                'App configuration accessed before app.finalize()')
+                "App configuration accessed before app.finalize()"
+            )
         if self._conf is None:
             self._configure()
         return cast(_Settings, self._conf)
@@ -1885,8 +2011,9 @@ class App(AppT, Service):
         """Monitor keeps stats about what's going on inside the worker."""
         if self._monitor is None:
             self._monitor = cast(
-                Monitor, self.conf.Monitor(  # type: ignore
-                    loop=self.loop, beacon=self.beacon))
+                Monitor,
+                self.conf.Monitor(loop=self.loop, beacon=self.beacon),  # type: ignore
+            )
         return self._monitor
 
     @monitor.setter
@@ -1897,7 +2024,8 @@ class App(AppT, Service):
     def _fetcher(self) -> _Fetcher:
         """Fetcher helps Kafka Consumer retrieve records in topics."""
         return cast(Type[_Fetcher], self.transport.Fetcher)(
-            self, loop=self.loop, beacon=self.consumer.beacon)
+            self, loop=self.loop, beacon=self.consumer.beacon
+        )
 
     @cached_property
     def _reply_consumer(self) -> ReplyConsumer:
@@ -1932,7 +2060,8 @@ class App(AppT, Service):
         Responsible for partition assignment.
         """
         assignor = self.conf.PartitionAssignor(  # type: ignore
-            self, replicas=self.conf.table_standby_replicas)
+            self, replicas=self.conf.table_standby_replicas
+        )
         return cast(PartitionAssignorT, assignor)
 
     @cached_property
@@ -1946,7 +2075,8 @@ class App(AppT, Service):
         traditionally require a lock/mutex.
         """
         assignor = self.conf.LeaderAssignor(  # type: ignore
-            self, loop=self.loop, beacon=self.beacon)
+            self, loop=self.loop, beacon=self.beacon
+        )
         return cast(LeaderAssignorT, assignor)
 
     @cached_property
@@ -1986,7 +2116,7 @@ class App(AppT, Service):
     @property
     def label(self) -> str:
         """Return human readable description of application."""
-        return f'{self.shortlabel}: {self.conf.id}@{self.conf.broker}'
+        return f"{self.shortlabel}: {self.conf.id}@{self.conf.broker}"
 
     @property
     def shortlabel(self) -> str:

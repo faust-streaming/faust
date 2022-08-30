@@ -9,8 +9,7 @@ To see a reference transport implementation go to:
 :file:`faust/transport/drivers/aiokafka.py`
 """
 import asyncio
-
-from typing import Any, ClassVar, List, Type
+from typing import Any, ClassVar, List, Optional, Type
 
 from mode.services import ServiceT
 from yarl import URL
@@ -29,7 +28,7 @@ from .conductor import Conductor
 from .consumer import Consumer, Fetcher, TransactionManager
 from .producer import Producer
 
-__all__ = ['Conductor', 'Consumer', 'Fetcher', 'Producer', 'Transport']
+__all__ = ["Conductor", "Consumer", "Fetcher", "Producer", "Transport"]
 
 
 class Transport(TransportT):
@@ -54,29 +53,27 @@ class Transport(TransportT):
 
     driver_version: str
 
-    def __init__(self,
-                 url: List[URL],
-                 app: AppT,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        url: List[URL],
+        app: AppT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         self.url = url
         self.app = app
         self.loop = loop or asyncio.get_event_loop()
 
-    def create_consumer(self, callback: ConsumerCallback,
-                        **kwargs: Any) -> ConsumerT:
+    def create_consumer(self, callback: ConsumerCallback, **kwargs: Any) -> ConsumerT:
         """Create new consumer."""
-        return self.Consumer(self, callback=callback,
-                             loop=self.loop,
-                             **kwargs)
+        return self.Consumer(self, callback=callback, loop=self.loop, **kwargs)
 
     def create_producer(self, **kwargs: Any) -> ProducerT:
         """Create new producer."""
         return self.Producer(self, **kwargs)
 
-    def create_transaction_manager(self,
-                                   consumer: ConsumerT,
-                                   producer: ProducerT,
-                                   **kwargs: Any) -> TransactionManagerT:
+    def create_transaction_manager(
+        self, consumer: ConsumerT, producer: ProducerT, **kwargs: Any
+    ) -> TransactionManagerT:
         """Create new transaction manager."""
         return self.TransactionManager(
             self,

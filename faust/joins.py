@@ -1,21 +1,23 @@
 """Join strategies."""
 from typing import Any, Optional, Tuple
-from .types import EventT, FieldDescriptorT, JoinT, JoinableT
+
+from .types import EventT, FieldDescriptorT, JoinableT, JoinT
 
 __all__ = [
-    'Join',
-    'RightJoin',
-    'LeftJoin',
-    'InnerJoin',
-    'OuterJoin',
+    "Join",
+    "RightJoin",
+    "LeftJoin",
+    "InnerJoin",
+    "OuterJoin",
 ]
 
 
 class Join(JoinT):
     """Base class for join strategies."""
 
-    def __init__(self, *, stream: JoinableT,
-                 fields: Tuple[FieldDescriptorT, ...]) -> None:
+    def __init__(
+        self, *, stream: JoinableT, fields: Tuple[FieldDescriptorT, ...]
+    ) -> None:
         self.fields = {field.model: field for field in fields}
         self.stream = stream
 
@@ -25,8 +27,7 @@ class Join(JoinT):
 
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, type(self)):
-            return (other.fields == self.fields and
-                    other.stream is self.stream)
+            return other.fields == self.fields and other.stream is self.stream
         return False
 
     def __ne__(self, other: Any) -> bool:

@@ -1,8 +1,8 @@
 import asyncio
 import logging
 import sys
-import typing
 import traceback
+import typing
 from functools import partial
 from typing import Any, Iterable, Optional, Type
 
@@ -12,13 +12,13 @@ from faust.types import AppT
 try:
     import raven
 except ImportError:  # pragma: no cover
-    raven = None        # noqa
+    raven = None  # noqa
 
 try:
     import sentry_sdk
 except ImportError:  # pragma: no cover
-    sentry_sdk = None       # noqa
-    _sdk_aiohttp = None     # noqa
+    sentry_sdk = None  # noqa
+    _sdk_aiohttp = None  # noqa
 else:
     import sentry_sdk.integrations.aiohttp as _sdk_aiohttp  # type: ignore
 
@@ -30,9 +30,12 @@ except ImportError:  # pragma: no cover
 if typing.TYPE_CHECKING:
     from raven.handlers.logging import SentryHandler as _SentryHandler
 else:
-    class _SentryHandler: ...   # noqa: E701
 
-__all__ = ['handler_from_dsn', 'setup']
+    class _SentryHandler:
+        ...  # noqa: E701
+
+
+__all__ = ["handler_from_dsn", "setup"]
 
 DEFAULT_LEVEL: int = logging.WARNING
 
@@ -52,18 +55,16 @@ def _build_sentry_handler() -> Type[_SentryHandler]:
         #    investigated and resolved, we can silence that particular
         #    error in the future.
         def can_record(self, record: logging.LogRecord) -> bool:
-            return (
-                super().can_record(record) and
-                not self._is_expected_cancel(record)
-            )
+            return super().can_record(record) and not self._is_expected_cancel(record)
 
         def _is_expected_cancel(self, record: logging.LogRecord) -> bool:
             # Returns true if this log record is associated with a
             # CancelledError.is_expected exception.
             if record.exc_info and record.exc_info[0] is not None:
                 return bool(
-                    issubclass(record.exc_info[0], asyncio.CancelledError) and
-                    getattr(record.exc_info[1], 'is_expected', True))
+                    issubclass(record.exc_info[0], asyncio.CancelledError)
+                    and getattr(record.exc_info[1], "is_expected", True)
+                )
             return False
 
         def emit(self, record: logging.LogRecord) -> None:
@@ -77,8 +78,9 @@ def _build_sentry_handler() -> Type[_SentryHandler]:
             except Exception:
                 if self.client.raise_send_errors:
                     raise
-                self.carp('Top level Sentry exception caught - failed '
-                          'creating log record')
+                self.carp(
+                    "Top level Sentry exception caught - failed " "creating log record"
+                )
                 self.carp(record.msg)
                 self.carp(traceback.format_exc())
 
@@ -88,18 +90,20 @@ def _build_sentry_handler() -> Type[_SentryHandler]:
     return FaustSentryHandler
 
 
-def handler_from_dsn(dsn: str = None,
-                     workers: int = 5,
-                     include_paths: Iterable[str] = None,
-                     loglevel: int = None,
-                     qsize: int = 1000,
-                     **kwargs: Any) -> Optional[logging.Handler]:
+def handler_from_dsn(
+    dsn: Optional[str] = None,
+    workers: int = 5,
+    include_paths: Iterable[str] = None,
+    loglevel: Optional[int] = None,
+    qsize: int = 1000,
+    **kwargs: Any
+) -> Optional[logging.Handler]:
     if raven is None:
-        raise ImproperlyConfigured(
-            'faust.contrib.sentry requires the `raven` library.')
+        raise ImproperlyConfigured("faust.contrib.sentry requires the `raven` library.")
     if raven_aiohttp is None:
         raise ImproperlyConfigured(
-            'faust.contrib.sentry requires the `raven_aiohttp` library.')
+            "faust.contrib.sentry requires the `raven_aiohttp` library."
+        )
     level: int = loglevel if loglevel is not None else DEFAULT_LEVEL
     if dsn:
         client = raven.Client(
@@ -111,28 +115,31 @@ def handler_from_dsn(dsn: str = None,
                 qsize=qsize,
             ),
             disable_existing_loggers=False,
-            **kwargs)
+            **kwargs
+        )
         handler = _build_sentry_handler()(client)
         handler.setLevel(level)
         return handler
     return None
 
 
-def setup(app: AppT, *,
-          dsn: str = None,
-          workers: int = 4,
-          max_queue_size: int = 1000,
-          loglevel: int = None) -> None:
+def setup(
+    app: AppT,
+    *,
+    dsn: Optional[str] = None,
+    workers: int = 4,
+    max_queue_size: int = 1000,
+    loglevel: Optional[int] = None,
+    **kwargs
+) -> None:
     sentry_handler = handler_from_dsn(
-        dsn=dsn,
-        workers=workers,
-        qsize=max_queue_size,
-        loglevel=loglevel,
+        dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs
     )
     if sentry_handler is not None:
         if sentry_sdk is None or _sdk_aiohttp is None:
             raise ImproperlyConfigured(
-                'faust.contrib.sentry requires the `sentry_sdk` library.')
+                "faust.contrib.sentry requires the `sentry_sdk` library."
+            )
         sentry_sdk.init(
             dsn=dsn,
             integrations=[_sdk_aiohttp.AioHttpIntegration()],

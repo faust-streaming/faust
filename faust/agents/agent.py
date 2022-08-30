@@ -1,7 +1,6 @@
 """Agent implementation."""
 import asyncio
 import typing
-
 from contextlib import suppress
 from contextvars import ContextVar
 from time import time
@@ -27,12 +26,7 @@ from typing import (
 from uuid import uuid4
 from weakref import WeakSet, WeakValueDictionary
 
-from mode import (
-    CrashingSupervisor,
-    Service,
-    ServiceT,
-    SupervisorStrategyT,
-)
+from mode import CrashingSupervisor, Service, ServiceT, SupervisorStrategyT
 from mode.utils.aiter import aenumerate, aiter
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.futures import maybe_async
@@ -41,9 +35,8 @@ from mode.utils.text import shorten_fqdn
 from mode.utils.types.trees import NodeT
 
 from faust.exceptions import ImproperlyConfigured
-from faust.utils.tracing import traced_from_parent_span
-
 from faust.types import (
+    TP,
     AppT,
     ChannelT,
     CodecArg,
@@ -56,7 +49,6 @@ from faust.types import (
     ModelT,
     RecordMetadata,
     StreamT,
-    TP,
     TopicT,
     V,
 )
@@ -72,6 +64,7 @@ from faust.types.agents import (
 )
 from faust.types.core import merge_headers, prepare_headers
 from faust.types.serializers import SchemaT
+from faust.utils.tracing import traced_from_parent_span
 
 from .actor import AsyncIterableActor, AwaitableActor
 from .models import (
@@ -85,9 +78,12 @@ from .replies import BarrierState, ReplyPromise
 if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.app.base import App as _App
 else:
-    class _App: ...   # noqa
 
-__all__ = ['Agent']
+    class _App:
+        ...  # noqa
+
+
+__all__ = ["Agent"]
 
 # --- What is an agent?
 #
@@ -147,7 +143,7 @@ __all__ = ['Agent']
 
 
 _current_agent: ContextVar[Optional[AgentT]]
-_current_agent = ContextVar('current_agent')
+_current_agent = ContextVar("current_agent")
 
 
 def current_agent() -> Optional[AgentT]:
@@ -182,23 +178,25 @@ class Agent(AgentT, Service):
 
     _first_assignment_done: bool = False
 
-    def __init__(self,
-                 fun: AgentFun,
-                 *,
-                 app: AppT,
-                 name: str = None,
-                 channel: Union[str, ChannelT] = None,
-                 concurrency: int = 1,
-                 sink: Iterable[SinkT] = None,
-                 on_error: AgentErrorHandler = None,
-                 supervisor_strategy: Type[SupervisorStrategyT] = None,
-                 help: str = None,
-                 schema: SchemaT = None,
-                 key_type: ModelArg = None,
-                 value_type: ModelArg = None,
-                 isolated_partitions: bool = False,
-                 use_reply_headers: bool = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        fun: AgentFun,
+        *,
+        app: AppT,
+        name: Optional[str] = None,
+        channel: Union[str, ChannelT] = None,
+        concurrency: int = 1,
+        sink: Iterable[SinkT] = None,
+        on_error: AgentErrorHandler = None,
+        supervisor_strategy: Type[SupervisorStrategyT] = None,
+        help: Optional[str] = None,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        isolated_partitions: bool = False,
+        use_reply_headers: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> None:
         self.app = app
         self.fun: AgentFun = fun
         self.name = name or canonshortname(self.fun)
@@ -217,7 +215,7 @@ class Agent(AgentT, Service):
         self._channel_kwargs = kwargs
         self.concurrency = concurrency or 1
         self.isolated_partitions = isolated_partitions
-        self.help = help or ''
+        self.help = help or ""
         self._sinks = list(sink) if sink is not None else []
         self._on_error: Optional[AgentErrorHandler] = on_error
         self.supervisor_strategy = supervisor_strategy
@@ -225,7 +223,8 @@ class Agent(AgentT, Service):
         self._actor_by_partition = WeakValueDictionary()
         if self.isolated_partitions and self.concurrency > 1:
             raise ImproperlyConfigured(
-                'Agent concurrency must be 1 when using isolated partitions')
+                "Agent concurrency must be 1 when using isolated partitions"
+            )
         self.use_reply_headers = use_reply_headers
         Service.__init__(self)
 
@@ -238,12 +237,14 @@ class Agent(AgentT, Service):
     def actor_tracebacks(self) -> List[str]:
         return [actor.traceback() for actor in self._actors]
 
-    async def _start_one(self,
-                         *,
-                         index: Optional[int] = None,
-                         active_partitions: Optional[Set[TP]] = None,
-                         stream: StreamT = None,
-                         channel: ChannelT = None) -> ActorT:
+    async def _start_one(
+        self,
+        *,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
+    ) -> ActorT:
         # an index of None means there's only one instance,
         # and `index is None` is used as a test by functions that
         # disallows concurrency.
@@ -257,10 +258,11 @@ class Agent(AgentT, Service):
         )
 
     async def _start_one_supervised(
-            self,
-            index: Optional[int] = None,
-            active_partitions: Optional[Set[TP]] = None,
-            stream: StreamT = None) -> ActorT:
+        self,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+    ) -> ActorT:
         aref = await self._start_one(
             index=index,
             active_partitions=active_partitions,
@@ -270,10 +272,9 @@ class Agent(AgentT, Service):
         await aref.maybe_start()
         return aref
 
-    async def _start_for_partitions(self,
-                                    active_partitions: Set[TP]) -> ActorT:
+    async def _start_for_partitions(self, active_partitions: Set[TP]) -> ActorT:
         assert active_partitions
-        self.log.info('Starting actor for partitions %s', active_partitions)
+        self.log.info("Starting actor for partitions %s", active_partitions)
         return await self._start_one_supervised(None, active_partitions)
 
     async def on_start(self) -> None:
@@ -302,8 +303,7 @@ class Agent(AgentT, Service):
     def _get_supervisor_strategy(self) -> Type[SupervisorStrategyT]:
         SupervisorStrategy = self.supervisor_strategy
         if SupervisorStrategy is None:
-            return cast(Type[SupervisorStrategyT],
-                        self.app.conf.agent_supervisor)
+            return cast(Type[SupervisorStrategyT], self.app.conf.agent_supervisor)
         else:
             return SupervisorStrategy
 
@@ -343,10 +343,13 @@ class Agent(AgentT, Service):
         # to be raised).
         await self._stop_supervisor()
         with suppress(asyncio.CancelledError):
-            await asyncio.gather(*[
-                aref.actor_task for aref in self._actors
-                if aref.actor_task is not None
-            ])
+            await asyncio.gather(
+                *[
+                    aref.actor_task
+                    for aref in self._actors
+                    if aref.actor_task is not None
+                ]
+            )
         self._actors.clear()
 
     async def _stop_supervisor(self) -> None:
@@ -378,7 +381,7 @@ class Agent(AgentT, Service):
 
     async def on_isolated_partitions_revoked(self, revoked: Set[TP]) -> None:
         """Call when isolated partitions are revoked."""
-        self.log.dev('Partitions revoked')
+        self.log.dev("Partitions revoked")
         T = traced_from_parent_span()
         for tp in revoked:
             aref: Optional[ActorRefT] = self._actor_by_partition.pop(tp, None)
@@ -393,8 +396,7 @@ class Agent(AgentT, Service):
 
     async def _assign_isolated_partition(self, tp: TP) -> None:
         T = traced_from_parent_span()
-        if (not self._first_assignment_done and
-                not self._actor_by_partition):
+        if not self._first_assignment_done and not self._actor_by_partition:
             self._first_assignment_done = True
             # if this is the first time we are assigned
             # we need to reassign the agent we started at boot to
@@ -432,16 +434,16 @@ class Agent(AgentT, Service):
     def info(self) -> Mapping:
         """Return agent attributes as a dictionary."""
         return {
-            'app': self.app,
-            'fun': self.fun,
-            'name': self.name,
-            'channel': self.channel,
-            'concurrency': self.concurrency,
-            'help': self.help,
-            'sink': self._sinks,
-            'on_error': self._on_error,
-            'supervisor_strategy': self.supervisor_strategy,
-            'isolated_partitions': self.isolated_partitions,
+            "app": self.app,
+            "fun": self.fun,
+            "name": self.name,
+            "channel": self.channel,
+            "concurrency": self.concurrency,
+            "help": self.help,
+            "sink": self._sinks,
+            "on_error": self._on_error,
+            "supervisor_strategy": self.supervisor_strategy,
+            "isolated_partitions": self.isolated_partitions,
         }
 
     def clone(self, *, cls: Type[AgentT] = None, **kwargs: Any) -> AgentT:
@@ -452,11 +454,13 @@ class Agent(AgentT, Service):
         """
         return (cls or type(self))(**{**self.info(), **kwargs})
 
-    def test_context(self,
-                     channel: ChannelT = None,
-                     supervisor_strategy: SupervisorStrategyT = None,
-                     on_error: AgentErrorHandler = None,
-                     **kwargs: Any) -> AgentTestWrapperT:  # pragma: no cover
+    def test_context(
+        self,
+        channel: Optional[ChannelT] = None,
+        supervisor_strategy: SupervisorStrategyT = None,
+        on_error: AgentErrorHandler = None,
+        **kwargs: Any,
+    ) -> AgentTestWrapperT:  # pragma: no cover
         """Create new unit-testing wrapper for this agent."""
         # flow control into channel queues are disabled at startup,
         # so need to resume that.
@@ -467,25 +471,31 @@ class Agent(AgentT, Service):
                 await on_error(agent, exc)
             await cast(AgentTestWrapper, agent).crash_test_agent(exc)
 
-        return cast(AgentTestWrapperT, self.clone(
-            cls=AgentTestWrapper,
-            channel=channel if channel is not None else self.app.channel(),
-            supervisor_strategy=supervisor_strategy or CrashingSupervisor,
-            original_channel=self.channel,
-            on_error=on_agent_error,
-            **kwargs))
+        return cast(
+            AgentTestWrapperT,
+            self.clone(
+                cls=AgentTestWrapper,
+                channel=channel if channel is not None else self.app.channel(),
+                supervisor_strategy=supervisor_strategy or CrashingSupervisor,
+                original_channel=self.channel,
+                on_error=on_agent_error,
+                **kwargs,
+            ),
+        )
 
-    def _prepare_channel(self,
-                         channel: Union[str, ChannelT] = None,
-                         internal: bool = True,
-                         schema: SchemaT = None,
-                         key_type: ModelArg = None,
-                         value_type: ModelArg = None,
-                         **kwargs: Any) -> ChannelT:
+    def _prepare_channel(
+        self,
+        channel: Union[str, ChannelT] = None,
+        internal: bool = True,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        **kwargs: Any,
+    ) -> ChannelT:
         app = self.app
         has_prefix = False
         if channel is None:
-            channel = f'{app.conf.id}-{self.name}'
+            channel = f"{app.conf.id}-{self.name}"
             has_prefix = True
         if isinstance(channel, ChannelT):
             return channel
@@ -497,15 +507,18 @@ class Agent(AgentT, Service):
                 key_type=key_type,
                 value_type=value_type,
                 has_prefix=has_prefix,
-                **kwargs)
-        raise TypeError(
-            f'Channel must be channel, topic, or str; not {type(channel)}')
+                **kwargs,
+            )
+        raise TypeError(f"Channel must be channel, topic, or str; not {type(channel)}")
 
-    def __call__(self, *,
-                 index: int = None,
-                 active_partitions: Set[TP] = None,
-                 stream: StreamT = None,
-                 channel: ChannelT = None) -> ActorRefT:
+    def __call__(
+        self,
+        *,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
+    ) -> ActorRefT:
         """Create new actor instance for this agent."""
         # The agent function can be reused by other agents/tasks.
         # For example:
@@ -524,17 +537,18 @@ class Agent(AgentT, Service):
         # Calling `res = filter_log_errors(it)` will end you up with
         # an AsyncIterable that you can reuse (but only if the agent
         # function is an `async def` function that yields)
-        return self.actor_from_stream(stream,
-                                      index=index,
-                                      active_partitions=active_partitions,
-                                      channel=channel)
+        return self.actor_from_stream(
+            stream, index=index, active_partitions=active_partitions, channel=channel
+        )
 
-    def actor_from_stream(self,
-                          stream: Optional[StreamT],
-                          *,
-                          index: int = None,
-                          active_partitions: Set[TP] = None,
-                          channel: ChannelT = None) -> ActorRefT:
+    def actor_from_stream(
+        self,
+        stream: Optional[StreamT],
+        *,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        channel: Optional[ChannelT] = None,
+    ) -> ActorRefT:
         """Create new actor from stream."""
         we_created_stream = False
         actual_stream: StreamT
@@ -555,35 +569,43 @@ class Agent(AgentT, Service):
         if isinstance(res, AsyncIterable):
             if we_created_stream:
                 actual_stream.add_processor(self._maybe_unwrap_reply_request)
-            return cast(ActorRefT, AsyncIterableActor(
-                self,
-                actual_stream,
-                res,
-                index=actual_stream.concurrency_index,
-                active_partitions=actual_stream.active_partitions,
-                loop=self.loop,
-                beacon=self.beacon,
-            ))
+            return cast(
+                ActorRefT,
+                AsyncIterableActor(
+                    self,
+                    actual_stream,
+                    res,
+                    index=actual_stream.concurrency_index,
+                    active_partitions=actual_stream.active_partitions,
+                    loop=self.loop,
+                    beacon=self.beacon,
+                ),
+            )
         else:
-            return cast(ActorRefT, AwaitableActor(
-                self,
-                actual_stream,
-                res,
-                index=actual_stream.concurrency_index,
-                active_partitions=actual_stream.active_partitions,
-                loop=self.loop,
-                beacon=self.beacon,
-            ))
+            return cast(
+                ActorRefT,
+                AwaitableActor(
+                    self,
+                    actual_stream,
+                    res,
+                    index=actual_stream.concurrency_index,
+                    active_partitions=actual_stream.active_partitions,
+                    loop=self.loop,
+                    beacon=self.beacon,
+                ),
+            )
 
     def add_sink(self, sink: SinkT) -> None:
         """Add new sink to further handle results from this agent."""
         if sink not in self._sinks:
             self._sinks.append(sink)
 
-    def stream(self,
-               channel: ChannelT = None,
-               active_partitions: Set[TP] = None,
-               **kwargs: Any) -> StreamT:
+    def stream(
+        self,
+        channel: Optional[ChannelT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        **kwargs: Any,
+    ) -> StreamT:
         """Create underlying stream used by this agent."""
         if channel is None:
             channel = cast(TopicT, self.channel_iterator).clone(
@@ -598,7 +620,8 @@ class Agent(AgentT, Service):
             active_partitions=active_partitions,
             prefix=self.name,
             beacon=self.beacon,
-            **kwargs)
+            **kwargs,
+        )
         return s
 
     def _maybe_unwrap_reply_request(self, value: V) -> Any:
@@ -606,13 +629,15 @@ class Agent(AgentT, Service):
             return value.value
         return value
 
-    async def _start_task(self,
-                          *,
-                          index: Optional[int],
-                          active_partitions: Optional[Set[TP]] = None,
-                          stream: StreamT = None,
-                          channel: ChannelT = None,
-                          beacon: NodeT = None) -> ActorRefT:
+    async def _start_task(
+        self,
+        *,
+        index: Optional[int],
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
+        beacon: Optional[NodeT] = None,
+    ) -> ActorRefT:
         # If the agent is an async function we simply start it,
         # if it returns an AsyncIterable/AsyncGenerator we start a task
         # that will consume it.
@@ -623,16 +648,16 @@ class Agent(AgentT, Service):
             channel=channel,
         )
         return await self._prepare_actor(
-            actor, beacon if beacon is not None else self.beacon)
+            actor, beacon if beacon is not None else self.beacon
+        )
 
-    async def _prepare_actor(self, aref: ActorRefT,
-                             beacon: NodeT) -> ActorRefT:
+    async def _prepare_actor(self, aref: ActorRefT, beacon: NodeT) -> ActorRefT:
         coro: Any
         if isinstance(aref, Awaitable):
             # agent does not yield
             coro = aref
             if self._sinks:
-                raise ImproperlyConfigured('Agent must yield to use sinks')
+                raise ImproperlyConfigured("Agent must yield to use sinks")
         else:
             # agent yields and is an AsyncIterator so we have to consume it.
             coro = self._slurp(aref, aiter(aref))
@@ -647,9 +672,14 @@ class Agent(AgentT, Service):
         _current_agent.set(self)
         try:
             await coro
-        except asyncio.CancelledError:
+        except asyncio.CancelledError as exc:
             if self.should_stop:
                 raise
+            else:
+                self.log.info("Restarting on rebalance")
+                await aref.crash(exc)
+                self.supervisor.wakeup()
+
         except Exception as exc:
             if self._on_error is not None:
                 await self._on_error(self, exc)
@@ -664,7 +694,7 @@ class Agent(AgentT, Service):
         # and simply consumes that async iterator.
         stream: Optional[StreamT] = None
         async for value in it:
-            self.log.debug('%r yielded: %r', self.fun, value)
+            self.log.debug("%r yielded: %r", self.fun, value)
             if stream is None:
                 stream = res.stream.get_active_stream()
             event = stream.current_event
@@ -677,16 +707,16 @@ class Agent(AgentT, Service):
                     reply_to = req.reply_to
                     correlation_id = req.correlation_id
                 elif headers:
-                    reply_to_bytes = headers.get('Faust-Ag-ReplyTo')
+                    reply_to_bytes = headers.get("Faust-Ag-ReplyTo")
                     if reply_to_bytes:
                         reply_to = want_str(reply_to_bytes)
-                        correlation_id_bytes = headers.get(
-                            'Faust-Ag-CorrelationId')
+                        correlation_id_bytes = headers.get("Faust-Ag-CorrelationId")
                         if correlation_id_bytes:
                             correlation_id = want_str(correlation_id_bytes)
                 if reply_to is not None:
                     await self._reply(
-                        event.key, value, reply_to, cast(str, correlation_id))
+                        event.key, value, reply_to, cast(str, correlation_id)
+                    )
             await self._delegate_to_sinks(value)
 
     async def _delegate_to_sinks(self, value: Any) -> None:
@@ -698,8 +728,9 @@ class Agent(AgentT, Service):
             else:
                 await maybe_async(cast(Callable, sink)(value))
 
-    async def _reply(self, key: Any, value: Any,
-                     reply_to: str, correlation_id: str) -> None:
+    async def _reply(
+        self, key: Any, value: Any, reply_to: str, correlation_id: str
+    ) -> None:
         assert reply_to
         response = self._response_class(value)(
             key=key,
@@ -717,13 +748,15 @@ class Agent(AgentT, Service):
             return ModelReqRepResponse
         return ReqRepResponse
 
-    async def cast(self,
-                   value: V = None,
-                   *,
-                   key: K = None,
-                   partition: int = None,
-                   timestamp: float = None,
-                   headers: HeadersArg = None) -> None:
+    async def cast(
+        self,
+        value: V = None,
+        *,
+        key: K = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+    ) -> None:
         """RPC operation: like :meth:`ask` but do not expect reply.
 
         Cast here is like "casting a spell", and will not expect
@@ -737,15 +770,17 @@ class Agent(AgentT, Service):
             headers=headers,
         )
 
-    async def ask(self,
-                  value: V = None,
-                  *,
-                  key: K = None,
-                  partition: int = None,
-                  timestamp: float = None,
-                  headers: HeadersArg = None,
-                  reply_to: ReplyToArg = None,
-                  correlation_id: str = None) -> Any:
+    async def ask(
+        self,
+        value: V = None,
+        *,
+        key: K = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        reply_to: ReplyToArg = None,
+        correlation_id: Optional[str] = None,
+    ) -> Any:
         """RPC operation: ask agent for result of processing value.
 
         This version will wait until the result is available
@@ -766,27 +801,28 @@ class Agent(AgentT, Service):
         await app.maybe_start_client()
         return await p
 
-    async def ask_nowait(self,
-                         value: V = None,
-                         *,
-                         key: K = None,
-                         partition: int = None,
-                         timestamp: float = None,
-                         headers: HeadersArg = None,
-                         reply_to: ReplyToArg = None,
-                         correlation_id: str = None,
-                         force: bool = False) -> ReplyPromise:
+    async def ask_nowait(
+        self,
+        value: V = None,
+        *,
+        key: K = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        reply_to: ReplyToArg = None,
+        correlation_id: Optional[str] = None,
+        force: bool = False,
+    ) -> ReplyPromise:
         """RPC operation: ask agent for result of processing value.
 
         This version does not wait for the result to arrive,
         but instead returns a promise of future evaluation.
         """
         if reply_to is None:
-            raise TypeError('Missing reply_to argument')
+            raise TypeError("Missing reply_to argument")
         reply_to = self._get_strtopic(reply_to)
         correlation_id = correlation_id or str(uuid4())
-        value, headers = self._create_req(
-            key, value, reply_to, correlation_id, headers)
+        value, headers = self._create_req(key, value, reply_to, correlation_id, headers)
         await self.channel.send(
             key=key,
             value=value,
@@ -798,22 +834,26 @@ class Agent(AgentT, Service):
         return ReplyPromise(reply_to, correlation_id)
 
     def _create_req(
-            self,
-            key: K = None,
-            value: V = None,
-            reply_to: ReplyToArg = None,
-            correlation_id: str = None,
-            headers: HeadersArg = None) -> Tuple[V, Optional[HeadersArg]]:
+        self,
+        key: K = None,
+        value: V = None,
+        reply_to: ReplyToArg = None,
+        correlation_id: Optional[str] = None,
+        headers: HeadersArg = None,
+    ) -> Tuple[V, Optional[HeadersArg]]:
         if reply_to is None:
-            raise TypeError('Missing reply_to argument')
+            raise TypeError("Missing reply_to argument")
         topic_name = self._get_strtopic(reply_to)
         correlation_id = correlation_id or str(uuid4())
         open_headers = prepare_headers(headers or {})
         if self.use_reply_headers:
-            merge_headers(open_headers, {
-                'Faust-Ag-ReplyTo': want_bytes(topic_name),
-                'Faust-Ag-CorrelationId': want_bytes(correlation_id),
-            })
+            merge_headers(
+                open_headers,
+                {
+                    "Faust-Ag-ReplyTo": want_bytes(topic_name),
+                    "Faust-Ag-CorrelationId": want_bytes(correlation_id),
+                },
+            )
             return value, open_headers
         else:
             # wrap value in envelope
@@ -829,23 +869,26 @@ class Agent(AgentT, Service):
             return ModelReqRepRequest
         return ReqRepRequest
 
-    async def send(self,
-                   *,
-                   key: K = None,
-                   value: V = None,
-                   partition: int = None,
-                   timestamp: float = None,
-                   headers: HeadersArg = None,
-                   key_serializer: CodecArg = None,
-                   value_serializer: CodecArg = None,
-                   callback: MessageSentCallback = None,
-                   reply_to: ReplyToArg = None,
-                   correlation_id: str = None,
-                   force: bool = False) -> Awaitable[RecordMetadata]:
+    async def send(
+        self,
+        *,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        reply_to: ReplyToArg = None,
+        correlation_id: Optional[str] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Send message to topic used by agent."""
         if reply_to:
             value, headers = self._create_req(
-                key, value, reply_to, correlation_id, headers)
+                key, value, reply_to, correlation_id, headers
+            )
         return await self.channel.send(
             key=key,
             value=value,
@@ -857,21 +900,21 @@ class Agent(AgentT, Service):
             force=force,
         )
 
-    def _get_strtopic(self,
-                      topic: Union[str, ChannelT, TopicT, AgentT]) -> str:
+    def _get_strtopic(self, topic: Union[str, ChannelT, TopicT, AgentT]) -> str:
         if isinstance(topic, AgentT):
             return self._get_strtopic(topic.channel)
         if isinstance(topic, TopicT):
             return topic.get_topic_name()
         if isinstance(topic, ChannelT):
-            raise ValueError('Channels are unnamed topics')
+            raise ValueError("Channels are unnamed topics")
         return topic
 
-    async def map(self,
-                  values: Union[AsyncIterable, Iterable],
-                  key: K = None,
-                  reply_to: ReplyToArg = None,
-                  ) -> AsyncIterator:  # pragma: no cover
+    async def map(
+        self,
+        values: Union[AsyncIterable, Iterable],
+        key: K = None,
+        reply_to: ReplyToArg = None,
+    ) -> AsyncIterator:  # pragma: no cover
         """RPC map operation on a list of values.
 
         A map operation iterates over results as they arrive.
@@ -879,13 +922,14 @@ class Agent(AgentT, Service):
         """
         # Map takes only values, but can provide one key that is used for all.
         async for value in self.kvmap(
-                ((key, v) async for v in aiter(values)), reply_to):
+            ((key, v) async for v in aiter(values)), reply_to
+        ):
             yield value
 
     async def kvmap(
-            self,
-            items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-            reply_to: ReplyToArg = None,
+        self,
+        items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
+        reply_to: ReplyToArg = None,
     ) -> AsyncIterator[str]:  # pragma: no cover
         """RPC map operation on a list of ``(key, value)`` pairs.
 
@@ -915,11 +959,12 @@ class Agent(AgentT, Service):
         async for _, value in barrier.iterate():
             yield value
 
-    async def join(self,
-                   values: Union[AsyncIterable[V], Iterable[V]],
-                   key: K = None,
-                   reply_to: ReplyToArg = None,
-                   ) -> List[Any]:  # pragma: no cover
+    async def join(
+        self,
+        values: Union[AsyncIterable[V], Iterable[V]],
+        key: K = None,
+        reply_to: ReplyToArg = None,
+    ) -> List[Any]:  # pragma: no cover
         """RPC map operation on a list of values.
 
         A join returns the results in order, and only returns once
@@ -931,9 +976,10 @@ class Agent(AgentT, Service):
         )
 
     async def kvjoin(
-            self,
-            items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-            reply_to: ReplyToArg = None) -> List[Any]:  # pragma: no cover
+        self,
+        items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
+        reply_to: ReplyToArg = None,
+    ) -> List[Any]:  # pragma: no cover
         """RPC map operation on list of ``(key, value)`` pairs.
 
         A join returns the results in order, and only returns once
@@ -945,8 +991,7 @@ class Agent(AgentT, Service):
         # Map correlation_id -> index
         posindex: MutableMapping[str, int] = {
             cid: i
-            async for i, cid in aenumerate(
-                self._barrier_send(barrier, items, reply_to))
+            async for i, cid in aenumerate(self._barrier_send(barrier, items, reply_to))
         }
 
         # All the messages have been sent so finalize the barrier.
@@ -961,9 +1006,11 @@ class Agent(AgentT, Service):
         return values
 
     async def _barrier_send(
-            self, barrier: BarrierState,
-            items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-            reply_to: ReplyToArg) -> AsyncIterator[str]:  # pragma: no cover
+        self,
+        barrier: BarrierState,
+        items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
+        reply_to: ReplyToArg,
+    ) -> AsyncIterator[str]:  # pragma: no cover
         # map: send many tasks to agents
         # while trying to pop incoming results off.
         key: K
@@ -971,10 +1018,8 @@ class Agent(AgentT, Service):
         async for key, value in aiter(items):  # type: ignore
             correlation_id = str(uuid4())
             p = await self.ask_nowait(
-                key=key,
-                value=value,
-                reply_to=reply_to,
-                correlation_id=correlation_id)
+                key=key, value=value, reply_to=reply_to, correlation_id=correlation_id
+            )
             # add reply promise to the barrier
             barrier.add(p)
 
@@ -1033,9 +1078,9 @@ class Agent(AgentT, Service):
         """Return human-readable description of agent."""
         return self._agent_label()
 
-    def _agent_label(self, name_suffix: str = '') -> str:
-        s = f'{type(self).__name__}{name_suffix}: '
-        s += f'{shorten_fqdn(qualname(self.fun))}'
+    def _agent_label(self, name_suffix: str = "") -> str:
+        s = f"{type(self).__name__}{name_suffix}: "
+        s += f"{shorten_fqdn(qualname(self.fun))}"
         return s
 
     @property
@@ -1048,13 +1093,12 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
 
     _stream: StreamT
 
-    def __init__(self,
-                 *args: Any,
-                 original_channel: ChannelT = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.results = {}
-        self.new_value_processed = asyncio.Condition(loop=self.loop)
+        self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
         self.add_sink(self._on_value_processed)
         self._stream = self.channel.stream()
@@ -1079,24 +1123,28 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         async with self.new_value_processed:
             self.new_value_processed.notify_all()
 
-    async def put(self,
-                  value: V = None,
-                  key: K = None,
-                  partition: Optional[int] = None,
-                  timestamp: Optional[float] = None,
-                  headers: HeadersArg = None,
-                  key_serializer: CodecArg = None,
-                  value_serializer: CodecArg = None,
-                  *,
-                  reply_to: ReplyToArg = None,
-                  correlation_id: str = None,
-                  wait: bool = True) -> EventT:
+    async def put(
+        self,
+        value: V = None,
+        key: K = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        *,
+        reply_to: ReplyToArg = None,
+        correlation_id: Optional[str] = None,
+        wait: bool = True,
+    ) -> EventT:
         if reply_to:
             value, headers = self._create_req(
-                key, value, reply_to, correlation_id, headers)
+                key, value, reply_to, correlation_id, headers
+            )
         channel = cast(ChannelT, self.stream().channel)
         message = self.to_message(
-            key, value,
+            key,
+            value,
             partition=partition,
             offset=self.sent_offset,
             timestamp=timestamp,
@@ -1112,19 +1160,21 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
                     raise self._crash_reason from self._crash_reason
         return event
 
-    def to_message(self,
-                   key: K,
-                   value: V,
-                   *,
-                   partition: Optional[int] = None,
-                   offset: int = 0,
-                   timestamp: float = None,
-                   timestamp_type: int = 0,
-                   headers: HeadersArg = None) -> Message:
+    def to_message(
+        self,
+        key: K,
+        value: V,
+        *,
+        partition: Optional[int] = None,
+        offset: int = 0,
+        timestamp: Optional[float] = None,
+        timestamp_type: int = 0,
+        headers: HeadersArg = None,
+    ) -> Message:
         try:
             topic_name = self._get_strtopic(self.original_channel)
         except ValueError:
-            topic_name = '<internal>'
+            topic_name = "<internal>"
         return Message(
             topic=topic_name,
             partition=partition or 0,
@@ -1134,9 +1184,10 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
             headers=headers,
             key=key,
             value=value,
-            checksum=b'',
+            checksum=b"",
             serialized_key_size=0,
             serialized_value_size=0,
+            generation_id=self.app.consumer_generation_id,
         )
 
     async def throw(self, exc: BaseException) -> None:

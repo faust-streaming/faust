@@ -176,9 +176,9 @@ have processed so we can commit and advance the consumer group offset.
 We use reference counting for this, so when you define an agent that
 iterates over the topic as a stream::
 
-   @app.agent(topic)
-   async def process(stream):
-       async for value in stream:
+    @app.agent(topic)
+    async def process(stream):
+        async for value in stream:
             print(value)
 
 The act of starting that stream iterator will add the topic to
@@ -206,8 +206,8 @@ If two agents use streams subscribed to the same topic::
 
     @app.agent(topic)
     async def processA(stream):
-         async for value in stream:
-             print(f'A: {value}')
+        async for value in stream:
+            print(f'A: {value}')
 
     @app.agent(topic)
      async def processB(stream):
@@ -239,13 +239,13 @@ What this means is that an event is acknowledged when your agent is
 finished handling it, but you can also manually control when it happens.
 
 To manually control when the event is acknowledged, and its reference count
-decreased, use ``await event.ack()``
+decreased, use ``await event.ack()``::
 
-  async for event in stream.events():
-    print(event.value)
-    await event.ack()
+    async for event in stream.events():
+        print(event.value)
+        await event.ack()
 
- You can also use :keyword:`async for` on the event::
+You can also use :keyword:`async with` on the event::
 
     async for event in stream.events():
         async with event:

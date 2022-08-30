@@ -22,14 +22,14 @@ from yarl import URL
 
 from faust.models import Record, maybe_model
 from faust.types import AgentT, AppT, EventT, StreamT, TopicT
-from faust.types.tables import GlobalTableT, KT, VT
 from faust.types.stores import StoreT
+from faust.types.tables import KT, VT, GlobalTableT
 
 from . import wrappers
 from .objects import ChangeloggedObject, ChangeloggedObjectManager
 from .table import Table
 
-__all__ = ['SetTable', 'SetGlobalTable']
+__all__ = ["SetTable", "SetGlobalTable"]
 
 OPERATION_ADD: int = 0x1
 OPERATION_DISCARD: int = 0x2
@@ -39,16 +39,15 @@ OPERATION_UPDATE: int = 0xF
 class SetWindowSet(wrappers.WindowSet):
     """A windowed set."""
 
-    def add(self, element: Any, *, event: EventT = None) -> None:
-        self._apply_set_operation('add', element, event)
+    def add(self, element: Any, *, event: Optional[EventT] = None) -> None:
+        self._apply_set_operation("add", element, event)
 
-    def discard(self, element: Any, *, event: EventT = None) -> None:
-        self._apply_set_operation('discard', element, event)
+    def discard(self, element: Any, *, event: Optional[EventT] = None) -> None:
+        self._apply_set_operation("discard", element, event)
 
-    def _apply_set_operation(self,
-                             op: str,
-                             element: Any,
-                             event: EventT = None) -> None:
+    def _apply_set_operation(
+        self, op: str, element: Any, event: Optional[EventT] = None
+    ) -> None:
         table = cast(Table, self.table)
         timestamp = self.wrapper.get_timestamp(event or self.event)
         key = self.key
@@ -82,8 +81,7 @@ class ChangeloggedSet(ChangeloggedObject, ManagedUserSet[VT]):
         self.manager.send_changelog_event(self.key, OPERATION_DISCARD, value)
 
     def on_change(self, added: Set[VT], removed: Set[VT]) -> None:
-        self.manager.send_changelog_event(
-            self.key, OPERATION_UPDATE, [added, removed])
+        self.manager.send_changelog_event(self.key, OPERATION_UPDATE, [added, removed])
 
     def sync_from_storage(self, value: Any) -> None:
         self.data = cast(Set, value)
@@ -108,7 +106,8 @@ class ChangeloggedSet(ChangeloggedObject, ManagedUserSet[VT]):
             self.data -= set(removed)
         else:
             raise NotImplementedError(
-                f'Unknown operation {operation}: key={self.key!r}')
+                f"Unknown operation {operation}: key={self.key!r}"
+            )
 
 
 class ChangeloggedSetManager(ChangeloggedObjectManager):
@@ -120,15 +119,14 @@ class ChangeloggedSetManager(ChangeloggedObjectManager):
 
 
 class SetAction(Enum):
-    ADD = 'ADD'
-    DISCARD = 'DISCARD'
-    CLEAR = 'CLEAR'
-    INTERSECTION = 'INTERSECTION'
-    SYMDIFF = 'SYMDIFF'
+    ADD = "ADD"
+    DISCARD = "DISCARD"
+    CLEAR = "CLEAR"
+    INTERSECTION = "INTERSECTION"
+    SYMDIFF = "SYMDIFF"
 
 
-class SetManagerOperation(Record,
-                          namespace='@SetManagerOperation'):
+class SetManagerOperation(Record, namespace="@SetManagerOperation"):
     action: SetAction
     members: List[Any]
 
@@ -154,14 +152,13 @@ class SetTableManager(Service, Generic[KT, VT]):
     """
 
     app: AppT
-    set_table: 'SetTable[KT, VT]'
+    set_table: "SetTable[KT, VT]"
     enabled: bool
 
     agent: Optional[AgentT]
     actions: Dict[SetAction, Callable[[KT, List[VT]], None]]
 
-    def __init__(self, set_table: 'SetTable[KT, VT]',
-                 **kwargs: Any) -> None:
+    def __init__(self, set_table: "SetTable[KT, VT]", **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.set_table = set_table
         self.app = self.set_table.app
@@ -192,18 +189,14 @@ class SetTableManager(Service, Generic[KT, VT]):
         """Remove members from set with key."""
         await self._send_operation(SetAction.DISCARD, key, members)
 
-    async def intersection_update(self,
-                                  key: KT,
-                                  members: Iterable[VT]) -> None:
+    async def intersection_update(self, key: KT, members: Iterable[VT]) -> None:
         """Update the set with key to be the intersection of another set.
 
         This will keep all members that are in both sets.
         """
         await self._send_operation(SetAction.INTERSECTION, key, members)
 
-    async def symmetric_difference_update(self,
-                                          key: KT,
-                                          members: Iterable[VT]) -> None:
+    async def symmetric_difference_update(self, key: KT, members: Iterable[VT]) -> None:
         """Update set by key to be the symmetric difference of another set.
 
         Members common to both sets will be removed.
@@ -225,13 +218,11 @@ class SetTableManager(Service, Generic[KT, VT]):
     def _symmetric_difference_update(self, key: KT, members: List[VT]) -> None:
         self.set_table[key].symmetric_difference_update(members)
 
-    async def _send_operation(self,
-                              action: SetAction,
-                              key: KT,
-                              members: Iterable[VT]) -> None:
+    async def _send_operation(
+        self, action: SetAction, key: KT, members: Iterable[VT]
+    ) -> None:
         if not self.enabled:
-            raise RuntimeError(
-                f'Set table {self.set_table} is start_manager=False')
+            raise RuntimeError(f"Set table {self.set_table} is start_manager=False")
         if iter(members) is members:
             members = list(members)
         await self.topic.send(
@@ -242,7 +233,7 @@ class SetTableManager(Service, Generic[KT, VT]):
     def _enable(self) -> None:
         self.agent = self.app.agent(
             channel=self.topic,
-            name='faust.SetTable.manager',
+            name="faust.SetTable.manager",
         )(self._modify_set)
 
     async def _modify_set(self, stream: StreamT[SetManagerOperation]) -> None:
@@ -252,8 +243,7 @@ class SetTableManager(Service, Generic[KT, VT]):
             try:
                 action = SetAction(set_operation.action)
             except ValueError:
-                self.log.exception(
-                    'Unknown set operation: %r', set_operation.action)
+                self.log.exception("Unknown set operation: %r", set_operation.action)
             else:
                 members = [_maybe_model(m) for m in set_operation.members]
                 handler = actions[action]
@@ -262,9 +252,11 @@ class SetTableManager(Service, Generic[KT, VT]):
     @cached_property
     def topic(self) -> TopicT:
         """Return topic used by set table manager."""
-        return self.app.topic(self.set_table.manager_topic_name,
-                              key_type=str,
-                              value_type=SetManagerOperation)
+        return self.app.topic(
+            self.set_table.manager_topic_name,
+            key_type=str,
+            value_type=SetManagerOperation,
+        )
 
 
 class SetTable(Table[KT, ChangeloggedSet[VT]]):
@@ -273,18 +265,22 @@ class SetTable(Table[KT, ChangeloggedSet[VT]]):
     Manager: ClassVar[Type[SetTableManager]] = SetTableManager
     start_manager: bool
     manager_topic_name: str
-    manager_topic_suffix: str = '-setmanager'
+    manager_topic_suffix: str = "-setmanager"
 
     manager: SetTableManager
 
     WindowWrapper = SetWindowWrapper
     _changelog_compacting = False
 
-    def __init__(self, app: AppT, *,
-                 start_manager: bool = False,
-                 manager_topic_name: str = None,
-                 manager_topic_suffix: str = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        start_manager: bool = False,
+        manager_topic_name: Optional[str] = None,
+        manager_topic_suffix: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(app, **kwargs)
         self.start_manager = start_manager
         if manager_topic_suffix is not None:

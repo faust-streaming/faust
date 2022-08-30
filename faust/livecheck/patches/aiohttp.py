@@ -9,7 +9,7 @@ from aiohttp import web
 from faust.livecheck.locals import current_test_stack
 from faust.livecheck.models import TestExecution
 
-__all__ = ['patch_all', 'patch_aiohttp_session', 'LiveCheckMiddleware']
+__all__ = ["patch_all", "patch_aiohttp_session", "LiveCheckMiddleware"]
 
 
 def patch_all() -> None:
@@ -23,34 +23,35 @@ def patch_aiohttp_session() -> None:
     If there is any currently active test, we will
     use that to forward LiveCheck HTTP headers to the new HTTP request.
     """
-    from aiohttp import TraceConfig
-    from aiohttp import client
+    from aiohttp import TraceConfig, client
 
     # monkeypatch to remove ridiculous "do not subclass" warning.
     def __init_subclass__() -> None:
         ...
+
     client.ClientSession.__init_subclass__ = __init_subclass__  # type: ignore
 
     async def _on_request_start(
-            session: aiohttp.ClientSession,
-            trace_config_ctx: SimpleNamespace,
-            params: aiohttp.TraceRequestStartParams) -> None:
+        session: aiohttp.ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> None:
         test = current_test_stack.top
         if test is not None:
             params.headers.update(test.as_headers())
 
     class ClientSession(client.ClientSession):
-
-        def __init__(self,
-                     trace_configs: Optional[List[TraceConfig]] = None,
-                     **kwargs: Any) -> None:
+        def __init__(
+            self, trace_configs: Optional[List[TraceConfig]] = None, **kwargs: Any
+        ) -> None:
             super().__init__(
-                trace_configs=self._faust_trace_configs(trace_configs),
-                **kwargs)
+                trace_configs=self._faust_trace_configs(trace_configs), **kwargs
+            )
 
         @no_type_check
         def _faust_trace_configs(
-                self, configs: List[TraceConfig] = None) -> List[TraceConfig]:
+            self, configs: List[TraceConfig] = None
+        ) -> List[TraceConfig]:
             if configs is None:
                 configs = []
             trace_config = aiohttp.TraceConfig()

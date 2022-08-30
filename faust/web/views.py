@@ -8,23 +8,25 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Type,
     Union,
     cast,
     no_type_check,
 )
 
+from yarl import URL
+
 from faust.types import AppT, ModelT
 from faust.types.web import ViewDecorator, ViewHandlerFun
-from yarl import URL
 
 from . import exceptions
 from .base import Request, Response, Web
 from .exceptions import WebError
 
-__all__ = ['View', 'gives_model', 'takes_model']
+__all__ = ["View", "gives_model", "takes_model"]
 
-_bytes = bytes   # need alias for method named `bytes`
+_bytes = bytes  # need alias for method named `bytes`
 
 
 class View:
@@ -43,34 +45,57 @@ class View:
     methods: Mapping[str, Callable[[Request], Awaitable]]
 
     @classmethod
-    def from_handler(cls, fun: ViewHandlerFun) -> Type['View']:
+    def from_handler(cls, fun: ViewHandlerFun) -> Type["View"]:
         """Decorate ``async def`` handler function to create view."""
         if not callable(fun):
-            raise TypeError(f'View handler must be callable, not {fun!r}')
-        return type(fun.__name__, (cls,), {
-            'get': fun,
-            '__doc__': fun.__doc__,
-            '__module__': fun.__module__,
-        })
+            raise TypeError(f"View handler must be callable, not {fun!r}")
+        return type(
+            fun.__name__,
+            (cls,),
+            {
+                "get": fun,
+                "__doc__": fun.__doc__,
+                "__module__": fun.__module__,
+            },
+        )
 
     def __init__(self, app: AppT, web: Web) -> None:
         self.app = app
         self.web = web
         self.methods = {
-            'head': self.head,
-            'get': self.get,
-            'post': self.post,
-            'patch': self.patch,
-            'delete': self.delete,
-            'put': self.put,
-            'options': self.options,
-            'search': self.search,
+            "head": self.head,
+            "get": self.get,
+            "post": self.post,
+            "patch": self.patch,
+            "delete": self.delete,
+            "put": self.put,
+            "options": self.options,
+            "search": self.search,
         }
+
         self.__post_init__()
 
     def __post_init__(self) -> None:
         """Override this to add custom initialization to your view."""
         ...
+
+    def get_methods(self) -> Set:
+        """Return the supported methods for this view"""
+        methods = set({"HEAD"})
+        base_methods = {
+            "head": View.head,
+            "get": View.get,
+            "post": View.post,
+            "patch": View.patch,
+            "delete": View.delete,
+            "put": View.put,
+            "options": View.options,
+            "search": View.search,
+        }
+        for method_name, method in self.methods.items():
+            if method.__code__ is not base_methods[method_name].__code__:
+                methods.add(method_name.upper())
+        return methods
 
     async def __call__(self, request: Any) -> Any:
         """Perform HTTP request."""
@@ -94,13 +119,10 @@ class View:
         except WebError as exc:
             response = await self.on_request_error(request, exc)
         finally:
-            sensors.on_web_request_end(
-                app, request, response, sensor_state, view=self)
+            sensors.on_web_request_end(app, request, response, sensor_state, view=self)
         return response
 
-    async def on_request_error(self,
-                               request: Request,
-                               exc: WebError) -> Response:
+    async def on_request_error(self, request: Request, exc: WebError) -> Response:
         """Call when a request raises an exception."""
         return self.error(exc.code, exc.detail, **exc.extra_context)
 
@@ -111,10 +133,9 @@ class View:
         """
         return self.web.url_for(view_name, **kwargs)
 
-    def url_for(self,
-                view_name: str,
-                _base_url: Union[str, URL] = None,
-                **kwargs: Any) -> URL:
+    def url_for(
+        self, view_name: str, _base_url: Union[str, URL] = None, **kwargs: Any
+    ) -> URL:
         """Return the canonical URL for view by name.
 
         Supports match keyword arguments.
@@ -123,10 +144,14 @@ class View:
         """
         if _base_url is None:
             _base_url = self.app.conf.canonical_url
-        return URL('/'.join([
-            str(_base_url).rstrip('/'),
-            str(self.path_for(view_name, **kwargs)).lstrip('/'),
-        ]))
+        return URL(
+            "/".join(
+                [
+                    str(_base_url).rstrip("/"),
+                    str(self.path_for(view_name, **kwargs)).lstrip("/"),
+                ]
+            )
+        )
 
     @no_type_check
     async def head(self, request: Request, **kwargs: Any) -> Any:
@@ -136,43 +161,47 @@ class View:
     @no_type_check  # subclasses change signature based on route match_info
     async def get(self, request: Request, **kwargs: Any) -> Any:
         """Override ``get`` to define the HTTP GET handler."""
-        raise exceptions.MethodNotAllowed('Method GET not allowed.')
+        raise exceptions.MethodNotAllowed("Method GET not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def post(self, request: Request, **kwargs: Any) -> Any:
         """Override ``post`` to define the HTTP POST handler."""
-        raise exceptions.MethodNotAllowed('Method POST not allowed.')
+        raise exceptions.MethodNotAllowed("Method POST not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def put(self, request: Request, **kwargs: Any) -> Any:
         """Override ``put`` to define the HTTP PUT handler."""
-        raise exceptions.MethodNotAllowed('Method PUT not allowed.')
+        raise exceptions.MethodNotAllowed("Method PUT not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def patch(self, request: Request, **kwargs: Any) -> Any:
         """Override ``patch`` to define the HTTP PATCH handler."""
-        raise exceptions.MethodNotAllowed('Method PATCH not allowed.')
+        raise exceptions.MethodNotAllowed("Method PATCH not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def delete(self, request: Request, **kwargs: Any) -> Any:
         """Override ``delete`` to define the HTTP DELETE handler."""
-        raise exceptions.MethodNotAllowed('Method DELETE not allowed.')
+        raise exceptions.MethodNotAllowed("Method DELETE not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def options(self, request: Request, **kwargs: Any) -> Any:
         """Override ``options`` to define the HTTP OPTIONS handler."""
-        raise exceptions.MethodNotAllowed('Method OPTIONS not allowed.')
+        raise exceptions.MethodNotAllowed("Method OPTIONS not allowed.")
 
     @no_type_check  # subclasses change signature based on route match_info
     async def search(self, request: Request, **kwargs: Any) -> Any:
         """Override ``search`` to define the HTTP SEARCH handler."""
-        raise exceptions.MethodNotAllowed('Method SEARCH not allowed.')
+        raise exceptions.MethodNotAllowed("Method SEARCH not allowed.")
 
-    def text(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def text(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create text response, using "text/plain" content-type."""
         return self.web.text(
             value,
@@ -182,11 +211,15 @@ class View:
             headers=headers,
         )
 
-    def html(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def html(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
         return self.web.html(
             value,
@@ -196,11 +229,15 @@ class View:
             headers=headers,
         )
 
-    def json(self, value: Any, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def json(
+        self,
+        value: Any,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create new JSON response.
 
         Accepts any JSON-serializable value and will automatically
@@ -216,13 +253,15 @@ class View:
             headers=headers,
         )
 
-    def bytes(self,
-              value: _bytes,
-              *,
-              content_type: str = None,
-              status: int = 200,
-              reason: str = None,
-              headers: MutableMapping = None) -> Response:
+    def bytes(
+        self,
+        value: _bytes,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create new ``bytes`` response - for binary data."""
         return self.web.bytes(
             value,
@@ -253,7 +292,7 @@ class View:
         self.web.route(pattern, handler)
         return handler
 
-    def notfound(self, reason: str = 'Not Found', **kwargs: Any) -> Response:
+    def notfound(self, reason: str = "Not Found", **kwargs: Any) -> Response:
         """Create not found error response.
 
         Deprecated: Use ``raise self.NotFound()`` instead.
@@ -262,20 +301,23 @@ class View:
 
     def error(self, status: int, reason: str, **kwargs: Any) -> Response:
         """Create error JSON response."""
-        return self.json({'error': reason, **kwargs}, status=status)
+        return self.json({"error": reason, **kwargs}, status=status)
 
 
 def takes_model(Model: Type[ModelT]) -> ViewDecorator:
     """Decorate view function to return model data."""
+
     def _decorate_view(fun: ViewHandlerFun) -> ViewHandlerFun:
         @wraps(fun)
-        async def _inner(view: View, request: Request,
-                         *args: Any, **kwargs: Any) -> Response:
+        async def _inner(
+            view: View, request: Request, *args: Any, **kwargs: Any
+        ) -> Response:
             data: bytes = await view.read_request_content(request)
-            obj: ModelT = Model.loads(data, serializer='json')
-            return await fun(  # type: ignore
-                view, request, obj, *args, **kwargs)
+            obj: ModelT = Model.loads(data, serializer="json")
+            return await fun(view, request, obj, *args, **kwargs)  # type: ignore
+
         return _inner
+
     return _decorate_view
 
 
@@ -284,13 +326,16 @@ def gives_model(Model: Type[ModelT]) -> ViewDecorator:
 
     The POST data is decoded using the model you specify.
     """
+
     def _decorate_view(fun: ViewHandlerFun) -> ViewHandlerFun:
         @wraps(fun)
-        async def _inner(view: View, request: Request,
-                         *args: Any, **kwargs: Any) -> Response:
+        async def _inner(
+            view: View, request: Request, *args: Any, **kwargs: Any
+        ) -> Response:
             response: Any
-            response = await fun(  # type: ignore
-                view, request, *args, **kwargs)
+            response = await fun(view, request, *args, **kwargs)  # type: ignore
             return view.json(response)
+
         return _inner
+
     return _decorate_view

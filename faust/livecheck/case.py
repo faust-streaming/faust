@@ -1,7 +1,6 @@
 """LiveCheck - Test cases."""
 import traceback
 import typing
-
 from collections import deque
 from contextlib import ExitStack
 from datetime import datetime, timedelta, timezone
@@ -9,16 +8,7 @@ from itertools import count
 from random import uniform
 from statistics import median
 from time import monotonic
-from typing import (
-    Any,
-    ClassVar,
-    Dict,
-    Iterable,
-    Optional,
-    Type,
-    Union,
-    cast,
-)
+from typing import Any, ClassVar, Dict, Iterable, Optional, Type, Union, cast
 
 from aiohttp import ClientError, ClientTimeout
 from mode import Seconds, Service, want_seconds
@@ -28,7 +18,6 @@ from mode.utils.typing import AsyncGenerator, Counter, Deque
 from yarl import URL
 
 from faust.utils import uuid
-from faust.utils.functional import deque_pushpopmax
 
 from .exceptions import ServiceDown, SuiteFailed, SuiteStalled
 from .locals import current_execution_stack, current_test_stack
@@ -39,9 +28,12 @@ from .signals import BaseSignal
 if typing.TYPE_CHECKING:
     from .app import LiveCheck as _LiveCheck
 else:
-    class _LiveCheck: ...  # noqa
 
-__all__ = ['Case']
+    class _LiveCheck:
+        ...  # noqa
+
+
+__all__ = ["Case"]
 
 
 class Case(Service):
@@ -115,25 +107,28 @@ class Case(Service):
     total_failures: int = 0
     total_by_state: Counter[State]
 
-    def __init__(self, *,
-                 app: _LiveCheck,
-                 name: str,
-                 probability: float = None,
-                 warn_stalled_after: Seconds = None,
-                 active: bool = None,
-                 signals: Iterable[BaseSignal] = None,
-                 test_expires: Seconds = None,
-                 frequency: Seconds = None,
-                 realtime_logs: bool = None,
-                 max_history: int = None,
-                 max_consecutive_failures: int = None,
-                 url_timeout_total: float = None,
-                 url_timeout_connect: float = None,
-                 url_error_retries: int = None,
-                 url_error_delay_min: float = None,
-                 url_error_delay_backoff: float = None,
-                 url_error_delay_max: float = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        app: _LiveCheck,
+        name: str,
+        probability: Optional[float] = None,
+        warn_stalled_after: Optional[Seconds] = None,
+        active: Optional[bool] = None,
+        signals: Iterable[BaseSignal] = None,
+        test_expires: Optional[Seconds] = None,
+        frequency: Optional[Seconds] = None,
+        realtime_logs: Optional[bool] = None,
+        max_history: Optional[int] = None,
+        max_consecutive_failures: Optional[int] = None,
+        url_timeout_total: Optional[float] = None,
+        url_timeout_connect: Optional[float] = None,
+        url_error_retries: Optional[int] = None,
+        url_error_delay_min: Optional[float] = None,
+        url_error_delay_backoff: Optional[float] = None,
+        url_error_delay_max: Optional[float] = None,
+        **kwargs: Any,
+    ) -> None:
         self.app = app
         self.name = name
         if active is not None:
@@ -144,8 +139,7 @@ class Case(Service):
             self.warn_stalled_after = want_seconds(warn_stalled_after)
         self._original_signals = signals or ()
         self.signals = {
-            sig.name: sig.clone(case=self)
-            for sig in self._original_signals
+            sig.name: sig.clone(case=self) for sig in self._original_signals
         }
         if test_expires is not None:
             self.test_expires = timedelta(seconds=want_seconds(test_expires))
@@ -171,9 +165,9 @@ class Case(Service):
         if url_error_delay_max is not None:
             self.url_error_delay_max = url_error_delay_max
 
-        self.frequency_history = deque()
-        self.latency_history = deque()
-        self.runtime_history = deque()
+        self.frequency_history = deque(maxlen=self.max_history)
+        self.latency_history = deque(maxlen=self.max_history)
+        self.runtime_history = deque(maxlen=self.max_history)
 
         self.total_by_state = Counter()
 
@@ -196,14 +190,17 @@ class Case(Service):
         if self.runtime_history:
             self.runtime_avg = median(self.runtime_history)
 
-        self.log.info('Stats: (median) frequency=%r latency=%r runtime=%r',
-                      self.frequency_avg, self.latency_avg, self.runtime_avg)
+        self.log.info(
+            "Stats: (median) frequency=%r latency=%r runtime=%r",
+            self.frequency_avg,
+            self.latency_avg,
+            self.runtime_avg,
+        )
 
     @asynccontextmanager
     async def maybe_trigger(
-            self, id: str = None,
-            *args: Any,
-            **kwargs: Any) -> AsyncGenerator[Optional[TestExecution], None]:
+        self, id: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Optional[TestExecution], None]:
         """Schedule test execution, or not, based on probability setting."""
         execution: Optional[TestExecution] = None
         with ExitStack() as exit_stack:
@@ -212,9 +209,9 @@ class Case(Service):
                 exit_stack.enter_context(current_test_stack.push(execution))
             yield execution
 
-    async def trigger(self, id: str = None,
-                      *args: Any,
-                      **kwargs: Any) -> TestExecution:
+    async def trigger(
+        self, id: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> TestExecution:
         """Schedule test execution ASAP."""
         id = id or uuid()
         execution = TestExecution(
@@ -233,7 +230,7 @@ class Case(Service):
 
     async def run(self, *test_args: Any, **test_kwargs: Any) -> None:
         """Override this to define your test case."""
-        raise NotImplementedError('Case class must implement run')
+        raise NotImplementedError("Case class must implement run")
 
     async def resolve_signal(self, key: str, event: SignalEvent) -> None:
         """Mark test execution signal as resolved."""
@@ -256,10 +253,8 @@ class Case(Service):
             wanted_frequency = self.frequency
             if wanted_frequency:
                 latency = time_since - wanted_frequency
-                deque_pushpopmax(
-                    self.latency_history, latency, self.max_history)
-            deque_pushpopmax(
-                self.frequency_history, time_since, self.max_history)
+                self.latency_history.append(latency)
+            self.frequency_history.append(time_since)
 
     async def on_test_skipped(self, runner: TestRunner) -> None:
         """Call when a test is skipped."""
@@ -268,21 +263,15 @@ class Case(Service):
         # takes too long?
         self.last_test_received = monotonic()
 
-    async def on_test_failed(self,
-                             runner: TestRunner,
-                             exc: BaseException) -> None:
+    async def on_test_failed(self, runner: TestRunner, exc: BaseException) -> None:
         """Call when invariant in test execution fails."""
         await self._set_test_error_state(State.FAIL)
 
-    async def on_test_error(self,
-                            runner: TestRunner,
-                            exc: BaseException) -> None:
+    async def on_test_error(self, runner: TestRunner, exc: BaseException) -> None:
         """Call when a test execution raises an exception."""
         await self._set_test_error_state(State.ERROR)
 
-    async def on_test_timeout(self,
-                              runner: TestRunner,
-                              exc: BaseException) -> None:
+    async def on_test_timeout(self, runner: TestRunner, exc: BaseException) -> None:
         """Call when a test execution times out."""
         await self._set_test_error_state(State.TIMEOUT)
 
@@ -294,9 +283,10 @@ class Case(Service):
         if self.consecutive_failures >= self.max_consecutive_failures:
             try:
                 raise SuiteFailed(
-                    'Failed after {0!r} (max={1!r})'.format(
-                        self.consecutive_failures,
-                        self.max_consecutive_failures))
+                    "Failed after {0!r} (max={1!r})".format(
+                        self.consecutive_failures, self.max_consecutive_failures
+                    )
+                )
             except SuiteFailed as exc:
                 await self.on_suite_fail(exc)
 
@@ -310,7 +300,7 @@ class Case(Service):
         """Call when a test execution passes."""
         test = runner.test
         runtime: float = runner.runtime or 0.0
-        deque_pushpopmax(self.runtime_history, runtime, self.max_history)
+        self.runtime_history.append(runtime)
         ts = test.timestamp.timestamp()
         last_fail = self.last_fail
         if last_fail is None or ts > last_fail:
@@ -324,8 +314,7 @@ class Case(Service):
     async def _send_frequency(self) -> None:
         freq = self.frequency
         if freq:
-            async for sleep_time in self.itertimer(
-                    freq, name=f'{self.name}_send'):
+            async for sleep_time in self.itertimer(freq, name=f"{self.name}_send"):
                 if self.app.is_leader():
                     await self.make_fake_request()
 
@@ -339,8 +328,7 @@ class Case(Service):
         self.last_test_received = None
         time_start = monotonic()
         last_warning: Optional[float] = None
-        async for sleep_time in self.itertimer(
-                timeout, name=f'{self.name}._wempty'):
+        async for sleep_time in self.itertimer(timeout, name=f"{self.name}._wempty"):
             try:
                 now = monotonic()
                 can_warn = now - last_warning if last_warning else True
@@ -354,17 +342,18 @@ class Case(Service):
                         # we reset the timer to avoid logging every second.
                         last_warning = now
                         raise SuiteStalled(
-                            f'Test stalled! Last received {human_secs} ago '
-                            f'(warn_stalled_after={timeout}).')
+                            f"Test stalled! Last received {human_secs} ago "
+                            f"(warn_stalled_after={timeout})."
+                        )
                     else:
                         self._maybe_recover_from_failed_state()
             except SuiteStalled as exc:
                 # we don't want to propagate this here, keep running...
                 await self.on_suite_fail(exc, State.STALL)
 
-    async def on_suite_fail(self,
-                            exc: SuiteFailed,
-                            new_state: State = State.FAIL) -> None:
+    async def on_suite_fail(
+        self, exc: SuiteFailed, new_state: State = State.FAIL
+    ) -> None:
         """Call when the suite fails."""
         assert isinstance(exc, SuiteFailed)
         delay = self.state_transition_delay
@@ -372,23 +361,25 @@ class Case(Service):
             self.status = new_state
             self.last_fail = monotonic()
             self.log.exception(str(exc))
-            await self.post_report(TestReport(
-                case_name=self.name,
-                state=new_state,
-                test=None,
-                runtime=None,
-                signal_latency={},
-                error=str(exc),
-                traceback='\n'.join(traceback.format_tb(exc.__traceback__)),
-            ))
+            await self.post_report(
+                TestReport(
+                    case_name=self.name,
+                    state=new_state,
+                    test=None,
+                    runtime=None,
+                    signal_latency={},
+                    error=str(exc),
+                    traceback="\n".join(traceback.format_tb(exc.__traceback__)),
+                )
+            )
         else:
             self.status = new_state
             self.last_fail = monotonic()
 
     def _maybe_recover_from_failed_state(self) -> None:
-        if self.status != State.PASS:
+        if self.status != State.DO_NOT_SHARE:
             if self._failed_longer_than(self.state_transition_delay):
-                self._set_pass_state(State.PASS)
+                self._set_pass_state(State.DO_NOT_SHARE)
 
     def _failed_longer_than(self, secs: float) -> bool:
         secs_since_fail = self.seconds_since_last_fail
@@ -403,18 +394,17 @@ class Case(Service):
         last_fail = self.last_fail
         return monotonic() - last_fail if last_fail else None
 
-    async def get_url(self, url: Union[str, URL],
-                      **kwargs: Any) -> Optional[bytes]:
+    async def get_url(self, url: Union[str, URL], **kwargs: Any) -> Optional[bytes]:
         """Perform GET request using HTTP client."""
-        return await self.url_request('get', url, **kwargs)
+        return await self.url_request("get", url, **kwargs)
 
-    async def post_url(self, url: Union[str, URL],
-                       **kwargs: Any) -> Optional[bytes]:
+    async def post_url(self, url: Union[str, URL], **kwargs: Any) -> Optional[bytes]:
         """Perform POST request using HTTP client."""
-        return await self.url_request('post', url, **kwargs)
+        return await self.url_request("post", url, **kwargs)
 
-    async def url_request(self, method: str, url: Union[str, URL],
-                          **kwargs: Any) -> Optional[bytes]:
+    async def url_request(
+        self, method: str, url: Union[str, URL], **kwargs: Any
+    ) -> Optional[bytes]:
         """Perform URL request using HTTP client."""
         timeout = ClientTimeout(
             # mypy thinks this must be float, but it can be None.
@@ -426,20 +416,19 @@ class Case(Service):
             for i in count():
                 try:
                     async with self.app.http_client.request(
-                            method, url,
-                            timeout=timeout, **kwargs) as response:
+                        method, url, timeout=timeout, **kwargs
+                    ) as response:
                         response.raise_for_status()
                         payload = await response.read()
                         self._maybe_recover_from_failed_state()
                         return payload
                 except ClientError as exc:
                     if i >= self.url_error_retries:
-                        raise ServiceDown(
-                            f'Cannot send fake test request: {exc!r}')
-                    retry_in = humanize_seconds(
-                        error_delay, microseconds=True)
-                    self.log.warning('URL %r raised: %r (Will retry in %s)',
-                                     url, exc, retry_in)
+                        raise ServiceDown(f"Cannot send fake test request: {exc!r}")
+                    retry_in = humanize_seconds(error_delay, microseconds=True)
+                    self.log.warning(
+                        "URL %r raised: %r (Will retry in %s)", url, exc, retry_in
+                    )
                     error_delay = min(
                         error_delay * self.url_error_delay_backoff,
                         self.url_error_delay_max,
@@ -465,4 +454,4 @@ class Case(Service):
     @property
     def label(self) -> str:
         """Return human-readable label for this test case."""
-        return f'{type(self).__name__}: {self.name}'
+        return f"{type(self).__name__}: {self.name}"

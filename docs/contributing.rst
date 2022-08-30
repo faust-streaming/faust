@@ -158,8 +158,8 @@ Issue Trackers
 Bugs for a package in the Faust ecosystem should be reported to the relevant
 issue tracker.
 
-* :pypi:`Faust` - https://github.com/robinhood/faust/issues
-* :pypi:`Mode` - https://github.com/ask/mode/issues
+* :pypi:`Faust` - https://github.com/faust-streaming/faust/issues
+* :pypi:`Mode` - https://github.com/faust-streaming/mode/issues
 
 If you're unsure of the origin of the bug you can ask the
 :ref:`mailing-list`, or just use the Faust issue tracker.
@@ -191,12 +191,12 @@ Branches
 
 Current active version branches:
 
-* dev (which git calls "master") (https://github.com/robinhood/faust/tree/master)
-* 1.0 (https://github.com/robinhood/faust/tree/1.0)
+* dev (which git calls "master") (https://github.com/faust-streaming/faust/tree/master)
+* 1.0 (https://github.com/faust-streaming/faust/tree/1.0)
 
 You can see the state of any branch by looking at the Changelog:
 
-    https://github.com/robinhood/faust/blob/master/Changelog.rst
+    https://github.com/faust-streaming/faust/blob/master/Changelog.rst
 
 If the branch is in active development the topmost version info should
 contain meta-data like:
@@ -317,7 +317,7 @@ to upstream changes:
 .. sourcecode:: console
 
     $ cd faust
-    $ git remote add upstream git://github.com/robinhood/faust.git
+    $ git remote add upstream git://github.com/faust-streaming/faust.git
     $ git fetch upstream
 
 If you need to pull in new changes from upstream you should
@@ -794,19 +794,19 @@ Packages
 ``Faust``
 ---------
 
-:git: https://github.com/robinhood/faust
+:git: https://github.com/faust-streaming/faust
 :CI: http://travis-ci.org/#!/robinhood/faust
 :Windows-CI: https://ci.appveyor.com/project/ask/faust
-:PyPI: :pypi:`faust`
-:docs: https://faust.readthedocs.io
+:PyPI: :pypi:`faust-streaming`
+:docs: https://fauststream.com/en/latest/
 
 ``Mode``
 --------
 
-:git: https://github.com/ask/mode
-:CI: http://travis-ci.org/#!/ask/mode
-:Windows-CI: https://ci.appveyor.com/project/ask/mode
-:PyPI: :pypi:`Mode`
+:git: https://github.com/faust-streaming/mode/
+:CI: https://www.travis-ci.com/#!/faust-streaming/mode
+:Windows-CI: https://ci.appveyor.com/project/faust-streaming/mode
+:PyPI: :pypi:`mode-streaming`
 :docs: http://mode.readthedocs.io/
 
 .. _release-procedure:

@@ -1,5 +1,4 @@
-Code of Conduct
-===============
+# Code of Conduct
 
 Everyone interacting in the project's codebases, issue trackers, chat rooms,
 and mailing lists is expected to follow the Faust Code of Conduct.
@@ -41,4 +40,3 @@ reported by opening an issue or contacting one or more of the project maintainer
 
 This Code of Conduct is adapted from the Contributor Covenant,
 version 1.2.0 available at http://contributor-covenant.org/version/1/2/0/.
-

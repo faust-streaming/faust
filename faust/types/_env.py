@@ -1,24 +1,24 @@
 """Faust environment variables."""
 import os
 from typing import Any, Sequence
+
 from yarl import URL
 
 __all__ = [
-    'CONSOLE_PORT',
-    'DATADIR',
-    'DEBUG',
-    'STRICT',
-    'WEB_PORT',
-    'WEB_BIND',
-    'WEB_TRANSPORT',
-    'WORKDIR',
+    "CONSOLE_PORT",
+    "DATADIR",
+    "DEBUG",
+    "STRICT",
+    "WEB_PORT",
+    "WEB_BIND",
+    "WEB_TRANSPORT",
+    "WORKDIR",
 ]
 
-PREFICES: Sequence[str] = ['FAUST_', 'F_']
+PREFICES: Sequence[str] = ["FAUST_", "F_"]
 
 
-def _getenv(name: str, *default: Any,
-            prefices: Sequence[str] = PREFICES) -> Any:
+def _getenv(name: str, *default: Any, prefices: Sequence[str] = PREFICES) -> Any:
     for prefix in prefices:
         try:
             return os.environ[prefix + name]
@@ -30,23 +30,23 @@ def _getenv(name: str, *default: Any,
 
 
 #: Enables debugging features (like blockdetection).
-DEBUG: bool = bool(_getenv('DEBUG', False))
+DEBUG: bool = bool(_getenv("DEBUG", False))
 
 #: Working directory to change into at start.
-WORKDIR: str = _getenv('WORKDIR', None)
+WORKDIR: str = _getenv("WORKDIR", None)
 
 #: Directory to keep the application state (tables, checkpoints, etc).
-DATADIR: str = _getenv('DATADIR', '{conf.name}-data')
+DATADIR: str = _getenv("DATADIR", "{conf.name}-data")
 
 #: Blocking detection timeout
-BLOCKING_TIMEOUT: float = float(_getenv('BLOCKING_TIMEOUT', '10.0'))
-FORCE_BLOCKING_TIMEOUT: bool = bool(_getenv('FORCE_BLOCKING_TIMEOUT', ''))
+BLOCKING_TIMEOUT: float = float(_getenv("BLOCKING_TIMEOUT", "10.0"))
+FORCE_BLOCKING_TIMEOUT: bool = bool(_getenv("FORCE_BLOCKING_TIMEOUT", ""))
 
 #: :pypi:`aiomonitor` console default port
-CONSOLE_PORT: int = int(_getenv('CONSOLE_PORT', 50101))
+CONSOLE_PORT: int = int(_getenv("CONSOLE_PORT", 50101))
 
-STRICT: bool = bool(_getenv('STRICT', False))
+STRICT: bool = bool(_getenv("STRICT", False))
 
-WEB_PORT: int = int(_getenv('WEB_PORT', '6066'))
-WEB_BIND: str = _getenv('F_WEB_BIND', '0.0.0.0')
-WEB_TRANSPORT: URL = URL(_getenv('WEB_TRANSPORT', 'tcp://'))
+WEB_PORT: int = int(_getenv("WEB_PORT", "6066"))
+WEB_BIND: str = _getenv("F_WEB_BIND", "0.0.0.0")  # nosec
+WEB_TRANSPORT: URL = URL(_getenv("WEB_TRANSPORT", "tcp://"))

@@ -1,14 +1,14 @@
 """LiveCheck - related exceptions."""
 
 __all__ = [
-    'LiveCheckError',
-    'SuiteFailed',
-    'ServiceDown',
-    'SuiteStalled',
-    'TestSkipped',
-    'TestFailed',
-    'TestRaised',
-    'TestTimeout',
+    "LiveCheckError",
+    "SuiteFailed",
+    "ServiceDown",
+    "SuiteStalled",
+    "LiveCheckTestSkipped",
+    "LiveCheckTestFailed",
+    "LiveCheckTestRaised",
+    "LiveCheckTestTimeout",
 ]
 
 
@@ -36,17 +36,17 @@ class SuiteStalled(SuiteFailed):
     """
 
 
-class TestSkipped(LiveCheckError):
+class LiveCheckTestSkipped(LiveCheckError):
     """Test was skipped."""
 
 
-class TestFailed(LiveCheckError):
+class LiveCheckTestFailed(LiveCheckError):
     """The test failed an assertion."""
 
 
-class TestRaised(LiveCheckError):
+class LiveCheckTestRaised(LiveCheckError):
     """The test raised an exception."""
 
 
-class TestTimeout(LiveCheckError):
+class LiveCheckTestTimeout(LiveCheckError):
     """The test timed out waiting for an event or during processing."""

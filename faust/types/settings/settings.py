@@ -29,29 +29,30 @@ from faust.types.agents import AgentT
 from faust.types.assignor import LeaderAssignorT, PartitionAssignorT
 from faust.types.auth import CredentialsArg, CredentialsT
 from faust.types.codecs import CodecArg
-from faust.types.events import EventT
 from faust.types.enums import ProcessingGuarantee
+from faust.types.events import EventT
 from faust.types.router import RouterT
 from faust.types.sensors import SensorT
 from faust.types.serializers import RegistryT, SchemaT
 from faust.types.streams import StreamT
-from faust.types.transports import PartitionerT, SchedulingStrategyT
 from faust.types.tables import GlobalTableT, TableManagerT, TableT
 from faust.types.topics import TopicT
+from faust.types.transports import PartitionerT, SchedulingStrategyT
 from faust.types.web import HttpClientT, ResourceOptions
 
-from . import base
-from . import params
-from . import sections
+from . import base, params, sections
 from .params import BrokerArg, URLArg
 
 if typing.TYPE_CHECKING:
     from faust.types.worker import Worker as _WorkerT
 else:
-    class _WorkerT: ...      # noqa
+
+    class _WorkerT:
+        ...  # noqa
+
 
 # XXX mypy borks if we do `from faust import __version__`
-faust_version: str = symbol_by_name('faust:__version__')
+faust_version: str = symbol_by_name("faust:__version__")
 
 AutodiscoverArg = Union[
     bool,
@@ -62,7 +63,7 @@ AutodiscoverArg = Union[
 
 class Settings(base.SettingsRegistry):
     NODE_HOSTNAME: ClassVar[str] = socket.gethostname()
-    DEFAULT_BROKER_URL: ClassVar[str] = 'kafka://localhost:9092'
+    DEFAULT_BROKER_URL: ClassVar[str] = "kafka://localhost:9092"
 
     _id: str
     _name: str
@@ -73,118 +74,126 @@ class Settings(base.SettingsRegistry):
     env: Mapping[str, str]
 
     def __init__(
-            self,
-            id: str, *,
-            # Common settings:
-            autodiscover: AutodiscoverArg = None,
-            datadir: typing.Union[str, Path] = None,
-            tabledir: typing.Union[str, Path] = None,
-            debug: bool = None,
-            env_prefix: str = None,
-            id_format: str = None,
-            origin: str = None,
-            timezone: typing.Union[str, tzinfo] = None,
-            version: int = None,
-            # Agent settings:
-            agent_supervisor: SymbolArg[Type[SupervisorStrategyT]] = None,
-            # Broker settings:
-            broker: BrokerArg = None,
-            broker_consumer: BrokerArg = None,
-            broker_producer: BrokerArg = None,
-            broker_api_version: str = None,
-            broker_check_crcs: bool = None,
-            broker_client_id: str = None,
-            broker_commit_every: int = None,
-            broker_commit_interval: Seconds = None,
-            broker_commit_livelock_soft_timeout: Seconds = None,
-            broker_credentials: CredentialsArg = None,
-            broker_heartbeat_interval: Seconds = None,
-            broker_max_poll_interval: Seconds = None,
-            broker_max_poll_records: int = None,
-            broker_rebalance_timeout: Seconds = None,
-            broker_request_timeout: Seconds = None,
-            broker_session_timeout: Seconds = None,
-            ssl_context: ssl.SSLContext = None,
-            # Consumer settings:
-            consumer_api_version: str = None,
-            consumer_max_fetch_size: int = None,
-            consumer_auto_offset_reset: str = None,
-            consumer_group_instance_id: str = None,
-            # Topic serialization settings:
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            # Logging settings:
-            logging_config: Mapping = None,
-            loghandlers: List[logging.Handler] = None,
-            # Producer settings:
-            producer_acks: int = None,
-            producer_api_version: str = None,
-            producer_compression_type: str = None,
-            producer_linger_ms: int = None,
-            producer_max_batch_size: int = None,
-            producer_max_request_size: int = None,
-            producer_partitioner: SymbolArg[PartitionerT] = None,
-            producer_request_timeout: Seconds = None,
-            # RPC settings:
-            reply_create_topic: bool = None,
-            reply_expires: Seconds = None,
-            reply_to: str = None,
-            reply_to_prefix: str = None,
-            # Stream settings:
-            processing_guarantee: Union[str, ProcessingGuarantee] = None,
-            stream_buffer_maxsize: int = None,
-            stream_processing_timeout: Seconds = None,
-            stream_publish_on_commit: bool = None,
-            stream_recovery_delay: Seconds = None,
-            stream_wait_empty: bool = None,
-            # Table settings:
-            store: URLArg = None,
-            table_cleanup_interval: Seconds = None,
-            table_key_index_size: int = None,
-            table_standby_replicas: int = None,
-            # Topic settings:
-            topic_allow_declare: bool = None,
-            topic_disable_leader: bool = None,
-            topic_partitions: int = None,
-            topic_replication_factor: int = None,
-            # Web server settings:
-            cache: URLArg = None,
-            canonical_url: URLArg = None,
-            web: URLArg = None,
-            web_bind: str = None,
-            web_cors_options: typing.Mapping[str, ResourceOptions] = None,
-            web_enabled: bool = None,
-            web_host: str = None,
-            web_in_thread: bool = None,
-            web_port: int = None,
-            web_transport: URLArg = None,
-            # Worker settings:
-            worker_redirect_stdouts: bool = None,
-            worker_redirect_stdouts_level: Severity = None,
-            # Extension settings:
-            Agent: SymbolArg[Type[AgentT]] = None,
-            ConsumerScheduler: SymbolArg[Type[SchedulingStrategyT]] = None,
-            Event: SymbolArg[Type[EventT]] = None,
-            Schema: SymbolArg[Type[SchemaT]] = None,
-            Stream: SymbolArg[Type[StreamT]] = None,
-            Table: SymbolArg[Type[TableT]] = None,
-            SetTable: SymbolArg[Type[TableT]] = None,
-            GlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-            SetGlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-            TableManager: SymbolArg[Type[TableManagerT]] = None,
-            Serializers: SymbolArg[Type[RegistryT]] = None,
-            Worker: SymbolArg[Type[_WorkerT]] = None,
-            PartitionAssignor: SymbolArg[Type[PartitionAssignorT]] = None,
-            LeaderAssignor: SymbolArg[Type[LeaderAssignorT]] = None,
-            Router: SymbolArg[Type[RouterT]] = None,
-            Topic: SymbolArg[Type[TopicT]] = None,
-            HttpClient: SymbolArg[Type[HttpClientT]] = None,
-            Monitor: SymbolArg[Type[SensorT]] = None,
-            # Deprecated settings:
-            stream_ack_cancelled_tasks: bool = None,
-            stream_ack_exceptions: bool = None,
-            url: URLArg = None,
-            **kwargs: Any) -> None:
+        self,
+        id: str,
+        *,
+        # Common settings:
+        autodiscover: AutodiscoverArg = None,
+        datadir: typing.Union[str, Path] = None,
+        tabledir: typing.Union[str, Path] = None,
+        debug: Optional[bool] = None,
+        env_prefix: Optional[str] = None,
+        id_format: Optional[str] = None,
+        origin: Optional[str] = None,
+        timezone: typing.Union[str, tzinfo] = None,
+        version: Optional[int] = None,
+        # Agent settings:
+        agent_supervisor: SymbolArg[Type[SupervisorStrategyT]] = None,
+        # Broker settings:
+        broker: BrokerArg = None,
+        broker_consumer: BrokerArg = None,
+        broker_producer: BrokerArg = None,
+        broker_api_version: Optional[str] = None,
+        broker_check_crcs: Optional[bool] = None,
+        broker_client_id: Optional[str] = None,
+        broker_commit_every: Optional[int] = None,
+        broker_commit_interval: Optional[Seconds] = None,
+        broker_commit_livelock_soft_timeout: Optional[Seconds] = None,
+        broker_credentials: CredentialsArg = None,
+        broker_heartbeat_interval: Optional[Seconds] = None,
+        broker_max_poll_interval: Optional[Seconds] = None,
+        broker_max_poll_records: Optional[int] = None,
+        broker_rebalance_timeout: Optional[Seconds] = None,
+        broker_request_timeout: Optional[Seconds] = None,
+        broker_session_timeout: Optional[Seconds] = None,
+        ssl_context: ssl.SSLContext = None,
+        # Consumer settings:
+        consumer_api_version: Optional[str] = None,
+        consumer_max_fetch_size: Optional[int] = None,
+        consumer_auto_offset_reset: Optional[str] = None,
+        consumer_group_instance_id: Optional[str] = None,
+        consumer_metadata_max_age_ms: Optional[int] = None,
+        consumer_connections_max_idle_ms: Optional[int] = None,
+        # Topic serialization settings:
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        # Logging settings:
+        logging_config: Mapping = None,
+        loghandlers: List[logging.Handler] = None,
+        # Producer settings:
+        producer_acks: Optional[int] = None,
+        producer_api_version: Optional[str] = None,
+        producer_compression_type: Optional[str] = None,
+        producer_linger_ms: Optional[int] = None,
+        producer_max_batch_size: Optional[int] = None,
+        producer_max_request_size: Optional[int] = None,
+        producer_partitioner: SymbolArg[PartitionerT] = None,
+        producer_request_timeout: Optional[Seconds] = None,
+        producer_threaded: bool = False,
+        producer_metadata_max_age_ms: Optional[int] = None,
+        producer_connections_max_idle_ms: Optional[int] = None,
+        # RPC settings:
+        reply_create_topic: Optional[bool] = None,
+        reply_expires: Optional[Seconds] = None,
+        reply_to: Optional[str] = None,
+        reply_to_prefix: Optional[str] = None,
+        # Stream settings:
+        processing_guarantee: Union[str, ProcessingGuarantee] = None,
+        stream_buffer_maxsize: Optional[int] = None,
+        stream_processing_timeout: Optional[Seconds] = None,
+        stream_publish_on_commit: Optional[bool] = None,
+        stream_recovery_delay: Optional[Seconds] = None,
+        stream_wait_empty: Optional[bool] = None,
+        # Table settings:
+        store: URLArg = None,
+        table_cleanup_interval: Optional[Seconds] = None,
+        table_key_index_size: Optional[int] = None,
+        table_standby_replicas: Optional[int] = None,
+        # Topic settings:
+        topic_allow_declare: Optional[bool] = None,
+        topic_disable_leader: Optional[bool] = None,
+        topic_partitions: Optional[int] = None,
+        topic_replication_factor: Optional[int] = None,
+        # Web server settings:
+        cache: URLArg = None,
+        canonical_url: URLArg = None,
+        web: URLArg = None,
+        web_bind: Optional[str] = None,
+        web_cors_options: typing.Mapping[str, ResourceOptions] = None,
+        web_enabled: Optional[bool] = None,
+        web_host: Optional[str] = None,
+        web_in_thread: Optional[bool] = None,
+        web_port: Optional[int] = None,
+        web_ssl_context: ssl.SSLContext = None,
+        web_transport: URLArg = None,
+        # Worker settings:
+        worker_redirect_stdouts: Optional[bool] = None,
+        worker_redirect_stdouts_level: Severity = None,
+        # Extension settings:
+        Agent: SymbolArg[Type[AgentT]] = None,
+        ConsumerScheduler: SymbolArg[Type[SchedulingStrategyT]] = None,
+        Event: SymbolArg[Type[EventT]] = None,
+        Schema: SymbolArg[Type[SchemaT]] = None,
+        Stream: SymbolArg[Type[StreamT]] = None,
+        Table: SymbolArg[Type[TableT]] = None,
+        SetTable: SymbolArg[Type[TableT]] = None,
+        GlobalTable: SymbolArg[Type[GlobalTableT]] = None,
+        SetGlobalTable: SymbolArg[Type[GlobalTableT]] = None,
+        TableManager: SymbolArg[Type[TableManagerT]] = None,
+        Serializers: SymbolArg[Type[RegistryT]] = None,
+        Worker: SymbolArg[Type[_WorkerT]] = None,
+        PartitionAssignor: SymbolArg[Type[PartitionAssignorT]] = None,
+        LeaderAssignor: SymbolArg[Type[LeaderAssignorT]] = None,
+        Router: SymbolArg[Type[RouterT]] = None,
+        Topic: SymbolArg[Type[TopicT]] = None,
+        HttpClient: SymbolArg[Type[HttpClientT]] = None,
+        Monitor: SymbolArg[Type[SensorT]] = None,
+        # Deprecated settings:
+        stream_ack_cancelled_tasks: Optional[bool] = None,
+        stream_ack_exceptions: Optional[bool] = None,
+        url: URLArg = None,
+        **kwargs: Any,
+    ) -> None:
         ...  # replaced by __init_subclass__ in BaseSettings
 
     def on_init(self, id: str, **kwargs: Any) -> None:
@@ -193,17 +202,19 @@ class Settings(base.SettingsRegistry):
         # setting values so we hack this in here to make sure
         # it's set.
         self._init_env_prefix(**kwargs)
-        self._version = kwargs.get('version', 1)
+        self._version = kwargs.get("version", 1)
         self.id = id
 
-    def _init_env_prefix(self,
-                         env: Mapping[str, str] = None,
-                         env_prefix: str = None,
-                         **kwargs: Any) -> None:
+    def _init_env_prefix(
+        self,
+        env: Mapping[str, str] = None,
+        env_prefix: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         if env is None:
             env = os.environ
         self.env = env
-        env_name = self.SETTINGS['env_prefix'].env_name
+        env_name = self.SETTINGS["env_prefix"].env_name
         if env_name is not None:
             prefix_from_env = self.env.get(env_name)
             # prioritize environment
@@ -216,7 +227,7 @@ class Settings(base.SettingsRegistry):
 
     def getenv(self, env_name: str) -> Any:
         if self._env_prefix:
-            env_name = self._env_prefix.rstrip('_') + '_' + env_name
+            env_name = self._env_prefix.rstrip("_") + "_" + env_name
         return self.env.get(env_name)
 
     def relative_to_appdir(self, path: Path) -> Path:
@@ -230,7 +241,7 @@ class Settings(base.SettingsRegistry):
 
     def data_directory_for_version(self, version: int) -> Path:
         """Return the directory path for data belonging to specific version."""
-        return self.datadir / f'v{version}'
+        return self.datadir / f"v{version}"
 
     def find_old_versiondirs(self) -> Iterable[Path]:
         for version in reversed(range(0, self.version)):
@@ -258,7 +269,7 @@ class Settings(base.SettingsRegistry):
         return id
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self.id}>'
+        return f"<{type(self).__name__}: {self.id}>"
 
     @property
     def appdir(self) -> Path:
@@ -267,8 +278,8 @@ class Settings(base.SettingsRegistry):
     # This is an example new setting having type ``str``
     @sections.Common.setting(
         params.Str,
-        env_name='ENVIRONMENT_VARIABLE_NAME',
-        version_removed='1.0',  # this disables the setting
+        env_name="ENVIRONMENT_VARIABLE_NAME",
+        version_removed="1.0",  # this disables the setting
     )
     def MY_SETTING(self) -> str:
         """My custom setting.
@@ -402,9 +413,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Path,
-        env_name='APP_DATADIR',
+        env_name="APP_DATADIR",
         default=DATADIR,
-        related_cli_options={'faust': '--datadir'},
+        related_cli_options={"faust": "--datadir"},
     )
     def datadir(self, path: Path) -> Path:
         """Application data directory.
@@ -429,8 +440,8 @@ class Settings(base.SettingsRegistry):
         params.Path,
         #: This path will be treated as relative to datadir,
         #: unless the provided poth is absolute.
-        default='tables',
-        env_name='APP_TABLEDIR',
+        default="tables",
+        env_name="APP_TABLEDIR",
     )
     def tabledir(self) -> Path:
         """Application table data directory.
@@ -450,9 +461,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Bool,
-        env_name='APP_DEBUG',
+        env_name="APP_DEBUG",
         default=False,
-        related_cli_options={'faust': '--debug'},
+        related_cli_options={"faust": "--debug"},
     )
     def debug(self) -> bool:
         """Use in development to expose sensor information endpoint.
@@ -472,8 +483,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Str,
-        env_name='APP_ENV_PREFIX',
-        version_introduced='1.11',
+        env_name="APP_ENV_PREFIX",
+        version_introduced="1.11",
         default=None,
         ignore_default=True,
     )
@@ -486,8 +497,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Str,
-        env_name='APP_ID_FORMAT',
-        default='{id}-v{self.version}',
+        env_name="APP_ID_FORMAT",
+        default="{id}-v{self.version}",
     )
     def id_format(self) -> str:
         """Application ID format template.
@@ -516,8 +527,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Timezone,
-        version_introduced='1.4',
-        env_name='TIMEZONE',
+        version_introduced="1.4",
+        env_name="TIMEZONE",
         default=timezone.utc,
     )
     def timezone(self) -> tzinfo:
@@ -528,7 +539,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Int,
-        env_name='APP_VERSION',
+        env_name="APP_VERSION",
         default=1,
         min_value=1,
     )
@@ -551,8 +562,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Agent.setting(
         params.Symbol(Type[SupervisorStrategyT]),
-        env_name='AGENT_SUPERVISOR',
-        default='mode.OneForOneSupervisor',
+        env_name="AGENT_SUPERVISOR",
+        default="mode.OneForOneSupervisor",
     )
     def agent_supervisor(self) -> Type[SupervisorStrategyT]:
         """Default agent supervisor type.
@@ -596,9 +607,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Seconds,
-        env_name='BLOCKING_TIMEOUT',
+        env_name="BLOCKING_TIMEOUT",
         default=None,
-        related_cli_options={'faust': '--blocking-timeout'},
+        related_cli_options={"faust": "--blocking-timeout"},
     )
     def blocking_timeout(self) -> Optional[float]:
         """Blocking timeout (in seconds).
@@ -637,7 +648,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.BrokerList,
-        env_name='BROKER_URL',
+        env_name="BROKER_URL",
     )
     def broker(self) -> List[URL]:
         """Broker URL, or a list of alternative broker URLs.
@@ -694,14 +705,6 @@ class Settings(base.SettingsRegistry):
             The recommended transport using the :pypi:`aiokafka` client.
 
             Limitations: None
-
-        - ``confluent://``
-
-            Experimental transport using the :pypi:`confluent-kafka` client.
-
-            Limitations: Does not do sticky partition assignment (not
-                suitable for tables), and do not create any necessary internal
-                topics (you have to create them manually).
         """
 
     @broker.on_set_default  # type: ignore
@@ -710,9 +713,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.BrokerList,
-        version_introduced='1.7',
-        env_name='BROKER_CONSUMER_URL',
-        default_alias='broker',
+        version_introduced="1.7",
+        env_name="BROKER_CONSUMER_URL",
+        default_alias="broker",
     )
     def broker_consumer(self) -> List[URL]:
         """Consumer broker URL.
@@ -725,9 +728,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.BrokerList,
-        version_introduced='1.7',
-        env_name='BROKER_PRODUCER_URL',
-        default_alias='broker',
+        version_introduced="1.7",
+        env_name="BROKER_PRODUCER_URL",
+        default_alias="broker",
     )
     def broker_producer(self) -> List[URL]:
         """Producer broker URL.
@@ -740,14 +743,14 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Str,
-        version_introduced='1.10',
-        env_name='BROKER_API_VERSION',
+        version_introduced="1.10",
+        env_name="BROKER_API_VERSION",
         #: Default broker API version.
         #: Used as default for
         #:     + :setting:`broker_api_version`,
         #:     + :setting:`consumer_api_version`,
         #:     + :setting:`producer_api_version',
-        default='auto',
+        default="auto",
     )
     def broker_api_version(self) -> str:
         """Broker API version,.
@@ -773,7 +776,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Bool,
-        env_name='BROKER_CHECK_CRCS',
+        env_name="BROKER_CHECK_CRCS",
         default=True,
     )
     def broker_check_crcs(self) -> bool:
@@ -784,8 +787,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Str,
-        env_name='BROKER_CLIENT_ID',
-        default=f'faust-{faust_version}',
+        env_name="BROKER_CLIENT_ID",
+        default=f"faust-{faust_version}",
     )
     def broker_client_id(self) -> str:
         """Broker client ID.
@@ -798,7 +801,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.UnsignedInt,
-        env_name='BROKER_COMMIT_EVERY',
+        env_name="BROKER_COMMIT_EVERY",
         default=10_000,
     )
     def broker_commit_every(self) -> int:
@@ -812,7 +815,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        env_name='BROKER_COMMIT_INTERVAL',
+        env_name="BROKER_COMMIT_INTERVAL",
         default=2.8,
     )
     def broker_commit_interval(self) -> float:
@@ -824,7 +827,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        env_name='BROKER_COMMIT_LIVELOCK_SOFT_TIMEOUT',
+        env_name="BROKER_COMMIT_LIVELOCK_SOFT_TIMEOUT",
         default=want_seconds(timedelta(minutes=5)),
     )
     def broker_commit_livelock_soft_timeout(self) -> float:
@@ -836,8 +839,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Credentials,
-        version_introduced='1.5',
-        env_name='BROKER_CREDENTIALS',
+        version_introduced="1.5",
+        env_name="BROKER_CREDENTIALS",
         default=None,
     )
     def broker_credentials(self) -> CredentialsT:
@@ -927,8 +930,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        version_introduced='1.0.11',
-        env_name='BROKER_HEARTBEAT_INTERVAL',
+        version_introduced="1.0.11",
+        env_name="BROKER_HEARTBEAT_INTERVAL",
         default=3.0,
     )
     def broker_heartbeat_interval(self) -> float:
@@ -942,8 +945,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        version_introduced='1.7',
-        env_name='BROKER_MAX_POLL_INTERVAL',
+        version_introduced="1.7",
+        env_name="BROKER_MAX_POLL_INTERVAL",
         default=1000.0,
     )
     def broker_max_poll_interval(self) -> float:
@@ -963,8 +966,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.UnsignedInt,
-        version_introduced='1.4',
-        env_name='BROKER_MAX_POLL_RECORDS',
+        version_introduced="1.4",
+        env_name="BROKER_MAX_POLL_RECORDS",
         default=None,
         allow_none=True,
     )
@@ -980,8 +983,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        version_introduced='1.10',
-        env_name='BROKER_REBALANCE_TIMEOUT',
+        version_introduced="1.10",
+        env_name="BROKER_REBALANCE_TIMEOUT",
         default=60.0,
     )
     def broker_rebalance_timeout(self) -> float:
@@ -1002,8 +1005,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        version_introduced='1.4',
-        env_name='BROKER_REQUEST_TIMEOUT',
+        version_introduced="1.4",
+        env_name="BROKER_REQUEST_TIMEOUT",
         default=90.0,
     )
     def broker_request_timeout(self) -> float:
@@ -1017,8 +1020,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Broker.setting(
         params.Seconds,
-        version_introduced='1.0.11',
-        env_name='BROKER_SESSION_TIMEOUT',
+        version_introduced="1.0.11",
+        env_name="BROKER_SESSION_TIMEOUT",
         default=60.0,
     )
     def broker_session_timeout(self) -> float:
@@ -1049,9 +1052,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Consumer.setting(
         params.Str,
-        version_introduced='1.10',
-        env_name='CONSUMER_API_VERSION',
-        default_alias='broker_api_version',
+        version_introduced="1.10",
+        env_name="CONSUMER_API_VERSION",
+        default_alias="broker_api_version",
     )
     def consumer_api_version(self) -> str:
         """Consumer API version.
@@ -1062,9 +1065,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Consumer.setting(
         params.UnsignedInt,
-        version_introduced='1.4',
-        env_name='CONSUMER_MAX_FETCH_SIZE',
-        default=1024 ** 2,
+        version_introduced="1.4",
+        env_name="CONSUMER_MAX_FETCH_SIZE",
+        default=1024**2,
     )
     def consumer_max_fetch_size(self) -> int:
         """Consumer max fetch size.
@@ -1086,9 +1089,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Consumer.setting(
         params.Str,
-        version_introduced='1.5',
-        env_name='CONSUMER_AUTO_OFFSET_RESET',
-        default='earliest',
+        version_introduced="1.5",
+        env_name="CONSUMER_AUTO_OFFSET_RESET",
+        default="earliest",
     )
     def consumer_auto_offset_reset(self) -> str:
         """Consumer auto offset reset.
@@ -1102,8 +1105,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Consumer.setting(
         params.Str,
-        version_introduced='2.1',
-        env_name='CONSUMER_GROUP_INSTANCE_ID',
+        version_introduced="2.1",
+        env_name="CONSUMER_GROUP_INSTANCE_ID",
         default=None,
     )
     def consumer_group_instance_id(self) -> str:
@@ -1115,10 +1118,41 @@ class Settings(base.SettingsRegistry):
         each consumer instance has to have a unique id.
         """
 
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def consumer_metadata_max_age_ms(self) -> int:
+        """Consumer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+        """
+
+    @sections.Consumer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="CONSUMER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def consumer_connections_max_idle_ms(self) -> int:
+        """Consumer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
+        """
+
     @sections.Serialization.setting(
         params.Codec,
-        env_name='APP_KEY_SERIALIZER',
-        default='raw',
+        env_name="APP_KEY_SERIALIZER",
+        default="raw",
     )
     def key_serializer(self) -> CodecArg:
         """Default key serializer.
@@ -1137,8 +1171,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Serialization.setting(
         params.Codec,
-        env_name='APP_VALUE_SERIALIZER',
-        default='json',
+        env_name="APP_VALUE_SERIALIZER",
+        default="json",
     )
     def value_serializer(self) -> CodecArg:
         """Default value serializer.
@@ -1157,7 +1191,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Dict[Any],
-        version_introduced='1.5',
+        version_introduced="1.5",
     )
     def logging_config(self) -> Mapping[str, Any]:
         """Logging dictionary configuration.
@@ -1177,9 +1211,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Int,
-        env_name='PRODUCER_ACKS',
+        env_name="PRODUCER_ACKS",
         default=-1,
-        number_aliases={'all': -1},
+        number_aliases={"all": -1},
     )
     def producer_acks(self) -> int:
         """Producer Acks.
@@ -1205,9 +1239,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Str,
-        version_introduced='1.5.3',
-        env_name='PRODUCER_API_VERSION',
-        default_alias='broker_api_version',
+        version_introduced="1.5.3",
+        env_name="PRODUCER_API_VERSION",
+        default_alias="broker_api_version",
     )
     def producer_api_version(self) -> str:
         """Producer API version.
@@ -1218,7 +1252,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Str,
-        env_name='PRODUCER_COMPRESSION_TYPE',
+        env_name="PRODUCER_COMPRESSION_TYPE",
         default=None,
     )
     def producer_compression_type(self) -> str:
@@ -1230,7 +1264,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Seconds,
-        env_name='PRODUCER_LINGER',
+        env_name="PRODUCER_LINGER",
     )
     def producer_linger(self) -> Optional[float]:
         """Producer batch linger configuration.
@@ -1246,7 +1280,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.UnsignedInt,
-        env_name='PRODUCER_MAX_BATCH_SIZE',
+        env_name="PRODUCER_MAX_BATCH_SIZE",
         default=16384,
     )
     def producer_max_batch_size(self) -> int:
@@ -1257,7 +1291,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.UnsignedInt,
-        env_name='PRODUCER_MAX_REQUEST_SIZE',
+        env_name="PRODUCER_MAX_REQUEST_SIZE",
         default=1_000_000,
     )
     def producer_max_request_size(self) -> int:
@@ -1270,7 +1304,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params._Symbol[PartitionerT, Optional[PartitionerT]],
-        version_introduced='1.2',
+        version_introduced="1.2",
         default=None,
     )
     def producer_partitioner(self) -> Optional[PartitionerT]:
@@ -1319,8 +1353,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Producer.setting(
         params.Seconds,
-        version_introduced='1.4',
-        env_name='PRODUCER_REQUEST_TIMEOUT',
+        version_introduced="1.4",
+        env_name="PRODUCER_REQUEST_TIMEOUT",
         default=1200.0,  # 20 minutes
     )
     def producer_request_timeout(self) -> float:
@@ -1331,9 +1365,121 @@ class Settings(base.SettingsRegistry):
         producer batches expire and will no longer be retried.
         """
 
+    @sections.Producer.setting(
+        params.Bool,
+        version_introduced="0.4.5",
+        env_name="PRODUCER_THREADED",
+        default=False,
+    )
+    def producer_threaded(self) -> bool:
+        """Thread separate producer for send_soon.
+
+        If True, spin up a different producer in a different thread
+        to be used for messages buffered up for producing via
+        send_soon function.
+        """
+
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_METADATA_MAX_AGE_MS",
+        default=5 * 60 * 1000,
+    )
+    def producer_metadata_max_age_ms(self) -> int:
+        """Producer metadata max age milliseconds
+
+        The period of time in milliseconds after which we force
+        a refresh of metadata even if we haven’t seen any partition
+        leadership changes to proactively discover any new brokers or partitions.
+
+        Default: 300000
+
+        """
+
+    @sections.Producer.setting(
+        params.Int,
+        version_introduced="0.8.5",
+        env_name="PRODUCER_CONNECTIONS_MAX_IDLE_MS",
+        default=9 * 60 * 1000,
+    )
+    def producer_connections_max_idle_ms(self) -> int:
+        """Producer connections max idle milliseconds.
+
+        Close idle connections after the number of milliseconds
+        specified by this config.
+
+        Default: 540000 (9 minutes).
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.4.7",
+        env_name="RECOVERY_CONSISTENCY_CHECK",
+        default=True,
+    )
+    def recovery_consistency_check(self) -> bool:
+        """Check Kafka and local offsets for consistency.
+
+        If True, assert that Kafka highwater offsets >= local offset
+        in the rocksdb state storee
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.0",
+        env_name="STORE_CHECK_EXISTS",
+        default=True,
+    )
+    def store_check_exists(self) -> bool:
+        """Execute exists on the underlying store.
+
+        If True, executes exists on the underlying store. If False
+        client has to catch KeyError
+        """
+
+    @sections.Stream.setting(
+        params.Bool,
+        version_introduced="0.6.3",
+        env_name="CRASH_APP_ON_AEROSPIKE_EXCEPTION",
+        default=True,
+    )
+    def crash_app_on_aerospike_exception(self) -> bool:
+        """Crashes the app on an aerospike Exceptions.
+
+        If True, crashes the app and prevents the commit offset on progressing. If False
+        client has to catch the Error and implement a dead letter queue
+        """
+
+    @sections.Stream.setting(
+        params.Int,
+        version_introduced="0.6.10",
+        env_name="AEROSPIKE_RETRIES_ON_EXCEPTION",
+        default=60,
+    )
+    def aerospike_retries_on_exception(self) -> bool:
+        """Number of retries to aerospike on a runtime error from the aerospike client.
+
+        Set this to the number of retries using the aerospike client on a runtime
+        Exception thrown by the client
+        """
+
+    @sections.Stream.setting(
+        params.Int,
+        version_introduced="0.6.10",
+        env_name="AEROSPIKE_SLEEP_SECONDS_BETWEEN_RETRIES_ON_EXCEPTION",
+        default=1,
+    )
+    def aerospike_sleep_seconds_between_retries_on_exception(self) -> bool:
+        """Seconds to sleep between retries to aerospike on a runtime error from
+        the aerospike client.
+
+        Set this to the sleep in seconds between retries using the aerospike
+        client on a runtime Exception thrown by the client
+        """
+
     @sections.RPC.setting(
         params.Bool,
-        env_name='APP_REPLY_CREATE_TOPIC',
+        env_name="APP_REPLY_CREATE_TOPIC",
         default=False,
     )
     def reply_create_topic(self) -> bool:
@@ -1347,7 +1493,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.RPC.setting(
         params.Seconds,
-        env_name='APP_REPLY_EXPIRES',
+        env_name="APP_REPLY_EXPIRES",
         default=want_seconds(timedelta(days=1)),
     )
     def reply_expires(self) -> float:
@@ -1371,12 +1517,12 @@ class Settings(base.SettingsRegistry):
 
     @reply_to.on_set_default  # type: ignore
     def _prepare_reply_to_default(self) -> str:
-        return f'{self.reply_to_prefix}{uuid4()}'
+        return f"{self.reply_to_prefix}{uuid4()}"
 
     @sections.RPC.setting(
         params.Str,
-        env_name='APP_REPLY_TO_PREFIX',
-        default='f-reply-',
+        env_name="APP_REPLY_TO_PREFIX",
+        default="f-reply-",
     )
     def reply_to_prefix(self) -> str:
         """Reply address topic name prefix.
@@ -1386,8 +1532,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Enum(ProcessingGuarantee),
-        version_introduced='1.5',
-        env_name='PROCESSING_GUARANTEE',
+        version_introduced="1.5",
+        env_name="PROCESSING_GUARANTEE",
         default=ProcessingGuarantee.AT_LEAST_ONCE,
     )
     def processing_guarantee(self) -> ProcessingGuarantee:
@@ -1409,7 +1555,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Stream.setting(
         params.UnsignedInt,
-        env_name='STREAM_BUFFER_MAXSIZE',
+        env_name="STREAM_BUFFER_MAXSIZE",
         default=4096,
     )
     def stream_buffer_maxsize(self) -> int:
@@ -1440,8 +1586,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Stream.setting(
         params.Seconds,
-        version_introduced='1.10',
-        env_name='STREAM_PROCESSING_TIMEOUT',
+        version_introduced="1.10",
+        env_name="STREAM_PROCESSING_TIMEOUT",
         default=5 * 60.0,
     )
     def stream_processing_timeout(self) -> float:
@@ -1467,7 +1613,7 @@ class Settings(base.SettingsRegistry):
             main_topic = app.topic('main')
             deadletter_topic = app.topic('main_deadletter')
 
-            async def send_request(value, timeout: float = None) -> None:
+            async def send_request(value, timeout: Optional[float] = None) -> None:
                 await app.http_client.get('http://foo.com', timeout=timeout)
 
             @app.agent(main_topic)
@@ -1502,11 +1648,11 @@ class Settings(base.SettingsRegistry):
 
     @sections.Stream.setting(
         params.Seconds,
-        version_introduced='1.3',
+        version_introduced="1.3",
         version_changed={
-            '1.5.3': 'Disabled by default.',
+            "1.5.3": "Disabled by default.",
         },
-        env_name='STREAM_RECOVERY_DELAY',
+        env_name="STREAM_RECOVERY_DELAY",
         default=0.0,
     )
     def stream_recovery_delay(self) -> float:
@@ -1520,7 +1666,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Stream.setting(
         params.Bool,
-        env_name='STREAM_WAIT_EMPTY',
+        env_name="STREAM_WAIT_EMPTY",
         default=True,
     )
     def stream_wait_empty(self) -> bool:
@@ -1541,8 +1687,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.URL,
-        env_name='APP_STORE',
-        default='memory://',
+        env_name="APP_STORE",
+        default="memory://",
     )
     def store(self) -> URL:
         """Table storage backend URL.
@@ -1558,7 +1704,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Table.setting(
         params.Seconds,
-        env_name='TABLE_CLEANUP_INTERVAL',
+        env_name="TABLE_CLEANUP_INTERVAL",
         default=30.0,
     )
     def table_cleanup_interval(self) -> float:
@@ -1569,8 +1715,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Table.setting(
         params.UnsignedInt,
-        version_introduced='1.7',
-        env_name='TABLE_KEY_INDEX_SIZE',
+        version_introduced="1.7",
+        env_name="TABLE_KEY_INDEX_SIZE",
         default=1000,
     )
     def table_key_index_size(self) -> int:
@@ -1584,7 +1730,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Table.setting(
         params.UnsignedInt,
-        env_name='TABLE_STANDBY_REPLICAS',
+        env_name="TABLE_STANDBY_REPLICAS",
         default=1,
     )
     def table_standby_replicas(self) -> int:
@@ -1595,8 +1741,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Topic.setting(
         params.Bool,
-        version_introduced='1.5',
-        env_name='TOPIC_ALLOW_DECLARE',
+        version_introduced="1.5",
+        env_name="TOPIC_ALLOW_DECLARE",
         default=True,
     )
     def topic_allow_declare(self) -> bool:
@@ -1614,8 +1760,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Topic.setting(
         params.Bool,
-        version_introduced='1.7',
-        env_name='TOPIC_DISABLE_LEADER',
+        version_introduced="1.7",
+        env_name="TOPIC_DISABLE_LEADER",
         default=False,
     )
     def topic_disable_leader(self) -> bool:
@@ -1629,7 +1775,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Topic.setting(
         params.UnsignedInt,
-        env_name='TOPIC_PARTITIONS',
+        env_name="TOPIC_PARTITIONS",
         default=8,
     )
     def topic_partitions(self) -> int:
@@ -1646,7 +1792,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Topic.setting(
         params.UnsignedInt,
-        env_name='TOPIC_REPLICATION_FACTOR',
+        env_name="TOPIC_REPLICATION_FACTOR",
         default=1,
     )
     def topic_replication_factor(self) -> int:
@@ -1662,9 +1808,9 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.URL,
-        version_introduced='1.2',
-        env_name='CACHE_URL',
-        default='memory://',
+        version_introduced="1.2",
+        env_name="CACHE_URL",
+        default="memory://",
     )
     def cache(self) -> URL:
         """Cache backend URL.
@@ -1679,18 +1825,18 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.URL,
-        version_introduced='1.2',
-        default='aiohttp://',
+        version_introduced="1.2",
+        default="aiohttp://",
     )
     def web(self) -> URL:
         """Web server driver to use."""
 
     @sections.WebServer.setting(
         params.Str,
-        version_introduced='1.2',
-        env_name='WEB_BIND',
+        version_introduced="1.2",
+        env_name="WEB_BIND",
         default=WEB_BIND,
-        related_cli_options={'faust worker': ['--web-bind']},
+        related_cli_options={"faust worker": ["--web-bind"]},
     )
     def web_bind(self) -> str:
         """Web network interface binding mask.
@@ -1706,7 +1852,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Dict[ResourceOptions],
-        version_introduced='1.5',
+        version_introduced="1.5",
     )
     def web_cors_options(self) -> Mapping[str, ResourceOptions]:
         """Cross Origin Resource Sharing options.
@@ -1739,10 +1885,10 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced='1.2',
-        env_name='APP_WEB_ENABLED',
+        version_introduced="1.2",
+        env_name="APP_WEB_ENABLED",
         default=True,
-        related_cli_options={'faust worker': ['--with-web']},
+        related_cli_options={"faust worker": ["--with-web"]},
     )
     def web_enabled(self) -> bool:
         """Enable/disable internal web server.
@@ -1754,10 +1900,10 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Str,
-        version_introduced='1.2',
-        env_name='WEB_HOST',
-        default_template='{conf.NODE_HOSTNAME}',
-        related_cli_options={'faust worker': ['--web-host']},
+        version_introduced="1.2",
+        env_name="WEB_HOST",
+        default_template="{conf.NODE_HOSTNAME}",
+        related_cli_options={"faust worker": ["--web-host"]},
     )
     def web_host(self) -> str:
         """Web server host name.
@@ -1771,7 +1917,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced='1.5',
+        version_introduced="1.5",
         default=False,
     )
     def web_in_thread(self) -> bool:
@@ -1789,10 +1935,10 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Port,
-        version_introduced='1.2',
-        env_name='WEB_PORT',
+        version_introduced="1.2",
+        env_name="WEB_PORT",
         default=WEB_PORT,
-        related_cli_options={'faust worker': ['--web-port']},
+        related_cli_options={"faust worker": ["--web-port"]},
     )
     def web_port(self) -> int:
         """Web server port.
@@ -1804,10 +1950,21 @@ class Settings(base.SettingsRegistry):
         """
 
     @sections.WebServer.setting(
+        params.SSLContext,
+        version_introduced="0.5.0",
+        default=None,
+    )
+    def web_ssl_context(self) -> ssl.SSLContext:
+        """Web server SSL configuration.
+
+        See :setting:`credentials`.
+        """
+
+    @sections.WebServer.setting(
         params.URL,
-        version_introduced='1.2',
+        version_introduced="1.2",
         default=WEB_TRANSPORT,
-        related_cli_options={'faust worker': ['--web-transport']},
+        related_cli_options={"faust worker": ["--web-transport"]},
     )
     def web_transport(self) -> URL:
         """Network transport used for the web server.
@@ -1826,10 +1983,10 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.URL,
-        default_template='http://{conf.web_host}:{conf.web_port}',
-        env_name='NODE_CANONICAL_URL',
+        default_template="http://{conf.web_host}:{conf.web_port}",
+        env_name="NODE_CANONICAL_URL",
         related_cli_options={
-            'faust worker': ['--web-host', '--web-port'],
+            "faust worker": ["--web-host", "--web-port"],
         },
         related_settings=[web_host, web_port],
     )
@@ -1845,7 +2002,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Worker.setting(
         params.Bool,
-        env_name='WORKER_REDIRECT_STDOUTS',
+        env_name="WORKER_REDIRECT_STDOUTS",
         default=True,
     )
     def worker_redirect_stdouts(self) -> bool:
@@ -1859,8 +2016,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Worker.setting(
         params.Severity,
-        env_name='WORKER_REDIRECT_STDOUTS_LEVEL',
-        default='WARN',
+        env_name="WORKER_REDIRECT_STDOUTS_LEVEL",
+        default="WARN",
     )
     def worker_redirect_stdouts_level(self) -> Severity:
         """Level used when redirecting standard outputs.
@@ -1870,7 +2027,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[AgentT]),
-        default='faust:Agent',
+        default="faust:Agent",
     )
     def Agent(self) -> Type[AgentT]:
         """Agent class type.
@@ -1893,8 +2050,8 @@ class Settings(base.SettingsRegistry):
 
     @sections.Consumer.setting(
         params.Symbol(Type[SchedulingStrategyT]),
-        version_introduced='1.5',
-        default='faust.transport.utils:DefaultSchedulingStrategy',
+        version_introduced="1.5",
+        default="faust.transport.utils:DefaultSchedulingStrategy",
     )
     def ConsumerScheduler(self) -> Type[SchedulingStrategyT]:
         """Consumer scheduler class.
@@ -1918,7 +2075,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[EventT]),
-        default='faust:Event',
+        default="faust:Event",
     )
     def Event(self) -> Type[EventT]:
         """Event class type.
@@ -1941,7 +2098,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[SchemaT]),
-        default='faust:Schema',
+        default="faust:Schema",
     )
     def Schema(self) -> Type[SchemaT]:
         """Schema class type.
@@ -1964,7 +2121,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[StreamT]),
-        default='faust:Stream',
+        default="faust:Stream",
     )
     def Stream(self) -> Type[StreamT]:
         """Stream class type.
@@ -1987,7 +2144,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[TableT]),
-        default='faust:Table',
+        default="faust:Table",
     )
     def Table(self) -> Type[TableT]:
         """Table class type.
@@ -2010,7 +2167,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[TableT]),
-        default='faust:SetTable',
+        default="faust:SetTable",
     )
     def SetTable(self) -> Type[TableT]:
         """SetTable extension table.
@@ -2033,7 +2190,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[GlobalTableT]),
-        default='faust:GlobalTable',
+        default="faust:GlobalTable",
     )
     def GlobalTable(self) -> Type[GlobalTableT]:
         """GlobalTable class type.
@@ -2056,7 +2213,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[GlobalTableT]),
-        default='faust:SetGlobalTable',
+        default="faust:SetGlobalTable",
     )
     def SetGlobalTable(self) -> Type[GlobalTableT]:
         """SetGlobalTable class type.
@@ -2079,7 +2236,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[TableManagerT]),
-        default='faust.tables:TableManager',
+        default="faust.tables:TableManager",
     )
     def TableManager(self) -> Type[TableManagerT]:
         """Table manager class type.
@@ -2104,7 +2261,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[RegistryT]),
-        default='faust.serializers:Registry',
+        default="faust.serializers:Registry",
     )
     def Serializers(self) -> Type[RegistryT]:
         """Serializer registry class type.
@@ -2129,7 +2286,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[_WorkerT]),
-        default='faust.worker:Worker',
+        default="faust.worker:Worker",
     )
     def Worker(self) -> Type[_WorkerT]:
         """Worker class type.
@@ -2154,7 +2311,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[PartitionAssignorT]),
-        default='faust.assignor:PartitionAssignor',
+        default="faust.assignor:PartitionAssignor",
     )
     def PartitionAssignor(self) -> Type[PartitionAssignorT]:
         """Partition assignor class type.
@@ -2179,7 +2336,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[LeaderAssignorT]),
-        default='faust.assignor:LeaderAssignor',
+        default="faust.assignor:LeaderAssignor",
     )
     def LeaderAssignor(self) -> Type[LeaderAssignorT]:
         """Leader assignor class type.
@@ -2204,7 +2361,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[RouterT]),
-        default='faust.app.router:Router',
+        default="faust.app.router:Router",
     )
     def Router(self) -> Type[RouterT]:
         """Router class type.
@@ -2230,7 +2387,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[TopicT]),
-        default='faust:Topic',
+        default="faust:Topic",
     )
     def Topic(self) -> Type[TopicT]:
         """Topic class type.
@@ -2255,7 +2412,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[HttpClientT]),
-        default='aiohttp.client:ClientSession',
+        default="aiohttp.client:ClientSession",
     )
     def HttpClient(self) -> Type[HttpClientT]:
         """Http client class type
@@ -2281,7 +2438,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Extension.setting(
         params.Symbol(Type[SensorT]),
-        default='faust.sensors:Monitor',
+        default="faust.sensors:Monitor",
     )
     def Monitor(self) -> Type[SensorT]:
         """Monitor sensor class type.
@@ -2309,8 +2466,8 @@ class Settings(base.SettingsRegistry):
     @sections.Stream.setting(
         params.Bool,
         default=True,
-        version_deprecated='1.0',
-        deprecation_reason='no longer has any effect',
+        version_deprecated="1.0",
+        deprecation_reason="no longer has any effect",
     )
     def stream_ack_cancelled_tasks(self) -> bool:
         """Deprecated setting has no effect."""
@@ -2318,17 +2475,17 @@ class Settings(base.SettingsRegistry):
     @sections.Stream.setting(
         params.Bool,
         default=True,
-        version_deprecated='1.0',
-        deprecation_reason='no longer has any effect',
+        version_deprecated="1.0",
+        deprecation_reason="no longer has any effect",
     )
     def stream_ack_exceptions(self) -> bool:
         """Deprecated setting has no effect."""
 
     @sections.Producer.setting(
         params.UnsignedInt,
-        env_name='PRODUCER_LINGER_MS',
-        version_deprecated='1.11',
-        deprecation_reason='use producer_linger in seconds instead.',
+        env_name="PRODUCER_LINGER_MS",
+        version_deprecated="1.11",
+        deprecation_reason="use producer_linger in seconds instead.",
         default=0,
     )
     def producer_linger_ms(self) -> int:

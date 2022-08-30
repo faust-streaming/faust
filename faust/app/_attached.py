@@ -4,27 +4,36 @@ Attachments were used before transactions support.
 """
 import asyncio
 import typing
-
 from collections import defaultdict
 from heapq import heappop, heappush
 from typing import (
-    Awaitable, Callable, Iterator, List,
-    MutableMapping, NamedTuple, Union, cast,
+    Awaitable,
+    Callable,
+    Iterator,
+    List,
+    MutableMapping,
+    NamedTuple,
+    Optional,
+    Union,
+    cast,
 )
 
 from mode.utils.objects import Unordered, cached_property
 
 from faust.streams import current_event
-from faust.types import AppT, ChannelT, CodecArg, RecordMetadata, SchemaT, TP
+from faust.types import TP, AppT, ChannelT, CodecArg, RecordMetadata, SchemaT
 from faust.types.core import HeadersArg, K, V
 from faust.types.tuples import FutureMessage, Message, MessageSentCallback
 
 if typing.TYPE_CHECKING:
     from faust.events import Event as _Event
 else:
-    class _Event: ...       # noqa
 
-__all__ = ['Attachment', 'Attachments']
+    class _Event:
+        ...  # noqa
+
+
+__all__ = ["Attachment", "Attachments"]
 
 
 class Attachment(NamedTuple):
@@ -78,18 +87,20 @@ class Attachments:
         """Return :const:`True` if attachments are enabled."""
         return self.app.conf.stream_publish_on_commit
 
-    async def maybe_put(self,
-                        channel: Union[ChannelT, str],
-                        key: K = None,
-                        value: V = None,
-                        partition: int = None,
-                        timestamp: float = None,
-                        headers: HeadersArg = None,
-                        schema: SchemaT = None,
-                        key_serializer: CodecArg = None,
-                        value_serializer: CodecArg = None,
-                        callback: MessageSentCallback = None,
-                        force: bool = False) -> Awaitable[RecordMetadata]:
+    async def maybe_put(
+        self,
+        channel: Union[ChannelT, str],
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset.
 
         This will send the message immediately if attachments
@@ -129,18 +140,20 @@ class Attachments:
             callback=callback,
         )
 
-    def put(self,
-            message: Message,
-            channel: Union[str, ChannelT],
-            key: K,
-            value: V,
-            partition: int = None,
-            timestamp: float = None,
-            headers: HeadersArg = None,
-            schema: SchemaT = None,
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            callback: MessageSentCallback = None) -> Awaitable[RecordMetadata]:
+    def put(
+        self,
+        message: Message,
+        channel: Union[str, ChannelT],
+        key: K,
+        value: V,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+    ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset."""
         # This attaches message to be published when source message' is
         # acknowledged.  To be replaced by transactions in :kip:`KIP-98`.
@@ -151,8 +164,16 @@ class Attachments:
         buf = self._pending[message.tp]
         chan = self.app.topic(channel) if isinstance(channel, str) else channel
         fut = chan.as_future_message(
-            key, value, partition, timestamp, headers,
-            schema, key_serializer, value_serializer, callback)
+            key,
+            value,
+            partition,
+            timestamp,
+            headers,
+            schema,
+            key_serializer,
+            value_serializer,
+            callback,
+        )
         # Note: Since FutureMessage have members that are unhashable
         # we wrap it in an Unordered object to stop heappush from crashing.
         # Unordered simply orders by random order, which is fine
@@ -165,11 +186,11 @@ class Attachments:
         await asyncio.wait(
             await self.publish_for_tp_offset(tp, offset),
             return_when=asyncio.ALL_COMPLETED,
-            loop=self.app.loop,
         )
 
     async def publish_for_tp_offset(
-            self, tp: TP, offset: int) -> List[Awaitable[RecordMetadata]]:
+        self, tp: TP, offset: int
+    ) -> List[Awaitable[RecordMetadata]]:
         """Publish messages attached to topic partition and offset."""
         # publish pending messages attached to this TP+offset
 
@@ -180,8 +201,7 @@ class Attachments:
             for fut in attached
         ]
 
-    def _attachments_for(self, tp: TP,
-                         commit_offset: int) -> Iterator[FutureMessage]:
+    def _attachments_for(self, tp: TP, commit_offset: int) -> Iterator[FutureMessage]:
         # Return attached messages for TopicPartition within committed offset.
         attached = self._pending.get(tp)
         while attached:

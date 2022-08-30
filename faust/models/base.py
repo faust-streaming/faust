@@ -29,7 +29,6 @@ values can be described as models.
 """
 import abc
 import warnings
-
 from datetime import datetime
 from functools import partial
 from typing import (
@@ -56,7 +55,7 @@ from faust.types.models import (
     ModelT,
 )
 
-__all__ = ['Model', 'maybe_model', 'registry']
+__all__ = ["Model", "maybe_model", "registry"]
 
 # NOTES:
 # - Records are described in the same notation as named tuples in Python 3.6.
@@ -114,7 +113,7 @@ __all__ = ['Model', 'maybe_model', 'registry']
 #       ACCESS ON INSTANCE
 #       42
 
-E_ABSTRACT_INSTANCE = '''
+E_ABSTRACT_INSTANCE = """
 Cannot instantiate abstract model.
 
 If this model is used as the field of another model,
@@ -123,7 +122,7 @@ your abstract model class has the `polymorphic_fields` option enabled:
 
     class {name}(faust.Record, abstract=True, polymorphic_fields=True):
         ...
-'''
+"""
 
 #: Global map of namespace -> Model, used to find model classes by name.
 #: Every single model defined is added here automatically when a model
@@ -134,7 +133,7 @@ registry: MutableMapping[str, Type[ModelT]] = {}
 def maybe_model(arg: Any) -> Any:
     """Convert argument to model if possible."""
     try:
-        model = registry[arg['__faust']['ns']]
+        model = registry[arg["__faust"]["ns"]]
     except (KeyError, TypeError):
         return arg
     else:
@@ -168,15 +167,17 @@ class Model(ModelT):
     #: For example it's not possible to perform remote code execution
     #: by providing a blessed key namespace of "os.system", simply
     #: because os.system is not in the registry of allowed types.
-    _blessed_key = '__faust'
+    _blessed_key = "__faust"
 
     @classmethod
     def _maybe_namespace(
-            cls, data: Any,
-            *,
-            preferred_type: Type[ModelT] = None,
-            fast_types: Tuple[Type, ...] = (bytes, str),
-            isinstance: Callable = isinstance) -> Optional[Type[ModelT]]:
+        cls,
+        data: Any,
+        *,
+        preferred_type: Type[ModelT] = None,
+        fast_types: Tuple[Type, ...] = (bytes, str),
+        isinstance: Callable = isinstance,
+    ) -> Optional[Type[ModelT]]:
         # The serialized data may contain a ``__faust`` blessed key
         # holding the name of the model it should be deserialized as.
         # So even if value_type=MyModel, the data may mandata that it
@@ -187,14 +188,16 @@ class Model(ModelT):
         if data is None or isinstance(data, fast_types):
             return None
         try:
-            ns = data[cls._blessed_key]['ns']
+            ns = data[cls._blessed_key]["ns"]
         except (KeyError, TypeError):
             pass
         else:
             # we only allow blessed keys when type=None, or type=Model
-            type_is_abstract = (preferred_type is None or
-                                preferred_type is ModelT or
-                                preferred_type is Model)
+            type_is_abstract = (
+                preferred_type is None
+                or preferred_type is ModelT
+                or preferred_type is Model
+            )
             try:
                 model = registry[ns]
             except KeyError:
@@ -202,9 +205,11 @@ class Model(ModelT):
                     raise
                 return None
             else:
-                if (type_is_abstract or
-                        model._options.allow_blessed_key or
-                        model._options.polymorphic_fields):
+                if (
+                    type_is_abstract
+                    or model._options.allow_blessed_key
+                    or model._options.polymorphic_fields
+                ):
                     return model
         return None
 
@@ -214,7 +219,7 @@ class Model(ModelT):
         return model.from_data(data) if model else data
 
     @classmethod
-    def _from_data_field(cls, data: Any) -> Optional['Model']:
+    def _from_data_field(cls, data: Any) -> Optional["Model"]:
         if data is not None:
             if cls.__is_abstract__:
                 return cls._maybe_reconstruct(data)
@@ -222,9 +227,13 @@ class Model(ModelT):
         return None
 
     @classmethod
-    def loads(cls, s: bytes, *,
-              default_serializer: CodecArg = None,  # XXX use serializer
-              serializer: CodecArg = None) -> ModelT:
+    def loads(
+        cls,
+        s: bytes,
+        *,
+        default_serializer: CodecArg = None,  # XXX use serializer
+        serializer: CodecArg = None,
+    ) -> ModelT:
         """Deserialize model object from bytes.
 
         Keyword Arguments:
@@ -232,27 +241,30 @@ class Model(ModelT):
                 if no custom serializer was set for this model subclass.
         """
         if default_serializer is not None:
-            warnings.warn(DeprecationWarning(
-                'default_serializer deprecated, use: serializer'))
+            warnings.warn(
+                DeprecationWarning("default_serializer deprecated, use: serializer")
+            )
         ser = cls._options.serializer or serializer or default_serializer
         data = loads(ser, s)
         return cls.from_data(data)
 
-    def __init_subclass__(self,
-                          serializer: str = None,
-                          namespace: str = None,
-                          include_metadata: bool = None,
-                          isodates: bool = None,
-                          abstract: bool = False,
-                          allow_blessed_key: bool = None,
-                          decimals: bool = None,
-                          coerce: bool = None,
-                          coercions: CoercionMapping = None,
-                          polymorphic_fields: bool = None,
-                          validation: bool = None,
-                          date_parser: Callable[[Any], datetime] = None,
-                          lazy_creation: bool = False,
-                          **kwargs: Any) -> None:
+    def __init_subclass__(
+        self,
+        serializer: Optional[str] = None,
+        namespace: Optional[str] = None,
+        include_metadata: Optional[bool] = None,
+        isodates: Optional[bool] = None,
+        abstract: bool = False,
+        allow_blessed_key: Optional[bool] = None,
+        decimals: Optional[bool] = None,
+        coerce: Optional[bool] = None,
+        coercions: CoercionMapping = None,
+        polymorphic_fields: Optional[bool] = None,
+        validation: Optional[bool] = None,
+        date_parser: Callable[[Any], datetime] = None,
+        lazy_creation: bool = False,
+        **kwargs: Any,
+    ) -> None:
         # Python 3.6 added the new __init_subclass__ function that
         # makes it possible to initialize subclasses without using
         # metaclasses (:pep:`487`).
@@ -291,19 +303,21 @@ class Model(ModelT):
                 finalizer()
 
     @classmethod
-    def _init_subclass(cls,
-                       serializer: str = None,
-                       namespace: str = None,
-                       include_metadata: bool = None,
-                       isodates: bool = None,
-                       abstract: bool = False,
-                       allow_blessed_key: bool = None,
-                       decimals: bool = None,
-                       coerce: bool = None,
-                       coercions: CoercionMapping = None,
-                       polymorphic_fields: bool = None,
-                       validation: bool = None,
-                       date_parser: Callable[[Any], datetime] = None) -> None:
+    def _init_subclass(
+        cls,
+        serializer: Optional[str] = None,
+        namespace: Optional[str] = None,
+        include_metadata: Optional[bool] = None,
+        isodates: Optional[bool] = None,
+        abstract: bool = False,
+        allow_blessed_key: Optional[bool] = None,
+        decimals: Optional[bool] = None,
+        coerce: Optional[bool] = None,
+        coercions: CoercionMapping = None,
+        polymorphic_fields: Optional[bool] = None,
+        validation: Optional[bool] = None,
+        date_parser: Callable[[Any], datetime] = None,
+    ) -> None:
         # Can set serializer/namespace/etc. using:
         #    class X(Record, serializer='json', namespace='com.vandelay.X'):
         #        ...
@@ -312,8 +326,8 @@ class Model(ModelT):
         except AttributeError:
             custom_options = None
         else:
-            delattr(cls, 'Options')
-        options = getattr(cls, '_options', None)
+            delattr(cls, "Options")
+        options = getattr(cls, "_options", None)
         if options is None:
             options = ModelOptions()
             options.coercions = {}
@@ -357,8 +371,7 @@ class Model(ModelT):
         # Add introspection capabilities
         cls._contribute_to_options(options)
         # Add FieldDescriptors for every field.
-        options.descriptors = cls._contribute_field_descriptors(
-            cls, options)
+        options.descriptors = cls._contribute_field_descriptors(cls, options)
 
         # Store options on new subclass.
         cls._options = options
@@ -370,14 +383,14 @@ class Model(ModelT):
         registry[options.namespace] = cls
 
         codegens = [
-            ('__init__', cls._BUILD_init, '_model_init'),
-            ('__hash__', cls._BUILD_hash, '_model_hash'),
-            ('__eq__', cls._BUILD_eq, '_model_eq'),
-            ('__ne__', cls._BUILD_ne, '_model_ne'),
-            ('__gt__', cls._BUILD_gt, '_model_gt'),
-            ('__ge__', cls._BUILD_ge, '_model_ge'),
-            ('__lt__', cls._BUILD_lt, '_model_lt'),
-            ('__le__', cls._BUILD_le, '_model_le'),
+            ("__init__", cls._BUILD_init, "_model_init"),
+            ("__hash__", cls._BUILD_hash, "_model_hash"),
+            ("__eq__", cls._BUILD_eq, "_model_eq"),
+            ("__ne__", cls._BUILD_ne, "_model_ne"),
+            ("__gt__", cls._BUILD_gt, "_model_gt"),
+            ("__ge__", cls._BUILD_ge, "_model_ge"),
+            ("__lt__", cls._BUILD_lt, "_model_lt"),
+            ("__le__", cls._BUILD_le, "_model_le"),
         ]
 
         for meth_name, meth_gen, attr_name in codegens:
@@ -390,14 +403,15 @@ class Model(ModelT):
                 setattr(cls, meth_name, meth)
 
     def __abstract_init__(self) -> None:
-        raise NotImplementedError(E_ABSTRACT_INSTANCE.format(
-            name=type(self).__name__,
-        ))
+        raise NotImplementedError(
+            E_ABSTRACT_INSTANCE.format(
+                name=type(self).__name__,
+            )
+        )
 
     @classmethod
     @abc.abstractmethod
-    def _contribute_to_options(
-            cls, options: ModelOptions) -> None:  # pragma: no cover
+    def _contribute_to_options(cls, options: ModelOptions) -> None:  # pragma: no cover
         ...
 
     @classmethod
@@ -407,10 +421,11 @@ class Model(ModelT):
     @classmethod
     @abc.abstractmethod
     def _contribute_field_descriptors(
-            cls,
-            target: Type,
-            options: ModelOptions,
-            parent: FieldDescriptorT = None) -> FieldMap:  # pragma: no cover
+        cls,
+        target: Type,
+        options: ModelOptions,
+        parent: Optional[FieldDescriptorT] = None,
+    ) -> FieldMap:  # pragma: no cover
         ...
 
     @classmethod
@@ -469,8 +484,7 @@ class Model(ModelT):
 
     def dumps(self, *, serializer: CodecArg = None) -> bytes:
         """Serialize object to the target serialization format."""
-        return dumps(serializer or self._options.serializer,
-                     self.to_representation())
+        return dumps(serializer or self._options.serializer, self.to_representation())
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self._humanize()}>'
+        return f"<{type(self).__name__}: {self._humanize()}>"

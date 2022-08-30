@@ -1,10 +1,8 @@
 """Base class Collection for Table and future data structures."""
 import abc
 import time
-
-from contextlib import suppress
 from collections import defaultdict
-from functools import lru_cache
+from contextlib import suppress
 from datetime import datetime
 from heapq import heappop, heappush
 from typing import (
@@ -24,15 +22,15 @@ from typing import (
     no_type_check,
 )
 
-from mode.utils.futures import maybe_async
 from mode import Seconds, Service
+from mode.utils.futures import maybe_async
 from yarl import URL
 
-from faust import stores
-from faust import joins
+from faust import joins, stores
 from faust.exceptions import PartitionsMismatch
 from faust.streams import current_event
 from faust.types import (
+    TP,
     AppT,
     CodecArg,
     EventT,
@@ -41,7 +39,6 @@ from faust.types import (
     JoinT,
     RecordMetadata,
     SchemaT,
-    TP,
     TopicT,
 )
 from faust.types.models import ModelArg, ModelT
@@ -56,18 +53,18 @@ from faust.types.tables import (
 )
 from faust.types.windows import WindowRange, WindowT
 
-__all__ = ['Collection']
+__all__ = ["Collection"]
 
-TABLE_CLEANING = 'CLEANING'
+TABLE_CLEANING = "CLEANING"
 
-E_SOURCE_PARTITIONS_MISMATCH = '''\
+E_SOURCE_PARTITIONS_MISMATCH = """\
 The source topic {source_topic!r} for table {table_name!r}
 has {source_n} partitions, but the changelog
 topic {change_topic!r} has {change_n} partitions.
 
 Please make sure the topics have the same number of partitions
 by configuring Kafka correctly.
-'''
+"""
 
 
 class Collection(Service, CollectionT):
@@ -76,7 +73,8 @@ class Collection(Service, CollectionT):
     _store: Optional[URL]
     _changelog_topic: Optional[TopicT]
     _partition_timestamp_keys: MutableMapping[
-        Tuple[int, float], MutableSet[Tuple[Any, WindowRange]]]
+        Tuple[int, float], MutableSet[Tuple[Any, WindowRange]]
+    ]
     _partition_timestamps: MutableMapping[int, List[float]]
     _partition_latest_timestamp: MutableMapping[int, float]
     _recover_callbacks: MutableSet[RecoverCallback]
@@ -100,30 +98,32 @@ class Collection(Service, CollectionT):
     def _del_key(self, key: Any) -> None:  # pragma: no cover
         ...
 
-    def __init__(self,
-                 app: AppT,
-                 *,
-                 name: str = None,
-                 default: Callable[[], Any] = None,
-                 store: Union[str, URL] = None,
-                 schema: SchemaT = None,
-                 key_type: ModelArg = None,
-                 value_type: ModelArg = None,
-                 partitions: int = None,
-                 window: WindowT = None,
-                 changelog_topic: TopicT = None,
-                 help: str = None,
-                 on_recover: RecoverCallback = None,
-                 on_changelog_event: ChangelogEventCallback = None,
-                 recovery_buffer_size: int = 1000,
-                 standby_buffer_size: int = None,
-                 extra_topic_configs: Mapping[str, Any] = None,
-                 recover_callbacks: Set[RecoverCallback] = None,
-                 options: Mapping[str, Any] = None,
-                 use_partitioner: bool = False,
-                 on_window_close: WindowCloseCallback = None,
-                 is_global: bool = False,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        name: Optional[str] = None,
+        default: Callable[[], Any] = None,
+        store: Union[str, URL] = None,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        partitions: Optional[int] = None,
+        window: Optional[WindowT] = None,
+        changelog_topic: Optional[TopicT] = None,
+        help: Optional[str] = None,
+        on_recover: RecoverCallback = None,
+        on_changelog_event: Optional[ChangelogEventCallback] = None,
+        recovery_buffer_size: int = 1000,
+        standby_buffer_size: Optional[int] = None,
+        extra_topic_configs: Optional[Mapping[str, Any]] = None,
+        recover_callbacks: Set[RecoverCallback] = None,
+        options: Optional[Mapping[str, Any]] = None,
+        use_partitioner: bool = False,
+        on_window_close: Optional[WindowCloseCallback] = None,
+        is_global: bool = False,
+        **kwargs: Any,
+    ) -> None:
         Service.__init__(self, **kwargs)
         self.app = app
         self.name = cast(str, name)  # set lazily so CAN BE NONE!
@@ -136,7 +136,7 @@ class Collection(Service, CollectionT):
         self.window = window
         self._changelog_topic = changelog_topic
         self.extra_topic_configs = extra_topic_configs or {}
-        self.help = help or ''
+        self.help = help or ""
         self._on_changelog_event = on_changelog_event
         self.recovery_buffer_size = recovery_buffer_size
         self.standby_buffer_size = standby_buffer_size or recovery_buffer_size
@@ -168,14 +168,15 @@ class Collection(Service, CollectionT):
         self._sensor_on_set = self.app.sensors.on_table_set
         self._sensor_on_del = self.app.sensors.on_table_del
 
-    def _serializer_from_type(
-            self, typ: Optional[ModelArg]) -> Optional[CodecArg]:
+        self._verified_source_topics_for_partitions: Set[str] = set()
+
+    def _serializer_from_type(self, typ: Optional[ModelArg]) -> Optional[CodecArg]:
         if typ is bytes:
-            return 'raw'
+            return "raw"
         serializer = None
         with suppress(AttributeError):
             serializer = typ._options.serializer  # type: ignore
-        return serializer or 'json'
+        return serializer or "json"
 
     def __hash__(self) -> int:
         # We have to override MutableMapping __hash__, so that this table
@@ -187,7 +188,9 @@ class Collection(Service, CollectionT):
 
     def _new_store_by_url(self, url: Union[str, URL]) -> StoreT:
         return stores.by_url(url)(
-            url, self.app, self,
+            url,
+            self.app,
+            self,
             table_name=self.name,
             key_type=self.key_type,
             key_serializer=self.key_serializer,
@@ -220,22 +223,22 @@ class Collection(Service, CollectionT):
         """Return table attributes as dictionary."""
         # Used to recreate object in .clone()
         return {
-            'app': self.app,
-            'name': self.name,
-            'default': self.default,
-            'store': self._store,
-            'schema': self.schema,
-            'key_type': self.key_type,
-            'value_type': self.value_type,
-            'partitions': self.partitions,
-            'window': self.window,
-            'changelog_topic': self._changelog_topic,
-            'recover_callbacks': self._recover_callbacks,
-            'on_changelog_event': self._on_changelog_event,
-            'recovery_buffer_size': self.recovery_buffer_size,
-            'standby_buffer_size': self.standby_buffer_size,
-            'extra_topic_configs': self.extra_topic_configs,
-            'use_partitioner': self.use_partitioner,
+            "app": self.app,
+            "name": self.name,
+            "default": self.default,
+            "store": self._store,
+            "schema": self.schema,
+            "key_type": self.key_type,
+            "value_type": self.value_type,
+            "partitions": self.partitions,
+            "window": self.window,
+            "changelog_topic": self._changelog_topic,
+            "recover_callbacks": self._recover_callbacks,
+            "on_changelog_event": self._on_changelog_event,
+            "recovery_buffer_size": self.recovery_buffer_size,
+            "standby_buffer_size": self.standby_buffer_size,
+            "extra_topic_configs": self.extra_topic_configs,
+            "use_partitioner": self.use_partitioner,
         }
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
@@ -250,12 +253,14 @@ class Collection(Service, CollectionT):
         """Reset local state."""
         self.data.reset_state()
 
-    def send_changelog(self,
-                       partition: Optional[int],
-                       key: Any,
-                       value: Any,
-                       key_serializer: CodecArg = None,
-                       value_serializer: CodecArg = None) -> FutureMessage:
+    def send_changelog(
+        self,
+        partition: Optional[int],
+        key: Any,
+        value: Any,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+    ) -> FutureMessage:
         """Send modification event to changelog topic."""
         if key_serializer is None:
             key_serializer = self.key_serializer
@@ -272,18 +277,20 @@ class Collection(Service, CollectionT):
             eager_partitioning=True,
         )
 
-    def _send_changelog(self,
-                        event: Optional[EventT],
-                        key: Any,
-                        value: Any,
-                        key_serializer: CodecArg = None,
-                        value_serializer: CodecArg = None) -> None:
+    def _send_changelog(
+        self,
+        event: Optional[EventT],
+        key: Any,
+        value: Any,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+    ) -> None:
         # XXX compat version of send_changelog that needs event argument.
         if event is None:
-            raise RuntimeError('Cannot modify table outside of agent/stream.')
+            raise RuntimeError("Cannot modify table outside of agent/stream.")
         self.send_changelog(
-            event.message.partition,
-            key, value, key_serializer, value_serializer)
+            event.message.partition, key, value, key_serializer, value_serializer
+        )
 
     def partition_for_key(self, key: Any) -> Optional[int]:
         """Return partition number for table key.
@@ -301,12 +308,20 @@ class Collection(Service, CollectionT):
             event = current_event()
             if event is None:
                 raise TypeError(
-                    'Cannot modify table key from outside of stream iteration')
+                    "Cannot modify table key from outside of stream iteration"
+                )
             self._verify_source_topic_partitions(event.message.topic)
             return event.message.partition
 
-    @lru_cache()
     def _verify_source_topic_partitions(self, source_topic: str) -> None:
+        # This was formerly wrapped in an lru_cache. The linter sees issues with this
+        # as an instance stays cached.
+        # This is why we implement a non lru_cached lookup which checks if the
+        # function has already been executed once on the instance level.
+
+        if source_topic in self._verified_source_topics_for_partitions:
+            return
+
         change_topic = self.changelog_topic_name
         source_n = self.app.consumer.topic_partitions(source_topic)
         if source_n is not None:
@@ -323,6 +338,8 @@ class Collection(Service, CollectionT):
                         ),
                     )
 
+        self._verified_source_topics_for_partitions.add(source_topic)
+
     def _on_changelog_sent(self, fut: FutureMessage) -> None:
         # This is what keeps the offset in RocksDB so that at startup
         # we know what offsets we already have data for in the database.
@@ -338,7 +355,8 @@ class Collection(Service, CollectionT):
             # persisted offset to RocksDB on disk when that partition
             # is committed.
             self.app.tables.persist_offset_on_commit(
-                self.data, res.topic_partition, res.offset)
+                self.data, res.topic_partition, res.offset
+            )
         else:
             # for normal processing (at-least-once) we just write
             # the persisted offset immediately.
@@ -350,25 +368,22 @@ class Collection(Service, CollectionT):
         interval = self.app.conf.table_cleanup_interval
         if self._should_expire_keys():
             await self.sleep(interval)
-            async for sleep_time in self.itertimer(
-                    interval, name='table_cleanup'):
+            async for sleep_time in self.itertimer(interval, name="table_cleanup"):
                 await self._del_old_keys()
 
     async def _del_old_keys(self) -> None:
         window = cast(WindowT, self.window)
         assert window
         for partition, timestamps in self._partition_timestamps.items():
-            while timestamps and window.stale(
-                    timestamps[0],
-                    self._partition_latest_timestamp[partition]):
+            while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 keys_to_remove = self._partition_timestamp_keys.pop(
-                    (partition, timestamp), None)
+                    (partition, timestamp), None
+                )
                 if keys_to_remove:
                     for key in keys_to_remove:
                         value = self.data.pop(key, None)
-                        if key[1][0] > self.last_closed_window:
-                            await self.on_window_close(key, value)
+                        await self.on_window_close(key, value)
                     self.last_closed_window = max(
                         self.last_closed_window,
                         max(key[1][0] for key in keys_to_remove),
@@ -389,20 +404,20 @@ class Collection(Service, CollectionT):
         _, range_end = window_range
         heappush(self._partition_timestamps[partition], range_end)
         self._partition_latest_timestamp[partition] = max(
-            self._partition_latest_timestamp[partition], range_end)
+            self._partition_latest_timestamp[partition], range_end
+        )
         self._partition_timestamp_keys[(partition, range_end)].add(key)
 
     def _maybe_del_key_ttl(self, key: Any, partition: int) -> None:
         if not self._should_expire_keys():
             return
         _, window_range = key
-        ts_keys = self._partition_timestamp_keys.get(
-            (partition, window_range[1]))
+        ts_keys = self._partition_timestamp_keys.get((partition, window_range[1]))
         if ts_keys is not None:
             ts_keys.discard(key)
 
     def _changelog_topic_name(self) -> str:
-        return f'{self.app.conf.id}-{self.name}-changelog'
+        return f"{self.app.conf.id}-{self.name}-changelog"
 
     def join(self, *fields: FieldDescriptorT) -> StreamT:
         """Right join of this table and another stream/table."""
@@ -422,7 +437,7 @@ class Collection(Service, CollectionT):
 
     def _join(self, join_strategy: JoinT) -> StreamT:
         # TODO
-        raise NotImplementedError('TODO')
+        raise NotImplementedError("TODO")
 
     def clone(self, **kwargs: Any) -> Any:
         """Clone table instance."""
@@ -431,7 +446,7 @@ class Collection(Service, CollectionT):
     def combine(self, *nodes: JoinableT, **kwargs: Any) -> StreamT:
         """Combine tables and streams."""
         # TODO
-        raise NotImplementedError('TODO')
+        raise NotImplementedError("TODO")
 
     def contribute_to_stream(self, active: StreamT) -> None:
         """Contribute table to stream join."""
@@ -446,11 +461,13 @@ class Collection(Service, CollectionT):
         # with one or more streams.
         ...
 
-    def _new_changelog_topic(self,
-                             *,
-                             retention: Seconds = None,
-                             compacting: bool = None,
-                             deleting: bool = None) -> TopicT:
+    def _new_changelog_topic(
+        self,
+        *,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+    ) -> TopicT:
         if compacting is None:
             compacting = self._changelog_compacting
         if deleting is None:
@@ -483,8 +500,9 @@ class Collection(Service, CollectionT):
     def __and__(self, other: Any) -> Any:
         return self.combine(self, other)
 
-    def _apply_window_op(self, op: Callable[[Any, Any], Any], key: Any,
-                         value: Any, timestamp: float) -> None:
+    def _apply_window_op(
+        self, op: Callable[[Any, Any], Any], key: Any, value: Any, timestamp: float
+    ) -> None:
         get_ = self._get_key
         set_ = self._set_key
         for window_range in self._window_ranges(timestamp):
@@ -503,30 +521,30 @@ class Collection(Service, CollectionT):
         for window_range in window.ranges(timestamp):
             yield window_range
 
-    def _relative_now(self, event: EventT = None) -> float:
+    def _relative_now(self, event: Optional[EventT] = None) -> float:
         # get current timestamp
         event = event if event is not None else current_event()
         if event is None:
             return time.time()
         return self._partition_latest_timestamp[event.message.partition]
 
-    def _relative_event(self, event: EventT = None) -> float:
+    def _relative_event(self, event: Optional[EventT] = None) -> float:
         event = event if event is not None else current_event()
         # get event timestamp
         if event is None:
-            raise RuntimeError('Operation outside of stream iteration')
+            raise RuntimeError("Operation outside of stream iteration")
         return event.message.timestamp
 
     def _relative_field(self, field: FieldDescriptorT) -> RelativeHandler:
-        def to_value(event: EventT = None) -> Union[float, datetime]:
+        def to_value(event: Optional[EventT] = None) -> Union[float, datetime]:
             if event is None:
-                raise RuntimeError('Operation outside of stream iteration')
+                raise RuntimeError("Operation outside of stream iteration")
             return field.getattr(cast(ModelT, event.value))
 
         return to_value
 
     def _relative_timestamp(self, timestamp: float) -> RelativeHandler:
-        def handler(event: EventT = None) -> Union[float, datetime]:
+        def handler(event: Optional[EventT] = None) -> Union[float, datetime]:
             return timestamp
 
         return handler
@@ -543,24 +561,27 @@ class Collection(Service, CollectionT):
         window = cast(WindowT, self.window)
         return self._has_key((key, window.current(timestamp)))
 
-    def _windowed_delta(self, key: Any, d: Seconds,
-                        event: EventT = None) -> Any:
+    def _windowed_delta(
+        self, key: Any, d: Seconds, event: Optional[EventT] = None
+    ) -> Any:
         window = cast(WindowT, self.window)
         return self._get_key(
-            (key,
-             window.delta(self._relative_event(event), d)),
+            (key, window.delta(self._relative_event(event), d)),
         )
 
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
+    ) -> None:
         """Call when cluster is rebalancing."""
-        await self.data.on_rebalance(self, assigned, revoked, newly_assigned)
+        await self.data.on_rebalance(assigned, revoked, newly_assigned, generation_id)
 
-    async def on_recovery_completed(self,
-                                    active_tps: Set[TP],
-                                    standby_tps: Set[TP]) -> None:
+    async def on_recovery_completed(
+        self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
         """Call when recovery has completed after rebalancing."""
         await self.data.on_recovery_completed(active_tps, standby_tps)
         await self.call_recover_callbacks()
@@ -578,12 +599,12 @@ class Collection(Service, CollectionT):
     @property
     def label(self) -> str:
         """Return human-readable label used to represent this table."""
-        return f'{self.shortlabel}@{self._store}'
+        return f"{self.shortlabel}@{self._store}"
 
     @property
     def shortlabel(self) -> str:
         """Return short label used to represent this table in logs."""
-        return f'{type(self).__name__}: {self.name}'
+        return f"{type(self).__name__}: {self.name}"
 
     @property
     def changelog_topic(self) -> TopicT:
@@ -619,7 +640,7 @@ class Collection(Service, CollectionT):
         return v
 
     def _human_channel(self) -> str:
-        return f'{type(self).__name__}: {self.name}'
+        return f"{type(self).__name__}: {self.name}"
 
     def _repr_info(self) -> str:
         return self.name

@@ -1,0 +1,39 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Python package
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+
+jobs:
+  tests:
+    name: "Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}"
+    runs-on: "ubuntu-latest"
+
+    strategy:
+      # Complete all jobs even if one fails, allows us to see
+      # for example if a test fails only when Cython is enabled
+      fail-fast: false
+      matrix:
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        use-cython: ["true", "false"]
+    env:
+      USE_CYTHON: ${{ matrix.use-cython }}
+
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-python@v2"
+        with:
+          python-version: "${{ matrix.python-version }}"
+      - name: "Install dependencies"
+        run: "scripts/install"
+      - name: "Run linting checks"
+        run: "scripts/check"
+      - name: "Run tests"
+        run: "scripts/tests"
+      - name: "Enforce coverage"
+        run: "scripts/coverage"

@@ -34,23 +34,30 @@ if typing.TYPE_CHECKING:
     from .join import JoinT as _JoinT
     from .serializers import SchemaT as _SchemaT
 else:
-    class _AppT: ...     # noqa
-    class _JoinT: ...    # noqa
-    class _SchemaT: ...  # noqa
+
+    class _AppT:
+        ...  # noqa
+
+    class _JoinT:
+        ...  # noqa
+
+    class _SchemaT:
+        ...  # noqa
+
 
 __all__ = [
-    'Processor',
-    'GroupByKeyArg',
-    'StreamT',
-    'T',
-    'T_co',
-    'T_contra',
+    "Processor",
+    "GroupByKeyArg",
+    "StreamT",
+    "T",
+    "T_co",
+    "T_contra",
 ]
 
 # Used for typing StreamT[Withdrawal]
-T = TypeVar('T')
-T_co = TypeVar('T_co', covariant=True)
-T_contra = TypeVar('T_contra', contravariant=True)
+T = TypeVar("T")
+T_co = TypeVar("T_co", covariant=True)
+T_contra = TypeVar("T_contra", contravariant=True)
 
 Processor = Callable[[T], Union[T, Awaitable[T]]]
 
@@ -59,25 +66,24 @@ GroupByKeyArg = Union[FieldDescriptorT, Callable[[T], K]]
 
 
 class JoinableT(abc.ABC):
-
     @abc.abstractmethod
-    def combine(self, *nodes: 'JoinableT', **kwargs: Any) -> 'StreamT':
+    def combine(self, *nodes: "JoinableT", **kwargs: Any) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def join(self, *fields: FieldDescriptorT) -> 'StreamT':
+    def join(self, *fields: FieldDescriptorT) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def left_join(self, *fields: FieldDescriptorT) -> 'StreamT':
+    def left_join(self, *fields: FieldDescriptorT) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def inner_join(self, *fields: FieldDescriptorT) -> 'StreamT':
+    def inner_join(self, *fields: FieldDescriptorT) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def outer_join(self, *fields: FieldDescriptorT) -> 'StreamT':
+    def outer_join(self, *fields: FieldDescriptorT) -> "StreamT":
         ...
 
     @abc.abstractmethod
@@ -85,11 +91,11 @@ class JoinableT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def contribute_to_stream(self, active: 'StreamT') -> None:
+    def contribute_to_stream(self, active: "StreamT") -> None:
         ...
 
     @abc.abstractmethod
-    async def remove_from_stream(self, stream: 'StreamT') -> None:
+    async def remove_from_stream(self, stream: "StreamT") -> None:
         ...
 
     @abc.abstractmethod
@@ -108,7 +114,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     active_partitions: Optional[Set[TP]] = None
     concurrency_index: Optional[int] = None
     enable_acks: bool = True
-    prefix: str = ''
+    prefix: str = ""
 
     # List of combined streams/tables after ret = (s1 & s2) combined them.
     # AFter this ret.combined == [s1, s2]
@@ -121,29 +127,31 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     #    >>> while node._next:
     #    ...     node = node._next
     # which is also what .get_active_stream() gives
-    _next: Optional['StreamT'] = None
-    _prev: Optional['StreamT'] = None
+    _next: Optional["StreamT"] = None
+    _prev: Optional["StreamT"] = None
 
     @abc.abstractmethod
-    def __init__(self,
-                 channel: AsyncIterator[T_co] = None,
-                 *,
-                 app: _AppT = None,
-                 processors: Iterable[Processor[T]] = None,
-                 combined: List[JoinableT] = None,
-                 on_start: Callable = None,
-                 join_strategy: _JoinT = None,
-                 beacon: NodeT = None,
-                 concurrency_index: int = None,
-                 prev: 'StreamT' = None,
-                 active_partitions: Set[TP] = None,
-                 enable_acks: bool = True,
-                 prefix: str = '',
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        channel: AsyncIterator[T_co] = None,
+        *,
+        app: Optional[_AppT] = None,
+        processors: Iterable[Processor[T]] = None,
+        combined: List[JoinableT] = None,
+        on_start: Optional[Callable] = None,
+        join_strategy: _JoinT = None,
+        beacon: Optional[NodeT] = None,
+        concurrency_index: Optional[int] = None,
+        prev: "StreamT" = None,
+        active_partitions: Optional[Set[TP]] = None,
+        enable_acks: bool = True,
+        prefix: str = "",
+        loop: Optional[asyncio.AbstractEventLoop] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def get_active_stream(self) -> 'StreamT':
+    def get_active_stream(self) -> "StreamT":
         ...
 
     @abc.abstractmethod
@@ -155,7 +163,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         ...
 
     @abc.abstractmethod
-    def clone(self, **kwargs: Any) -> 'StreamT':
+    def clone(self, **kwargs: Any) -> "StreamT":
         ...
 
     @abc.abstractmethod
@@ -170,8 +178,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
 
     @abc.abstractmethod
     @no_type_check
-    async def take(self, max_: int,
-                   within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+    async def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
         ...
 
     @abc.abstractmethod
@@ -179,30 +186,34 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         ...
 
     @abc.abstractmethod
-    def through(self, channel: Union[str, ChannelT]) -> 'StreamT':
+    def through(self, channel: Union[str, ChannelT]) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def echo(self, *channels: Union[str, ChannelT]) -> 'StreamT':
+    def echo(self, *channels: Union[str, ChannelT]) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def group_by(self,
-                 key: GroupByKeyArg,
-                 *,
-                 name: str = None,
-                 topic: TopicT = None) -> 'StreamT':
+    def group_by(
+        self,
+        key: GroupByKeyArg,
+        *,
+        name: Optional[str] = None,
+        topic: Optional[TopicT] = None
+    ) -> "StreamT":
         ...
 
     @abc.abstractmethod
-    def derive_topic(self,
-                     name: str,
-                     *,
-                     schema: _SchemaT = None,
-                     key_type: ModelArg = None,
-                     value_type: ModelArg = None,
-                     prefix: str = '',
-                     suffix: str = '') -> TopicT:
+    def derive_topic(
+        self,
+        name: str,
+        *,
+        schema: Optional[_SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        prefix: str = "",
+        suffix: str = ""
+    ) -> TopicT:
         ...
 
     @abc.abstractmethod
@@ -210,7 +221,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         ...
 
     @abc.abstractmethod
-    def __copy__(self) -> 'StreamT':
+    def __copy__(self) -> "StreamT":
         ...
 
     @abc.abstractmethod

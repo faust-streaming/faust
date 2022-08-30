@@ -19,46 +19,50 @@ from typing import (
     Union,
     cast,
 )
+
 from mode.utils.objects import cached_property
+
 from faust.exceptions import ValidationError  # XXX !!coupled
+
 from .codecs import CodecArg
 
 __all__ = [
-    'CoercionHandler',
-    'FieldDescriptorT',
-    'FieldMap',
-    'IsInstanceArgT',
-    'ModelArg',
-    'ModelOptions',
-    'ModelT',
+    "CoercionHandler",
+    "FieldDescriptorT",
+    "FieldMap",
+    "IsInstanceArgT",
+    "ModelArg",
+    "ModelOptions",
+    "ModelT",
 ]
 
-FieldMap = Mapping[str, 'FieldDescriptorT']
+FieldMap = Mapping[str, "FieldDescriptorT"]
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 # Workaround for https://bugs.python.org/issue29581
 try:
+
     @typing.no_type_check  # type: ignore
     class _InitSubclassCheck(metaclass=abc.ABCMeta):
         ident: int
 
-        def __init_subclass__(self,
-                              *args: Any,
-                              ident: int = 808,
-                              **kwargs: Any) -> None:
+        def __init_subclass__(
+            self, *args: Any, ident: int = 808, **kwargs: Any
+        ) -> None:
             self.ident = ident
             super().__init__(*args, **kwargs)
 
     @typing.no_type_check  # type: ignore
     class _UsingKwargsInNew(_InitSubclassCheck, ident=909):
         ...
+
 except TypeError:
     abc_compatible_with_init_subclass = False
 else:
     abc_compatible_with_init_subclass = True
 
-ModelArg = Union[Type['ModelT'], Type[bytes], Type[str]]
+ModelArg = Union[Type["ModelT"], Type[bytes], Type[str]]
 IsInstanceArgT = Union[Type, Tuple[Type, ...]]
 CoercionHandler = Callable[[Any], Any]
 CoercionMapping = MutableMapping[IsInstanceArgT, CoercionHandler]
@@ -103,7 +107,8 @@ class ModelOptions(abc.ABC):
 
     #: Mapping of field names to default value.
     defaults: Mapping[str, Any] = cast(  # noqa: E704 (flake8 bug)
-        Mapping[str, Any], None)
+        Mapping[str, Any], None
+    )
 
     tagged_fields: FrozenSet[str] = cast(FrozenSet[str], None)
     personal_fields: FrozenSet[str] = cast(FrozenSet[str], None)
@@ -115,7 +120,7 @@ class ModelOptions(abc.ABC):
     has_sensitive_fields: bool = False
     has_secret_fields: bool = False
 
-    def clone_defaults(self) -> 'ModelOptions':
+    def clone_defaults(self) -> "ModelOptions":
         new_options = type(self)()
         new_options.serializer = self.serializer
         new_options.namespace = self.namespace
@@ -140,15 +145,18 @@ class ModelT(base):  # type: ignore
 
     @classmethod
     @abc.abstractmethod
-    def from_data(cls, data: Any, *,
-                  preferred_type: Type['ModelT'] = None) -> 'ModelT':
+    def from_data(cls, data: Any, *, preferred_type: Type["ModelT"] = None) -> "ModelT":
         ...
 
     @classmethod
     @abc.abstractmethod
-    def loads(cls, s: bytes, *,
-              default_serializer: CodecArg = None,  # XXX use serializer
-              serializer: CodecArg = None) -> 'ModelT':
+    def loads(
+        cls,
+        s: bytes,
+        *,
+        default_serializer: CodecArg = None,  # XXX use serializer
+        serializer: CodecArg = None
+    ) -> "ModelT":
         ...
 
     @abc.abstractmethod
@@ -160,7 +168,7 @@ class ModelT(base):  # type: ignore
         ...
 
     @abc.abstractmethod
-    def derive(self, *objects: 'ModelT', **fields: Any) -> 'ModelT':
+    def derive(self, *objects: "ModelT", **fields: Any) -> "ModelT":
         ...
 
     @abc.abstractmethod
@@ -194,33 +202,37 @@ class FieldDescriptorT(Generic[T]):
     model: Type[ModelT]
     required: bool = True
     default: Optional[T] = None  # noqa: E704
-    parent: Optional['FieldDescriptorT']
+    parent: Optional["FieldDescriptorT"]
     exclude: bool
 
     @abc.abstractmethod
-    def __init__(self, *,
-                 field: str = None,
-                 input_name: str = None,
-                 output_name: str = None,
-                 type: Type[T] = None,
-                 model: Type[ModelT] = None,
-                 required: bool = True,
-                 default: T = None,
-                 parent: 'FieldDescriptorT' = None,
-                 exclude: bool = None,
-                 date_parser: Callable[[Any], datetime] = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        field: Optional[str] = None,
+        input_name: Optional[str] = None,
+        output_name: Optional[str] = None,
+        type: Optional[Type[T]] = None,
+        model: Optional[Type[ModelT]] = None,
+        required: bool = True,
+        default: T = None,
+        parent: "FieldDescriptorT" = None,
+        exclude: Optional[bool] = None,
+        date_parser: Callable[[Any], datetime] = None,
+        **kwargs: Any
+    ) -> None:
         # we have to do this in __init__ or mypy will think
         # this is a method
         self.date_parser: Callable[[Any], datetime] = cast(
-            Callable[[Any], datetime], date_parser)
+            Callable[[Any], datetime], date_parser
+        )
 
     @abc.abstractmethod
     def on_model_attached(self) -> None:
         ...
 
     @abc.abstractmethod
-    def clone(self, **kwargs: Any) -> 'FieldDescriptorT':
+    def clone(self, **kwargs: Any) -> "FieldDescriptorT":
         ...
 
     @abc.abstractmethod

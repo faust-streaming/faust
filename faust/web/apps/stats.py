@@ -1,31 +1,46 @@
 """HTTP endpoint showing statistics from the Faust monitor."""
 from collections import defaultdict
 from typing import List, MutableMapping, Set
+
 from faust import web
 from faust.types.tuples import TP
 
-__all__ = ['Assignment', 'Stats', 'blueprint']
+__all__ = ["Assignment", "Stats", "blueprint"]
 
 TPMap = MutableMapping[str, List[int]]
 
 
-blueprint = web.Blueprint('monitor')
+blueprint = web.Blueprint("monitor")
 
 
-@blueprint.route('/', name='index')
+@blueprint.route("/", name="index")
 class Stats(web.View):
-    """Monitor statistics."""
+    """
+    ---
+    description: Monitor statistics.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
 
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with sensor information."""
         return self.json(
-            {f'Sensor{i}': s.asdict()
-             for i, s in enumerate(self.app.sensors)})
+            {f"Sensor{i}": s.asdict() for i, s in enumerate(self.app.sensors)}
+        )
 
 
-@blueprint.route('/assignment/', name='assignment')
+@blueprint.route("/assignment/", name="assignment")
 class Assignment(web.View):
-    """Cluster assignment information."""
+    """
+    ---
+    description: Cluster assignment information.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
 
     @classmethod
     def _topic_grouped(cls, assignment: Set[TP]) -> TPMap:
@@ -37,7 +52,9 @@ class Assignment(web.View):
     async def get(self, request: web.Request) -> web.Response:
         """Return current assignment as a JSON response."""
         assignor = self.app.assignor
-        return self.json({
-            'actives': self._topic_grouped(assignor.assigned_actives()),
-            'standbys': self._topic_grouped(assignor.assigned_standbys()),
-        })
+        return self.json(
+            {
+                "actives": self._topic_grouped(assignor.assigned_actives()),
+                "standbys": self._topic_grouped(assignor.assigned_standbys()),
+            }
+        )

@@ -1,15 +1,6 @@
 import abc
 import typing
-from typing import (
-    Any,
-    Callable,
-    Iterable,
-    Mapping,
-    Optional,
-    Set,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Iterable, Mapping, Optional, Set, TypeVar, Union
 
 from mode import ServiceT
 from mode.utils.collections import FastUserDict
@@ -24,14 +15,21 @@ if typing.TYPE_CHECKING:
     from .models import ModelArg as _ModelArg
     from .tables import CollectionT as _CollectionT
 else:
-    class _AppT: ...  # noqa
-    class _ModelArg: ...  # noqa
-    class _CollectionT: ...  # noqa
 
-__all__ = ['StoreT']
+    class _AppT:
+        ...  # noqa
 
-KT = TypeVar('KT')
-VT = TypeVar('VT')
+    class _ModelArg:
+        ...  # noqa
+
+    class _CollectionT:
+        ...  # noqa
+
+
+__all__ = ["StoreT"]
+
+KT = TypeVar("KT")
+VT = TypeVar("VT")
 
 
 class StoreT(ServiceT, FastUserDict[KT, VT]):
@@ -47,18 +45,20 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
     options: Optional[Mapping[str, Any]]
 
     @abc.abstractmethod
-    def __init__(self,
-                 url: Union[str, URL],
-                 app: _AppT,
-                 table: _CollectionT,
-                 *,
-                 table_name: str = '',
-                 key_type: _ModelArg = None,
-                 value_type: _ModelArg = None,
-                 key_serializer: CodecArg = '',
-                 value_serializer: CodecArg = '',
-                 options: Mapping[str, Any] = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        url: Union[str, URL],
+        app: _AppT,
+        table: _CollectionT,
+        *,
+        table_name: str = "",
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        key_serializer: CodecArg = "",
+        value_serializer: CodecArg = "",
+        options: Optional[Mapping[str, Any]] = None,
+        **kwargs: Any
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -74,9 +74,12 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         ...
 
     @abc.abstractmethod
-    def apply_changelog_batch(self, batch: Iterable[EventT],
-                              to_key: Callable[[Any], KT],
-                              to_value: Callable[[Any], VT]) -> None:
+    def apply_changelog_batch(
+        self,
+        batch: Iterable[EventT],
+        to_key: Callable[[Any], KT],
+        to_value: Callable[[Any], VT],
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -84,15 +87,32 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         ...
 
     @abc.abstractmethod
-    async def on_rebalance(self,
-                           table: _CollectionT,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    async def on_recovery_completed(self,
-                                    active_tps: Set[TP],
-                                    standby_tps: Set[TP]) -> None:
+    async def on_recovery_completed(
+        self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def restore_backup(
+        self,
+        tp: Union[TP, int],
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
         ...

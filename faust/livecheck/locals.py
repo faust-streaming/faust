@@ -1,19 +1,24 @@
 """Locals - Current test & execution context."""
 import typing
 from typing import Optional
+
 from mode.locals import LocalStack
+
 from .models import TestExecution
 
 if typing.TYPE_CHECKING:
     from .runners import TestRunner as _TestRunner
 else:  # pragma: no cover
-    class _TestRunner: ...   # noqa
+
+    class _TestRunner:
+        ...  # noqa
+
 
 __all__ = [
-    'current_execution',
-    'current_execution_stack',
-    'current_test',
-    'current_test_stack',
+    "current_execution",
+    "current_execution_stack",
+    "current_test",
+    "current_test_stack",
 ]
 
 current_test_stack: LocalStack[TestExecution]

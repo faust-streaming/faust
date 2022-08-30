@@ -1,8 +1,9 @@
 """Fixups - Base implementation."""
 from typing import Iterable
+
 from faust.types import AppT, FixupT
 
-__all__ = ['Fixup']
+__all__ = ["Fixup"]
 
 
 class Fixup(FixupT):

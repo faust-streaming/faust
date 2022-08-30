@@ -1,13 +1,12 @@
 """Tables (changelog stream)."""
 import asyncio
 import typing
-
 from typing import Any, MutableMapping, Optional, Set, Tuple, cast
 
 from mode import Service
 from mode.utils.queues import ThrowableQueue
 
-from faust.types import AppT, ChannelT, StoreT, TP
+from faust.types import TP, AppT, ChannelT, StoreT
 from faust.types.tables import CollectionT, TableManagerT
 from faust.utils.tracing import traced_from_parent_span
 
@@ -16,10 +15,13 @@ from .recovery import Recovery
 if typing.TYPE_CHECKING:
     from faust.app import App as _App
 else:
-    class _App: ...  # noqa
+
+    class _App:
+        ...  # noqa
+
 
 __all__ = [
-    'TableManager',
+    "TableManager",
 ]
 
 
@@ -46,18 +48,15 @@ class TableManager(Service, TableManagerT):
         self._changelog_queue = None
         self._channels = {}
         self._changelogs = {}
-        self._tables_finalized = asyncio.Event(loop=self.loop)
-        self._tables_registered = asyncio.Event(loop=self.loop)
-        self._recovery_started = asyncio.Event(loop=self.loop)
+        self._tables_finalized = asyncio.Event()
+        self._tables_registered = asyncio.Event()
+        self._recovery_started = asyncio.Event()
 
         self.actives_ready = False
         self.standbys_ready = False
         self._pending_persisted_offsets = {}
 
-    def persist_offset_on_commit(self,
-                                 store: StoreT,
-                                 tp: TP,
-                                 offset: int) -> None:
+    def persist_offset_on_commit(self, store: StoreT, tp: TP, offset: int) -> None:
         """Mark the persisted offset for a TP to be saved on commit.
 
         This is used for "exactly_once" processing guarantee.
@@ -112,7 +111,6 @@ class TableManager(Service, TableManagerT):
         if self._changelog_queue is None:
             self._changelog_queue = self.app.FlowControlQueue(
                 maxsize=self.app.conf.stream_buffer_maxsize,
-                loop=self.loop,
                 clear_on_resume=True,
             )
         return self._changelog_queue
@@ -122,16 +120,17 @@ class TableManager(Service, TableManagerT):
         """Recovery service used by this table manager."""
         if self._recovery is None:
             self._recovery = Recovery(
-                self.app, self, beacon=self.beacon, loop=self.loop)
+                self.app, self, beacon=self.beacon, loop=self.loop
+            )
         return self._recovery
 
     def add(self, table: CollectionT) -> CollectionT:
         """Add table to be managed by this table manager."""
         if self._tables_finalized.is_set():
-            raise RuntimeError('Too late to add tables at this point')
+            raise RuntimeError("Too late to add tables at this point")
         assert table.name is not None
         if table.name in self:
-            raise ValueError(f'Table with name {table.name!r} already exists')
+            raise ValueError(f"Table with name {table.name!r} already exists")
         self[table.name] = table
         self._changelogs[table.changelog_topic.get_topic_name()] = table
         return table
@@ -152,16 +151,18 @@ class TableManager(Service, TableManagerT):
         for table in self.values():
             await asyncio.sleep(0)
             if table not in self._channels:
-                chan = table.changelog_topic.clone_using_queue(
-                    self.changelog_queue)
+                chan = table.changelog_topic.clone_using_queue(self.changelog_queue)
                 self.app.topics.add(chan)
                 await asyncio.sleep(0)
                 self._channels[table] = chan
             await table.maybe_start()
-        self.app.consumer.pause_partitions({
-            tp for tp in self.app.consumer.assignment()
-            if tp.topic in self._changelogs
-        })
+        self.app.consumer.pause_partitions(
+            {
+                tp
+                for tp in self.app.consumer.assignment()
+                if tp.topic in self._changelogs
+            }
+        )
         await asyncio.sleep(0)
         self._tables_registered.set()
 
@@ -178,23 +179,33 @@ class TableManager(Service, TableManagerT):
         T = traced_from_parent_span()
         T(self.recovery.on_partitions_revoked)(revoked)
 
-    async def on_rebalance(self,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
+    ) -> None:
         """Call when the cluster is rebalancing."""
         self._recovery_started.set()  # cannot add more tables.
         T = traced_from_parent_span()
         for table in self.values():
-            await T(table.on_rebalance)(assigned, revoked, newly_assigned)
+            await T(table.on_rebalance)(
+                assigned, revoked, newly_assigned, generation_id
+            )
 
         await asyncio.sleep(0)
         await T(self._update_channels)()
         await asyncio.sleep(0)
-        await T(self.recovery.on_rebalance)(assigned, revoked, newly_assigned)
+        await T(self.recovery.on_rebalance)(
+            assigned, revoked, newly_assigned, generation_id
+        )
 
     async def wait_until_recovery_completed(self) -> bool:
-        if (self.recovery.started and not
-                self.app.producer_only and not self.app.client_only):
+        if (
+            self.recovery.started
+            and not self.app.producer_only
+            and not self.app.client_only
+        ):
             return await self.wait_for_stopped(self.recovery.completed)
         return False

@@ -18,7 +18,7 @@ async def print_greetings(greetings):
 @app.timer(5)
 async def produce():
     for i in range(100):
-        await print_greetings.send(value=f'hello {i}')
+        await greetings_topic.send(value=f'hello {i}')
 
 if __name__ == '__main__':
     app.main()

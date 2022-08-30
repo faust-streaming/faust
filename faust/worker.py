@@ -9,18 +9,17 @@ import asyncio
 import logging
 import os
 import sys
-
 from collections import defaultdict
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, IO, Iterable, Mapping, Optional, Set, Union
+from typing import IO, Any, Dict, Iterable, Mapping, Optional, Set, Union
 
 import mode
 from aiokafka.structs import TopicPartition
 from mode import ServiceT, get_logger
 from mode.utils.logging import Severity, formatter2
 
-from .types import AppT, SensorT, TP, TopicT
+from .types import TP, AppT, SensorT, TopicT
 from .types._env import CONSOLE_PORT, DEBUG
 from .utils import terminal
 from .utils.functional import consecutive_numbers
@@ -29,12 +28,15 @@ try:  # pragma: no cover
     # if installed we use this to set ps.name (argv[0])
     from setproctitle import setproctitle
 except ImportError:  # pragma: no cover
-    def setproctitle(title: str) -> None: ...  # noqa
 
-__all__ = ['Worker']
+    def setproctitle(title: str) -> None:
+        ...  # noqa
+
+
+__all__ = ["Worker"]
 
 #: Name prefix of process in ps/top listings.
-PSIDENT = '[Faust:Worker]'
+PSIDENT = "[Faust:Worker]"
 
 TP_TYPES = (TP, TopicPartition)
 
@@ -43,51 +45,50 @@ logger = get_logger(__name__)
 
 @formatter2
 def format_log_arguments(
-        arg: Any, record: logging.LogRecord) -> Any:  # pragma: no cover
+    arg: Any, record: logging.LogRecord
+) -> Any:  # pragma: no cover
     # This adds custom formatting to certain log messages.
 
     if arg and isinstance(arg, Mapping):
         first_k, first_v = next(iter(arg.items()))
         # Mapping of name to TopicT is changed to terminal table.
-        if (isinstance(first_k, str) and isinstance(first_v, set) and
-                isinstance(next(iter(first_v), None), TopicT)):
-            return '\n' + terminal.logtable(
+        if (
+            isinstance(first_k, str)
+            and isinstance(first_v, set)
+            and isinstance(next(iter(first_v), None), TopicT)
+        ):
+            return "\n" + terminal.logtable(
                 sorted(arg.items()),
-                title='Subscription',
-                headers=['Topic', 'Descriptions'],
+                title="Subscription",
+                headers=["Topic", "Descriptions"],
             )
         # Mapping where values are TopicPartition tuples are changed
         # to a terminal table.
         elif isinstance(first_v, TP_TYPES):
-            return '\n' + terminal.logtable(
-                [(k.topic, k.partition, v)
-                 for k, v in sorted(arg.items())],
-                title='Topic Partition Map',
-                headers=['topic', 'partition', 'offset'],
+            return "\n" + terminal.logtable(
+                [(k.topic, k.partition, v) for k, v in sorted(arg.items())],
+                title="Topic Partition Map",
+                headers=["topic", "partition", "offset"],
             )
     elif arg and isinstance(arg, (set, list)):
-        if 'Subscribed to topic' in record.msg:
-            return '\n' + terminal.logtable(
-                [
-                    [str(v)] for v in sorted(arg)
-                ],
-                title='Final Subscription',
-                headers=['topic name'],
+        if "Subscribed to topic" in record.msg:
+            return "\n" + terminal.logtable(
+                [[str(v)] for v in sorted(arg)],
+                title="Final Subscription",
+                headers=["topic name"],
             )
         elif isinstance(next(iter(arg)), TP_TYPES):
             # Sets/Lists of TopicPartition are converted to terminal table.
             return _partition_set_logtable(arg)
 
     elif arg and isinstance(arg, frozenset):
-        if 'subscribed topics to' in record.msg:
+        if "subscribed topics to" in record.msg:
             # aiokafka emits a frozenset of topics,
             # and we convert this to a terminal table.
-            return '\n' + terminal.logtable(
-                [
-                    [str(v)] for v in sorted(arg)
-                ],
-                title='Requested Subscription',
-                headers=['topic name'],
+            return "\n" + terminal.logtable(
+                [[str(v)] for v in sorted(arg)],
+                title="Requested Subscription",
+                headers=["topic name"],
             )
         elif isinstance(next(iter(arg)), TP_TYPES):
             # Sets/Lists of TopicPartition are converted to terminal table.
@@ -99,11 +100,10 @@ def _partition_set_logtable(arg: Iterable[TP]) -> str:
     for tp in arg:
         topics[tp.topic].add(tp.partition)
 
-    return '\n' + terminal.logtable(
-        [(k, _repr_partition_set(v))
-            for k, v in sorted(topics.items())],
-        title='Topic Partition Set',
-        headers=['topic', 'partitions'],
+    return "\n" + terminal.logtable(
+        [(k, _repr_partition_set(v)) for k, v in sorted(topics.items())],
+        title="Topic Partition Set",
+        headers=["topic", "partitions"],
     )
 
 
@@ -118,8 +118,8 @@ def _repr_partition_set(s: Set[int]) -> str:
         >>> _repr_partition_set(partitions)
         '{1-3, 7-10, 34-38, 50}'
     """
-    elements = ', '.join(_iter_consecutive_numbers(sorted(s)))
-    return f'{{{elements}}}'
+    elements = ", ".join(_iter_consecutive_numbers(sorted(s)))
+    return f"{{{elements}}}"
 
 
 def _iter_consecutive_numbers(s: Iterable[int]) -> Iterable[str]:
@@ -134,9 +134,9 @@ def _iter_consecutive_numbers(s: Iterable[int]) -> Iterable[str]:
     """
     for numbers in consecutive_numbers(s):
         if len(numbers) > 1:
-            yield f'{numbers[0]}-{numbers[-1]}'
+            yield f"{numbers[0]}-{numbers[-1]}"
         else:
-            yield f'{numbers[0]}'
+            yield f"{numbers[0]}"
 
 
 class Worker(mode.Worker):
@@ -212,24 +212,26 @@ class Worker(mode.Worker):
     #: Set by signal to avoid printing an OK status.
     _shutdown_immediately: bool = False
 
-    def __init__(self,
-                 app: AppT,
-                 *services: ServiceT,
-                 sensors: Iterable[SensorT] = None,
-                 debug: bool = DEBUG,
-                 quiet: bool = False,
-                 loglevel: Union[str, int] = None,
-                 logfile: Union[str, IO] = None,
-                 stdout: IO = sys.stdout,
-                 stderr: IO = sys.stderr,
-                 blocking_timeout: float = None,
-                 workdir: Union[Path, str] = None,
-                 console_port: int = CONSOLE_PORT,
-                 loop: asyncio.AbstractEventLoop = None,
-                 redirect_stdouts: bool = None,
-                 redirect_stdouts_level: Severity = None,
-                 logging_config: Dict = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *services: ServiceT,
+        sensors: Optional[Iterable[SensorT]] = None,
+        debug: bool = DEBUG,
+        quiet: bool = False,
+        loglevel: Union[str, int, None] = None,
+        logfile: Union[str, IO, None] = None,
+        stdout: IO = sys.stdout,
+        stderr: IO = sys.stderr,
+        blocking_timeout: Optional[float] = None,
+        workdir: Union[Path, str, None] = None,
+        console_port: int = CONSOLE_PORT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        redirect_stdouts: Optional[bool] = None,
+        redirect_stdouts_level: Optional[Severity] = None,
+        logging_config: Optional[Dict] = None,
+        **kwargs: Any,
+    ) -> None:
         self.app = app
         self.sensors = set(sensors or [])
         self.workdir = Path(workdir or Path.cwd())
@@ -237,8 +239,7 @@ class Worker(mode.Worker):
         if redirect_stdouts is None:
             redirect_stdouts = conf.worker_redirect_stdouts
         if redirect_stdouts_level is None:
-            redirect_stdouts_level = (
-                conf.worker_redirect_stdouts_level or logging.INFO)
+            redirect_stdouts_level = conf.worker_redirect_stdouts_level or logging.INFO
         if logging_config is None and app.conf.logging_config:
             logging_config = dict(app.conf.logging_config)
         super().__init__(
@@ -256,7 +257,8 @@ class Worker(mode.Worker):
             redirect_stdouts_level=redirect_stdouts_level,
             logging_config=logging_config,
             loop=loop,
-            **kwargs)
+            **kwargs,
+        )
         self.spinner = terminal.Spinner(file=self.stdout)
 
     async def on_start(self) -> None:
@@ -301,14 +303,14 @@ class Worker(mode.Worker):
         if self.spinner:
             self.spinner.finish()
             if self.spinner.file.isatty():
-                self.say(' 😊')
+                self.say(" 😊")
             else:
-                self.say(' OK ^')
+                self.say(" OK ^")
         else:
-            self.log.info('Ready')
+            self.log.info("Ready")
 
     def _on_shutdown_immediately(self) -> None:
-        self.say('')  # make sure spinner newlines.
+        self.say("")  # make sure spinner newlines.
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return service dependencies that must start with the worker."""
@@ -343,31 +345,31 @@ class Worker(mode.Worker):
             self.app.discover()
 
     def _setproctitle(self, info: str, *, ident: str = PSIDENT) -> None:
-        setproctitle(f'{ident} -{info}- {self._proc_ident()}')
+        setproctitle(f"{ident} -{info}- {self._proc_ident()}")
 
     def _proc_ident(self) -> str:
         conf = self.app.conf
-        return f'{conf.id} {self._proc_web_ident()} {conf.datadir.absolute()}'
+        return f"{conf.id} {self._proc_web_ident()} {conf.datadir.absolute()}"
 
     def _proc_web_ident(self) -> str:
         conf = self.app.conf
-        if conf.web_transport.scheme == 'unix':
-            return f'{conf.web_transport}'
-        return f'-p {conf.web_port}'
+        if conf.web_transport.scheme == "unix":
+            return f"{conf.web_transport}"
+        return f"-p {conf.web_port}"
 
     async def on_execute(self) -> None:
         """Signal called when the worker is about to start."""
         # This is called as soon as we start
-        self._setproctitle('init')
+        self._setproctitle("init")
         if self.spinner and self.spinner.file.isatty():
-            self._say('starting➢ ', end='', flush=True)
+            self._say("starting➢ ", end="", flush=True)
 
     def on_worker_shutdown(self) -> None:
         """Signal called before the worker is shutting down."""
-        self._setproctitle('stopping')
+        self._setproctitle("stopping")
         if self.spinner and self.spinner.file.isatty():
             self.spinner.reset()
-            self._say('stopping➢ ', end='', flush=True)
+            self._say("stopping➢ ", end="", flush=True)
 
     def on_setup_root_logger(self, logger: logging.Logger, level: int) -> None:
         """Signal called when the root logger is being configured."""
@@ -380,10 +382,10 @@ class Worker(mode.Worker):
         if level and level < logging.WARN:
             self.spinner = None
 
-    def _setup_spinner_handler(
-            self, logger: logging.Logger, level: int) -> None:
+    def _setup_spinner_handler(self, logger: logging.Logger, level: int) -> None:
         if self.spinner:
             logger.handlers[0].setLevel(level)
             logger.addHandler(
-                terminal.SpinnerHandler(self.spinner, level=logging.DEBUG))
+                terminal.SpinnerHandler(self.spinner, level=logging.DEBUG)
+            )
             logger.setLevel(logging.DEBUG)

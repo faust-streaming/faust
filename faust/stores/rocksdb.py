@@ -2,9 +2,10 @@
 import asyncio
 import gc
 import math
+import os
 import shutil
+import tempfile
 import typing
-
 from collections import defaultdict
 from contextlib import suppress
 from pathlib import Path
@@ -30,7 +31,7 @@ from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured
 from faust.streams import current_event
-from faust.types import AppT, CollectionT, EventT, TP
+from faust.types import TP, AppT, CollectionT, EventT
 from faust.utils import platforms
 
 from . import base
@@ -42,8 +43,8 @@ DEFAULT_MAX_OPEN_FILES = _max_open_files
 DEFAULT_WRITE_BUFFER_SIZE = 67108864
 DEFAULT_MAX_WRITE_BUFFER_NUMBER = 3
 DEFAULT_TARGET_FILE_SIZE_BASE = 67108864
-DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024 ** 3
-DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024 ** 2
+DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024**3
+DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024**2
 DEFAULT_BLOOM_FILTER_SIZE = 3
 
 try:  # pragma: no cover
@@ -54,6 +55,7 @@ except ImportError:  # pragma: no cover
 if typing.TYPE_CHECKING:  # pragma: no cover
     from rocksdb import DB, Options
 else:
+
     class DB:  # noqa
         """Dummy DB."""
 
@@ -85,15 +87,17 @@ class RocksDBOptions:
     bloom_filter_size: int = DEFAULT_BLOOM_FILTER_SIZE
     extra_options: Mapping
 
-    def __init__(self,
-                 max_open_files: int = None,
-                 write_buffer_size: int = None,
-                 max_write_buffer_number: int = None,
-                 target_file_size_base: int = None,
-                 block_cache_size: int = None,
-                 block_cache_compressed_size: int = None,
-                 bloom_filter_size: int = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        max_open_files: Optional[int] = None,
+        write_buffer_size: Optional[int] = None,
+        max_write_buffer_number: Optional[int] = None,
+        target_file_size_base: Optional[int] = None,
+        block_cache_size: Optional[int] = None,
+        block_cache_compressed_size: Optional[int] = None,
+        bloom_filter_size: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None:
         if max_open_files is not None:
             self.max_open_files = max_open_files
         if write_buffer_size is not None:
@@ -123,19 +127,23 @@ class RocksDBOptions:
             max_write_buffer_number=self.max_write_buffer_number,
             target_file_size_base=self.target_file_size_base,
             table_factory=rocksdb.BlockBasedTableFactory(
-                filter_policy=rocksdb.BloomFilterPolicy(
-                    self.bloom_filter_size),
+                filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
                 block_cache=rocksdb.LRUCache(self.block_cache_size),
                 block_cache_compressed=rocksdb.LRUCache(
-                    self.block_cache_compressed_size),
+                    self.block_cache_compressed_size
+                ),
             ),
-            **self.extra_options)
+            **self.extra_options,
+        )
 
 
 class Store(base.SerializedStore):
-    """RocksDB table storage."""
+    """RocksDB table storage.
+    Pass 'options={'read_only': True}' as an option into a Table class
+    to allow a RocksDB store be used by multiple apps.
+    """
 
-    offset_key = b'__faust\0offset__'
+    offset_key = b"__faust\0offset__"
 
     #: Decides the size of the K=>TopicPartition index (10_000).
     key_index_size: int
@@ -145,18 +153,24 @@ class Store(base.SerializedStore):
 
     _dbs: MutableMapping[int, DB]
     _key_index: LRUCache[bytes, int]
+    rebalance_ack: bool
+    db_lock: asyncio.Lock
 
-    def __init__(self,
-                 url: Union[str, URL],
-                 app: AppT,
-                 table: CollectionT,
-                 *,
-                 key_index_size: int = None,
-                 options: Mapping[str, Any] = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        url: Union[str, URL],
+        app: AppT,
+        table: CollectionT,
+        *,
+        key_index_size: Optional[int] = None,
+        options: Optional[Mapping[str, Any]] = None,
+        read_only: Optional[bool] = False,
+        **kwargs: Any,
+    ) -> None:
         if rocksdb is None:
             error = ImproperlyConfigured(
-                'RocksDB bindings not installed? pip install python-rocksdb')
+                "RocksDB bindings not installed? pip install python-rocksdb"
+            )
             try:
                 import rocksdb as _rocksdb  # noqa: F401
             except Exception as exc:  # pragma: no cover
@@ -167,12 +181,92 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
+        self.read_only = self.options.pop("read_only", read_only)
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
         self.key_index_size = key_index_size
         self._dbs = {}
         self._key_index = LRUCache(limit=self.key_index_size)
+        self.db_lock = asyncio.Lock()
+        self.rebalance_ack = False
+        self._backup_path = os.path.join(self.path, f"{str(self.basename)}-backups")
+        try:
+            self._backup_engine = None
+            if not os.path.isdir(self._backup_path):
+                os.makedirs(self._backup_path, exist_ok=True)
+            testfile = tempfile.TemporaryFile(dir=self._backup_path)
+            testfile.close()
+        except PermissionError:
+            self.log.warning(
+                f'Unable to make directory for path "{self._backup_path}",'
+                f"disabling backups."
+            )
+        except OSError:
+            self.log.warning(
+                f'Unable to create files in "{self._backup_path}",' f"disabling backups"
+            )
+        else:
+            self._backup_engine = rocksdb.BackupEngine(self._backup_path)
+
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        """Backup partition from this store.
+
+        This will be saved in a separate directory in the data directory called
+        '{table-name}-backups'.
+
+        Arguments:
+            tp: Partition to backup
+            flush: Flush the memset before backing up the state of the table.
+            purge: Purge old backups in the process
+            keep: How many backups to keep after purging
+
+        This is only supported in newer versions of python-rocksdb which can read
+        the RocksDB database using multi-process read access.
+        See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
+        """
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            try:
+                if flush:
+                    db = await self._try_open_db_for_partition(partition)
+                else:
+                    db = self.rocksdb_options.open(
+                        self.partition_path(partition), read_only=True
+                    )
+                self._backup_engine.create_backup(db, flush_before_backup=flush)
+                if purge:
+                    self._backup_engine.purge_old_backups(keep)
+            except Exception:
+                self.log.info(f"Unable to backup partition {partition}.")
+
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
+        """Restore partition backup from this store.
+
+        Arguments:
+            tp: Partition to restore
+            latest: Restore the latest backup, set as False to restore a specific ID
+            backup_id: Backup to restore
+
+        """
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            if latest:
+                self._backup_engine.restore_latest_backup(
+                    str(self.partition_path(partition)), self._backup_path
+                )
+            else:
+                self._backup_engine.restore_backup(
+                    backup_id, str(self.partition_path(partition)), self._backup_path
+                )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
@@ -192,8 +286,7 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        self._db_for_partition(tp.partition).put(
-            self.offset_key, str(offset).encode())
+        self._db_for_partition(tp.partition).put(self.offset_key, str(offset).encode())
 
     async def need_active_standby_for(self, tp: TP) -> bool:
         """Decide if an active standby is needed for this topic partition.
@@ -219,16 +312,18 @@ class Store(base.SerializedStore):
         try:
             self._db_for_partition(tp.partition)
         except rocksdb.errors.RocksIOError as exc:
-            if 'lock' not in repr(exc):
+            if "lock" not in repr(exc):
                 raise
             return False
         else:
             return True
 
-    def apply_changelog_batch(self,
-                              batch: Iterable[EventT],
-                              to_key: Callable[[Any], Any],
-                              to_value: Callable[[Any], Any]) -> None:
+    def apply_changelog_batch(
+        self,
+        batch: Iterable[EventT],
+        to_key: Callable[[Any], Any],
+        to_value: Callable[[Any], Any],
+    ) -> None:
         """Write batch of changelog events to local RocksDB storage.
 
         Arguments:
@@ -244,8 +339,7 @@ class Store(base.SerializedStore):
         for event in batch:
             tp, offset = event.message.tp, event.message.offset
             tp_offsets[tp] = (
-                offset if tp not in tp_offsets
-                else max(offset, tp_offsets[tp])
+                offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
             msg = event.message
             if msg.value is None:
@@ -275,18 +369,35 @@ class Store(base.SerializedStore):
             return db
 
     def _open_for_partition(self, partition: int) -> DB:
-        return self.rocksdb_options.open(self.partition_path(partition))
+        path = self.partition_path(partition)
+        return self.rocksdb_options.open(
+            path, read_only=self.read_only if os.path.isfile(path) else False
+        )
 
     def _get(self, key: bytes) -> Optional[bytes]:
-        dbvalue = self._get_bucket_for_key(key)
-        if dbvalue is None:
-            return None
-        db, value = dbvalue
+        event = current_event()
+        partition_from_message = (
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
+        )
+        if partition_from_message:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
+                self._key_index[key] = partition
+            return value
+        else:
+            dbvalue = self._get_bucket_for_key(key)
+            if dbvalue is None:
+                return None
+            db, value = dbvalue
 
-        if value is None:
-            if db.key_may_exist(key)[0]:
-                return db.get(key)
-        return value
+            if value is None:
+                if db.key_may_exist(key)[0]:
+                    return db.get(key)
+            return value
 
     def _get_bucket_for_key(self, key: bytes) -> Optional[_DBValueTuple]:
         dbs: Iterable[PartitionDB]
@@ -308,22 +419,33 @@ class Store(base.SerializedStore):
         for db in self._dbs_for_key(key):
             db.delete(key)
 
-    async def on_rebalance(self,
-                           table: CollectionT,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+        generation_id: int = 0,
+    ) -> None:
         """Rebalance occurred.
 
         Arguments:
-            table: The table that we store data for.
             assigned: Set of all assigned topic partitions.
             revoked: Set of newly revoked topic partitions.
             newly_assigned: Set of newly assigned topic partitions,
                 for which we were not assigned the last time.
+            generation_id: the metadata generation identifier for the re-balance
         """
-        self.revoke_partitions(table, revoked)
-        await self.assign_partitions(table, newly_assigned)
+        self.rebalance_ack = False
+        async with self.db_lock:
+            self.revoke_partitions(self.table, revoked)
+            await self.assign_partitions(self.table, newly_assigned, generation_id)
+
+    async def stop(self) -> None:
+        self.logger.info("Closing rocksdb on stop")
+        # for db in self._dbs.values():
+        #     db.close()
+        self._dbs.clear()
+        gc.collect()
 
     def revoke_partitions(self, table: CollectionT, tps: Set[TP]) -> None:
         """De-assign partitions used on this worker instance.
@@ -333,55 +455,90 @@ class Store(base.SerializedStore):
             tps: Set of topic partitions that we should no longer
                 be serving data for.
         """
-        dbs_closed = 0
         for tp in tps:
             if tp.topic in table.changelog_topic.topics:
                 db = self._dbs.pop(tp.partition, None)
                 if db is not None:
-                    del(db)
-                    dbs_closed += 1
-        if dbs_closed:
-            gc.collect()  # XXX RocksDB has no .close() method :X
+                    self.logger.info(f"closing db {tp.topic} partition {tp.partition}")
+                    # db.close()
+        gc.collect()
 
-    async def assign_partitions(self,
-                                table: CollectionT,
-                                tps: Set[TP]) -> None:
+    async def assign_partitions(
+        self, table: CollectionT, tps: Set[TP], generation_id: int = 0
+    ) -> None:
         """Assign partitions to this worker instance.
 
         Arguments:
             table: The table that we store data for.
             tps: Set of topic partitions we have been assigned.
         """
+        self.rebalance_ack = True
         standby_tps = self.app.assignor.assigned_standbys()
         my_topics = table.changelog_topic.topics
-
         for tp in tps:
-            if tp.topic in my_topics and tp not in standby_tps:
-                await self._try_open_db_for_partition(tp.partition)
+            if tp.topic in my_topics and tp not in standby_tps and self.rebalance_ack:
+                await self._try_open_db_for_partition(
+                    tp.partition, generation_id=generation_id
+                )
                 await asyncio.sleep(0)
 
-    async def _try_open_db_for_partition(self, partition: int,
-                                         max_retries: int = 5,
-                                         retry_delay: float = 1.0) -> DB:
+    async def _try_open_db_for_partition(
+        self,
+        partition: int,
+        max_retries: int = 30,
+        retry_delay: float = 1.0,
+        generation_id: int = 0,
+    ) -> DB:
         for i in range(max_retries):
             try:
                 # side effect: opens db and adds to self._dbs.
+                self.logger.info(
+                    f"opening partition {partition} for gen id "
+                    f"{generation_id} app id {self.app.consumer_generation_id}"
+                )
                 return self._db_for_partition(partition)
             except rocksdb.errors.RocksIOError as exc:
-                if i == max_retries - 1 or 'lock' not in repr(exc):
+                if i == max_retries - 1 or "lock" not in repr(exc):
+                    # release all the locks and crash
+                    self.log.warning(
+                        "DB for partition %r retries timed out ", partition
+                    )
+                    await self.stop()
                     raise
                 self.log.info(
-                    'DB for partition %r is locked! Retry in 1s...', partition)
+                    "DB for partition %r is locked! Retry in 1s...", partition
+                )
+                if generation_id != self.app.consumer_generation_id:
+                    self.log.info(
+                        f"Rebalanced again giving up partition {partition} gen id"
+                        f" {generation_id} app {self.app.consumer_generation_id}"
+                    )
+                    return
                 await self.sleep(retry_delay)
         else:  # pragma: no cover
             ...
 
     def _contains(self, key: bytes) -> bool:
-        for db in self._dbs_for_key(key):
-            # bloom filter: false positives possible, but not false negatives
-            if db.key_may_exist(key)[0] and db.get(key) is not None:
+        event = current_event()
+        partition_from_message = (
+            event is not None
+            and not self.table.is_global
+            and not self.table.use_partitioner
+        )
+        if partition_from_message:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            value = db.get(key)
+            if value is not None:
                 return True
-        return False
+            else:
+                return False
+        else:
+            for db in self._dbs_for_key(key):
+                # bloom filter: false positives possible, but not false negatives
+                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                    return True
+            return False
 
     def _dbs_for_key(self, key: bytes) -> Iterable[DB]:
         # Returns cached db if key is in index, otherwise all dbs
@@ -393,7 +550,7 @@ class Store(base.SerializedStore):
 
     def _dbs_for_actives(self) -> Iterator[DB]:
         actives = self.app.assignor.assigned_actives()
-        topic = self.table._changelog_topic_name()
+        topic = self.table.changelog_topic_name
         for partition, db in self._dbs.items():
             tp = TP(topic=topic, partition=partition)
             # for global tables, keys from all
@@ -438,7 +595,7 @@ class Store(base.SerializedStore):
             yield from self._visible_items(db)
 
     def _clear(self) -> None:
-        raise NotImplementedError('TODO')  # XXX cannot reset tables
+        raise NotImplementedError("TODO")  # XXX cannot reset tables
 
     def reset_state(self) -> None:
         """Remove all data stored in this table.
@@ -455,12 +612,12 @@ class Store(base.SerializedStore):
     def partition_path(self, partition: int) -> Path:
         """Return :class:`pathlib.Path` to db file of specific partition."""
         p = self.path / self.basename
-        return self._path_with_suffix(p.with_name(f'{p.name}-{partition}'))
+        return self._path_with_suffix(p.with_name(f"{p.name}-{partition}"))
 
-    def _path_with_suffix(self, path: Path, *, suffix: str = '.db') -> Path:
+    def _path_with_suffix(self, path: Path, *, suffix: str = ".db") -> Path:
         # Path.with_suffix should not be used as this will
         # not work if the table name has dots in it (Issue #184).
-        return path.with_name(f'{path.name}{suffix}')
+        return path.with_name(f"{path.name}{suffix}")
 
     @property
     def path(self) -> Path:

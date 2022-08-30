@@ -2,7 +2,6 @@
 import asyncio
 import os
 import typing
-
 from collections import defaultdict
 from typing import (
     Any,
@@ -16,11 +15,12 @@ from typing import (
     Tuple,
     cast,
 )
+
 from mode import Service, get_logger
 from mode.utils.futures import notify
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
-from faust.types import AppT, EventT, K, Message, TP, V
+from faust.types import TP, AppT, EventT, K, Message, V
 from faust.types.topics import TopicT
 from faust.types.transports import ConductorT, ConsumerCallback, TPorTopicSet
 from faust.types.tuples import tp_set_to_map
@@ -29,9 +29,12 @@ from faust.utils.tracing import traced_from_parent_span
 if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.topics import Topic as _Topic
 else:
-    class _Topic: ...  # noqa
 
-NO_CYTHON = bool(os.environ.get('NO_CYTHON', False))
+    class _Topic:
+        ...  # noqa
+
+
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 if not NO_CYTHON:  # pragma: no cover
     try:
@@ -41,7 +44,7 @@ if not NO_CYTHON:  # pragma: no cover
 else:  # pragma: no cover
     ConductorHandler = None
 
-__all__ = ['Conductor', 'ConductorCompiler']
+__all__ = ["Conductor", "ConductorCompiler"]
 
 logger = get_logger(__name__)
 
@@ -49,10 +52,9 @@ logger = get_logger(__name__)
 class ConductorCompiler:  # pragma: no cover
     """Compile a function to handle the messages for a topic+partition."""
 
-    def build(self,
-              conductor: 'Conductor',
-              tp: TP,
-              channels: MutableSet[_Topic]) -> ConsumerCallback:
+    def build(
+        self, conductor: "Conductor", tp: TP, channels: MutableSet[_Topic]
+    ) -> ConsumerCallback:
         """Generate closure used to deliver messages."""
         # This method localizes variables and attribute access
         # for better performance.  This is part of the inner loop
@@ -122,6 +124,7 @@ class ConductorCompiler:  # pragma: no cover
                 # so that if a DecodeError is raised we can propagate
                 # that error to the remaining channels.
                 delivered: Set[_Topic] = set()
+                full: typing.List[Tuple[EventT, _Topic]] = []
                 try:
                     for chan in channels:
                         keyid = chan.key_type, chan.value_type
@@ -131,6 +134,9 @@ class ConductorCompiler:  # pragma: no cover
                             event_keyid = keyid
 
                             queue = chan.queue
+                            if queue.full():
+                                full.append((event, chan))
+                                continue
                             queue.put_nowait_enhanced(
                                 event,
                                 on_pressure_high=on_pressure_high,
@@ -146,15 +152,27 @@ class ConductorCompiler:  # pragma: no cover
                                 # Reuse the event if it uses the same keypair:
                                 dest_event = event
                             else:
-                                dest_event = await chan.decode(
-                                    message, propagate=True)
+                                dest_event = await chan.decode(message, propagate=True)
                             queue = chan.queue
+                            if queue.full():
+                                full.append((dest_event, chan))
+                                continue
                             queue.put_nowait_enhanced(
                                 dest_event,
                                 on_pressure_high=on_pressure_high,
                                 on_pressure_drop=on_pressure_drop,
                             )
                         delivered.add(chan)
+                    if full:
+                        for _, dest_chan in full:
+                            on_topic_buffer_full(dest_chan)
+                        await asyncio.wait(
+                            [
+                                dest_chan.put(dest_event)
+                                for dest_event, dest_chan in full
+                            ],
+                            return_when=asyncio.ALL_COMPLETED,
+                        )
 
                 except KeyDecodeError as exc:
                     remaining = channels - delivered
@@ -168,6 +186,7 @@ class ConductorCompiler:  # pragma: no cover
                     for channel in remaining:
                         await channel.on_value_decode_error(exc, message)
                         delivered.add(channel)
+
         return on_message
 
 
@@ -244,10 +263,13 @@ class Conductor(ConductorT, Service):
         get_callback_for_tp = self._tp_to_callback.__getitem__
 
         if self.app.client_only:
+
             async def on_message(message: Message) -> None:
                 tp = TP(topic=message.topic, partition=0)
                 return await get_callback_for_tp(tp)(message)
+
         else:
+
             async def on_message(message: Message) -> None:
                 return await get_callback_for_tp(message.tp)(message)
 
@@ -260,11 +282,11 @@ class Conductor(ConductorT, Service):
         # streams.  This way we won't have N subscription requests at the
         # start.
         if self.app.client_only or self.app.producer_only:
-            self.log.info('Not waiting for agent/table startups...')
+            self.log.info("Not waiting for agent/table startups...")
         else:
-            self.log.info('Waiting for agents to start...')
+            self.log.info("Waiting for agents to start...")
             await self.app.agents.wait_until_agents_started()
-            self.log.info('Waiting for tables to be registered...')
+            self.log.info("Waiting for tables to be registered...")
             await self.app.tables.wait_until_tables_registered()
         if not self.should_stop:
             # tell the consumer to subscribe to the topics.
@@ -272,7 +294,7 @@ class Conductor(ConductorT, Service):
             notify(self._subscription_done)
 
             # Now we wait for changes
-            ev = self._subscription_changed = asyncio.Event(loop=self.loop)
+            ev = self._subscription_changed = asyncio.Event()
         while not self.should_stop:
             # Wait for something to add/remove topics from subscription.
             await ev.wait()
@@ -356,9 +378,7 @@ class Conductor(ConductorT, Service):
             for tp, channels in self._tp_index.items()
         )
 
-    def _build_handler(self,
-                       tp: TP,
-                       channels: MutableSet[_Topic]) -> ConsumerCallback:
+    def _build_handler(self, tp: TP, channels: MutableSet[_Topic]) -> ConsumerCallback:
         if ConductorHandler is not None:  # pragma: no cover
             return ConductorHandler(self, tp, channels)
         else:
@@ -408,7 +428,7 @@ class Conductor(ConductorT, Service):
     @property
     def label(self) -> str:
         """Return label for use in logs."""
-        return f'{type(self).__name__}({len(self._topics)})'
+        return f"{type(self).__name__}({len(self._topics)})"
 
     @property
     def shortlabel(self) -> str:

@@ -5,7 +5,7 @@ from .events import EventT
 from .models import FieldDescriptorT, ModelT
 from .streams import JoinableT
 
-__all__ = ['JoinT']
+__all__ = ["JoinT"]
 
 
 class JoinT(abc.ABC):
@@ -13,8 +13,9 @@ class JoinT(abc.ABC):
     stream: JoinableT
 
     @abc.abstractmethod
-    def __init__(self, *, stream: JoinableT,
-                 fields: Tuple[FieldDescriptorT, ...]) -> None:
+    def __init__(
+        self, *, stream: JoinableT, fields: Tuple[FieldDescriptorT, ...]
+    ) -> None:
         ...
 
     @abc.abstractmethod

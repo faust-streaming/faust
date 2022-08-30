@@ -6,7 +6,6 @@ The stream will iterate over incoming events in the channel.
 
 """
 import asyncio
-
 from typing import (
     Any,
     Awaitable,
@@ -27,6 +26,7 @@ from mode.utils.futures import maybe_async, stampede
 from mode.utils.queues import ThrowableQueue
 
 from .types import (
+    TP,
     AppT,
     ChannelT,
     CodecArg,
@@ -40,18 +40,17 @@ from .types import (
     RecordMetadata,
     SchemaT,
     StreamT,
-    TP,
     V,
 )
 from .types.core import HeadersArg, OpenHeadersArg, prepare_headers
 from .types.tuples import _PendingMessage_to_Message
 
-__all__ = ['Channel']
+__all__ = ["Channel"]
 
 logger = get_logger(__name__)
 
-T = TypeVar('T')
-T_contra = TypeVar('T_contra', contravariant=True)
+T = TypeVar("T")
+T_contra = TypeVar("T_contra", contravariant=True)
 
 
 class Channel(ChannelT[T]):
@@ -84,21 +83,23 @@ class Channel(ChannelT[T]):
     is_iterator: bool
 
     _queue: Optional[ThrowableQueue]
-    _root: Optional['Channel']
-    _subscribers: MutableSet['Channel']
+    _root: Optional["Channel"]
+    _subscribers: MutableSet["Channel"]
 
-    def __init__(self,
-                 app: AppT,
-                 *,
-                 schema: SchemaT = None,
-                 key_type: ModelArg = None,
-                 value_type: ModelArg = None,
-                 is_iterator: bool = False,
-                 queue: ThrowableQueue = None,
-                 maxsize: int = None,
-                 root: ChannelT = None,
-                 active_partitions: Set[TP] = None,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        is_iterator: bool = False,
+        queue: Optional[ThrowableQueue] = None,
+        maxsize: Optional[int] = None,
+        root: Optional[ChannelT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         self.app = app
         self.loop = loop
         self.is_iterator = is_iterator
@@ -117,13 +118,16 @@ class Channel(ChannelT[T]):
         self.key_type = self.schema.key_type
         self.value_type = self.schema.value_type
 
-    def _get_default_schema(self,
-                            key_type: ModelArg = None,
-                            value_type: ModelArg = None) -> SchemaT:
-        return cast(SchemaT, self.app.conf.Schema(  # type: ignore
-            key_type=key_type,
-            value_type=value_type,
-        ))
+    def _get_default_schema(
+        self, key_type: ModelArg = None, value_type: ModelArg = None
+    ) -> SchemaT:
+        return cast(
+            SchemaT,
+            self.app.conf.Schema(  # type: ignore
+                key_type=key_type,
+                value_type=value_type,
+            ),
+        )
 
     @property
     def queue(self) -> ThrowableQueue:
@@ -137,12 +141,13 @@ class Channel(ChannelT[T]):
                 maxsize = self.app.conf.stream_buffer_maxsize
             self._queue = self.app.FlowControlQueue(
                 maxsize=maxsize,
-                loop=self.loop,
                 clear_on_resume=True,
             )
         return self._queue
 
-    def clone(self, *, is_iterator: bool = None, **kwargs: Any) -> ChannelT[T]:
+    def clone(
+        self, *, is_iterator: Optional[bool] = None, **kwargs: Any
+    ) -> ChannelT[T]:
         """Create clone of this channel.
 
         Arguments:
@@ -173,15 +178,15 @@ class Channel(ChannelT[T]):
     def _clone_args(self) -> Mapping:
         # How to create a copy of this channel.
         return {
-            'app': self.app,
-            'loop': self.loop,
-            'schema': self.schema,
-            'key_type': self.key_type,
-            'value_type': self.value_type,
-            'maxsize': self.maxsize,
-            'root': self._root if self._root is not None else self,
-            'queue': None,
-            'active_partitions': self.active_partitions,
+            "app": self.app,
+            "loop": self.loop,
+            "schema": self.schema,
+            "key_type": self.key_type,
+            "value_type": self.value_type,
+            "maxsize": self.maxsize,
+            "root": self._root if self._root is not None else self,
+            "queue": None,
+            "active_partitions": self.active_partitions,
         }
 
     def stream(self, **kwargs: Any) -> StreamT[T]:
@@ -190,20 +195,22 @@ class Channel(ChannelT[T]):
 
     def get_topic_name(self) -> str:
         """Get the topic name, or raise if this is not a named channel."""
-        raise NotImplementedError('Channels are unnamed topics')
+        raise NotImplementedError("Channels are unnamed topics")
 
-    async def send(self,
-                   *,
-                   key: K = None,
-                   value: V = None,
-                   partition: int = None,
-                   timestamp: float = None,
-                   headers: HeadersArg = None,
-                   schema: SchemaT = None,
-                   key_serializer: CodecArg = None,
-                   value_serializer: CodecArg = None,
-                   callback: MessageSentCallback = None,
-                   force: bool = False) -> Awaitable[RecordMetadata]:
+    async def send(
+        self,
+        *,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Send message to channel."""
         return await self._send_now(
             key,
@@ -217,19 +224,21 @@ class Channel(ChannelT[T]):
             callback=callback,
         )
 
-    def send_soon(self,
-                  *,
-                  key: K = None,
-                  value: V = None,
-                  partition: int = None,
-                  timestamp: float = None,
-                  headers: HeadersArg = None,
-                  schema: SchemaT = None,
-                  key_serializer: CodecArg = None,
-                  value_serializer: CodecArg = None,
-                  callback: MessageSentCallback = None,
-                  force: bool = False,
-                  eager_partitioning: bool = False) -> FutureMessage:
+    def send_soon(
+        self,
+        *,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+        eager_partitioning: bool = False,
+    ) -> FutureMessage:
         """Produce message by adding to buffer.
 
         This method is only supported by :class:`~faust.Topic`.
@@ -240,27 +249,31 @@ class Channel(ChannelT[T]):
         raise NotImplementedError()
 
     def as_future_message(
-            self,
-            key: K = None,
-            value: V = None,
-            partition: int = None,
-            timestamp: float = None,
-            headers: HeadersArg = None,
-            schema: SchemaT = None,
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            callback: MessageSentCallback = None,
-            eager_partitioning: bool = False) -> FutureMessage:
+        self,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        eager_partitioning: bool = False,
+    ) -> FutureMessage:
         """Create promise that message will be transmitted."""
         open_headers = self.prepare_headers(headers)
         final_key, open_headers = self.prepare_key(
-            key, key_serializer, schema, open_headers)
+            key, key_serializer, schema, open_headers
+        )
         final_value, open_headers = self.prepare_value(
-            value, value_serializer, schema, open_headers)
+            value, value_serializer, schema, open_headers
+        )
         if partition is None and eager_partitioning:
             # Note: raises NotImplementedError if used on unnamed channel.
             partition = self.app.producer.key_partition(
-                self.get_topic_name(), final_key).partition
+                self.get_topic_name(), final_key
+            ).partition
         return FutureMessage(
             PendingMessage(
                 self,
@@ -276,34 +289,45 @@ class Channel(ChannelT[T]):
                 # [ask]
                 topic=None,
                 offset=None,
+                generation_id=self.app.consumer_generation_id,
             ),
         )
 
-    def prepare_headers(
-            self, headers: Optional[HeadersArg]) -> OpenHeadersArg:
+    def prepare_headers(self, headers: Optional[HeadersArg]) -> OpenHeadersArg:
         """Prepare ``headers`` passed before publishing."""
         if headers is not None:
             return prepare_headers(headers)
         return {}
 
     async def _send_now(
-            self,
-            key: K = None,
-            value: V = None,
-            partition: int = None,
-            timestamp: float = None,
-            headers: HeadersArg = None,
-            schema: SchemaT = None,
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            callback: MessageSentCallback = None) -> Awaitable[RecordMetadata]:
+        self,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+    ) -> Awaitable[RecordMetadata]:
         return await self.publish_message(
             self.as_future_message(
-                key, value, partition, timestamp, headers,
-                schema, key_serializer, value_serializer, callback))
+                key,
+                value,
+                partition,
+                timestamp,
+                headers,
+                schema,
+                key_serializer,
+                value_serializer,
+                callback,
+            )
+        )
 
-    async def publish_message(self, fut: FutureMessage,
-                              wait: bool = True) -> Awaitable[RecordMetadata]:
+    async def publish_message(
+        self, fut: FutureMessage, wait: bool = True
+    ) -> Awaitable[RecordMetadata]:
         """Publish message to channel.
 
         This is the interface used by ``topic.send()``, etc.
@@ -318,10 +342,11 @@ class Channel(ChannelT[T]):
         event = self._future_message_to_event(fut)
         await self.put(event)
         topic, partition = tp = TP(
-            fut.message.topic or '<anon>',
-            fut.message.partition or -1)
+            fut.message.topic or "<anon>", fut.message.partition or -1
+        )
         return await self._finalize_message(
-            fut, RecordMetadata(
+            fut,
+            RecordMetadata(
                 topic=topic,
                 partition=partition,
                 topic_partition=tp,
@@ -333,11 +358,15 @@ class Channel(ChannelT[T]):
 
     def _future_message_to_event(self, fut: FutureMessage) -> EventT:
         return self._create_event(
-            fut.message.key, fut.message.value, fut.message.headers,
-            message=_PendingMessage_to_Message(fut.message))
+            fut.message.key,
+            fut.message.value,
+            fut.message.headers,
+            message=_PendingMessage_to_Message(fut.message),
+        )
 
-    async def _finalize_message(self, fut: FutureMessage,
-                                result: RecordMetadata) -> FutureMessage:
+    async def _finalize_message(
+        self, fut: FutureMessage, result: RecordMetadata
+    ) -> FutureMessage:
         fut.set_result(result)
         if fut.message.callback:
             await maybe_async(fut.message.callback(fut))
@@ -357,11 +386,12 @@ class Channel(ChannelT[T]):
         ...
 
     def prepare_key(
-            self,
-            key: K,
-            key_serializer: CodecArg,
-            schema: SchemaT = None,
-            headers: OpenHeadersArg = None) -> Tuple[Any, OpenHeadersArg]:
+        self,
+        key: K,
+        key_serializer: CodecArg,
+        schema: Optional[SchemaT] = None,
+        headers: OpenHeadersArg = None,
+    ) -> Tuple[Any, OpenHeadersArg]:
         """Prepare key before it is sent to this channel.
 
         :class:`~faust.Topic` uses this to implement serialization of keys
@@ -370,11 +400,12 @@ class Channel(ChannelT[T]):
         return key, headers
 
     def prepare_value(
-            self,
-            value: V,
-            value_serializer: CodecArg,
-            schema: SchemaT = None,
-            headers: OpenHeadersArg = None) -> Tuple[Any, OpenHeadersArg]:
+        self,
+        value: V,
+        value_serializer: CodecArg,
+        schema: Optional[SchemaT] = None,
+        headers: OpenHeadersArg = None,
+    ) -> Tuple[Any, OpenHeadersArg]:
         """Prepare value before it is sent to this channel.
 
         :class:`~faust.Topic` uses this to implement serialization of values
@@ -382,11 +413,11 @@ class Channel(ChannelT[T]):
         """
         return value, headers
 
-    async def decode(self, message: Message, *,
-                     propagate: bool = False) -> EventT[T]:
+    async def decode(self, message: Message, *, propagate: bool = False) -> EventT[T]:
         """Decode :class:`~faust.types.Message` into :class:`~faust.Event`."""
         return self._create_event(
-            message.key, message.value, message.headers, message=message)
+            message.key, message.value, message.headers, message=message
+        )
 
     async def deliver(self, message: Message) -> None:  # pragma: no cover
         """Deliver message to queue from consumer.
@@ -409,11 +440,9 @@ class Channel(ChannelT[T]):
 
         return deliver
 
-    def _create_event(self,
-                      key: K,
-                      value: V,
-                      headers: Optional[HeadersArg],
-                      message: Message) -> EventT[T]:
+    def _create_event(
+        self, key: K, value: V, headers: Optional[HeadersArg], message: Message
+    ) -> EventT[T]:
         return self.app.create_event(key, value, headers, message)
 
     async def put(self, value: EventT[T_contra]) -> None:
@@ -422,7 +451,7 @@ class Channel(ChannelT[T]):
         for subscriber in root._subscribers:
             await subscriber.queue.put(value)
 
-    async def get(self, *, timeout: Seconds = None) -> EventT[T]:
+    async def get(self, *, timeout: Optional[Seconds] = None) -> EventT[T]:
         """Get the next :class:`~faust.Event` received on this channel."""
         timeout_: float = want_seconds(timeout)
         if timeout_:
@@ -433,8 +462,7 @@ class Channel(ChannelT[T]):
         """Return :const:`True` if the queue is empty."""
         return self.queue.empty()
 
-    async def on_key_decode_error(self, exc: Exception,
-                                  message: Message) -> None:
+    async def on_key_decode_error(self, exc: Exception, message: Message) -> None:
         """Unable to decode the key of an item in the queue.
 
         See Also:
@@ -443,8 +471,7 @@ class Channel(ChannelT[T]):
         await self.on_decode_error(exc, message)
         await self.throw(exc)
 
-    async def on_value_decode_error(self, exc: Exception,
-                                    message: Message) -> None:
+    async def on_value_decode_error(self, exc: Exception, message: Message) -> None:
         """Unable to decode the value of an item in the queue.
 
         See Also:
@@ -498,7 +525,7 @@ class Channel(ChannelT[T]):
 
     async def __anext__(self) -> EventT[T]:
         if not self.is_iterator:
-            raise RuntimeError('Need to call channel.__aiter__()')
+            raise RuntimeError("Need to call channel.__aiter__()")
         return await self.queue.get()
 
     async def throw(self, exc: BaseException) -> None:
@@ -516,30 +543,37 @@ class Channel(ChannelT[T]):
         self.queue._throw(exc)
 
     def __repr__(self) -> str:
-        s = f'<{self.label}@{self._object_id_as_hex()}'
+        s = f"<{self.label}@{self._object_id_as_hex()}"
         if self.active_partitions is not None:
             # if we are restricted to a specific set of topic partitions,
             # then include that in repr(channel).
             if self.active_partitions:
-                active = '{' + ', '.join(sorted(
-                    f'{tp.topic}:{tp.partition}'
-                    for tp in self.active_partitions)) + '}'
+                active = (
+                    "{"
+                    + ", ".join(
+                        sorted(
+                            f"{tp.topic}:{tp.partition}"
+                            for tp in self.active_partitions
+                        )
+                    )
+                    + "}"
+                )
             else:
                 # a defined, but empty .active_partitions signifies
                 # that we are still waiting for an assignment
                 # from the Consumer.
-                active = '{<pending for assignment>}'
-            s += f' active={active}'
-        s += '>'
+                active = "{<pending for assignment>}"
+            s += f" active={active}"
+        s += ">"
         return s
 
     def _object_id_as_hex(self) -> str:
         # hexadecimal version of id(self)
-        return f'{id(self):#x}'
+        return f"{id(self):#x}"
 
     def __str__(self) -> str:
         # subclasses should override this
-        return '<ANON>'
+        return "<ANON>"
 
     @property
     def subscriber_count(self) -> int:
@@ -549,22 +583,23 @@ class Channel(ChannelT[T]):
     @property
     def label(self) -> str:
         """Short textual description of channel."""
-        sym = '(*)' if self.is_iterator else ''
-        return f'{sym}{type(self).__name__}: {self}'
+        sym = "(*)" if self.is_iterator else ""
+        return f"{sym}{type(self).__name__}: {self}"
 
 
 class SerializedChannel(Channel[T]):
-
-    def __init__(self,
-                 app: AppT,
-                 *,
-                 schema: SchemaT = None,
-                 key_type: ModelArg = None,
-                 value_type: ModelArg = None,
-                 key_serializer: CodecArg = None,
-                 value_serializer: CodecArg = None,
-                 allow_empty: bool = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        allow_empty: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> None:
         self.app = app  # need to set early
         if schema is not None:
             self._contribute_to_schema(
@@ -577,9 +612,8 @@ class SerializedChannel(Channel[T]):
             )
         else:
             schema = self._get_default_schema(
-                key_type, value_type,
-                key_serializer, value_serializer,
-                allow_empty)
+                key_type, value_type, key_serializer, value_serializer, allow_empty
+            )
 
         super().__init__(
             app,
@@ -592,12 +626,16 @@ class SerializedChannel(Channel[T]):
         self.value_serializer = self.schema.value_serializer
         self.allow_empty = self.schema.allow_empty
 
-    def _contribute_to_schema(self, schema: SchemaT, *,
-                              key_type: ModelArg = None,
-                              value_type: ModelArg = None,
-                              key_serializer: CodecArg = None,
-                              value_serializer: CodecArg = None,
-                              allow_empty: bool = None) -> None:
+    def _contribute_to_schema(
+        self,
+        schema: SchemaT,
+        *,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        allow_empty: Optional[bool] = None,
+    ) -> None:
         # Update schema and take compat attributes
         # from passed schema.
         schema.update(
@@ -608,54 +646,61 @@ class SerializedChannel(Channel[T]):
             allow_empty=allow_empty,
         )
 
-    def _get_default_schema(self,
-                            key_type: ModelArg = None,
-                            value_type: ModelArg = None,
-                            key_serializer: CodecArg = None,
-                            value_serializer: CodecArg = None,
-                            allow_empty: bool = None) -> SchemaT:
-        return cast(SchemaT, self.app.conf.Schema(  # type: ignore
-            key_type=key_type,
-            value_type=value_type,
-            key_serializer=key_serializer,
-            value_serializer=value_serializer,
-            allow_empty=allow_empty,
-        ))
+    def _get_default_schema(
+        self,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        allow_empty: Optional[bool] = None,
+    ) -> SchemaT:
+        return cast(
+            SchemaT,
+            self.app.conf.Schema(  # type: ignore
+                key_type=key_type,
+                value_type=value_type,
+                key_serializer=key_serializer,
+                value_serializer=value_serializer,
+                allow_empty=allow_empty,
+            ),
+        )
 
     @no_type_check  # incompatible with base class, but OK
     def _clone_args(self) -> Mapping:
         return {
             **super()._clone_args(),
             **{
-                'key_serializer': self.key_serializer,
-                'value_serializer': self.value_serializer,
+                "key_serializer": self.key_serializer,
+                "value_serializer": self.value_serializer,
             },
         }
 
     def prepare_key(
-            self,
-            key: K,
-            key_serializer: CodecArg,
-            schema: SchemaT = None,
-            headers: OpenHeadersArg = None) -> Tuple[Any, OpenHeadersArg]:
+        self,
+        key: K,
+        key_serializer: CodecArg,
+        schema: Optional[SchemaT] = None,
+        headers: OpenHeadersArg = None,
+    ) -> Tuple[Any, OpenHeadersArg]:
         """Serialize key to format suitable for transport."""
         if key is not None:
             schema = schema or self.schema
             assert schema is not None
-            return schema.dumps_key(self.app, key,
-                                    serializer=key_serializer,
-                                    headers=headers)
+            return schema.dumps_key(
+                self.app, key, serializer=key_serializer, headers=headers
+            )
         return None, headers
 
     def prepare_value(
-            self,
-            value: V,
-            value_serializer: CodecArg,
-            schema: SchemaT = None,
-            headers: OpenHeadersArg = None) -> Tuple[Any, OpenHeadersArg]:
+        self,
+        value: V,
+        value_serializer: CodecArg,
+        schema: Optional[SchemaT] = None,
+        headers: OpenHeadersArg = None,
+    ) -> Tuple[Any, OpenHeadersArg]:
         """Serialize value to format suitable for transport."""
         schema = schema or self.schema
         assert schema is not None
-        return schema.dumps_value(self.app, value,
-                                  serializer=value_serializer,
-                                  headers=headers)
+        return schema.dumps_value(
+            self.app, value, serializer=value_serializer, headers=headers
+        )

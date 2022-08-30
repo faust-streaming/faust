@@ -1,7 +1,7 @@
 import abc
 from typing import Any, Optional, Tuple, Union
 
-__all__ = ['CodecArg', 'CodecT']
+__all__ = ["CodecArg", "CodecT"]
 
 
 class CodecT(metaclass=abc.ABCMeta):
@@ -12,8 +12,7 @@ class CodecT(metaclass=abc.ABCMeta):
     """
 
     @abc.abstractmethod
-    def __init__(self, children: Tuple['CodecT', ...] = None,
-                 **kwargs: Any) -> None:
+    def __init__(self, children: Tuple["CodecT", ...] = None, **kwargs: Any) -> None:
         ...
 
     @abc.abstractmethod
@@ -25,7 +24,7 @@ class CodecT(metaclass=abc.ABCMeta):
         ...
 
     @abc.abstractmethod
-    def clone(self, *children: 'CodecT') -> 'CodecT':
+    def clone(self, *children: "CodecT") -> "CodecT":
         ...
 
     @abc.abstractmethod

@@ -23,26 +23,37 @@ if typing.TYPE_CHECKING:
     from faust.web.base import Request, Response, Web
     from faust.web.views import View
 else:
-    class _AppT: ...          # noqa
-    class Request: ...        # noqa
-    class Response: ...       # noqa
-    class Web: ...            # noqa
-    class View: ...           # noqa
+
+    class _AppT:
+        ...  # noqa
+
+    class Request:
+        ...  # noqa
+
+    class Response:
+        ...  # noqa
+
+    class Web:
+        ...  # noqa
+
+    class View:
+        ...  # noqa
+
 
 __all__ = [
-    'Request',
-    'Response',
-    'ResourceOptions',
-    'View',
-    'ViewHandlerMethod',
-    'ViewHandlerFun',
-    'ViewDecorator',
-    'PageArg',
-    'HttpClientT',
-    'Web',
-    'CacheBackendT',
-    'CacheT',
-    'BlueprintT',
+    "Request",
+    "Response",
+    "ResourceOptions",
+    "View",
+    "ViewHandlerMethod",
+    "ViewHandlerFun",
+    "ViewDecorator",
+    "PageArg",
+    "HttpClientT",
+    "Web",
+    "CacheBackendT",
+    "CacheT",
+    "BlueprintT",
 ]
 
 ViewHandlerMethod = Callable[
@@ -89,10 +100,9 @@ class CacheBackendT(ServiceT):
     Unavailable: Type[BaseException]
 
     @abc.abstractmethod
-    def __init__(self,
-                 app: _AppT,
-                 url: Union[URL, str] = 'memory://',
-                 **kwargs: Any) -> None:
+    def __init__(
+        self, app: _AppT, url: Union[URL, str] = "memory://", **kwargs: Any
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -100,7 +110,9 @@ class CacheBackendT(ServiceT):
         ...
 
     @abc.abstractmethod
-    async def set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -116,19 +128,23 @@ class CacheT(abc.ABC):
     backend: Optional[Union[Type[CacheBackendT], str]]
 
     @abc.abstractmethod
-    def __init__(self,
-                 timeout: Seconds = None,
-                 key_prefix: str = None,
-                 backend: Union[Type[CacheBackendT], str] = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        timeout: Optional[Seconds] = None,
+        key_prefix: Optional[str] = None,
+        backend: Union[Type[CacheBackendT], str] = None,
+        **kwargs: Any
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def view(self,
-             timeout: Seconds = None,
-             include_headers: bool = False,
-             key_prefix: str = None,
-             **kwargs: Any) -> Callable[[Callable], Callable]:
+    def view(
+        self,
+        timeout: Optional[Seconds] = None,
+        include_headers: bool = False,
+        key_prefix: Optional[str] = None,
+        **kwargs: Any
+    ) -> Callable[[Callable], Callable]:
         ...
 
 
@@ -137,33 +153,33 @@ class BlueprintT(abc.ABC):
     url_prefix: Optional[str]
 
     @abc.abstractmethod
-    def cache(self,
-              timeout: Seconds = None,
-              include_headers: bool = False,
-              key_prefix: str = None,
-              backend: Union[Type[CacheBackendT], str] = None) -> CacheT:
+    def cache(
+        self,
+        timeout: Optional[Seconds] = None,
+        include_headers: bool = False,
+        key_prefix: Optional[str] = None,
+        backend: Union[Type[CacheBackendT], str] = None,
+    ) -> CacheT:
         ...
 
     @abc.abstractmethod
-    def route(self,
-              uri: str,
-              *,
-              name: Optional[str] = None,
-              base: Type[View] = View) -> RouteDecoratorRet:
+    def route(
+        self, uri: str, *, name: Optional[str] = None, base: Type[View] = View
+    ) -> RouteDecoratorRet:
         ...
 
     @abc.abstractmethod
-    def static(self,
-               uri: str,
-               file_or_directory: Union[str, Path],
-               *,
-               name: Optional[str] = None) -> None:
+    def static(
+        self,
+        uri: str,
+        file_or_directory: Union[str, Path],
+        *,
+        name: Optional[str] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def register(self, app: _AppT,
-                 *,
-                 url_prefix: Optional[str] = None) -> None:
+    def register(self, app: _AppT, *, url_prefix: Optional[str] = None) -> None:
         ...
 
     @abc.abstractmethod

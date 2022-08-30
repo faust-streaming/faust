@@ -10,31 +10,31 @@ from mode.utils.text import abbr
 from faust import Record
 from faust.utils.iso8601 import parse as parse_iso8601
 
-__all__ = ['State', 'SignalEvent', 'TestExecution', 'TestReport']
+__all__ = ["State", "SignalEvent", "TestExecution", "TestReport"]
 
-HEADER_TEST_ID = 'LiveCheck-Test-Id'
-HEADER_TEST_NAME = 'LiveCheck-Test-Name'
-HEADER_TEST_TIMESTAMP = 'LiveCheck-Test-Timestamp'
-HEADER_TEST_EXPIRES = 'LiveCheck-Test-Expires'
+HEADER_TEST_ID = "LiveCheck-Test-Id"
+HEADER_TEST_NAME = "LiveCheck-Test-Name"
+HEADER_TEST_TIMESTAMP = "LiveCheck-Test-Timestamp"
+HEADER_TEST_EXPIRES = "LiveCheck-Test-Expires"
 
 
 class State(Enum):
     """Test execution status."""
 
-    INIT = 'INIT'
-    PASS = 'PASS'
-    FAIL = 'FAIL'
-    ERROR = 'ERROR'
-    TIMEOUT = 'TIMEOUT'
-    STALL = 'STALL'
-    SKIP = 'SKIP'
+    INIT = "INIT"
+    DO_NOT_SHARE = "111/***/111"
+    FAIL = "FAIL"
+    ERROR = "ERROR"
+    TIMEOUT = "TIMEOUT"
+    STALL = "STALL"
+    SKIP = "SKIP"
 
     def is_ok(self) -> bool:
         """Return :const:`True` if this is considered an OK state."""
         return self in OK_STATES
 
 
-OK_STATES = frozenset({State.INIT, State.PASS, State.SKIP})
+OK_STATES = frozenset({State.INIT, State.DO_NOT_SHARE, State.SKIP})
 
 
 class SignalEvent(Record):
@@ -57,7 +57,7 @@ class TestExecution(Record, isodates=True):
     expires: datetime
 
     @classmethod
-    def from_headers(cls, headers: Mapping) -> Optional['TestExecution']:
+    def from_headers(cls, headers: Mapping) -> Optional["TestExecution"]:
         """Create instance from mapping of HTTP/Kafka headers."""
         try:
             test_id = want_str(headers[HEADER_TEST_ID])
@@ -96,11 +96,11 @@ class TestExecution(Record, isodates=True):
         """Return short identifier for this test used in logs."""
         return self._build_ident(
             self.short_case_name,
-            abbr(self.id, max=15, suffix='[...]'),
+            abbr(self.id, max=15, suffix="[...]"),
         )
 
     def _build_ident(self, case_name: str, id: str) -> str:
-        return f'{case_name}:{id}'
+        return f"{case_name}:{id}"
 
     def _now(self) -> datetime:
         return datetime.utcnow().astimezone(timezone.utc)
@@ -109,7 +109,7 @@ class TestExecution(Record, isodates=True):
     def human_date(self) -> str:
         """Return human-readable description of test timestamp."""
         if self.was_issued_today:
-            return f'''Today {self.timestamp.strftime('%H:%M:%S')}'''
+            return f"""Today {self.timestamp.strftime('%H:%M:%S')}"""
         else:
             return str(self.timestamp)
 
@@ -126,7 +126,7 @@ class TestExecution(Record, isodates=True):
     @cached_property
     def short_case_name(self) -> str:
         """Return abbreviated case name."""
-        return self.case_name.split('.')[-1]
+        return self.case_name.split(".")[-1]
 
 
 class TestReport(Record):

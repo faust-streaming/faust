@@ -2,29 +2,31 @@
 import typing
 
 __all__ = [
-    'FaustError',
-    'FaustWarning',
-    'FaustPredicate',
-    'SecurityError',
-    'NotReady',
-    'Skip',
-    'AlreadyConfiguredWarning',
-    'ImproperlyConfigured',
-    'ValidationError',
-    'DecodeError',
-    'KeyDecodeError',
-    'ValueDecodeError',
-    'SameNode',
-    'ProducerSendError',
-    'ConsumerNotStarted',
-    'PartitionsMismatch',
-    'ConsistencyError',
+    "FaustError",
+    "FaustWarning",
+    "FaustPredicate",
+    "SecurityError",
+    "NotReady",
+    "Skip",
+    "AlreadyConfiguredWarning",
+    "ImproperlyConfigured",
+    "ValidationError",
+    "DecodeError",
+    "KeyDecodeError",
+    "ValueDecodeError",
+    "SameNode",
+    "ProducerSendError",
+    "ConsumerNotStarted",
+    "PartitionsMismatch",
+    "ConsistencyError",
 ]
 
 if typing.TYPE_CHECKING:
     from .types.models import FieldDescriptorT as _FieldDescriptorT
 else:
-    class _FieldDescriptorT: ...  # noqa
+
+    class _FieldDescriptorT:
+        ...  # noqa
 
 
 class FaustError(Exception):
@@ -64,17 +66,16 @@ class ValidationError(FaustError, ValueError):
 
     field: _FieldDescriptorT
 
-    def __init__(self, reason: str, *,
-                 field: _FieldDescriptorT) -> None:
+    def __init__(self, reason: str, *, field: _FieldDescriptorT) -> None:
         self.reason = reason
         self.field = field
         super().__init__(reason, field)
 
     def __str__(self) -> str:
-        return f'{self.reason} {self.field!r}'
+        return f"{self.reason} {self.field!r}"
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self}>'
+        return f"<{type(self).__name__}: {self}>"
 
 
 class DecodeError(FaustError):

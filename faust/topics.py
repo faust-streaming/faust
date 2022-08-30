@@ -2,7 +2,6 @@
 import asyncio
 import re
 import typing
-
 from functools import partial
 from typing import (
     Any,
@@ -26,6 +25,7 @@ from .channels import SerializedChannel
 from .events import Event
 from .streams import current_event
 from .types import (
+    TP,
     AppT,
     CodecArg,
     EventT,
@@ -37,7 +37,6 @@ from .types import (
     PendingMessage,
     RecordMetadata,
     SchemaT,
-    TP,
     V,
 )
 from .types.topics import ChannelT, TopicT
@@ -46,10 +45,12 @@ from .types.transports import ProducerT
 if typing.TYPE_CHECKING:  # pragma: no cover
     from .app import App as _App
 else:
-    class _App: ...   # noqa
+
+    class _App:
+        ...  # noqa
 
 
-__all__ = ['Topic']
+__all__ = ["Topic"]
 
 logger = get_logger(__name__)
 
@@ -91,32 +92,34 @@ class Topic(SerializedChannel, TopicT):
     _partitions: Optional[int] = None
     _pattern: Optional[Pattern] = None
 
-    def __init__(self,
-                 app: AppT,
-                 *,
-                 topics: Sequence[str] = None,
-                 pattern: Union[str, Pattern] = None,
-                 schema: SchemaT = None,
-                 key_type: ModelArg = None,
-                 value_type: ModelArg = None,
-                 is_iterator: bool = False,
-                 partitions: int = None,
-                 retention: Seconds = None,
-                 compacting: bool = None,
-                 deleting: bool = None,
-                 replicas: int = None,
-                 acks: bool = True,
-                 internal: bool = False,
-                 config: Mapping[str, Any] = None,
-                 queue: ThrowableQueue = None,
-                 key_serializer: CodecArg = None,
-                 value_serializer: CodecArg = None,
-                 maxsize: int = None,
-                 root: ChannelT = None,
-                 active_partitions: Set[TP] = None,
-                 allow_empty: bool = None,
-                 has_prefix: bool = False,
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        app: AppT,
+        *,
+        topics: Optional[Sequence[str]] = None,
+        pattern: Union[str, Pattern] = None,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        is_iterator: bool = False,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
+        acks: bool = True,
+        internal: bool = False,
+        config: Optional[Mapping[str, Any]] = None,
+        queue: Optional[ThrowableQueue] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        maxsize: Optional[int] = None,
+        root: Optional[ChannelT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        allow_empty: Optional[bool] = None,
+        has_prefix: bool = False,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         super().__init__(
             app,
             schema=schema,
@@ -152,18 +155,20 @@ class Topic(SerializedChannel, TopicT):
             on_value_decode_error=self.on_value_decode_error,
         )
 
-    async def send(self,
-                   *,
-                   key: K = None,
-                   value: V = None,
-                   partition: int = None,
-                   timestamp: float = None,
-                   headers: HeadersArg = None,
-                   schema: SchemaT = None,
-                   key_serializer: CodecArg = None,
-                   value_serializer: CodecArg = None,
-                   callback: MessageSentCallback = None,
-                   force: bool = False) -> Awaitable[RecordMetadata]:
+    async def send(
+        self,
+        *,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+    ) -> Awaitable[RecordMetadata]:
         """Send message to topic."""
         app = cast(_App, self.app)
         if app._attachments.enabled and not force:
@@ -193,19 +198,21 @@ class Topic(SerializedChannel, TopicT):
             callback=callback,
         )
 
-    def send_soon(self,
-                  *,
-                  key: K = None,
-                  value: V = None,
-                  partition: int = None,
-                  timestamp: float = None,
-                  headers: HeadersArg = None,
-                  schema: SchemaT = None,
-                  key_serializer: CodecArg = None,
-                  value_serializer: CodecArg = None,
-                  callback: MessageSentCallback = None,
-                  force: bool = False,
-                  eager_partitioning: bool = False) -> FutureMessage:
+    def send_soon(
+        self,
+        *,
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+        force: bool = False,
+        eager_partitioning: bool = False,
+    ) -> FutureMessage:
         """Produce message by adding to buffer.
 
         Notes:
@@ -234,8 +241,7 @@ class Topic(SerializedChannel, TopicT):
         instance, in a particular process.
         """
         if not self.is_iterator:
-            raise RuntimeError(
-                f'Cannot put on Topic channel before aiter({self})')
+            raise RuntimeError(f"Cannot put on Topic channel before aiter({self})")
         await self.queue.put(event)
 
     @no_type_check  # incompatible with base class, but OK
@@ -243,19 +249,19 @@ class Topic(SerializedChannel, TopicT):
         return {
             **super()._clone_args(),
             **{
-                'topics': self.topics,
-                'pattern': self.pattern,
-                'partitions': self.partitions,
-                'retention': self.retention,
-                'compacting': self.compacting,
-                'deleting': self.deleting,
-                'replicas': self.replicas,
-                'internal': self.internal,
-                'acks': self.acks,
-                'config': self.config,
-                'active_partitions': self.active_partitions,
-                'allow_empty': self.allow_empty,
-                'has_prefix': self.has_prefix,
+                "topics": self.topics,
+                "pattern": self.pattern,
+                "partitions": self.partitions,
+                "retention": self.retention,
+                "compacting": self.compacting,
+                "deleting": self.deleting,
+                "replicas": self.replicas,
+                "internal": self.internal,
+                "acks": self.acks,
+                "config": self.config,
+                "active_partitions": self.active_partitions,
+                "allow_empty": self.allow_empty,
+                "has_prefix": self.has_prefix,
             },
         }
 
@@ -268,7 +274,7 @@ class Topic(SerializedChannel, TopicT):
     def pattern(self, pattern: Union[str, Pattern]) -> None:
         """Set the regular expression pattern this topic subscribes to."""
         if pattern and self.topics:
-            raise TypeError('Cannot specify both topics and pattern')
+            raise TypeError("Cannot specify both topics and pattern")
         self._pattern = re.compile(pattern) if pattern else None
 
     @property
@@ -298,7 +304,7 @@ class Topic(SerializedChannel, TopicT):
         Only used for internal topics, see :attr:`partitions`.
         """
         if partitions == 0:
-            raise ValueError('Topic cannot have zero partitions')
+            raise ValueError("Topic cannot have zero partitions")
         self._partitions = partitions
 
     def derive(self, **kwargs: Any) -> ChannelT:
@@ -312,30 +318,31 @@ class Topic(SerializedChannel, TopicT):
         """
         return self.derive_topic(**kwargs)
 
-    def derive_topic(self,
-                     *,
-                     topics: Sequence[str] = None,
-                     schema: SchemaT = None,
-                     key_type: ModelArg = None,
-                     value_type: ModelArg = None,
-                     key_serializer: CodecArg = None,
-                     value_serializer: CodecArg = None,
-                     partitions: int = None,
-                     retention: Seconds = None,
-                     compacting: bool = None,
-                     deleting: bool = None,
-                     internal: bool = None,
-                     config: Mapping[str, Any] = None,
-                     prefix: str = '',
-                     suffix: str = '',
-                     **kwargs: Any) -> TopicT:
+    def derive_topic(
+        self,
+        *,
+        topics: Optional[Sequence[str]] = None,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        internal: Optional[bool] = None,
+        config: Optional[Mapping[str, Any]] = None,
+        prefix: str = "",
+        suffix: str = "",
+        **kwargs: Any,
+    ) -> TopicT:
         """Create new topic with configuration derived from this topic."""
         topics = self.topics if topics is None else topics
         if suffix or prefix:
             if self.pattern:
-                raise ValueError(
-                    'Cannot add prefix/suffix to Topic with pattern')
-            topics = [f'{prefix}{topic}{suffix}' for topic in topics]
+                raise ValueError("Cannot add prefix/suffix to Topic with pattern")
+            topics = [f"{prefix}{topic}{suffix}" for topic in topics]
         return type(self)(
             self.app,
             topics=topics,
@@ -366,20 +373,19 @@ class Topic(SerializedChannel, TopicT):
             TypeError: if not configured with any names or patterns.
         """
         if self.pattern:
-            raise TypeError(
-                'Topic with pattern subscription cannot be identified')
+            raise TypeError("Topic with pattern subscription cannot be identified")
         if self.topics:
             if len(self.topics) > 1:
-                raise ValueError(
-                    'Topic with multiple topic names cannot be identified')
+                raise ValueError("Topic with multiple topic names cannot be identified")
             return self.topics[0]
-        raise TypeError('Topic has no subscriptions (no pattern, no topics)')
+        raise TypeError("Topic has no subscriptions (no pattern, no topics)")
 
     async def _get_producer(self) -> ProducerT:
         return await self.app.maybe_start_producer()
 
-    async def publish_message(self, fut: FutureMessage,
-                              wait: bool = False) -> Awaitable[RecordMetadata]:
+    async def publish_message(
+        self, fut: FutureMessage, wait: bool = False
+    ) -> Awaitable[RecordMetadata]:
         """Fulfill promise to publish message to topic."""
         app = self.app
         message: PendingMessage = fut.message
@@ -389,8 +395,14 @@ class Topic(SerializedChannel, TopicT):
         partition: Optional[int] = message.partition
         timestamp: float = cast(float, message.timestamp)
         headers: Optional[HeadersArg] = message.headers
-        logger.debug('send: topic=%r k=%r v=%r timestamp=%r partition=%r',
-                     topic, key, value, timestamp, partition)
+        logger.debug(
+            "send: topic=%r k=%r v=%r timestamp=%r partition=%r",
+            topic,
+            key,
+            value,
+            timestamp,
+            partition,
+        )
         assert topic is not None
         producer = await self._get_producer()
         state = app.sensors.on_send_initiated(
@@ -402,7 +414,9 @@ class Topic(SerializedChannel, TopicT):
         )
         if wait:
             ret: RecordMetadata = await producer.send_and_wait(
-                topic, key, value,
+                topic,
+                key,
+                value,
                 partition=partition,
                 timestamp=timestamp,
                 headers=headers,
@@ -410,12 +424,17 @@ class Topic(SerializedChannel, TopicT):
             app.sensors.on_send_completed(producer, state, ret)
             return await self._finalize_message(fut, ret)
         else:
-            fut2 = cast(asyncio.Future, await producer.send(
-                topic, key, value,
-                partition=partition,
-                timestamp=timestamp,
-                headers=headers,
-            ))
+            fut2 = cast(
+                asyncio.Future,
+                await producer.send(
+                    topic,
+                    key,
+                    value,
+                    partition=partition,
+                    timestamp=timestamp,
+                    headers=headers,
+                ),
+            )
             callback = partial(
                 self._on_published,
                 message=fut,
@@ -425,8 +444,7 @@ class Topic(SerializedChannel, TopicT):
             fut2.add_done_callback(cast(Callable, callback))
             return fut2
 
-    def _topic_name_or_default(
-            self, obj: Optional[Union[str, ChannelT]]) -> str:
+    def _topic_name_or_default(self, obj: Optional[Union[str, ChannelT]]) -> str:
         if isinstance(obj, str):
             return obj
         elif isinstance(obj, TopicT):
@@ -434,14 +452,22 @@ class Topic(SerializedChannel, TopicT):
         else:
             return self.get_topic_name()
 
-    def _on_published(self, fut: asyncio.Future,
-                      message: FutureMessage,
-                      producer: ProducerT,
-                      state: Any) -> None:
+    def _on_published(
+        self,
+        fut: asyncio.Future,
+        message: FutureMessage,
+        producer: ProducerT,
+        state: Any,
+    ) -> None:
         try:
             res: RecordMetadata = fut.result()
         except Exception as exc:
             message.set_exception(exc)
+            logger.warning(
+                f"_on_published error for message topic "
+                f"{message.message.channel.get_topic_name()} "
+                f"error {exc} message {message}"
+            )
             self.app.sensors.on_send_error(producer, exc, state)
         else:
             message.set_result(res)
@@ -491,4 +517,4 @@ class Topic(SerializedChannel, TopicT):
             return channel
 
     def __str__(self) -> str:
-        return str(self.pattern) if self.pattern else ','.join(self.topics)
+        return str(self.pattern) if self.pattern else ",".join(self.topics)

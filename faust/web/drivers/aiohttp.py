@@ -1,49 +1,40 @@
 """Web driver using :pypi:`aiohttp`."""
 from pathlib import Path
-from typing import (
-    Any,
-    Callable,
-    Mapping,
-    MutableMapping,
-    Optional,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Mapping, MutableMapping, Optional, Union, cast
 
 import aiohttp_cors
 from aiohttp import __version__ as aiohttp_version
+from aiohttp.payload import Payload
 from aiohttp.web import (
-    AppRunner,
     Application,
+    AppRunner,
     BaseSite,
     Request,
     Response,
     TCPSite,
     UnixSite,
 )
-from aiohttp.payload import Payload
 from aiohttp_cors import CorsConfig, ResourceOptions
-from faust.types import AppT
-from faust.utils import json as _json
-from faust.web import base
-from faust.types.web import ResourceOptions as _ResourceOptions
 from mode import Service
 from mode.threads import ServiceThread
 
-__all__ = ['Web']
+from faust.types import AppT
+from faust.types.web import ResourceOptions as _ResourceOptions
+from faust.utils import json as _json
+from faust.web import base
+
+__all__ = ["Web"]
 
 _bytes = bytes
 
-NON_OPTIONS_METHODS = frozenset({'GET', 'PUT', 'POST', 'DELETE'})
+NON_OPTIONS_METHODS = frozenset({"GET", "PUT", "POST", "DELETE"})
 
 
-def _prepare_cors_options(
-        opts: Mapping[str, Any]) -> Mapping[str, ResourceOptions]:
+def _prepare_cors_options(opts: Mapping[str, Any]) -> Mapping[str, ResourceOptions]:
     return {k: _faust_to_aiohttp_options(v) for k, v in opts.items()}
 
 
-def _faust_to_aiohttp_options(
-        opts: ResourceOptions) -> ResourceOptions:
+def _faust_to_aiohttp_options(opts: ResourceOptions) -> ResourceOptions:
     if isinstance(opts, _ResourceOptions):
         return ResourceOptions(**opts._asdict())
     return opts
@@ -52,7 +43,7 @@ def _faust_to_aiohttp_options(
 class ServerThread(ServiceThread):
     """A web server running in a dedicated thread."""
 
-    def __init__(self, web: 'Web', **kwargs: Any) -> None:
+    def __init__(self, web: "Web", **kwargs: Any) -> None:
         self.web = web
         super().__init__(**kwargs)
 
@@ -69,7 +60,7 @@ class ServerThread(ServiceThread):
 class Server(Service):
     """Web server service."""
 
-    def __init__(self, web: 'Web', **kwargs: Any) -> None:
+    def __init__(self, web: "Web", **kwargs: Any) -> None:
         self.web = web
         super().__init__(**kwargs)
 
@@ -85,7 +76,7 @@ class Server(Service):
 class Web(base.Web):
     """Web server and framework implementation using :pypi:`aiohttp`."""
 
-    driver_version = f'aiohttp={aiohttp_version}'
+    driver_version = f"aiohttp={aiohttp_version}"
     handler_shutdown_timeout: float = 60.0
     cors_options: Mapping[str, ResourceOptions]
 
@@ -98,20 +89,18 @@ class Web(base.Web):
     def __init__(self, app: AppT, **kwargs: Any) -> None:
         super().__init__(app, **kwargs)
         self.web_app: Application = Application()
-        self.cors_options = _prepare_cors_options(
-            app.conf.web_cors_options or {})
+        self.cors_options = _prepare_cors_options(app.conf.web_cors_options or {})
         self._runner: AppRunner = AppRunner(self.web_app, access_log=None)
         self._transport_handlers = {
-            'tcp': self._new_transport_tcp,
-            'unix': self._new_transport_unix,
+            "tcp": self._new_transport_tcp,
+            "unix": self._new_transport_unix,
         }
 
     @property
     def cors(self) -> CorsConfig:
         """Return CORS config object."""
         if self._cors is None:
-            self._cors = aiohttp_cors.setup(
-                self.web_app, defaults=self.cors_options)
+            self._cors = aiohttp_cors.setup(self.web_app, defaults=self.cors_options)
         return self._cors
 
     async def on_start(self) -> None:
@@ -135,11 +124,15 @@ class Web(base.Web):
         self.init_server()
         return self.web_app
 
-    def text(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> base.Response:
+    def text(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> base.Response:
         """Create text response, using "text/plain" content-type."""
         response = Response(
             text=value,
@@ -150,25 +143,33 @@ class Web(base.Web):
         )
         return cast(base.Response, response)
 
-    def html(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> base.Response:
+    def html(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> base.Response:
         """Create HTML response from string, ``text/html`` content-type."""
         return self.text(
             value,
             status=status,
-            content_type=content_type or 'text/html',
+            content_type=content_type or "text/html",
             reason=reason,
             headers=headers,
         )
 
-    def json(self, value: Any, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Any:
+    def json(
+        self,
+        value: Any,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Any:
         """Create new JSON response.
 
         Accepts any JSON-serializable value and will automatically
@@ -176,7 +177,7 @@ class Web(base.Web):
 
         The content-type is set to "application/json".
         """
-        ctype = content_type or 'application/json'
+        ctype = content_type or "application/json"
         payload: Any = _json.dumps(value)
         # normal json returns str, orjson returns bytes
         if isinstance(payload, bytes):
@@ -196,13 +197,15 @@ class Web(base.Web):
                 headers=headers,
             )
 
-    def bytes(self,
-              value: _bytes,
-              *,
-              content_type: str = None,
-              status: int = 200,
-              reason: str = None,
-              headers: MutableMapping = None) -> base.Response:
+    def bytes(
+        self,
+        value: _bytes,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> base.Response:
         """Create new ``bytes`` response - for binary data."""
         response = Response(
             body=value,
@@ -217,20 +220,21 @@ class Web(base.Web):
         """Return the request body as bytes."""
         return await cast(Request, request).content.read()
 
-    def route(self,
-              pattern: str,
-              handler: Callable,
-              cors_options: Mapping[str, ResourceOptions] = None) -> None:
+    def route(
+        self,
+        pattern: str,
+        handler: Callable,
+        cors_options: Mapping[str, ResourceOptions] = None,
+    ) -> None:
         """Add route for web view or handler."""
+        async_handler = self._wrap_into_asyncdef(handler)
         if cors_options or self.cors_options:
-            async_handler = self._wrap_into_asyncdef(handler)
-            for method in NON_OPTIONS_METHODS:
-                r = self.web_app.router.add_route(
-                    method, pattern, async_handler)
+            for method in NON_OPTIONS_METHODS & handler.get_methods():
+                r = self.web_app.router.add_route(method, pattern, async_handler)
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
-            self.web_app.router.add_route(
-                '*', pattern, self._wrap_into_asyncdef(handler))
+            for method in handler.get_methods():
+                self.web_app.router.add_route(method, pattern, async_handler)
 
     def _wrap_into_asyncdef(self, handler: Callable) -> Callable:
         # get rid of pesky "DeprecationWarning: Bare functions are
@@ -240,12 +244,11 @@ class Web(base.Web):
         # To avoid that we just wrap it in an `async def` function
         async def _dispatch(request: base.Request) -> base.Response:
             return await handler(request)
+
+        _dispatch.__doc__ = handler.__doc__
         return _dispatch
 
-    def add_static(self,
-                   prefix: str,
-                   path: Union[Path, str],
-                   **kwargs: Any) -> None:
+    def add_static(self, prefix: str, path: Union[Path, str], **kwargs: Any) -> None:
         """Add route for static assets."""
         self.web_app.router.add_static(prefix, str(path), **kwargs)
 
@@ -267,9 +270,9 @@ class Web(base.Web):
         """
         resp = cast(Response, response)
         if resp.body is None:
-            body = b''
+            body = b""
         elif isinstance(resp.body, Payload):
-            raise NotImplementedError('Does not support Payload')
+            raise NotImplementedError("Does not support Payload")
         else:
             body = resp.body
         return self._response_to_bytes(
@@ -289,6 +292,7 @@ class Web(base.Web):
             self._runner,
             self.app.conf.web_bind,
             self.app.conf.web_port,
+            ssl_context=self.app.conf.web_ssl_context,
         )
 
     def _new_transport_unix(self) -> BaseSite:
@@ -311,7 +315,7 @@ class Web(base.Web):
 
     async def _cleanup_app(self) -> None:
         if self.web_app is not None:
-            self.log.info('Cleanup')
+            self.log.info("Cleanup")
             await self.web_app.cleanup()
 
     @property

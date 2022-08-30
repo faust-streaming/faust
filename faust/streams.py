@@ -4,7 +4,6 @@ import os
 import reprlib
 import typing
 import weakref
-
 from asyncio import CancelledError
 from contextvars import ContextVar
 from typing import (
@@ -31,12 +30,12 @@ from mode import Seconds, Service, get_logger, shortlabel, want_seconds
 from mode.utils.aiter import aenumerate, aiter
 from mode.utils.futures import current_task, maybe_async, notify
 from mode.utils.queues import ThrowableQueue
-from mode.utils.typing import Deque
 from mode.utils.types.trees import NodeT
+from mode.utils.typing import Deque
 
 from . import joins
 from .exceptions import ImproperlyConfigured, Skip
-from .types import AppT, ConsumerT, EventT, K, ModelArg, ModelT, TP, TopicT
+from .types import TP, AppT, ConsumerT, EventT, K, ModelArg, ModelT, TopicT
 from .types.joins import JoinT
 from .types.models import FieldDescriptorT
 from .types.serializers import SchemaT
@@ -52,7 +51,7 @@ from .types.streams import (
 from .types.topics import ChannelT
 from .types.tuples import Message
 
-NO_CYTHON = bool(os.environ.get('NO_CYTHON', False))
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 if not NO_CYTHON:  # pragma: no cover
     try:
@@ -63,15 +62,15 @@ else:  # pragma: no cover
     _CStreamIterator = None
 
 __all__ = [
-    'Stream',
-    'current_event',
+    "Stream",
+    "current_event",
 ]
 
 logger = get_logger(__name__)
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     _current_event: ContextVar[Optional[weakref.ReferenceType[EventT]]]
-_current_event = ContextVar('current_event')
+_current_event = ContextVar("current_event")
 
 
 def current_event() -> Optional[EventT]:
@@ -93,8 +92,8 @@ class _LinkedListDirection(NamedTuple):
     getter: Callable[[StreamT], Optional[StreamT]]
 
 
-_LinkedListDirectionFwd = _LinkedListDirection('_next', lambda n: n._next)
-_LinkedListDirectionBwd = _LinkedListDirection('_prev', lambda n: n._prev)
+_LinkedListDirectionFwd = _LinkedListDirection("_next", lambda n: n._next)
+_LinkedListDirectionBwd = _LinkedListDirection("_prev", lambda n: n._prev)
 
 
 class Stream(StreamT[T_co], Service):
@@ -102,7 +101,7 @@ class Stream(StreamT[T_co], Service):
 
     logger = logger
     # Service starting/stopping logs use severity DEBUG in this class.
-    mundane_level = 'debug'
+    mundane_level = "debug"
 
     #: Number of events processed by this instance so far.
     events_total: int = 0
@@ -113,30 +112,31 @@ class Stream(StreamT[T_co], Service):
     _finalized = False
     _passive_started: asyncio.Event
 
-    def __init__(self,
-                 channel: AsyncIterator[T_co],
-                 *,
-                 app: AppT,
-                 processors: Iterable[Processor[T]] = None,
-                 combined: List[JoinableT] = None,
-                 on_start: Callable = None,
-                 join_strategy: JoinT = None,
-                 beacon: NodeT = None,
-                 concurrency_index: int = None,
-                 prev: StreamT = None,
-                 active_partitions: Set[TP] = None,
-                 enable_acks: bool = True,
-                 prefix: str = '',
-                 loop: asyncio.AbstractEventLoop = None) -> None:
+    def __init__(
+        self,
+        channel: AsyncIterator[T_co],
+        *,
+        app: AppT,
+        processors: Iterable[Processor[T]] = None,
+        combined: List[JoinableT] = None,
+        on_start: Optional[Callable] = None,
+        join_strategy: Optional[JoinT] = None,
+        beacon: Optional[NodeT] = None,
+        concurrency_index: Optional[int] = None,
+        prev: Optional[StreamT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        enable_acks: bool = True,
+        prefix: str = "",
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None:
         Service.__init__(self, loop=loop, beacon=beacon)
         self.app = app
         self.channel = channel
         self.outbox = self.app.FlowControlQueue(
             maxsize=self.app.conf.stream_buffer_maxsize,
-            loop=self.loop,
             clear_on_resume=True,
         )
-        self._passive_started = asyncio.Event(loop=self.loop)
+        self._passive_started = asyncio.Event()
         self.join_strategy = join_strategy
         self.combined = combined if combined is not None else []
         self.concurrency_index = concurrency_index
@@ -206,8 +206,7 @@ class Stream(StreamT[T_co], Service):
         seen: Set[StreamT] = set()
         while node:
             if node in seen:
-                raise RuntimeError(
-                    'Loop in Stream.{dir_.attr}: Call support!')
+                raise RuntimeError(f"Loop in Stream.{dir_.attr}: Call support!")
             seen.add(node)
             yield node
             node = dir_.getter(node)
@@ -233,16 +232,16 @@ class Stream(StreamT[T_co], Service):
         # used by e.g. .clone to reconstruct keyword arguments
         # needed to create a clone of the stream.
         return {
-            'app': self.app,
-            'channel': self.channel,
-            'processors': self._processors,
-            'on_start': self._on_start,
-            'loop': self.loop,
-            'combined': self.combined,
-            'beacon': self.beacon,
-            'concurrency_index': self.concurrency_index,
-            'prev': self._prev,
-            'active_partitions': self.active_partitions,
+            "app": self.app,
+            "channel": self.channel,
+            "processors": self._processors,
+            "on_start": self._on_start,
+            "loop": self.loop,
+            "combined": self.combined,
+            "beacon": self.beacon,
+            "concurrency_index": self.concurrency_index,
+            "prev": self._prev,
+            "active_partitions": self.active_partitions,
         }
 
     def clone(self, **kwargs: Any) -> StreamT:
@@ -269,7 +268,7 @@ class Stream(StreamT[T_co], Service):
         self._processors.clear()
         return new_stream
 
-    def noack(self) -> 'StreamT':
+    def noack(self) -> "StreamT":
         """Create new stream where acks are manual."""
         self._next = new_stream = self.clone(
             enable_acks=False,
@@ -300,8 +299,7 @@ class Stream(StreamT[T_co], Service):
             if self.current_event is not None:
                 yield self.current_event
 
-    async def take(self, max_: int,
-                   within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+    async def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values.
 
         Arguments:
@@ -319,8 +317,8 @@ class Stream(StreamT[T_co], Service):
         buffer_add = buffer.append
         event_add = events.append
         buffer_size = buffer.__len__
-        buffer_full = asyncio.Event(loop=self.loop)
-        buffer_consumed = asyncio.Event(loop=self.loop)
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
         timeout = want_seconds(within) if within else None
         stream_enable_acks: bool = self.enable_acks
 
@@ -342,8 +340,7 @@ class Stream(StreamT[T_co], Service):
                 buffer_add(cast(T_co, value))
                 event = self.current_event
                 if event is None:
-                    raise RuntimeError(
-                        'Take buffer found current_event is None')
+                    raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
                 if buffer_size() >= max_:
                     # signal that the buffer is full and should be emptied.
@@ -355,7 +352,106 @@ class Stream(StreamT[T_co], Service):
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
-                self.log.exception('Error adding to take buffer: %r', exc)
+                self.log.exception("Error adding to take buffer: %r", exc)
+                await self.crash(exc)
+            return value
+
+        # Disable acks to ensure this method acks manually
+        # events only after they are consumed by the user
+        self.enable_acks = False
+
+        self.add_processor(add_to_buffer)
+        self._enable_passive(cast(ChannelT, channel_it))
+        try:
+            while not self.should_stop:
+                # wait until buffer full, or timeout
+                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                if buffer:
+                    # make sure background thread does not add new items to
+                    # buffer while we read.
+                    buffer_consuming = self.loop.create_future()
+                    try:
+                        yield list(buffer)
+                    finally:
+                        buffer.clear()
+                        for event in events:
+                            await self.ack(event)
+                        events.clear()
+                        # allow writing to buffer again
+                        notify(buffer_consuming)
+                        buffer_full.clear()
+                        buffer_consumed.set()
+                else:  # pragma: no cover
+                    pass
+            else:  # pragma: no cover
+                pass
+
+        finally:
+            # Restore last behaviour of "enable_acks"
+            self.enable_acks = stream_enable_acks
+            self._processors.remove(add_to_buffer)
+
+    async def take_with_timestamp(
+        self, max_: int, within: Seconds, timestamp_field_name: str
+    ) -> AsyncIterable[Sequence[T_co]]:
+        """Buffer n values at a time and yield a list of buffered values with the
+           timestamp when the message was added to kafka.
+
+        Arguments:
+            max_: Max number of messages to receive. When more than this
+                number of messages are received within the specified number of
+                seconds then we flush the buffer immediately.
+            within: Timeout for when we give up waiting for another value,
+                and process the values we have.
+                Warning: If there's no timeout (i.e. `timeout=None`),
+                the agent is likely to stall and block buffered events for an
+                unreasonable length of time(!).
+            timestamp_field_name: the name of the field containing kafka timestamp,
+                that is going to be added to the value
+        """
+        buffer: List[T_co] = []
+        events: List[EventT] = []
+        buffer_add = buffer.append
+        event_add = events.append
+        buffer_size = buffer.__len__
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
+        timeout = want_seconds(within) if within else None
+        stream_enable_acks: bool = self.enable_acks
+
+        buffer_consuming: Optional[asyncio.Future] = None
+
+        channel_it = aiter(self.channel)
+
+        # We add this processor to populate the buffer, and the stream
+        # is passively consumed in the background (enable_passive below).
+        async def add_to_buffer(value: T) -> T:
+            try:
+                # buffer_consuming is set when consuming buffer after timeout.
+                nonlocal buffer_consuming
+                if buffer_consuming is not None:
+                    try:
+                        await buffer_consuming
+                    finally:
+                        buffer_consuming = None
+                event = self.current_event
+                if isinstance(value, dict) and timestamp_field_name:
+                    value[timestamp_field_name] = event.message.timestamp
+                buffer_add(value)
+                if event is None:
+                    raise RuntimeError("Take buffer found current_event is None")
+                event_add(event)
+                if buffer_size() >= max_:
+                    # signal that the buffer is full and should be emptied.
+                    buffer_full.set()
+                    # strict wait for buffer to be consumed after buffer full.
+                    # If max is 1000, we are not allowed to return 1001 values.
+                    buffer_consumed.clear()
+                    await self.wait(buffer_consumed)
+            except CancelledError:  # pragma: no cover
+                raise
+            except Exception as exc:
+                self.log.exception("Error adding to take buffer: %r", exc)
                 await self.crash(exc)
             return value
 
@@ -402,6 +498,106 @@ class Stream(StreamT[T_co], Service):
         """
         return aenumerate(self, start)
 
+    async def noack_take(
+        self, max_: int, within: Seconds
+    ) -> AsyncIterable[Sequence[T_co]]:
+        """
+         Buffer n values at a time and yield a list of buffered values.
+        :param max_: Max number of messages to receive. When more than this
+             number of messages are received within the specified number of
+             seconds then we flush the buffer immediately.
+        :param within: Timeout for when we give up waiting for another value,
+             and process the values we have.
+             Warning: If there's no timeout (i.e. `timeout=None`),
+             the agent is likely to stall and block buffered events for an
+             unreasonable length of time(!).
+        """
+        buffer: List[T_co] = []
+        events: List[EventT] = []
+        buffer_add = buffer.append
+        event_add = events.append
+        buffer_size = buffer.__len__
+        buffer_full = asyncio.Event()
+        buffer_consumed = asyncio.Event()
+        timeout = want_seconds(within) if within else None
+        stream_enable_acks: bool = self.enable_acks
+
+        buffer_consuming: Optional[asyncio.Future] = None
+
+        channel_it = aiter(self.channel)
+
+        # We add this processor to populate the buffer, and the stream
+        # is passively consumed in the background (enable_passive below).
+        async def add_to_buffer(value: T) -> T:
+            try:
+                # buffer_consuming is set when consuming buffer
+                # after timeout.
+                nonlocal buffer_consuming
+                if buffer_consuming is not None:
+                    try:
+                        await buffer_consuming
+                    finally:
+                        buffer_consuming = None
+
+                # We want to save events instead of values to allow for manual ack
+                event = self.current_event
+                buffer_add(cast(T_co, event))
+                if event is None:
+                    raise RuntimeError("Take buffer found current_event is None")
+
+                event_add(event)
+                if buffer_size() >= max_:
+                    # signal that the buffer is full and should be emptied.
+                    buffer_full.set()
+                    # strict wait for buffer to be consumed after buffer
+                    # full.
+                    # If max is 1000, we are not allowed to return 1001
+                    # values.
+                    buffer_consumed.clear()
+                    await self.wait(buffer_consumed)
+            except CancelledError:  # pragma: no cover
+                raise
+            except Exception as exc:
+                self.log.exception("Error adding to take buffer: %r", exc)
+                await self.crash(exc)
+            return value
+
+        # Disable acks to ensure this method acks manually
+        # events only after they are consumed by the user
+        self.enable_acks = False
+
+        self.add_processor(add_to_buffer)
+        self._enable_passive(cast(ChannelT, channel_it))
+        try:
+            while not self.should_stop:
+                # wait until buffer full, or timeout
+                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                if buffer:
+                    # make sure background thread does not add new items to
+                    # buffer while we read.
+                    buffer_consuming = self.loop.create_future()
+                    try:
+                        yield list(buffer)
+                    finally:
+                        buffer.clear()
+                        # code change: We want to manually ack
+                        # for event in events:
+                        #     await self.ack(event)
+                        events.clear()
+                        # allow writing to buffer again
+                        notify(buffer_consuming)
+                        buffer_full.clear()
+                        buffer_consumed.set()
+                else:  # pragma: no cover
+                    pass
+            else:  # pragma: no cover
+                pass
+
+        finally:
+            # Restore last behaviour of "enable_acks"
+            self.enable_acks = stream_enable_acks
+            self._processors.remove(add_to_buffer)
+
     def through(self, channel: Union[str, ChannelT]) -> StreamT:
         """Forward values to in this stream to channel.
 
@@ -432,7 +628,8 @@ class Stream(StreamT[T_co], Service):
             return self
         if self.concurrency_index is not None:
             raise ImproperlyConfigured(
-                'Agent with concurrency>1 cannot use stream.through!')
+                "Agent with concurrency>1 cannot use stream.through!"
+            )
         # ridiculous mypy
         if isinstance(channel, str):
             channelchannel = cast(ChannelT, self.derive_topic(channel))
@@ -441,8 +638,7 @@ class Stream(StreamT[T_co], Service):
 
         channel_it = aiter(channelchannel)
         if self._next is not None:
-            raise ImproperlyConfigured(
-                'Stream is already using group_by/through')
+            raise ImproperlyConfigured("Stream is already using group_by/through")
         through = self._chain(channel=channel_it)
 
         async def forward(value: T) -> T:
@@ -453,14 +649,12 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it), declare=True)
         return through
 
-    def _enable_passive(self, channel: ChannelT, *,
-                        declare: bool = False) -> None:
+    def _enable_passive(self, channel: ChannelT, *, declare: bool = False) -> None:
         if not self._passive:
             self._passive = True
             self.add_future(self._passive_drainer(channel, declare))
 
-    async def _passive_drainer(self, channel: ChannelT,
-                               declare: bool = False) -> None:
+    async def _passive_drainer(self, channel: ChannelT, declare: bool = False) -> None:
         try:
             if declare:
                 await channel.maybe_declare()
@@ -496,7 +690,6 @@ class Stream(StreamT[T_co], Service):
         async def echoing(value: T) -> T:
             await asyncio.wait(
                 [maybe_forward(value, channel) for channel in _channels],
-                loop=self.loop,
                 return_when=asyncio.ALL_COMPLETED,
             )
             return value
@@ -504,12 +697,14 @@ class Stream(StreamT[T_co], Service):
         self.add_processor(echoing)
         return self
 
-    def group_by(self,
-                 key: GroupByKeyArg,
-                 *,
-                 name: str = None,
-                 topic: TopicT = None,
-                 partitions: int = None) -> StreamT:
+    def group_by(
+        self,
+        key: GroupByKeyArg,
+        *,
+        name: Optional[str] = None,
+        topic: Optional[TopicT] = None,
+        partitions: Optional[int] = None,
+    ) -> StreamT:
         """Create new stream that repartitions the stream using a new key.
 
         Arguments:
@@ -565,36 +760,36 @@ class Stream(StreamT[T_co], Service):
         channel: ChannelT
         if self.concurrency_index is not None:
             raise ImproperlyConfigured(
-                'Agent with concurrency>1 cannot use stream.group_by!')
+                "Agent with concurrency>1 cannot use stream.group_by!"
+            )
         if not name:
             if isinstance(key, FieldDescriptorT):
                 name = key.ident
             else:
-                raise TypeError(
-                    'group_by with callback must set name=topic_suffix')
+                raise TypeError("group_by with callback must set name=topic_suffix")
         if topic is not None:
             channel = topic
         else:
 
-            prefix = ''
+            prefix = ""
             if self.prefix and not cast(TopicT, self.channel).has_prefix:
-                prefix = self.prefix + '-'
-            suffix = f'-{name}-repartition'
+                prefix = self.prefix + "-"
+            suffix = f"-{name}-repartition"
             p = partitions if partitions else self.app.conf.topic_partitions
             channel = cast(ChannelT, self.channel).derive(
-                prefix=prefix, suffix=suffix, partitions=p, internal=True)
+                prefix=prefix, suffix=suffix, partitions=p, internal=True
+            )
         format_key = self._format_key
 
         channel_it = aiter(channel)
         if self._next is not None:
-            raise ImproperlyConfigured('Stream already uses group_by/through')
+            raise ImproperlyConfigured("Stream already uses group_by/through")
         grouped = self._chain(channel=channel_it)
 
         async def repartition(value: T) -> T:
             event = self.current_event
             if event is None:
-                raise RuntimeError(
-                    'Cannot repartition stream with non-topic channel')
+                raise RuntimeError("Cannot repartition stream with non-topic channel")
             new_key = await format_key(key, value)
             await event.forward(channel, key=new_key)
             return value
@@ -616,6 +811,7 @@ class Stream(StreamT[T_co], Service):
             >>> async for v in stream.filter(lambda: v > 1000).group_by(...):
             ...     # do something
         """
+
         async def on_value(value: T) -> T:
             if not await maybe_async(fun(value)):
                 raise Skip()
@@ -632,17 +828,19 @@ class Stream(StreamT[T_co], Service):
                 return key.getattr(cast(ModelT, value))
             return await maybe_async(cast(Callable, key)(value))
         except BaseException as exc:
-            self.log.exception('Error in grouping key : %r', exc)
+            self.log.exception("Error in grouping key : %r", exc)
             raise Skip() from exc
 
-    def derive_topic(self,
-                     name: str,
-                     *,
-                     schema: SchemaT = None,
-                     key_type: ModelArg = None,
-                     value_type: ModelArg = None,
-                     prefix: str = '',
-                     suffix: str = '') -> TopicT:
+    def derive_topic(
+        self,
+        name: str,
+        *,
+        schema: Optional[SchemaT] = None,
+        key_type: ModelArg = None,
+        value_type: ModelArg = None,
+        prefix: str = "",
+        suffix: str = "",
+    ) -> TopicT:
         """Create Topic description derived from the K/V type of this stream.
 
         Arguments:
@@ -665,7 +863,7 @@ class Stream(StreamT[T_co], Service):
                 prefix=prefix,
                 suffix=suffix,
             )
-        raise ValueError('Cannot derive topic from non-topic channel.')
+        raise ValueError("Cannot derive topic from non-topic channel.")
 
     async def throw(self, exc: BaseException) -> None:
         """Send exception to stream iteration."""
@@ -748,7 +946,7 @@ class Stream(StreamT[T_co], Service):
         return self
 
     def __next__(self) -> T:
-        raise NotImplementedError('Streams are asynchronous: use `async for`')
+        raise NotImplementedError("Streams are asynchronous: use `async for`")
 
     def __aiter__(self) -> AsyncIterator[T_co]:  # pragma: no cover
         if _CStreamIterator is not None:
@@ -757,7 +955,7 @@ class Stream(StreamT[T_co], Service):
             return self._py_aiter()
 
     async def _c_aiter(self) -> AsyncIterator[T_co]:  # pragma: no cover
-        self.log.dev('Using Cython optimized __aiter__')
+        self.log.dev("Using Cython optimized __aiter__")
         skipped_value = self._skipped_value
         self._finalized = True
         started_by_aiter = await self.maybe_start()
@@ -788,7 +986,7 @@ class Stream(StreamT[T_co], Service):
                 await self.stop()
                 self.service_reset()
 
-    def _set_current_event(self, event: EventT = None) -> None:
+    def _set_current_event(self, event: Optional[EventT] = None) -> None:
         if event is None:
             _current_event.set(None)
         else:
@@ -797,7 +995,6 @@ class Stream(StreamT[T_co], Service):
 
     async def _py_aiter(self) -> AsyncIterator[T_co]:
         self._finalized = True
-        loop = self.loop
         started_by_aiter = await self.maybe_start()
         on_merge = self.on_merge
         on_stream_event_out = self._on_stream_event_out
@@ -849,7 +1046,7 @@ class Stream(StreamT[T_co], Service):
                 value: Any = None
                 # we iterate until on_merge gives value.
                 while value is None and event is None:
-                    await sleep(0, loop=loop)
+                    await sleep(0)
                     # get message from channel
                     # This inlines ThrowableQueue.get for performance:
                     # We selectively call `await Q.put`/`Q.put_nowait`,
@@ -873,6 +1070,20 @@ class Stream(StreamT[T_co], Service):
                         tp = message.tp
                         offset = message.offset
 
+                        if (
+                            not self.app.flow_control.is_active()
+                            or message.generation_id != self.app.consumer_generation_id
+                        ):
+                            value = skipped_value
+                            self.log.dev(
+                                "Skipping message %r with generation_id %r because "
+                                "app generation_id is %r flow_control.is_active %r",
+                                message,
+                                message.generation_id,
+                                self.app.consumer_generation_id,
+                                self.app.flow_control.is_active(),
+                            )
+                            break
                         if topic in acking_topics and not message.tracked:
                             message.tracked = True
                             # This inlines Consumer.track_message(message)
@@ -881,8 +1092,7 @@ class Stream(StreamT[T_co], Service):
                             # XXX ugh this should be in the consumer somehow
 
                         # call Sensors
-                        sensor_state = on_stream_event_in(
-                            tp, offset, self, event)
+                        sensor_state = on_stream_event_in(tp, offset, self, event)
 
                         # set task-local current_event
                         _current_event_contextvar.set(create_ref(event))
@@ -899,29 +1109,32 @@ class Stream(StreamT[T_co], Service):
                     # reduce using processors
                     try:
                         for processor in processors:
-                            with trace(f'processor-{_shortlabel(processor)}'):
+                            with trace(f"processor-{_shortlabel(processor)}"):
                                 value = await _maybe_async(processor(value))
                         value = await on_merge(value)
                     except Skip:
+                        # We want to ack the filtered message
+                        # otherwise the lag would increase
                         value = skipped_value
 
-                if value is skipped_value:
-                    continue
-                self.events_total += 1
                 try:
-                    yield value
+                    if value is not skipped_value:
+                        self.events_total += 1
+                        yield value
                 finally:
                     self.current_event = None
-                    if do_ack and event is not None:
+                    # We want to ack the filtered out message
+                    # otherwise the lag would increase
+                    if event is not None and (do_ack or value is skipped_value):
                         # This inlines self.ack
                         last_stream_to_ack = event.ack()
                         message = event.message
                         tp = event.message.tp
                         offset = event.message.offset
-                        on_stream_event_out(
-                            tp, offset, self, event, sensor_state)
+                        on_stream_event_out(tp, offset, self, event, sensor_state)
                         if last_stream_to_ack:
                             on_message_out(tp, offset, message)
+
         except StopAsyncIteration:
             # We are not allowed to propagate StopAsyncIteration in __aiter__
             # (if we do, it'll be converted to RuntimeError by CPython).
@@ -978,7 +1191,7 @@ class Stream(StreamT[T_co], Service):
     @property
     def label(self) -> str:
         """Return description of stream, used in graphs and logs."""
-        return f'{type(self).__name__}: {self._repr_channel()}'
+        return f"{type(self).__name__}: {self._repr_channel()}"
 
     def _repr_channel(self) -> str:
         return reprlib.repr(self.channel)
@@ -992,9 +1205,9 @@ class Stream(StreamT[T_co], Service):
         #    "Channel: <ANON>", for channel or
         #    "Topic: withdrawals", for a topic.
         # statsd then uses that as part of the id.
-        return f'Stream: {self._human_channel()}'
+        return f"Stream: {self._human_channel()}"
 
     def _human_channel(self) -> str:
         if self.combined:
-            return '&'.join(s._human_channel() for s in self.combined)
-        return f'{type(self.channel).__name__}: {self.channel}'
+            return "&".join(s._human_channel() for s in self.combined)
+        return f"{type(self.channel).__name__}: {self.channel}"

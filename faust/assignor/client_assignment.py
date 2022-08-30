@@ -1,14 +1,15 @@
 """Client Assignment."""
 import copy
 from typing import List, Mapping, MutableMapping, Sequence, Set, Tuple, cast
+
 from faust.models import Record
 from faust.types import TP
 from faust.types.assignor import HostToPartitionMap
 from faust.types.tables import TableManagerT
 
-R_COPART_ASSIGNMENT = '''
+R_COPART_ASSIGNMENT = """
 <{name} actives={self.actives} standbys={self.standbys} topics={self.topics}>
-'''.strip()
+""".strip()
 
 
 class CopartitionedAssignment:
@@ -18,10 +19,12 @@ class CopartitionedAssignment:
     standbys: Set[int]
     topics: Set[str]
 
-    def __init__(self,
-                 actives: Set[int] = None,
-                 standbys: Set[int] = None,
-                 topics: Set[str] = None) -> None:
+    def __init__(
+        self,
+        actives: Set[int] = None,
+        standbys: Set[int] = None,
+        topics: Set[str] = None,
+    ) -> None:
         self.actives = actives or set()
         self.standbys = standbys or set()
         self.topics = topics or set()
@@ -58,7 +61,7 @@ class CopartitionedAssignment:
         return partition in self.get_assigned_partitions(active)
 
     def promote_standby_to_active(self, standby_partition: int) -> None:
-        assert standby_partition in self.standbys, 'Not standby for partition'
+        assert standby_partition in self.standbys, "Not standby for partition"
         self.standbys.remove(standby_partition)
         self.actives.add(standby_partition)
 
@@ -66,9 +69,9 @@ class CopartitionedAssignment:
         return self.actives if active else self.standbys
 
     def can_assign(self, partition: int, active: bool) -> bool:
-        return (not self.partition_assigned(partition, active) and
-                (active or
-                 not self.partition_assigned(partition, active=True)))
+        return not self.partition_assigned(partition, active) and (
+            active or not self.partition_assigned(partition, active=True)
+        )
 
     def __repr__(self) -> str:
         return R_COPART_ASSIGNMENT.format(
@@ -77,13 +80,12 @@ class CopartitionedAssignment:
         )
 
 
-class ClientAssignment(Record,
-                       serializer='json',
-                       include_metadata=False,
-                       namespace='@ClientAssignment'):
+class ClientAssignment(
+    Record, serializer="json", include_metadata=False, namespace="@ClientAssignment"
+):
     """Client Assignment data model."""
 
-    actives: MutableMapping[str, List[int]]   # Topic -> Partition
+    actives: MutableMapping[str, List[int]]  # Topic -> Partition
     standbys: MutableMapping[str, List[int]]  # Topic -> Partition
 
     @property
@@ -103,10 +105,9 @@ class ClientAssignment(Record,
         }
 
     def kafka_protocol_assignment(
-            self,
-            table_manager: TableManagerT) -> Sequence[Tuple[str, List[int]]]:
-        assignment: MutableMapping[str, List[int]] = copy.deepcopy(
-            self.actives)
+        self, table_manager: TableManagerT
+    ) -> Sequence[Tuple[str, List[int]]]:
+        assignment: MutableMapping[str, List[int]] = copy.deepcopy(self.actives)
         for topic, partitions in self.standbys.items():
             if topic in table_manager.changelog_topics:
                 if topic not in assignment:
@@ -114,16 +115,14 @@ class ClientAssignment(Record,
                 assignment[topic].extend(partitions)
         return list(assignment.items())
 
-    def add_copartitioned_assignment(
-            self, assignment: CopartitionedAssignment) -> None:
+    def add_copartitioned_assignment(self, assignment: CopartitionedAssignment) -> None:
         assigned = set(self.actives.keys()).union(set(self.standbys.keys()))
         assert not any(topic in assigned for topic in assignment.topics)
         for topic in assignment.topics:
             self.actives[topic] = list(assignment.actives)
             self.standbys[topic] = list(assignment.standbys)
 
-    def copartitioned_assignment(
-            self, topics: Set[str]) -> CopartitionedAssignment:
+    def copartitioned_assignment(self, topics: Set[str]) -> CopartitionedAssignment:
         assignment = CopartitionedAssignment(
             actives=self._colocated_partitions(topics, active=True),
             standbys=self._colocated_partitions(topics, active=False),
@@ -132,8 +131,7 @@ class ClientAssignment(Record,
         assignment.validate()
         return assignment
 
-    def _colocated_partitions(
-            self, topics: Set[str], active: bool) -> Set[int]:
+    def _colocated_partitions(self, topics: Set[str], active: bool) -> Set[int]:
         assignment = self.actives if active else self.standbys
         # We take the first partition set for a topic which has a valid
         # assignment assuming subscription changes with co-partitioned topic
@@ -143,15 +141,15 @@ class ClientAssignment(Record,
         return next(valid_partitions, set())
 
 
-class ClientMetadata(Record,
-                     serializer='json',
-                     include_metadata=False,
-                     namespace='@ClientMetadata'):
+class ClientMetadata(
+    Record, serializer="json", include_metadata=False, namespace="@ClientMetadata"
+):
     """Client Metadata data model."""
 
     assignment: ClientAssignment
     url: str
     changelog_distribution: HostToPartitionMap
+    external_topic_distribution: HostToPartitionMap = cast(HostToPartitionMap, {})
     topic_groups: Mapping[str, int] = cast(Mapping[str, int], None)
 
     def __post_init__(self) -> None:

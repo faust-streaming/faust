@@ -1,7 +1,7 @@
 import asyncio
-from time import time
 import typing
 from collections import defaultdict
+from time import time
 from typing import (
     Any,
     Awaitable,
@@ -21,21 +21,26 @@ if typing.TYPE_CHECKING:
     from .channels import ChannelT as _ChannelT
     from .transports import ConsumerT as _ConsumerT
 else:
-    class _ChannelT: ...   # noqa
-    class _ConsumerT: ...  # noqa
+
+    class _ChannelT:
+        ...  # noqa
+
+    class _ConsumerT:
+        ...  # noqa
+
 
 __all__ = [
-    'ConsumerMessage',
-    'FutureMessage',
-    'Message',
-    'MessageSentCallback',
-    'PendingMessage',
-    'RecordMetadata',
-    'TP',
-    'tp_set_to_map',
+    "ConsumerMessage",
+    "FutureMessage",
+    "Message",
+    "MessageSentCallback",
+    "PendingMessage",
+    "RecordMetadata",
+    "TP",
+    "tp_set_to_map",
 ]
 
-MessageSentCallback = Callable[['FutureMessage'], Union[None, Awaitable[None]]]
+MessageSentCallback = Callable[["FutureMessage"], Union[None, Awaitable[None]]]
 
 
 class TP(NamedTuple):
@@ -64,9 +69,10 @@ class PendingMessage(NamedTuple):
     callback: Optional[MessageSentCallback]
     topic: Optional[str] = None
     offset: Optional[int] = None
+    generation_id: Optional[int] = None
 
 
-def _PendingMessage_to_Message(p: PendingMessage) -> 'Message':
+def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
     # CPython3.6.0 does not support methods on NamedTuple [ask]
 
     # In-memory channel.send uses this to convert
@@ -87,6 +93,7 @@ def _PendingMessage_to_Message(p: PendingMessage) -> 'Message':
         value=p.value,
         checksum=None,
         tp=tp,
+        generation_id=p.generation_id,
     )
 
 
@@ -108,46 +115,50 @@ def _get_len(s: Optional[bytes]) -> int:
 class Message:
 
     __slots__ = (
-        'topic',
-        'partition',
-        'offset',
-        'timestamp',
-        'timestamp_type',
-        'headers',
-        'key',
-        'value',
-        'checksum',
-        'serialized_key_size',
-        'serialized_value_size',
-        'acked',
-        'refcount',
-        'time_in',
-        'time_out',
-        'time_total',
-        'tp',
-        'tracked',
-        'span',
-        '__weakref__',
+        "topic",
+        "partition",
+        "offset",
+        "timestamp",
+        "timestamp_type",
+        "headers",
+        "key",
+        "value",
+        "checksum",
+        "serialized_key_size",
+        "serialized_value_size",
+        "acked",
+        "refcount",
+        "time_in",
+        "time_out",
+        "time_total",
+        "tp",
+        "tracked",
+        "span",
+        "__weakref__",
+        "generation_id",
     )
 
     use_tracking: bool = False
 
-    def __init__(self,
-                 topic: str,
-                 partition: int,
-                 offset: int,
-                 timestamp: float,
-                 timestamp_type: int,
-                 headers: Optional[HeadersArg],
-                 key: Optional[bytes],
-                 value: Optional[bytes],
-                 checksum: Optional[bytes],
-                 serialized_key_size: int = None,
-                 serialized_value_size: int = None,
-                 tp: TP = None,
-                 time_in: float = None,
-                 time_out: float = None,
-                 time_total: float = None) -> None:
+    def __init__(
+        self,
+        topic: str,
+        partition: int,
+        offset: int,
+        timestamp: float,
+        timestamp_type: int,
+        headers: Optional[HeadersArg],
+        key: Optional[bytes],
+        value: Optional[bytes],
+        checksum: Optional[bytes],
+        serialized_key_size: Optional[int] = None,
+        serialized_value_size: Optional[int] = None,
+        tp: TP = None,
+        time_in: Optional[float] = None,
+        time_out: Optional[float] = None,
+        time_total: Optional[float] = None,
+        generation_id: Optional[int] = None,
+    ) -> None:
         self.topic: str = topic
         self.partition: int = partition
         self.offset: int = offset
@@ -158,11 +169,11 @@ class Message:
         self.value: Optional[bytes] = value
         self.checksum: Optional[bytes] = checksum
         self.serialized_key_size: int = (
-            _get_len(key)
-            if serialized_key_size is None else serialized_key_size)
+            _get_len(key) if serialized_key_size is None else serialized_key_size
+        )
         self.serialized_value_size: int = (
-            _get_len(value)
-            if serialized_value_size is None else serialized_value_size)
+            _get_len(value) if serialized_value_size is None else serialized_value_size
+        )
         self.acked: bool = False
         self.refcount: int = 0
         self.tp = tp if tp is not None else TP(topic, partition)
@@ -175,6 +186,12 @@ class Message:
         #: Total processing time (in seconds), or None if the event is
         #: still processing.
         self.time_total: Optional[float] = time_total
+
+        # In some edge cases a message can slip through to the stream from before a
+        # rebalance occured if it gets stuck in the conductor or somewhere else. We
+        # track the generation_id when the message is fetched so we can discard if
+        # needed.
+        self.generation_id: Optional[int] = generation_id
 
     def ack(self, consumer: _ConsumerT, n: int = 1) -> bool:
         if not self.acked:
@@ -196,7 +213,7 @@ class Message:
         return refcount
 
     @classmethod
-    def from_message(cls, message: Any, tp: TP) -> 'Message':
+    def from_message(cls, message: Any, tp: TP) -> "Message":
         return cls(
             message.topic,
             message.partition,
@@ -213,7 +230,7 @@ class Message:
         )
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self.tp} offset={self.offset}>'
+        return f"<{type(self).__name__}: {self.tp} offset={self.offset}>"
 
 
 class ConsumerMessage(Message):
@@ -236,4 +253,5 @@ def tp_set_to_map(tps: Set[TP]) -> MutableMapping[str, Set[TP]]:
 # XXX See top of module! We redefine this with final FutureMessage
 # for Sphinx as it cannot read non-final types.
 MessageSentCallback = Callable[  # type: ignore
-    [FutureMessage], Union[None, Awaitable[None]]]
+    [FutureMessage], Union[None, Awaitable[None]]
+]

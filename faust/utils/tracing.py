@@ -2,7 +2,6 @@
 import asyncio
 import sys
 import typing
-
 from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
@@ -11,18 +10,18 @@ import opentracing
 from mode import shortlabel
 
 __all__ = [
-    'current_span',
-    'noop_span',
-    'set_current_span',
-    'finish_span',
-    'operation_name_from_fun',
-    'traced_from_parent_span',
-    'call_with_trace',
+    "current_span",
+    "noop_span",
+    "set_current_span",
+    "finish_span",
+    "operation_name_from_fun",
+    "traced_from_parent_span",
+    "call_with_trace",
 ]
 
 if typing.TYPE_CHECKING:
     _current_span: ContextVar[opentracing.Span]
-_current_span = ContextVar('current_span')
+_current_span = ContextVar("current_span")
 
 
 def current_span() -> Optional[opentracing.Span]:
@@ -40,8 +39,9 @@ def noop_span() -> opentracing.Span:
     return opentracing.Tracer()._noop_span
 
 
-def finish_span(span: Optional[opentracing.Span], *,
-                error: BaseException = None) -> None:
+def finish_span(
+    span: Optional[opentracing.Span], *, error: BaseException = None
+) -> None:
     """Finish span, and optionally set error tag."""
     if span is not None:
         if error:
@@ -52,22 +52,25 @@ def finish_span(span: Optional[opentracing.Span], *,
 
 def operation_name_from_fun(fun: Any) -> str:
     """Generate opentracing name from function."""
-    obj = getattr(fun, '__self__', None)
+    obj = getattr(fun, "__self__", None)
     if obj is not None:
         objlabel = shortlabel(obj)
         funlabel = shortlabel(fun)
         if funlabel.startswith(objlabel):
             # remove obj name from function label
-            funlabel = funlabel[len(objlabel):]
-        return f'{objlabel}-{funlabel}'
+            funlabel = funlabel[len(objlabel) :]
+        return f"{objlabel}-{funlabel}"
     else:
-        return f'{shortlabel(fun)}'
+        return f"{shortlabel(fun)}"
 
 
-def traced_from_parent_span(parent_span: opentracing.Span = None,
-                            callback: Callable = None,
-                            **extra_context: Any) -> Callable:
+def traced_from_parent_span(
+    parent_span: opentracing.Span = None,
+    callback: Optional[Callable] = None,
+    **extra_context: Any,
+) -> Callable:
     """Decorate function to be traced from parent span."""
+
     def _wrapper(fun: Callable, **more_context: Any) -> Callable:
         operation_name = operation_name_from_fun(fun)
 
@@ -86,24 +89,29 @@ def traced_from_parent_span(parent_span: opentracing.Span = None,
                     callback(child)
                 on_exit = (_restore_span, (parent, child))
                 set_current_span(child)
-                return call_with_trace(
-                    child, fun, on_exit, *args, **kwargs)
+                return call_with_trace(child, fun, on_exit, *args, **kwargs)
             return fun(*args, **kwargs)
+
         return _inner
+
     return _wrapper
 
 
-def _restore_span(span: opentracing.Span,
-                  expected_current_span: opentracing.Span) -> None:
+def _restore_span(
+    span: opentracing.Span, expected_current_span: opentracing.Span
+) -> None:
     current = current_span()
     assert current is expected_current_span
     set_current_span(span)
 
 
-def call_with_trace(span: opentracing.Span,
-                    fun: Callable,
-                    callback: Optional[Tuple[Callable, Tuple[Any, ...]]],
-                    *args: Any, **kwargs: Any) -> Any:
+def call_with_trace(
+    span: opentracing.Span,
+    fun: Callable,
+    callback: Optional[Tuple[Callable, Tuple[Any, ...]]],
+    *args: Any,
+    **kwargs: Any,
+) -> Any:
     """Call function and trace it from parent span."""
     cb: Optional[Callable] = None
     cb_args: Tuple = ()
@@ -133,6 +141,7 @@ def call_with_trace(span: opentracing.Span,
                     if cb:
                         cb(*cb_args)
                     return await_ret
+
             return corowrapped()
         else:
             # for non async def method, we just exit the span.

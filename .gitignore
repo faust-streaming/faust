@@ -17,15 +17,12 @@ pip-log.txt
 erl_crash.dump
 *.db
 Documentation/
-.tox/
 .ropeproject/
 .project
 .pydevproject
 .idea/
-.coverage
 celery/tests/cover/
 .ve*
-cover/
 .vagrant/
 .cache/
 .hypothesis/
@@ -47,3 +44,9 @@ faust/transport/_cython/*.c
 
 # ide
 .vscode/
+
+.logs
+
+# coverage
+.coverage
+coverage.xml

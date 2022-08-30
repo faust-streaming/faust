@@ -1,21 +1,22 @@
 """HTTP and related errors."""
 import http
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
+
 from faust.exceptions import FaustError
 
 __all__ = [
-    'WebError',
-    'ServerError',
-    'ValidationError',
-    'ParseError',
-    'AuthenticationFailed',
-    'NotAuthenticated',
-    'PermissionDenied',
-    'NotFound',
-    'MethodNotAllowed',
-    'NotAcceptable',
-    'UnsupportedMediaType',
-    'Throttled',
+    "WebError",
+    "ServerError",
+    "ValidationError",
+    "ParseError",
+    "AuthenticationFailed",
+    "NotAuthenticated",
+    "PermissionDenied",
+    "NotFound",
+    "MethodNotAllowed",
+    "NotAcceptable",
+    "UnsupportedMediaType",
+    "Throttled",
 ]
 
 
@@ -29,12 +30,16 @@ class WebError(FaustError):
     """
 
     code: int = cast(int, None)
-    detail: str = 'Default not set on class'
+    detail: str = "Default not set on class"
     extra_context: Dict
 
-    def __init__(self, detail: str = None, *,
-                 code: int = None,
-                 **extra_context: Any) -> None:
+    def __init__(
+        self,
+        detail: Optional[str] = None,
+        *,
+        code: Optional[int] = None,
+        **extra_context: Any
+    ) -> None:
         if detail:
             self.detail = detail
         if code:
@@ -47,81 +52,81 @@ class ServerError(WebError):
     """Internal Server Error (500)."""
 
     code = http.HTTPStatus.INTERNAL_SERVER_ERROR
-    detail = 'Internal server error.'
+    detail = "Internal server error."
 
 
 class ValidationError(WebError):
     """Invalid input in POST data (400)."""
 
     code = http.HTTPStatus.BAD_REQUEST
-    detail = 'Invalid input.'
+    detail = "Invalid input."
 
 
 class ParseError(WebError):
     """Malformed request (400)."""
 
     code = http.HTTPStatus.BAD_REQUEST
-    detail = 'Malformed request.'
+    detail = "Malformed request."
 
 
 class AuthenticationFailed(WebError):
     """Incorrect authentication credentials (401)."""
 
     code = http.HTTPStatus.UNAUTHORIZED
-    detail = 'Incorrect authentication credentials'
+    detail = "Incorrect authentication credentials"
 
 
 class NotAuthenticated(WebError):
     """Authentication credentials were not provided (401)."""
 
     code = http.HTTPStatus.UNAUTHORIZED
-    detail = 'Authentication credentials were not provided.'
+    detail = "Authentication credentials were not provided."
 
 
 class PermissionDenied(WebError):
     """No permission to perform action (403)."""
 
     code = http.HTTPStatus.FORBIDDEN
-    detail = 'You do not have permission to perform this action.'
+    detail = "You do not have permission to perform this action."
 
 
 class NotFound(WebError):
     """Resource not found (404)."""
 
     code = http.HTTPStatus.NOT_FOUND
-    detail = 'Not found.'
+    detail = "Not found."
 
 
 class MethodNotAllowed(WebError):
     """HTTP Method not allowed (405)."""
 
     code = http.HTTPStatus.METHOD_NOT_ALLOWED
-    detail = 'Method not allowed.'
+    detail = "Method not allowed."
 
 
 class NotAcceptable(WebError):
     """Not able to satisfy the request ``Accept`` header (406)."""
 
     code = http.HTTPStatus.NOT_ACCEPTABLE
-    detail = 'Could not satisfy the request Accept header.'
+    detail = "Could not satisfy the request Accept header."
 
 
 class UnsupportedMediaType(WebError):
     """Request contains unsupported media type (415)."""
 
     code = http.HTTPStatus.UNSUPPORTED_MEDIA_TYPE
-    detail = 'Unsupported media type in request.'
+    detail = "Unsupported media type in request."
 
 
 class Throttled(WebError):
     """Client is sending too many requests to server (429)."""
 
     code = http.HTTPStatus.TOO_MANY_REQUESTS
-    detail = 'Request was throttled.'
+    detail = "Request was throttled."
 
 
 class ServiceUnavailable(WebError):
     """Service is temporarily unavailable (503)."""
 
     code = http.HTTPStatus.SERVICE_UNAVAILABLE
-    detail = 'Service unavailable. Try again later.'
+    detail = "Service unavailable. Try again later."

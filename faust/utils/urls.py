@@ -1,26 +1,26 @@
 """URL utilities - Working with URLs."""
 from typing import List, Optional, Union
+
 from yarl import URL
 
 URIListArg = Union[str, URL, List[URL], List[str]]
 
 
-def urllist(arg: URIListArg, *,
-            default_scheme: str = None) -> List[URL]:
+def urllist(arg: URIListArg, *, default_scheme: Optional[str] = None) -> List[URL]:
     """Create list of URLs.
 
     You can pass in a comma-separated string, or an actual list
     and this will convert that into a list of :class:`yarl.URL` objects.
     """
     if not arg:
-        raise ValueError('URL argument cannot be falsy')
+        raise ValueError("URL argument cannot be falsy")
 
     if isinstance(arg, URL):
         # handle scalar URL argument.
         arg = [arg]
     elif isinstance(arg, str):
         # Handle scalar str, including semi-colon separated lists of URLs.
-        urls = arg.split(';')
+        urls = arg.split(";")
 
         # When some of the URLs do not have a scheme, we use
         # the first scheme we find as the default scheme.
@@ -43,21 +43,21 @@ def urllist(arg: URIListArg, *,
 
 
 def _find_first_actual_scheme(
-        urls: List[str],
-        default_scheme: str = None) -> Optional[str]:
+    urls: List[str], default_scheme: Optional[str] = None
+) -> Optional[str]:
     for url in urls:
-        scheme, sep, rest = url.partition('://')
+        scheme, sep, rest = url.partition("://")
         if sep:
             return scheme
     return default_scheme
 
 
-def _prepare_str_url(s: str, default_scheme: str = None) -> str:
+def _prepare_str_url(s: str, default_scheme: Optional[str] = None) -> str:
     # yarl.URL parses b:9092 into scheme=b,port=9092
     # where we would expect it to be scheme=None,host=b,port=9092
     if default_scheme:
-        if '://' not in s:
-            return f'{default_scheme}://{s}'
+        if "://" not in s:
+            return f"{default_scheme}://{s}"
     return s
 
 
@@ -71,5 +71,5 @@ def _ensure_scheme(default_scheme: Optional[str], url: Union[URL]) -> URL:
         if url.is_absolute():
             return url.with_scheme(default_scheme)
         else:
-            return URL(f'{default_scheme}://{url}')
+            return URL(f"{default_scheme}://{url}")
     return url

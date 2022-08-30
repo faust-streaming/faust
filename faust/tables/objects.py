@@ -4,7 +4,6 @@ This is also used to store data structures such as sets/lists.
 
 """
 import abc
-
 from typing import (
     Any,
     Callable,
@@ -21,7 +20,7 @@ from mode import Service
 
 from faust.stores.base import Store
 from faust.streams import current_event
-from faust.types import EventT, TP
+from faust.types import TP, EventT
 from faust.types.stores import StoreT
 from faust.types.tables import CollectionT
 
@@ -31,9 +30,9 @@ from .table import Table
 class ChangeloggedObject:
     """A changelogged object in a :class:`ChangeloggedObjectManager` store."""
 
-    manager: 'ChangeloggedObjectManager'
+    manager: "ChangeloggedObjectManager"
 
-    def __init__(self, manager: 'ChangeloggedObjectManager', key: Any) -> None:
+    def __init__(self, manager: "ChangeloggedObjectManager", key: Any) -> None:
         self.manager = manager
         self.key = key
         self.__post_init__()
@@ -75,10 +74,7 @@ class ChangeloggedObjectManager(Store):
         self._dirty = set()
         Service.__init__(self, **kwargs)
 
-    def send_changelog_event(self,
-                             key: Any,
-                             operation: int,
-                             value: Any) -> None:
+    def send_changelog_event(self, key: Any, operation: int, value: Any) -> None:
         """Send changelog event to the tables changelog topic."""
         event = current_event()
         self._dirty.add(key)
@@ -91,14 +87,14 @@ class ChangeloggedObjectManager(Store):
         return s
 
     def __setitem__(self, key: Any, value: Any) -> None:
-        raise NotImplementedError(f'{self._table_type_name}: cannot set key')
+        raise NotImplementedError(f"{self._table_type_name}: cannot set key")
 
     def __delitem__(self, key: Any) -> None:
-        raise NotImplementedError(f'{self._table_type_name}: cannot del key')
+        raise NotImplementedError(f"{self._table_type_name}: cannot del key")
 
     @property
     def _table_type_name(self) -> str:
-        return f'{type(self.table).__name__}'
+        return f"{type(self.table).__name__}"
 
     async def on_start(self) -> None:
         """Call when the changelogged object manager starts."""
@@ -116,18 +112,19 @@ class ChangeloggedObjectManager(Store):
         """Set the last persisted offset for changelog topic partition."""
         self.storage.set_persisted_offset(tp, offset)
 
-    async def on_rebalance(self,
-                           table: CollectionT,
-                           assigned: Set[TP],
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(
+        self,
+        table: CollectionT,
+        assigned: Set[TP],
+        revoked: Set[TP],
+        newly_assigned: Set[TP],
+    ) -> None:
         """Call when cluster is rebalancing."""
-        await self.storage.on_rebalance(
-            table, assigned, revoked, newly_assigned)
+        await self.storage.on_rebalance(table, assigned, revoked, newly_assigned)
 
-    async def on_recovery_completed(self,
-                                    active_tps: Set[TP],
-                                    standby_tps: Set[TP]) -> None:
+    async def on_recovery_completed(
+        self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
         """Call when table recovery is completed after rebalancing."""
         self.sync_from_storage()
 
@@ -144,7 +141,7 @@ class ChangeloggedObjectManager(Store):
 
     @Service.task
     async def _periodic_flush(self) -> None:  # pragma: no cover
-        async for sleep_time in self.itertimer(2.0, name='SetManager.flush'):
+        async for sleep_time in self.itertimer(2.0, name="SetManager.flush"):
             await self.sleep(sleep_time)
             self.flush_to_storage()
 
@@ -158,24 +155,26 @@ class ChangeloggedObjectManager(Store):
         """Return underlying storage used by this set table."""
         if self._storage is None:
             self._storage = self.table._new_store_by_url(
-                self.table._store or self.table.app.conf.store)
+                self.table._store or self.table.app.conf.store
+            )
         return self._storage
 
-    def apply_changelog_batch(self,
-                              batch: Iterable[EventT],
-                              to_key: Callable[[Any], Any],
-                              to_value: Callable[[Any], Any]) -> None:
+    def apply_changelog_batch(
+        self,
+        batch: Iterable[EventT],
+        to_key: Callable[[Any], Any],
+        to_value: Callable[[Any], Any],
+    ) -> None:
         """Apply batch of changelog events to local state."""
         tp_offsets: Dict[TP, int] = {}
         for event in batch:
             tp, offset = event.message.tp, event.message.offset
             tp_offsets[tp] = (
-                offset if tp not in tp_offsets
-                else max(offset, tp_offsets[tp])
+                offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
 
             if event.key is None:
-                raise RuntimeError('Changelog key cannot be None')
+                raise RuntimeError("Changelog key cannot be None")
 
             operation, key = event.key
             key = to_key(key)
@@ -184,3 +183,16 @@ class ChangeloggedObjectManager(Store):
 
         for tp, offset in tp_offsets.items():
             self.set_persisted_offset(tp, offset)
+
+    async def backup_partition(
+        self, tp, flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        raise NotImplementedError
+
+    def restore_backup(
+        self,
+        tp,
+        latest: bool = True,
+        backup_id: int = 0,
+    ) -> None:
+        raise NotImplementedError

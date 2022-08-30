@@ -10,30 +10,34 @@ from .events import EventT
 from .streams import StreamT
 from .tables import CollectionT
 from .transports import ConsumerT, ProducerT
-from .tuples import Message, PendingMessage, RecordMetadata, TP
+from .tuples import TP, Message, PendingMessage, RecordMetadata
 
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
-    class _AppT: ...  # noqa
 
-__all__ = ['SensorInterfaceT', 'SensorT', 'SensorDelegateT']
+    class _AppT:
+        ...  # noqa
+
+
+__all__ = ["SensorInterfaceT", "SensorT", "SensorDelegateT"]
 
 
 class SensorInterfaceT(abc.ABC):
-
     @abc.abstractmethod
     def on_message_in(self, tp: TP, offset: int, message: Message) -> None:
         ...
 
     @abc.abstractmethod
-    def on_stream_event_in(self, tp: TP, offset: int, stream: StreamT,
-                           event: EventT) -> Optional[Dict]:
+    def on_stream_event_in(
+        self, tp: TP, offset: int, stream: StreamT, event: EventT
+    ) -> Optional[Dict]:
         ...
 
     @abc.abstractmethod
-    def on_stream_event_out(self, tp: TP, offset: int, stream: StreamT,
-                            event: EventT, state: Dict = None) -> None:
+    def on_stream_event_out(
+        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -41,10 +45,7 @@ class SensorInterfaceT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def on_message_out(self,
-                       tp: TP,
-                       offset: int,
-                       message: Message) -> None:
+    def on_message_out(self, tp: TP, offset: int, message: Message) -> None:
         ...
 
     @abc.abstractmethod
@@ -68,23 +69,26 @@ class SensorInterfaceT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def on_send_initiated(self, producer: ProducerT, topic: str,
-                          message: PendingMessage,
-                          keysize: int, valsize: int) -> Any:
+    def on_send_initiated(
+        self,
+        producer: ProducerT,
+        topic: str,
+        message: PendingMessage,
+        keysize: int,
+        valsize: int,
+    ) -> Any:
         ...
 
     @abc.abstractmethod
-    def on_send_completed(self,
-                          producer: ProducerT,
-                          state: Any,
-                          metadata: RecordMetadata) -> None:
+    def on_send_completed(
+        self, producer: ProducerT, state: Any, metadata: RecordMetadata
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def on_send_error(self,
-                      producer: ProducerT,
-                      exc: BaseException,
-                      state: Any) -> None:
+    def on_send_error(
+        self, producer: ProducerT, exc: BaseException, state: Any
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -92,16 +96,15 @@ class SensorInterfaceT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def on_assignment_error(self,
-                            assignor: PartitionAssignorT,
-                            state: Dict,
-                            exc: BaseException) -> None:
+    def on_assignment_error(
+        self, assignor: PartitionAssignorT, state: Dict, exc: BaseException
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def on_assignment_completed(self,
-                                assignor: PartitionAssignorT,
-                                state: Dict) -> None:
+    def on_assignment_completed(
+        self, assignor: PartitionAssignorT, state: Dict
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -117,18 +120,25 @@ class SensorInterfaceT(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def on_web_request_start(self, app: _AppT, request: web.Request, *,
-                             view: web.View = None) -> Dict:
+    def on_web_request_start(
+        self, app: _AppT, request: web.Request, *, view: web.View = None
+    ) -> Dict:
         ...
 
     @abc.abstractmethod
-    def on_web_request_end(self,
-                           app: _AppT,
-                           request: web.Request,
-                           response: Optional[web.Response],
-                           state: Dict,
-                           *,
-                           view: web.View = None) -> None:
+    def on_web_request_end(
+        self,
+        app: _AppT,
+        request: web.Request,
+        response: Optional[web.Response],
+        state: Dict,
+        *,
+        view: web.View = None
+    ) -> None:
+        ...
+
+    @abc.abstractmethod
+    def on_threaded_producer_buffer_processed(self, app: _AppT, size: int) -> None:
         ...
 
 

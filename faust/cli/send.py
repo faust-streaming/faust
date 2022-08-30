@@ -1,11 +1,13 @@
 """Program ``faust send`` used to send events to agents and topics."""
 import asyncio
 import random
-from typing import Any
+from typing import Any, Optional
+
 from faust.types import CodecArg, K, RecordMetadata, V
+
 from .base import AppCommand, argument, option
 
-__all__ = ['send']
+__all__ = ["send"]
 
 
 class send(AppCommand):
@@ -21,44 +23,46 @@ class send(AppCommand):
     max_latency: float
 
     options = [
-        option('--key-type', '-K',
-               help='Name of model to serialize key into.'),
-        option('--key-serializer',
-               help='Override default serializer for key.'),
-        option('--value-type', '-V',
-               help='Name of model to serialize value into.'),
-        option('--value-serializer',
-               help='Override default serializer for value.'),
-        option('--key', '-k',
-               help='String value for key (use json if model).'),
-        option('--partition', type=int,
-               help='Specific partition to send to.'),
-        option('--repeat', '-r', type=int, default=1,
-               help='Send message n times.'),
-        option('--min-latency', type=float, default=0.0,
-               help='Minimum delay between sending.'),
-        option('--max-latency', type=float, default=0.0,
-               help='Maximum delay between sending.'),
-
-        argument('entity'),
-        argument('value', default=None, required=False),
+        option("--key-type", "-K", help="Name of model to serialize key into."),
+        option("--key-serializer", help="Override default serializer for key."),
+        option("--value-type", "-V", help="Name of model to serialize value into."),
+        option("--value-serializer", help="Override default serializer for value."),
+        option("--key", "-k", help="String value for key (use json if model)."),
+        option("--partition", type=int, help="Specific partition to send to."),
+        option("--repeat", "-r", type=int, default=1, help="Send message n times."),
+        option(
+            "--min-latency",
+            type=float,
+            default=0.0,
+            help="Minimum delay between sending.",
+        ),
+        option(
+            "--max-latency",
+            type=float,
+            default=0.0,
+            help="Maximum delay between sending.",
+        ),
+        argument("entity"),
+        argument("value", default=None, required=False),
     ]
 
-    async def run(self,
-                  entity: str,
-                  value: str,
-                  *args: Any,
-                  key: str = None,
-                  key_type: str = None,
-                  key_serializer: str = None,
-                  value_type: str = None,
-                  value_serializer: str = None,
-                  partition: int = 1,
-                  timestamp: float = None,
-                  repeat: int = 1,
-                  min_latency: float = 0.0,
-                  max_latency: float = 0.0,
-                  **kwargs: Any) -> Any:
+    async def run(
+        self,
+        entity: str,
+        value: str,
+        *args: Any,
+        key: Optional[str] = None,
+        key_type: Optional[str] = None,
+        key_serializer: Optional[str] = None,
+        value_type: Optional[str] = None,
+        value_serializer: Optional[str] = None,
+        partition: int = 1,
+        timestamp: Optional[float] = None,
+        repeat: int = 1,
+        min_latency: float = 0.0,
+        max_latency: float = 0.0,
+        **kwargs: Any,
+    ) -> Any:
         """Send message to topic/agent/channel."""
         if key is not None:
             key = self.to_key(key_type, key)
@@ -66,7 +70,7 @@ class send(AppCommand):
             value = self.to_value(value_type, value)
         topic = self.to_topic(entity)
         for i in range(repeat):
-            self.carp(f'k={key!r} v={value!r} -> {topic!r}...')
+            self.carp(f"k={key!r} v={value!r} -> {topic!r}...")
             fut_send_complete = await topic.send(
                 key=key,
                 value=value,

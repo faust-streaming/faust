@@ -1,6 +1,5 @@
 """Registry of supported codecs (serializers, compressors, etc.)."""
 import sys
-
 from decimal import Decimal
 from typing import Any, Optional, Tuple, Type, cast
 
@@ -13,7 +12,7 @@ from faust.types.serializers import RegistryT
 
 from .codecs import CodecArg, dumps, loads
 
-__all__ = ['Registry']
+__all__ = ["Registry"]
 
 IsInstanceArg = Tuple[Type, ...]
 
@@ -26,17 +25,19 @@ class Registry(RegistryT):
         value_serializer: Default value serializer to use when none provided.
     """
 
-    def __init__(self,
-                 key_serializer: CodecArg = None,
-                 value_serializer: CodecArg = 'json') -> None:
+    def __init__(
+        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+    ) -> None:
         self.key_serializer = key_serializer
         self.value_serializer = value_serializer
 
-    def loads_key(self,
-                  typ: Optional[ModelArg],
-                  key: Optional[bytes],
-                  *,
-                  serializer: CodecArg = None) -> K:
+    def loads_key(
+        self,
+        typ: Optional[ModelArg],
+        key: Optional[bytes],
+        *,
+        serializer: CodecArg = None,
+    ) -> K:
         """Deserialize message key.
 
         Arguments:
@@ -48,7 +49,7 @@ class Registry(RegistryT):
         """
         if key is None:
             if typ is not None and issubclass(typ, ModelT):
-                raise KeyDecodeError(f'Expected {typ!r}, received {key!r}!')
+                raise KeyDecodeError(f"Expected {typ!r}, received {key!r}!")
             return key
         serializer = serializer or self.key_serializer
         try:
@@ -57,8 +58,7 @@ class Registry(RegistryT):
         except MemoryError:
             raise
         except Exception as exc:
-            raise KeyDecodeError(str(exc)).with_traceback(
-                sys.exc_info()[2]) from exc
+            raise KeyDecodeError(str(exc)).with_traceback(sys.exc_info()[2]) from exc
 
     def _loads(self, serializer: CodecArg, data: bytes) -> Any:
         return loads(serializer, data)
@@ -70,16 +70,18 @@ class Registry(RegistryT):
                 break
         else:
             if typ is str:
-                return 'raw'
+                return "raw"
             elif typ is bytes:
-                return 'raw'
+                return "raw"
         return serializer
 
-    def loads_value(self,
-                    typ: Optional[ModelArg],
-                    value: Optional[bytes],
-                    *,
-                    serializer: CodecArg = None) -> Any:
+    def loads_value(
+        self,
+        typ: Optional[ModelArg],
+        value: Optional[bytes],
+        *,
+        serializer: CodecArg = None,
+    ) -> Any:
         """Deserialize value.
 
         Arguments:
@@ -91,8 +93,7 @@ class Registry(RegistryT):
         """
         if value is None:
             if typ is not None and issubclass(typ, ModelT):
-                raise ValueDecodeError(
-                    f'Expected {typ!r}, received {value!r}!')
+                raise ValueDecodeError(f"Expected {typ!r}, received {value!r}!")
             return None
         serializer = self._serializer(typ, serializer, self.value_serializer)
         try:
@@ -101,8 +102,7 @@ class Registry(RegistryT):
         except MemoryError:
             raise
         except Exception as exc:
-            raise ValueDecodeError(str(exc)).with_traceback(
-                sys.exc_info()[2]) from exc
+            raise ValueDecodeError(str(exc)).with_traceback(sys.exc_info()[2]) from exc
 
     def _prepare_payload(self, typ: Optional[ModelArg], value: Any) -> Any:
         if typ is None:  # (autodetect)
@@ -122,12 +122,14 @@ class Registry(RegistryT):
             model = cast(ModelT, typ)
             return model.from_data(value, preferred_type=model)
 
-    def dumps_key(self,
-                  typ: Optional[ModelArg],
-                  key: K,
-                  *,
-                  serializer: CodecArg = None,
-                  skip: IsInstanceArg = (bytes,)) -> Optional[bytes]:
+    def dumps_key(
+        self,
+        typ: Optional[ModelArg],
+        key: K,
+        *,
+        serializer: CodecArg = None,
+        skip: IsInstanceArg = (bytes,),
+    ) -> Optional[bytes]:
         """Serialize key.
 
         Arguments:
@@ -149,12 +151,14 @@ class Registry(RegistryT):
             return dumps(serializer, key)
         return want_bytes(cast(bytes, key)) if key is not None else None
 
-    def dumps_value(self,
-                    typ: Optional[ModelArg],
-                    value: V,
-                    *,
-                    serializer: CodecArg = None,
-                    skip: IsInstanceArg = (bytes,)) -> Optional[bytes]:
+    def dumps_value(
+        self,
+        typ: Optional[ModelArg],
+        value: V,
+        *,
+        serializer: CodecArg = None,
+        skip: IsInstanceArg = (bytes,),
+    ) -> Optional[bytes]:
         """Serialize value.
 
         Arguments:
@@ -180,4 +184,5 @@ class Registry(RegistryT):
     def Model(self) -> Type[ModelT]:
         """Return the :class:`faust.Model` class used by this serializer."""
         from faust.models.base import Model
+
         return Model

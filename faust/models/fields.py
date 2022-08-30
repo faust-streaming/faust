@@ -21,39 +21,37 @@ from mode.utils.objects import cached_property
 from mode.utils.text import pluralize
 
 from faust.exceptions import ValidationError
-from faust.types.models import (
-    FieldDescriptorT,
-    ModelT,
-    T,
-)
+from faust.types.models import FieldDescriptorT, ModelT, T
 from faust.utils import iso8601
 
 from .tags import Tag
 from .typing import NodeType, TypeExpression
 
 __all__ = [
-    'TYPE_TO_FIELD',
-    'FieldDescriptor',
-    'BooleanField',
-    'NumberField',
-    'FloatField',
-    'IntegerField',
-    'DatetimeField',
-    'DecimalField',
-    'BytesField',
-    'StringField',
-    'field_for_type',
+    "TYPE_TO_FIELD",
+    "FieldDescriptor",
+    "BooleanField",
+    "NumberField",
+    "FloatField",
+    "IntegerField",
+    "DatetimeField",
+    "DecimalField",
+    "BytesField",
+    "StringField",
+    "field_for_type",
 ]
 
-CharacterType = TypeVar('CharacterType', str, bytes)
+CharacterType = TypeVar("CharacterType", str, bytes)
 
 
 def _is_concrete_model(typ: Type = None) -> bool:
-    return (typ is not None and
-            inspect.isclass(typ) and
-            issubclass(typ, ModelT) and
-            typ is not ModelT and
-            not getattr(typ, '__is_abstract__', False))
+    return (
+        typ is not None
+        and inspect.isclass(typ)
+        and issubclass(typ, ModelT)
+        and typ is not ModelT
+        and not getattr(typ, "__is_abstract__", False)
+    )
 
 
 class FieldDescriptor(FieldDescriptorT[T]):
@@ -131,20 +129,23 @@ class FieldDescriptor(FieldDescriptorT[T]):
     _to_python: Optional[Callable[[T], T]]
     _expr: Optional[TypeExpression]
 
-    def __init__(self, *,
-                 field: str = None,
-                 input_name: str = None,
-                 output_name: str = None,
-                 type: Type[T] = None,
-                 model: Type[ModelT] = None,
-                 required: bool = True,
-                 default: T = None,
-                 parent: FieldDescriptorT = None,
-                 coerce: bool = None,
-                 exclude: bool = None,
-                 date_parser: Callable[[Any], datetime] = None,
-                 tag: Type[Tag] = None,
-                 **options: Any) -> None:
+    def __init__(
+        self,
+        *,
+        field: Optional[str] = None,
+        input_name: Optional[str] = None,
+        output_name: Optional[str] = None,
+        type: Type[T] = None,
+        model: Type[ModelT] = None,
+        required: bool = True,
+        default: T = None,
+        parent: Optional[FieldDescriptorT] = None,
+        coerce: Optional[bool] = None,
+        exclude: Optional[bool] = None,
+        date_parser: Callable[[Any], datetime] = None,
+        tag: Type[Tag] = None,
+        **options: Any,
+    ) -> None:
         self.field = cast(str, field)
         self.input_name = cast(str, input_name or field)
         self.output_name = output_name or self.input_name
@@ -173,7 +174,7 @@ class FieldDescriptor(FieldDescriptorT[T]):
     def _prepare_type_expression(self) -> TypeExpression:
         expr = TypeExpression(
             self.type,
-            user_types=self.options['model_coercions'],
+            user_types=self.options["model_coercions"],
             date_parser=self.date_parser,
         )
         return expr
@@ -182,8 +183,9 @@ class FieldDescriptor(FieldDescriptorT[T]):
         assert self._expr is not None
         expr = self._expr
         comprehension = expr.as_function(stacklevel=2)
-        if (expr.has_generic_types and
-                expr.has_custom_types) or expr.has_nonfield_types:
+        if (
+            expr.has_generic_types and expr.has_custom_types
+        ) or expr.has_nonfield_types:
             return cast(Callable, comprehension)
         return None
 
@@ -196,18 +198,18 @@ class FieldDescriptor(FieldDescriptorT[T]):
 
     def as_dict(self) -> Mapping[str, Any]:
         return {
-            'field': self.field,
-            'input_name': self.input_name,
-            'output_name': self.output_name,
-            'type': self.type,
-            'model': self.model,
-            'required': self.required,
-            'default': self.default,
-            'parent': self.parent,
-            'coerce': self.coerce,
-            'exclude': self.exclude,
-            'date_parser': self.date_parser,
-            'tag': self.tag,
+            "field": self.field,
+            "input_name": self.input_name,
+            "output_name": self.output_name,
+            "type": self.type,
+            "model": self.model,
+            "required": self.required,
+            "default": self.default,
+            "parent": self.parent,
+            "coerce": self.coerce,
+            "exclude": self.exclude,
+            "date_parser": self.date_parser,
+            "tag": self.tag,
             **self.options,
         }
 
@@ -218,12 +220,12 @@ class FieldDescriptor(FieldDescriptorT[T]):
         except (TypeError, ValueError) as exc:
             vt = type(value)
             yield self.validation_error(
-                f'{self.field} is not correct type for {self}, '
-                f'got {vt!r}: {exc!r}')
+                f"{self.field} is not correct type for {self}, " f"got {vt!r}: {exc!r}"
+            )
         except Exception as exc:
             yield self.validation_error(
-                f'{self.field} got internal error for value {value!r} '
-                f'{exc!r}')
+                f"{self.field} got internal error for value {value!r} " f"{exc!r}"
+            )
         else:
             if v is not None or self.required:
                 yield from self.validate(cast(T, v))
@@ -237,8 +239,9 @@ class FieldDescriptor(FieldDescriptorT[T]):
             value = to_python(value)
         return self.prepare_value(value)
 
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[T]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[T]:
         return cast(T, value)
 
     def _copy_descriptors(self, typ: Type = None) -> None:
@@ -263,7 +266,7 @@ class FieldDescriptor(FieldDescriptorT[T]):
                 evaluated_fields.add(field)
         return value
 
-    def should_coerce(self, value: Any, coerce: bool = None) -> bool:
+    def should_coerce(self, value: Any, coerce: Optional[bool] = None) -> bool:
         c = coerce if coerce is not None else self.coerce
         return c and (self.required or value is not None)
 
@@ -272,7 +275,7 @@ class FieldDescriptor(FieldDescriptorT[T]):
 
         Supports recursive lookups e.g. ``model.getattr('x.y.z')``.
         """
-        return attrgetter('.'.join(reversed(list(self._parents_path()))))(obj)
+        return attrgetter(".".join(reversed(list(self._parents_path()))))(obj)
 
     def _parents_path(self) -> Iterable[str]:
         node: Optional[FieldDescriptorT] = self
@@ -292,14 +295,14 @@ class FieldDescriptor(FieldDescriptorT[T]):
         instance.__dict__[self.field] = value
 
     def __repr__(self) -> str:
-        default = '' if self.required else f' = {self.default!r}'
-        typ = getattr(self.type, '__name__', self.type)
-        return f'<{type(self).__name__}: {self.ident}: {typ}{default}>'
+        default = "" if self.required else f" = {self.default!r}"
+        typ = getattr(self.type, "__name__", self.type)
+        return f"<{type(self).__name__}: {self.ident}: {typ}{default}>"
 
     @property
     def ident(self) -> str:
         """Return the fields identifier."""
-        return f'{self.model.__name__}.{self.field}'
+        return f"{self.model.__name__}.{self.field}"
 
     @cached_property
     def related_models(self) -> Set[Type[ModelT]]:
@@ -313,14 +316,15 @@ class FieldDescriptor(FieldDescriptorT[T]):
 
 
 class BooleanField(FieldDescriptor[bool]):
-
     def validate(self, value: T) -> Iterable[ValidationError]:
         if not isinstance(value, bool):
             yield self.validation_error(
-                f'{self.field} must be True or False, of type bool')
+                f"{self.field} must be True or False, of type bool"
+            )
 
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[bool]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[bool]:
         if self.should_coerce(value, coerce):
             return True if value else False
         return value
@@ -331,43 +335,47 @@ class NumberField(FieldDescriptor[T]):
     max_value: Optional[int]
     min_value: Optional[int]
 
-    def __init__(self, *,
-                 max_value: int = None,
-                 min_value: int = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        max_value: Optional[int] = None,
+        min_value: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None:
         self.max_value = max_value
         self.min_value = min_value
 
-        super().__init__(**kwargs, **{
-            'max_value': max_value,
-            'min_value': min_value,
-        })
+        super().__init__(
+            **kwargs,
+            **{
+                "max_value": max_value,
+                "min_value": min_value,
+            },
+        )
 
     def validate(self, value: T) -> Iterable[ValidationError]:
         val = cast(int, value)
         max_ = self.max_value
         if max_:
             if val > max_:
-                yield self.validation_error(
-                    f'{self.field} cannot be more than {max_}')
+                yield self.validation_error(f"{self.field} cannot be more than {max_}")
         min_ = self.min_value
         if min_:
             if val < min_:
-                yield self.validation_error(
-                    f'{self.field} must be at least {min_}')
+                yield self.validation_error(f"{self.field} must be at least {min_}")
 
 
 class IntegerField(NumberField[int]):
-
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[int]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[int]:
         return int(value) if self.should_coerce(value, coerce) else value
 
 
 class FloatField(NumberField[float]):
-
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[float]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[float]:
         return float(value) if self.should_coerce(value, coerce) else value
 
 
@@ -375,17 +383,23 @@ class DecimalField(NumberField[Decimal]):
     max_digits: Optional[int] = None
     max_decimal_places: Optional[int] = None
 
-    def __init__(self, *,
-                 max_digits: int = None,
-                 max_decimal_places: int = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        max_digits: Optional[int] = None,
+        max_decimal_places: Optional[int] = None,
+        **kwargs: Any,
+    ) -> None:
         self.max_digits = max_digits
         self.max_decimal_places = max_decimal_places
 
-        super().__init__(**kwargs, **{
-            'max_digits': max_digits,
-            'max_decimal_places': max_decimal_places,
-        })
+        super().__init__(
+            **kwargs,
+            **{
+                "max_digits": max_digits,
+                "max_decimal_places": max_decimal_places,
+            },
+        )
 
     def to_python(self, value: Any) -> Any:
         if self._to_python is None:
@@ -395,13 +409,14 @@ class DecimalField(NumberField[Decimal]):
         else:
             return self._to_python(value)
 
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[Decimal]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[Decimal]:
         return Decimal(value) if self.should_coerce(value, coerce) else value
 
     def validate(self, value: Decimal) -> Iterable[ValidationError]:
         if not value.is_finite():  # check for Inf/NaN/sNaN/qNaN
-            yield self.validation_error(f'Illegal value in decimal: {value!r}')
+            yield self.validation_error(f"Illegal value in decimal: {value!r}")
 
         decimal_tuple: Optional[DecimalTuple] = None
 
@@ -410,15 +425,17 @@ class DecimalField(NumberField[Decimal]):
             decimal_tuple = value.as_tuple()
             if abs(decimal_tuple.exponent) > mdp:
                 yield self.validation_error(
-                    f'{self.field} must have less than {mdp} decimal places.')
+                    f"{self.field} must have less than {mdp} decimal places."
+                )
         max_digits = self.max_digits
         if max_digits:
             if decimal_tuple is None:
                 decimal_tuple = value.as_tuple()
-            digits = len(decimal_tuple.digits[:decimal_tuple.exponent])
+            digits = len(decimal_tuple.digits[: decimal_tuple.exponent])
             if digits > max_digits:
                 yield self.validation_error(
-                    f'{self.field} must have less than {max_digits} digits.')
+                    f"{self.field} must have less than {max_digits} digits."
+                )
 
 
 class CharField(FieldDescriptor[CharacterType]):
@@ -428,47 +445,54 @@ class CharField(FieldDescriptor[CharacterType]):
     trim_whitespace: bool
     allow_blank: bool
 
-    def __init__(self, *,
-                 max_length: int = None,
-                 min_length: int = None,
-                 trim_whitespace: bool = False,
-                 allow_blank: bool = False,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        max_length: Optional[int] = None,
+        min_length: Optional[int] = None,
+        trim_whitespace: bool = False,
+        allow_blank: bool = False,
+        **kwargs: Any,
+    ) -> None:
         self.max_length = max_length
         self.min_length = min_length
         self.trim_whitespace = trim_whitespace
         self.allow_blank = allow_blank
         super().__init__(
             **kwargs,
-            **{'max_length': max_length,
-               'min_length': min_length,
-               'trim_whitespace': trim_whitespace,
-               'allow_blank': allow_blank},
+            **{
+                "max_length": max_length,
+                "min_length": min_length,
+                "trim_whitespace": trim_whitespace,
+                "allow_blank": allow_blank,
+            },
         )
 
     def validate(self, value: CharacterType) -> Iterable[ValidationError]:
         allow_blank = self.allow_blank
         if not allow_blank and not len(value):
-            yield self.validation_error(f'{self.field} cannot be left blank')
+            yield self.validation_error(f"{self.field} cannot be left blank")
         max_ = self.max_length
         length = len(value)
         min_ = self.min_length
         if min_:
             if length < min_:
-                chars = pluralize(min_, 'character')
+                chars = pluralize(min_, "character")
                 yield self.validation_error(
-                    f'{self.field} must have at least {min_} {chars}')
+                    f"{self.field} must have at least {min_} {chars}"
+                )
         if max_:
             if length > max_:
-                chars = pluralize(max_, 'character')
+                chars = pluralize(max_, "character")
                 yield self.validation_error(
-                    f'{self.field} must be at least {max_} {chars}')
+                    f"{self.field} must be at least {max_} {chars}"
+                )
 
 
 class StringField(CharField[str]):
-
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[str]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[str]:
         if self.should_coerce(value, coerce):
             val = str(value) if not isinstance(value, str) else value
             if self.trim_whitespace:
@@ -479,7 +503,6 @@ class StringField(CharField[str]):
 
 
 class DatetimeField(FieldDescriptor[datetime]):
-
     def to_python(self, value: Any) -> Any:
         if self._to_python is None:
             if self.model._options.isodates:
@@ -488,8 +511,9 @@ class DatetimeField(FieldDescriptor[datetime]):
         else:
             return self._to_python(value)
 
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[datetime]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[datetime]:
         if self.should_coerce(value, coerce):
             if value is not None and not isinstance(value, datetime):
                 return self.date_parser(value)
@@ -501,12 +525,15 @@ class DatetimeField(FieldDescriptor[datetime]):
 
 class BytesField(CharField[bytes]):
     encoding: str = sys.getdefaultencoding()
-    errors: str = 'strict'
+    errors: str = "strict"
 
-    def __init__(self, *,
-                 encoding: str = None,
-                 errors: str = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *,
+        encoding: Optional[str] = None,
+        errors: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
         if encoding is not None:
             self.encoding = encoding
         if errors is not None:
@@ -517,8 +544,9 @@ class BytesField(CharField[bytes]):
             **kwargs,
         )
 
-    def prepare_value(self, value: Any, *,
-                      coerce: bool = None) -> Optional[bytes]:
+    def prepare_value(
+        self, value: Any, *, coerce: Optional[bool] = None
+    ) -> Optional[bytes]:
         if self.should_coerce(value, coerce):
             if isinstance(value, bytes):
                 val = value
@@ -543,8 +571,7 @@ TYPE_TO_FIELD = {
 
 
 @lru_cache(maxsize=2048)
-def field_for_type(
-        typ: Type) -> Tuple[Type[FieldDescriptorT], Optional[Type[Tag]]]:
+def field_for_type(typ: Type) -> Tuple[Type[FieldDescriptorT], Optional[Type[Tag]]]:
     try:
         # 1) Check if type is in fast index.
         return TYPE_TO_FIELD[typ], None

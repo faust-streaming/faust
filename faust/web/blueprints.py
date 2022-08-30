@@ -70,7 +70,7 @@ from faust.types.web import (
 
 from .cache import Cache
 
-__all__ = ['Blueprint']
+__all__ = ["Blueprint"]
 
 
 class FutureRoute(NamedTuple):
@@ -96,35 +96,37 @@ class Blueprint(BlueprintT):
 
     routes: List[FutureRoute]
     static_routes: List[FutureStaticRoute]
-    view_name_separator: str = ':'
+    view_name_separator: str = ":"
 
-    def __init__(self,
-                 name: str,
-                 *,
-                 url_prefix: Optional[str] = None) -> None:
+    def __init__(self, name: str, *, url_prefix: Optional[str] = None) -> None:
         self.name = name
         self.url_prefix = url_prefix
 
         self.routes = []
         self.static_routes = []
 
-    def cache(self,
-              timeout: Seconds = None,
-              include_headers: bool = False,
-              key_prefix: str = None,
-              backend: Union[Type[CacheBackendT], str] = None) -> CacheT:
+    def cache(
+        self,
+        timeout: Optional[Seconds] = None,
+        include_headers: bool = False,
+        key_prefix: Optional[str] = None,
+        backend: Union[Type[CacheBackendT], str] = None,
+    ) -> CacheT:
         """Cache API."""
         if key_prefix is None:
             key_prefix = self.name
         return Cache(timeout, include_headers, key_prefix, backend)
 
-    def route(self,
-              uri: str,
-              *,
-              name: Optional[str] = None,
-              cors_options: Mapping[str, ResourceOptions] = None,
-              base: Type[View] = View) -> RouteDecoratorRet:
+    def route(
+        self,
+        uri: str,
+        *,
+        name: Optional[str] = None,
+        cors_options: Mapping[str, ResourceOptions] = None,
+        base: Type[View] = View,
+    ) -> RouteDecoratorRet:
         """Create route by decorating handler or view class."""
+
         def _inner(handler: PageArg) -> PageArg:
             route = FutureRoute(
                 uri=uri,
@@ -135,23 +137,24 @@ class Blueprint(BlueprintT):
             )
             self.routes.append(route)
             return handler
+
         return _inner
 
-    def static(self,
-               uri: str,
-               file_or_directory: Union[str, Path],
-               *,
-               name: Optional[str] = None) -> None:
+    def static(
+        self,
+        uri: str,
+        file_or_directory: Union[str, Path],
+        *,
+        name: Optional[str] = None,
+    ) -> None:
         """Add static route."""
-        _name: str = name or 'static'
-        if not _name.startswith(self.name + '.'):
-            _name = f'{self.name}.{name}'
+        _name: str = name or "static"
+        if not _name.startswith(self.name + "."):
+            _name = f"{self.name}.{name}"
         fut = FutureStaticRoute(uri, Path(file_or_directory), _name)
         self.static_routes.append(fut)
 
-    def register(self, app: AppT,
-                 *,
-                 url_prefix: Optional[str] = None) -> None:
+    def register(self, app: AppT, *, url_prefix: Optional[str] = None) -> None:
         """Register blueprint with app."""
         url_prefix = url_prefix or self.url_prefix
 
@@ -162,16 +165,15 @@ class Blueprint(BlueprintT):
         for static_route in self.static_routes:
             self._apply_static_route(app.web, static_route, url_prefix)
 
-    def _apply_route(self,
-                     app: AppT,
-                     route: FutureRoute,
-                     url_prefix: Optional[str]) -> None:
+    def _apply_route(
+        self, app: AppT, route: FutureRoute, url_prefix: Optional[str]
+    ) -> None:
         uri = self._url_with_prefix(route.uri, url_prefix)
 
         # Create the actual view on the app (using app.page)
 
         app.page(
-            path=uri[1:] if uri.startswith('//') else uri,
+            path=uri[1:] if uri.startswith("//") else uri,
             name=self._view_name(route.name),
             cors_options=route.cors_options,
         )(route.handler)
@@ -187,17 +189,16 @@ class Blueprint(BlueprintT):
         """Call when web server starts."""
         ...
 
-    def _url_with_prefix(self, url: str, prefix: str = None) -> str:
+    def _url_with_prefix(self, url: str, prefix: Optional[str] = None) -> str:
         if prefix:
-            return prefix.rstrip('/') + '/' + url.lstrip('/')
+            return prefix.rstrip("/") + "/" + url.lstrip("/")
         return url
 
-    def _apply_static_route(self,
-                            web: Web,
-                            route: FutureStaticRoute,
-                            url_prefix: Optional[str]) -> None:
+    def _apply_static_route(
+        self, web: Web, route: FutureStaticRoute, url_prefix: Optional[str]
+    ) -> None:
         uri = self._url_with_prefix(route.uri, url_prefix)
         web.add_static(uri, route.file_or_directory)
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__}: {self.name}>'
+        return f"<{type(self).__name__}: {self.name}>"

@@ -30,7 +30,6 @@ from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
 from mode.utils.typing import NoReturn
 
-
 from .agents import AgentFun, AgentManagerT, AgentT, SinkT
 from .assignor import PartitionAssignorT
 from .codecs import CodecArg
@@ -43,7 +42,7 @@ from .streams import StreamT
 from .tables import CollectionT, TableManagerT, TableT
 from .topics import ChannelT, TopicT
 from .transports import ConductorT, ConsumerT, ProducerT, TransportT
-from .tuples import Message, MessageSentCallback, RecordMetadata, TP
+from .tuples import TP, Message, MessageSentCallback, RecordMetadata
 from .web import (
     CacheBackendT,
     HttpClientT,
@@ -60,40 +59,57 @@ if typing.TYPE_CHECKING:
     from faust.livecheck.app import LiveCheck as _LiveCheck
     from faust.sensors.monitor import Monitor as _Monitor
     from faust.worker import Worker as _Worker
+
     from .events import EventT as _EventT
     from .models import ModelArg as _ModelArg
     from .serializers import SchemaT as _SchemaT
     from .settings import Settings as _Settings
 else:
-    class _AppCommand: ...     # noqa
-    class _SchemaT: ...        # noqa
-    class _LiveCheck: ...      # noqa
-    class _Monitor: ...        # noqa
-    class _Worker: ...         # noqa
-    class _EventT: ...         # noqa
-    class _ModelArg: ...       # noqa
-    class _Settings: ...       # noqa
+
+    class _AppCommand:
+        ...  # noqa
+
+    class _SchemaT:
+        ...  # noqa
+
+    class _LiveCheck:
+        ...  # noqa
+
+    class _Monitor:
+        ...  # noqa
+
+    class _Worker:
+        ...  # noqa
+
+    class _EventT:
+        ...  # noqa
+
+    class _ModelArg:
+        ...  # noqa
+
+    class _Settings:
+        ...  # noqa
+
 
 __all__ = [
-    'TaskArg',
-    'AppT',
+    "TaskArg",
+    "AppT",
 ]
 
-TaskArg = Union[Callable[['AppT'], Awaitable], Callable[[], Awaitable]]
-_T = TypeVar('_T')
+TaskArg = Union[Callable[["AppT"], Awaitable], Callable[[], Awaitable]]
+_T = TypeVar("_T")
 
 
 class TracerT(abc.ABC):
-
     @property
     @abc.abstractmethod
     def default_tracer(self) -> opentracing.Tracer:
         ...
 
     @abc.abstractmethod
-    def trace(self, name: str,
-              sample_rate: float = None,
-              **extra_context: Any) -> ContextManager:
+    def trace(
+        self, name: str, sample_rate: Optional[float] = None, **extra_context: Any
+    ) -> ContextManager:
         ...
 
     @abc.abstractmethod
@@ -102,7 +118,7 @@ class TracerT(abc.ABC):
 
 
 class BootStrategyT:
-    app: 'AppT'
+    app: "AppT"
 
     enable_kafka: bool = True
     # We want these to take default from `enable_kafka`
@@ -117,12 +133,16 @@ class BootStrategyT:
     enable_sensors: bool = True
 
     @abc.abstractmethod
-    def __init__(self, app: 'AppT', *,
-                 enable_web: bool = None,
-                 enable_kafka: bool = True,
-                 enable_kafka_producer: bool = None,
-                 enable_kafka_consumer: bool = None,
-                 enable_sensors: bool = True) -> None:
+    def __init__(
+        self,
+        app: "AppT",
+        *,
+        enable_web: Optional[bool] = None,
+        enable_kafka: bool = True,
+        enable_kafka_producer: Optional[bool] = None,
+        enable_kafka_consumer: Optional[bool] = None,
+        enable_sensors: bool = True,
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -144,6 +164,7 @@ class AppT(ServiceT):
     See Also:
         :class:`faust.App`.
     """
+
     Settings: ClassVar[Type[_Settings]]
 
     BootStrategy: ClassVar[Type[BootStrategyT]]
@@ -158,6 +179,10 @@ class AppT(ServiceT):
     #: Set to true if the worker is currently rebalancing.
     rebalancing: bool = False
     rebalancing_count: int = 0
+    #: Set to true when the worker is in recovery
+    in_recovery: bool = False
+
+    consumer_generation_id: int = 0
 
     #: Set to true if the assignment is empty
     # This flag is set by App._on_partitions_assigned
@@ -191,20 +216,15 @@ class AppT(ServiceT):
     _default_options: Tuple[str, Mapping[str, Any]]
 
     @abc.abstractmethod
-    def __init__(self,
-                 id: str,
-                 *,
-                 monitor: _Monitor,
-                 config_source: Any = None,
-                 **options: Any) -> None:
+    def __init__(
+        self, id: str, *, monitor: _Monitor, config_source: Any = None, **options: Any
+    ) -> None:
         self.on_startup_finished: Optional[Callable] = None
 
     @abc.abstractmethod
-    def config_from_object(self,
-                           obj: Any,
-                           *,
-                           silent: bool = False,
-                           force: bool = False) -> None:
+    def config_from_object(
+        self, obj: Any, *, silent: bool = False, force: bool = False
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -224,78 +244,93 @@ class AppT(ServiceT):
         ...
 
     @abc.abstractmethod
-    def discover(self,
-                 *extra_modules: str,
-                 categories: Iterable[str] = ('a', 'b', 'c'),
-                 ignore: Iterable[Any] = ('foo', 'bar')) -> None:
+    def discover(
+        self,
+        *extra_modules: str,
+        categories: Iterable[str] = ("a", "b", "c"),
+        ignore: Iterable[Any] = ("foo", "bar"),
+    ) -> None:
         ...
 
     @abc.abstractmethod
-    def topic(self,
-              *topics: str,
-              pattern: Union[str, Pattern] = None,
-              schema: _SchemaT = None,
-              key_type: _ModelArg = None,
-              value_type: _ModelArg = None,
-              key_serializer: CodecArg = None,
-              value_serializer: CodecArg = None,
-              partitions: int = None,
-              retention: Seconds = None,
-              compacting: bool = None,
-              deleting: bool = None,
-              replicas: int = None,
-              acks: bool = True,
-              internal: bool = False,
-              config: Mapping[str, Any] = None,
-              maxsize: int = None,
-              allow_empty: bool = False,
-              has_prefix: bool = False,
-              loop: asyncio.AbstractEventLoop = None) -> TopicT:
+    def topic(
+        self,
+        *topics: str,
+        pattern: Union[str, Pattern] = None,
+        schema: Optional[_SchemaT] = None,
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
+        acks: bool = True,
+        internal: bool = False,
+        config: Optional[Mapping[str, Any]] = None,
+        maxsize: Optional[int] = None,
+        allow_empty: bool = False,
+        has_prefix: bool = False,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> TopicT:
         ...
 
     @abc.abstractmethod
-    def channel(self,
-                *,
-                schema: _SchemaT = None,
-                key_type: _ModelArg = None,
-                value_type: _ModelArg = None,
-                maxsize: int = None,
-                loop: asyncio.AbstractEventLoop = None) -> ChannelT:
+    def channel(
+        self,
+        *,
+        schema: Optional[_SchemaT] = None,
+        key_type: _ModelArg = None,
+        value_type: _ModelArg = None,
+        maxsize: Optional[int] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> ChannelT:
         ...
 
     @abc.abstractmethod
-    def agent(self,
-              channel: Union[str, ChannelT[_T]] = None,
-              *,
-              name: str = None,
-              concurrency: int = 1,
-              supervisor_strategy: Type[SupervisorStrategyT] = None,
-              sink: Iterable[SinkT] = None,
-              isolated_partitions: bool = False,
-              use_reply_headers: bool = True,
-              **kwargs: Any) -> Callable[[AgentFun[_T]], AgentT[_T]]:
+    def agent(
+        self,
+        channel: Union[str, ChannelT[_T]] = None,
+        *,
+        name: Optional[str] = None,
+        concurrency: int = 1,
+        supervisor_strategy: Type[SupervisorStrategyT] = None,
+        sink: Iterable[SinkT] = None,
+        isolated_partitions: bool = False,
+        use_reply_headers: bool = True,
+        **kwargs: Any,
+    ) -> Callable[[AgentFun[_T]], AgentT[_T]]:
         ...
 
     @abc.abstractmethod
     @no_type_check
-    def task(self, fun: TaskArg, *,
-             on_leader: bool = False,
-             traced: bool = True) -> Callable:
+    def task(
+        self, fun: TaskArg, *, on_leader: bool = False, traced: bool = True
+    ) -> Callable:
         ...
 
     @abc.abstractmethod
-    def timer(self, interval: Seconds,
-              on_leader: bool = False,
-              traced: bool = True,
-              name: str = None,
-              max_drift_correction: float = 0.1) -> Callable:
+    def timer(
+        self,
+        interval: Seconds,
+        on_leader: bool = False,
+        traced: bool = True,
+        name: Optional[str] = None,
+        max_drift_correction: float = 0.1,
+    ) -> Callable:
         ...
 
     @abc.abstractmethod
-    def crontab(self, cron_format: str, *,
-                timezone: tzinfo = None,
-                on_leader: bool = False,
-                traced: bool = True) -> Callable:
+    def crontab(
+        self,
+        cron_format: str,
+        *,
+        timezone: tzinfo = None,
+        on_leader: bool = False,
+        traced: bool = True,
+    ) -> Callable:
         ...
 
     @abc.abstractmethod
@@ -303,85 +338,96 @@ class AppT(ServiceT):
         ...
 
     @abc.abstractmethod
-    def stream(self,
-               channel: AsyncIterable,
-               beacon: NodeT = None,
-               **kwargs: Any) -> StreamT:
+    def stream(
+        self, channel: AsyncIterable, beacon: Optional[NodeT] = None, **kwargs: Any
+    ) -> StreamT:
         ...
 
     @abc.abstractmethod
-    def Table(self,
-              name: str,
-              *,
-              default: Callable[[], Any] = None,
-              window: WindowT = None,
-              partitions: int = None,
-              help: str = None,
-              **kwargs: Any) -> TableT:
+    def Table(
+        self,
+        name: str,
+        *,
+        default: Callable[[], Any] = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         ...
 
     @abc.abstractmethod
-    def GlobalTable(self,
-                    name: str,
-                    *,
-                    default: Callable[[], Any] = None,
-                    window: WindowT = None,
-                    partitions: int = None,
-                    help: str = None,
-                    **kwargs: Any) -> TableT:
+    def GlobalTable(
+        self,
+        name: str,
+        *,
+        default: Callable[[], Any] = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         ...
 
     @abc.abstractmethod
-    def SetTable(self,
-                 name: str,
-                 *,
-                 window: WindowT = None,
-                 partitions: int = None,
-                 start_manager: bool = False,
-                 help: str = None,
-                 **kwargs: Any) -> TableT:
+    def SetTable(
+        self,
+        name: str,
+        *,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        start_manager: bool = False,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         ...
 
     @abc.abstractmethod
-    def SetGlobalTable(self,
-                       name: str,
-                       *,
-                       window: WindowT = None,
-                       partitions: int = None,
-                       start_manager: bool = False,
-                       help: str = None,
-                       **kwargs: Any) -> TableT:
+    def SetGlobalTable(
+        self,
+        name: str,
+        *,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        start_manager: bool = False,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> TableT:
         ...
 
     @abc.abstractmethod
-    def page(self, path: str, *,
-             base: Type[View] = View,
-             cors_options: Mapping[str, ResourceOptions] = None,
-             name: str = None) -> Callable[[PageArg], Type[View]]:
+    def page(
+        self,
+        path: str,
+        *,
+        base: Type[View] = View,
+        cors_options: Mapping[str, ResourceOptions] = None,
+        name: Optional[str] = None,
+    ) -> Callable[[PageArg], Type[View]]:
         ...
 
     @abc.abstractmethod
-    def table_route(self, table: CollectionT,
-                    shard_param: str = None,
-                    *,
-                    query_param: str = None,
-                    match_info: str = None,
-                    exact_key: str = None) -> ViewDecorator:
+    def table_route(
+        self,
+        table: CollectionT,
+        shard_param: Optional[str] = None,
+        *,
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
+    ) -> ViewDecorator:
         ...
 
     @abc.abstractmethod
-    def command(self,
-                *options: Any,
-                base: Type[_AppCommand] = None,
-                **kwargs: Any) -> Callable[[Callable], Type[_AppCommand]]:
+    def command(
+        self, *options: Any, base: Type[_AppCommand] = None, **kwargs: Any
+    ) -> Callable[[Callable], Type[_AppCommand]]:
         ...
 
     @abc.abstractmethod
-    def create_event(self,
-                     key: K,
-                     value: V,
-                     headers: HeadersArg,
-                     message: Message) -> _EventT:
+    def create_event(
+        self, key: K, value: V, headers: HeadersArg, message: Message
+    ) -> _EventT:
         ...
 
     @abc.abstractmethod
@@ -393,25 +439,25 @@ class AppT(ServiceT):
         ...
 
     @abc.abstractmethod
-    def trace(self,
-              name: str,
-              trace_enabled: bool = True,
-              **extra_context: Any) -> ContextManager:
+    def trace(
+        self, name: str, trace_enabled: bool = True, **extra_context: Any
+    ) -> ContextManager:
         ...
 
     @abc.abstractmethod
     async def send(
-            self,
-            channel: Union[ChannelT, str],
-            key: K = None,
-            value: V = None,
-            partition: int = None,
-            timestamp: float = None,
-            headers: HeadersArg = None,
-            schema: _SchemaT = None,
-            key_serializer: CodecArg = None,
-            value_serializer: CodecArg = None,
-            callback: MessageSentCallback = None) -> Awaitable[RecordMetadata]:
+        self,
+        channel: Union[ChannelT, str],
+        key: K = None,
+        value: V = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: HeadersArg = None,
+        schema: Optional[_SchemaT] = None,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = None,
+        callback: Optional[MessageSentCallback] = None,
+    ) -> Awaitable[RecordMetadata]:
         ...
 
     @abc.abstractmethod
@@ -429,11 +475,11 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def FlowControlQueue(
-            self,
-            maxsize: int = None,
-            *,
-            clear_on_resume: bool = False,
-            loop: asyncio.AbstractEventLoop = None) -> ThrowableQueue:
+        self,
+        maxsize: Optional[int] = None,
+        *,
+        clear_on_resume: bool = False,
+    ) -> ThrowableQueue:
         ...
 
     @abc.abstractmethod

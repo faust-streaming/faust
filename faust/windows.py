@@ -1,21 +1,21 @@
 """Window Types."""
 import os
 import typing
-
 from math import floor
-from typing import List, Type, cast
+from typing import List, Optional, Type, cast
+
 from mode import Seconds, want_seconds
 
 from .types.windows import WindowRange, WindowRange_from_start, WindowT
 
 __all__ = [
-    'Window',
-    'HoppingWindow',
-    'TumblingWindow',
-    'SlidingWindow',
+    "Window",
+    "HoppingWindow",
+    "TumblingWindow",
+    "SlidingWindow",
 ]
 
-NO_CYTHON = bool(os.environ.get('NO_CYTHON', False))
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 
 class Window(WindowT):
@@ -31,8 +31,9 @@ class _PyHoppingWindow(Window):
     size: float
     step: float
 
-    def __init__(self, size: Seconds, step: Seconds,
-                 expires: Seconds = None) -> None:
+    def __init__(
+        self, size: Seconds, step: Seconds, expires: Optional[Seconds] = None
+    ) -> None:
         self.size = want_seconds(size)
         self.step = want_seconds(step)
         self.expires = want_seconds(expires) if expires else None
@@ -45,8 +46,11 @@ class _PyHoppingWindow(Window):
         ]
 
     def stale(self, timestamp: float, latest_timestamp: float) -> bool:
-        return (timestamp <= self._stale_before(latest_timestamp, self.expires)
-                if self.expires else False)
+        return (
+            timestamp <= self._stale_before(latest_timestamp, self.expires)
+            if self.expires
+            else False
+        )
 
     def current(self, timestamp: float) -> WindowRange:
         """Get the latest window range for a given timestamp."""
@@ -92,7 +96,7 @@ class TumblingWindow(HoppingWindow):
     Fixed-size, non-overlapping, gap-less windows.
     """
 
-    def __init__(self, size: Seconds, expires: Seconds = None) -> None:
+    def __init__(self, size: Seconds, expires: Optional[Seconds] = None) -> None:
         super(TumblingWindow, self).__init__(size, size, expires)
 
 
@@ -107,8 +111,7 @@ class _PySlidingWindow(Window):
     before: float
     after: float
 
-    def __init__(self, before: Seconds, after: Seconds,
-                 expires: Seconds) -> None:
+    def __init__(self, before: Seconds, after: Seconds, expires: Seconds) -> None:
         self.before = want_seconds(before)
         self.after = want_seconds(after)
         self.expires = want_seconds(expires)
@@ -132,8 +135,11 @@ class _PySlidingWindow(Window):
         ]
 
     def stale(self, timestamp: float, latest_timestamp: float) -> bool:
-        return (timestamp <= self._stale_before(self.expires, latest_timestamp)
-                if self.expires else False)
+        return (
+            timestamp <= self._stale_before(self.expires, latest_timestamp)
+            if self.expires
+            else False
+        )
 
     def _stale_before(self, expires: float, latest_timestamp: float) -> float:
         return latest_timestamp - expires

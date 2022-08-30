@@ -1,0 +1,13 @@
+#!/bin/sh -e
+
+export PREFIX=""
+if [ -d 'venv' ] ; then
+    export PREFIX="venv/bin/"
+fi
+export SOURCE_FILES="faust tests setup.py"
+
+set -x
+
+${PREFIX}autoflake --in-place --recursive $SOURCE_FILES
+${PREFIX}isort --project=faust $SOURCE_FILES
+${PREFIX}black $SOURCE_FILES

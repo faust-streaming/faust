@@ -1,7 +1,6 @@
 """Base interface for Web server and views."""
 import abc
 import socket
-
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
@@ -18,8 +17,8 @@ from typing import (
     Type,
     Union,
 )
-
 from urllib.parse import quote
+
 from mode import Service
 from mode.utils.compat import want_str
 from mode.utils.imports import SymbolArg, symbol_by_name
@@ -29,11 +28,11 @@ from faust.types import AppT
 from faust.types.web import BlueprintT, ResourceOptions, View
 
 __all__ = [
-    'DEFAULT_BLUEPRINTS',
-    'BlueprintManager',
-    'Request',
-    'Response',
-    'Web',
+    "DEFAULT_BLUEPRINTS",
+    "BlueprintManager",
+    "Request",
+    "Response",
+    "Web",
 ]
 
 _bytes = bytes
@@ -42,22 +41,22 @@ _BPArg = SymbolArg[BlueprintT]
 _BPList = Iterable[Tuple[str, _BPArg]]
 
 DEFAULT_BLUEPRINTS: _BPList = [
-    ('/router', 'faust.web.apps.router:blueprint'),
-    ('/table', 'faust.web.apps.tables.blueprint'),
+    ("/router", "faust.web.apps.router:blueprint"),
+    ("/table", "faust.web.apps.tables.blueprint"),
 ]
 
 PRODUCTION_BLUEPRINTS: _BPList = [
-    ('', 'faust.web.apps.production_index:blueprint'),
+    ("", "faust.web.apps.production_index:blueprint"),
 ]
 
 DEBUG_BLUEPRINTS: _BPList = [
-    ('/graph', 'faust.web.apps.graph:blueprint'),
-    ('', 'faust.web.apps.stats:blueprint'),
+    ("/graph", "faust.web.apps.graph:blueprint"),
+    ("", "faust.web.apps.stats:blueprint"),
 ]
 
-CONTENT_SEPARATOR: bytes = b'\r\n\r\n'
-HEADER_SEPARATOR: bytes = b'\r\n'
-HEADER_KEY_VALUE_SEPARATOR: bytes = b': '
+CONTENT_SEPARATOR: bytes = b"\r\n\r\n"
+HEADER_SEPARATOR: bytes = b"\r\n"
+HEADER_KEY_VALUE_SEPARATOR: bytes = b": "
 
 
 class Response:
@@ -140,10 +139,10 @@ class BlueprintManager:
     def add(self, prefix: str, blueprint: _BPArg) -> None:
         """Register blueprint with this app."""
         if self.applied:
-            raise RuntimeError('Cannot add blueprints after server started')
+            raise RuntimeError("Cannot add blueprints after server started")
         self._enabled.append((prefix, blueprint))
 
-    def apply(self, web: 'Web') -> None:
+    def apply(self, web: "Web") -> None:
         """Apply all blueprints."""
         if not self.applied:
             self.applied = True
@@ -151,10 +150,7 @@ class BlueprintManager:
                 bp: BlueprintT = symbol_by_name(blueprint)
                 self._apply_blueprint(web, prefix, bp)
 
-    def _apply_blueprint(self,
-                         web: 'Web',
-                         prefix: str,
-                         bp: BlueprintT) -> None:
+    def _apply_blueprint(self, web: "Web", prefix: str, bp: BlueprintT) -> None:
         self._active[bp.name] = bp
         bp.register(web.app, url_prefix=prefix)
         bp.init_webserver(web)
@@ -193,29 +189,41 @@ class Web(Service):
         Service.__init__(self, **kwargs)
 
     @abc.abstractmethod
-    def text(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def text(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create text response, using "text/plain" content-type."""
         ...
 
     @abc.abstractmethod
-    def html(self, value: str, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def html(
+        self,
+        value: str,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
         ...
 
     @abc.abstractmethod
-    def json(self, value: Any, *,
-             content_type: str = None,
-             status: int = 200,
-             reason: str = None,
-             headers: MutableMapping = None) -> Response:
+    def json(
+        self,
+        value: Any,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create new JSON response.
 
         Accepts any JSON-serializable value and will automatically
@@ -226,13 +234,15 @@ class Web(Service):
         ...
 
     @abc.abstractmethod
-    def bytes(self,
-              value: _bytes,
-              *,
-              content_type: str = None,
-              status: int = 200,
-              reason: str = None,
-              headers: MutableMapping = None) -> Response:
+    def bytes(
+        self,
+        value: _bytes,
+        *,
+        content_type: Optional[str] = None,
+        status: int = 200,
+        reason: Optional[str] = None,
+        headers: MutableMapping = None,
+    ) -> Response:
         """Create new ``bytes`` response - for binary data."""
         ...
 
@@ -241,8 +251,7 @@ class Web(Service):
         """Deserialize HTTP response from byte string."""
         ...
 
-    def _bytes_to_response(
-            self, s: _bytes) -> Tuple[HTTPStatus, Mapping, _bytes]:
+    def _bytes_to_response(self, s: _bytes) -> Tuple[HTTPStatus, Mapping, _bytes]:
         status_code, _, payload = s.partition(self.content_separator)
         headers, _, body = payload.partition(self.content_separator)
 
@@ -261,43 +270,47 @@ class Web(Service):
         """Serialize HTTP response into byte string."""
         ...
 
-    def _response_to_bytes(
-            self, status: int, headers: Mapping, body: _bytes) -> _bytes:
-        return self.content_separator.join([
-            str(status).encode(),
-            self.content_separator.join([
-                self._headers_serialize(headers),
-                body,
-            ]),
-        ])
+    def _response_to_bytes(self, status: int, headers: Mapping, body: _bytes) -> _bytes:
+        return self.content_separator.join(
+            [
+                str(status).encode(),
+                self.content_separator.join(
+                    [
+                        self._headers_serialize(headers),
+                        body,
+                    ]
+                ),
+            ]
+        )
 
     def _headers_serialize(self, headers: Mapping) -> _bytes:
         return self.header_separator.join(
-            self.header_key_value_separator.join([
-                k if isinstance(k, _bytes) else k.encode('ascii'),
-                v if isinstance(v, _bytes) else v.encode('latin-1'),
-            ])
+            self.header_key_value_separator.join(
+                [
+                    k if isinstance(k, _bytes) else k.encode("ascii"),
+                    v if isinstance(v, _bytes) else v.encode("latin-1"),
+                ]
+            )
             for k, v in headers.items()
         )
 
     @abc.abstractmethod
-    def route(self,
-              pattern: str,
-              handler: Callable,
-              cors_options: Mapping[str, ResourceOptions] = None) -> None:
+    def route(
+        self,
+        pattern: str,
+        handler: Callable,
+        cors_options: Mapping[str, ResourceOptions] = None,
+    ) -> None:
         """Add route for handler."""
         ...
 
     @abc.abstractmethod
-    def add_static(self,
-                   prefix: str,
-                   path: Union[Path, str],
-                   **kwargs: Any) -> None:
+    def add_static(self, prefix: str, path: Union[Path, str], **kwargs: Any) -> None:
         """Add static route."""
         ...
 
     @abc.abstractmethod
-    async def read_request_content(self, request: 'Request') -> _bytes:
+    async def read_request_content(self, request: "Request") -> _bytes:
         """Read HTTP body as bytes."""
         ...
 
@@ -306,12 +319,16 @@ class Web(Service):
         """WSGI entry point."""
         ...
 
-    def add_view(self, view_cls: Type[View], *,
-                 prefix: str = '',
-                 cors_options: Mapping[str, ResourceOptions] = None) -> View:
+    def add_view(
+        self,
+        view_cls: Type[View],
+        *,
+        prefix: str = "",
+        cors_options: Mapping[str, ResourceOptions] = None,
+    ) -> View:
         """Add route for view."""
         view: View = view_cls(self.app, self)
-        path = prefix.rstrip('/') + '/' + view.view_path.lstrip('/')
+        path = prefix.rstrip("/") + "/" + view.view_path.lstrip("/")
         self.route(path, view, cors_options)
         self.views[path] = view
         self.reverse_names[view.view_name] = path
@@ -327,13 +344,14 @@ class Web(Service):
         try:
             path = self.reverse_names[view_name]
         except KeyError:
-            raise KeyError(f'No view with name {view_name!r} found')
+            raise KeyError(f"No view with name {view_name!r} found")
         else:
-            return path.format(**{
-                k: self._quote_for_url(str(v)) for k, v in kwargs.items()})
+            return path.format(
+                **{k: self._quote_for_url(str(v)) for k, v in kwargs.items()}
+            )
 
     def _quote_for_url(self, value: str) -> str:
-        return quote(value, safe='')  # disable '/' being safe by default
+        return quote(value, safe="")  # disable '/' being safe by default
 
     def init_server(self) -> None:
         """Initialize and setup web server."""
@@ -345,7 +363,7 @@ class Web(Service):
         """Return the canonical URL to this worker (including port)."""
         canon = self.app.conf.canonical_url
         if canon.host == socket.gethostname():
-            return URL(f'http://localhost:{self.app.conf.web_port}/')
+            return URL(f"http://localhost:{self.app.conf.web_port}/")
         return self.app.conf.canonical_url
 
 

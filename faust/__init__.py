@@ -21,14 +21,13 @@ import os
 import re
 import sys
 import typing
-
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
 
-__version__ = '1.11.0a1'
-__author__ = 'Robinhood Markets, Inc.'
-__contact__ = 'contact@fauststream.com'
-__homepage__ = 'http://faust.readthedocs.io/'
-__docformat__ = 'restructuredtext'
+__version__ = "0.8.8"
+__author__ = "Robinhood Markets, Inc."
+__contact__ = "schrohm@gmail.com, vpatki@wayfair.com"
+__homepage__ = "https://github.com/faust-streaming/faust"
+__docformat__ = "markdown"
 
 # -eof meta-
 
@@ -41,20 +40,21 @@ class VersionInfo(NamedTuple):
     serial: str
 
 
-version_info_t = VersionInfo   # XXX compat
+version_info_t = VersionInfo  # XXX compat
 
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
-_match = re.match(r'(\d+)\.(\d+).(\d+)(.+)?', __version__)
+_match = re.match(r"(\d+)\.(\d+).(\d+)(.+)?", __version__)
 if _match is None:  # pragma: no cover
-    raise RuntimeError('THIS IS A BROKEN RELEASE!')
+    raise RuntimeError("THIS IS A BROKEN RELEASE!")
 _temp = _match.groups()
 VERSION = version_info = VersionInfo(
-    int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or '', '')
-del(_match)
-del(_temp)
-del(re)
+    int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or "", ""
+)
+del _match
+del _temp
+del re
 
 
 # This is here to support setting the --datadir argument
@@ -74,114 +74,120 @@ del(re)
 # that also happens to have a '-D' argument in sys.argv will have the
 # F_DATADIR environment variable set.  I think that's ok. [ask]
 def _extract_arg_from_argv(  # pragma: no cover
-        argv: Sequence[str] = sys.argv,
-        *,
-        shortopts: Tuple[str, ...] = (),
-        longopts: Tuple[str, ...] = ('--datadir',)) -> Optional[str]:
+    argv: Sequence[str] = sys.argv,
+    *,
+    shortopts: Tuple[str, ...] = (),
+    longopts: Tuple[str, ...] = ("--datadir",),
+) -> Optional[str]:
     for i, arg in enumerate(argv):  # pragma: no cover
         if arg in shortopts:
             try:
                 value = argv[i + 1]
             except IndexError:
                 import click
-                raise click.UsageError(f'Missing value for {arg} option')
+
+                raise click.UsageError(f"Missing value for {arg} option")
             return value
         if arg.startswith(longopts):  # pragma: no cover
-            key, _, value = arg.partition('=')
+            key, _, value = arg.partition("=")
             if not value:
                 try:
                     value = argv[i + 1]
                 except IndexError:
                     import click
+
                     raise click.UsageError(
-                        f'Missing {key}! Did you mean --{key}=value?')
+                        f"Missing {key}! Did you mean --{key}=value?"
+                    )
             return value
     return None
 
 
-_datadir = (_extract_arg_from_argv(longopts=('--datadir',)) or
-            os.environ.get('FAUST_DATADIR') or
-            os.environ.get('F_DATADIR'))
+_datadir = (
+    _extract_arg_from_argv(longopts=("--datadir",))
+    or os.environ.get("FAUST_DATADIR")
+    or os.environ.get("F_DATADIR")
+)
 if _datadir:  # pragma: no cover
-    os.environ['FAUST_DATADIR'] = _datadir
-_loop = (_extract_arg_from_argv(shortopts=('-L',), longopts=('--loop',)) or
-         os.environ.get('FAUST_LOOP') or
-         os.environ.get('F_LOOP'))
+    os.environ["FAUST_DATADIR"] = _datadir
+_loop = (
+    _extract_arg_from_argv(shortopts=("-L",), longopts=("--loop",))
+    or os.environ.get("FAUST_LOOP")
+    or os.environ.get("F_LOOP")
+)
 if _loop:  # pragma: no cover
-    os.environ['FAUST_LOOP'] = _loop
+    os.environ["FAUST_LOOP"] = _loop
     import mode.loop
+
     mode.loop.use(_loop)
 
 # To ensure `import faust` executes quickly, this module imports
 # attributes lazily. The next section provides static type checkers
 # with information about the contents of this module.
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from mode import Service, ServiceT                          # noqa: E402
-    from .agents import Agent                                   # noqa: E402
-    from .app import App                                        # noqa: E402
-    from .auth import (                                         # noqa: E402
-        GSSAPICredentials,
-        SASLCredentials,
-        SSLCredentials,
-    )
-    from .channels import Channel, ChannelT                     # noqa: E402
-    from .events import Event, EventT                           # noqa: E402
-    from .models import Model, ModelOptions, Record             # noqa: E402
-    from .sensors import Monitor, Sensor                        # noqa: E402
-    from .serializers import Codec, Schema                      # noqa: E402
-    from .streams import Stream, StreamT, current_event         # noqa: E402
-    from .tables.globaltable import GlobalTable                 # noqa: E402
-    from .tables.table import Table                             # noqa: E402
-    from .tables.sets import SetGlobalTable, SetTable           # noqa: E402
-    from .topics import Topic, TopicT                           # noqa: E402
-    from .types.settings import Settings                        # noqa: E402
-    from .windows import (                                      # noqa: E402
+    from mode import Service, ServiceT  # noqa: E402
+
+    from .agents import Agent  # noqa: E402
+    from .app import App  # noqa: E402
+    from .auth import GSSAPICredentials, SASLCredentials, SSLCredentials  # noqa: E402
+    from .channels import Channel, ChannelT  # noqa: E402
+    from .events import Event, EventT  # noqa: E402
+    from .models import Model, ModelOptions, Record  # noqa: E402
+    from .sensors import Monitor, Sensor  # noqa: E402
+    from .serializers import Codec, Schema  # noqa: E402
+    from .streams import Stream, StreamT, current_event  # noqa: E402
+    from .tables.globaltable import GlobalTable  # noqa: E402
+    from .tables.sets import SetGlobalTable, SetTable  # noqa: E402
+    from .tables.table import Table  # noqa: E402
+    from .topics import Topic, TopicT  # noqa: E402
+    from .types.settings import Settings  # noqa: E402
+    from .utils import uuid
+    from .windows import (  # noqa: E402
         HoppingWindow,
-        TumblingWindow,
         SlidingWindow,
+        TumblingWindow,
         Window,
     )
-    from .worker import Worker                                # noqa: E402
-    from .utils import uuid
+    from .worker import Worker  # noqa: E402
 
 __all__ = [
-    'Agent',
-    'App',
-    'AppCommand',
-    'Command',
-    'Channel',
-    'ChannelT',
-    'Event',
-    'EventT',
-    'Model',
-    'ModelOptions',
-    'Record',
-    'Monitor',
-    'Schema',
-    'Sensor',
-    'SetTable',
-    'SetGlobalTable',
-    'Codec',
-    'Schema',
-    'Service',
-    'ServiceT',
-    'Stream',
-    'StreamT',
-    'current_event',
-    'Table',
-    'GlobalTable',
-    'Topic',
-    'TopicT',
-    'GSSAPICredentials',
-    'SASLCredentials',
-    'SSLCredentials',
-    'Settings',
-    'HoppingWindow',
-    'TumblingWindow',
-    'SlidingWindow',
-    'Window',
-    'Worker',
-    'uuid',
+    "Agent",
+    "App",
+    "AppCommand",
+    "Command",
+    "Channel",
+    "ChannelT",
+    "Event",
+    "EventT",
+    "Model",
+    "ModelOptions",
+    "Record",
+    "Monitor",
+    "Schema",
+    "Sensor",
+    "SetTable",
+    "SetGlobalTable",
+    "Codec",
+    "Schema",
+    "Service",
+    "ServiceT",
+    "Stream",
+    "StreamT",
+    "current_event",
+    "Table",
+    "GlobalTable",
+    "Topic",
+    "TopicT",
+    "GSSAPICredentials",
+    "SASLCredentials",
+    "SSLCredentials",
+    "Settings",
+    "HoppingWindow",
+    "TumblingWindow",
+    "SlidingWindow",
+    "Window",
+    "Worker",
+    "uuid",
 ]
 
 # Lazy loading.
@@ -189,37 +195,37 @@ __all__ = [
 from types import ModuleType  # noqa
 
 all_by_module: Mapping[str, Sequence[str]] = {
-    'faust.agents': ['Agent'],
-    'faust.app': ['App'],
-    'faust.channels': ['Channel', 'ChannelT'],
-    'faust.events': ['Event', 'EventT'],
-    'faust.models': ['ModelOptions', 'Record'],
-    'faust.sensors': ['Monitor', 'Sensor'],
-    'faust.serializers': ['Codec', 'Schema'],
-    'faust.streams': [
-        'Stream',
-        'StreamT',
-        'current_event',
+    "faust.agents": ["Agent"],
+    "faust.app": ["App"],
+    "faust.channels": ["Channel", "ChannelT"],
+    "faust.events": ["Event", "EventT"],
+    "faust.models": ["ModelOptions", "Record"],
+    "faust.sensors": ["Monitor", "Sensor"],
+    "faust.serializers": ["Codec", "Schema"],
+    "faust.streams": [
+        "Stream",
+        "StreamT",
+        "current_event",
     ],
-    'faust.tables.globaltable': ['GlobalTable'],
-    'faust.tables.sets': ['SetTable', 'SetGlobalTable'],
-    'faust.tables.table': ['Table'],
-    'faust.topics': ['Topic', 'TopicT'],
-    'faust.auth': [
-        'GSSAPICredentials',
-        'SASLCredentials',
-        'SSLCredentials',
+    "faust.tables.globaltable": ["GlobalTable"],
+    "faust.tables.sets": ["SetTable", "SetGlobalTable"],
+    "faust.tables.table": ["Table"],
+    "faust.topics": ["Topic", "TopicT"],
+    "faust.auth": [
+        "GSSAPICredentials",
+        "SASLCredentials",
+        "SSLCredentials",
     ],
-    'faust.types.settings': ['Settings'],
-    'faust.windows': [
-        'HoppingWindow',
-        'TumblingWindow',
-        'SlidingWindow',
-        'Window',
+    "faust.types.settings": ["Settings"],
+    "faust.windows": [
+        "HoppingWindow",
+        "TumblingWindow",
+        "SlidingWindow",
+        "Window",
     ],
-    'faust.worker': ['Worker'],
-    'faust.utils': ['uuid'],
-    'mode.services': ['Service', 'ServiceT'],
+    "faust.worker": ["Worker"],
+    "faust.utils": ["uuid"],
+    "mode.services": ["Service", "ServiceT"],
 }
 
 object_origins = {}
@@ -232,28 +238,27 @@ class _module(ModuleType):
     """Customized Python module."""
 
     standard_package_vars = [
-        '__file__',
-        '__path__',
-        '__doc__',
-        '__all__',
-        '__docformat__',
-        '__name__',
-        '__path__',
-        'VERSION',
-        'VersionInfo',
-        'version_info',
-        '__package__',
-        '__version__',
-        '__author__',
-        '__contact__',
-        '__homepage__',
-        '__docformat__',
+        "__file__",
+        "__path__",
+        "__doc__",
+        "__all__",
+        "__docformat__",
+        "__name__",
+        "__path__",
+        "VERSION",
+        "VersionInfo",
+        "version_info",
+        "__package__",
+        "__version__",
+        "__author__",
+        "__contact__",
+        "__homepage__",
+        "__docformat__",
     ]
 
     def __getattr__(self, name: str) -> Any:
         if name in object_origins:
-            module = __import__(
-                object_origins[name], None, None, [name])
+            module = __import__(object_origins[name], None, None, [name])
             for extra_name in all_by_module[module.__name__]:
                 setattr(self, extra_name, getattr(module, extra_name))
             return getattr(module, name)
@@ -267,19 +272,21 @@ class _module(ModuleType):
 old_module = sys.modules[__name__]
 
 new_module = sys.modules[__name__] = _module(__name__)
-new_module.__dict__.update({
-    '__file__': __file__,
-    '__path__': __path__,  # type: ignore
-    '__doc__': __doc__,
-    '__all__': tuple(object_origins),
-    '__version__': __version__,
-    '__author__': __author__,
-    '__contact__': __contact__,
-    '__homepage__': __homepage__,
-    '__docformat__': __docformat__,
-    '__package__': __package__,
-    'VersionInfo': VersionInfo,
-    'version_info_t': version_info_t,
-    'version_info': version_info,
-    'VERSION': VERSION,
-})
+new_module.__dict__.update(
+    {
+        "__file__": __file__,
+        "__path__": __path__,  # type: ignore
+        "__doc__": __doc__,
+        "__all__": tuple(object_origins),
+        "__version__": __version__,
+        "__author__": __author__,
+        "__contact__": __contact__,
+        "__homepage__": __homepage__,
+        "__docformat__": __docformat__,
+        "__package__": __package__,
+        "VersionInfo": VersionInfo,
+        "version_info_t": version_info_t,
+        "version_info": version_info,
+        "VERSION": VERSION,
+    }
+)

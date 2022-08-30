@@ -1,25 +1,14 @@
 """Functional utilities."""
 from functools import reduce
 from itertools import groupby
-from typing import (
-    Iterable,
-    Iterator,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
-from mode.utils.typing import Deque
+from typing import Iterable, Iterator, Mapping, Sequence, Tuple, TypeVar
 
 __all__ = [
-    'consecutive_numbers',
-    'deque_prune',
-    'deque_pushpopmax',
-    'translate',
+    "consecutive_numbers",
+    "translate",
 ]
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def consecutive_numbers(it: Iterable[int]) -> Iterator[Sequence[int]]:
@@ -30,21 +19,6 @@ def consecutive_numbers(it: Iterable[int]) -> Iterator[Sequence[int]]:
     """
     for _, g in groupby(enumerate(it), lambda a: a[0] - a[1]):
         yield [a[1] for a in g]
-
-
-def deque_prune(items: Deque[T], max: int = None) -> Optional[T]:
-    """Prune oldest element in deque if size exceeds ``max``."""
-    if max is not None:
-        size = len(items)
-        if size > max:
-            return items.popleft()
-    return None
-
-
-def deque_pushpopmax(items: Deque[T], item: T, max: int = None) -> Optional[T]:
-    """Append to deque and remove oldest element if size exceeds ``max``."""
-    items.append(item)
-    return deque_prune(items, max)
 
 
 def translate(table: Mapping, s: str) -> str:

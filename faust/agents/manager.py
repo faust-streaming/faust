@@ -1,6 +1,5 @@
 """Agent manager."""
 import asyncio
-
 from collections import defaultdict
 from typing import Any, Dict, List, Mapping, MutableMapping, MutableSet, Set
 from weakref import WeakSet
@@ -14,22 +13,22 @@ from faust.types import AgentManagerT, AgentT, AppT
 from faust.types.tuples import TP, tp_set_to_map
 from faust.utils.tracing import traced_from_parent_span
 
-TRACEBACK_HEADER = '''
+TRACEBACK_HEADER = """
 =======================================
  TRACEBACK OF ALL RUNNING AGENT ACTORS
 =======================================
-'''
+"""
 
-TRACEBACK_FORMAT = '''
+TRACEBACK_FORMAT = """
 * {name} ----->
 ============================================================
 {traceback}
 
-'''
+"""
 
-TRACEBACK_FOOTER = '''
+TRACEBACK_FOOTER = """
 -eof tracebacks- :-)
-'''
+"""
 
 
 class AgentManager(Service, AgentManagerT, ManagedUserDict):
@@ -59,23 +58,22 @@ class AgentManager(Service, AgentManagerT, ManagedUserDict):
         self._agents_started.set()
 
     def actor_tracebacks(self) -> Mapping[str, List[str]]:
-        return {
-            name: agent.actor_tracebacks()
-            for name, agent in self.items()
-        }
+        return {name: agent.actor_tracebacks() for name, agent in self.items()}
 
     def human_tracebacks(self) -> str:
-        return '\n'.join([
-            self.traceback_header,
-            '\n'.join(
-                self.traceback_format.format(
-                    name=name,
-                    traceback=traceback,
-                )
-                for name, traceback in self.actor_tracebacks().items()
-            ),
-            self.traceback_footer,
-        ])
+        return "\n".join(
+            [
+                self.traceback_header,
+                "\n".join(
+                    self.traceback_format.format(
+                        name=name,
+                        traceback=traceback,
+                    )
+                    for name, traceback in self.actor_tracebacks().items()
+                ),
+                self.traceback_footer,
+            ]
+        )
 
     async def wait_until_agents_started(self) -> None:
         if not self.app.producer_only and not self.app.client_only:
@@ -113,9 +111,7 @@ class AgentManager(Service, AgentManagerT, ManagedUserDict):
             for topic in agent.get_topic_names():
                 by_topic_index[topic].add(agent)
 
-    async def on_rebalance(self,
-                           revoked: Set[TP],
-                           newly_assigned: Set[TP]) -> None:
+    async def on_rebalance(self, revoked: Set[TP], newly_assigned: Set[TP]) -> None:
         """Call when a rebalance is needed."""
         T = traced_from_parent_span()
         # for isolated_partitions agents we stop agents for revoked
@@ -124,14 +120,12 @@ class AgentManager(Service, AgentManagerT, ManagedUserDict):
             await T(agent.on_partitions_revoked)(tps)
         # for isolated_partitions agents we start agents for newly
         # assigned partitions
-        for agent, tps in T(self._collect_agents_for_update)(
-                newly_assigned).items():
+        for agent, tps in T(self._collect_agents_for_update)(newly_assigned).items():
             await T(agent.on_partitions_assigned)(tps)
 
-    def _collect_agents_for_update(
-            self, tps: Set[TP]) -> Dict[AgentT, Set[TP]]:
+    def _collect_agents_for_update(self, tps: Set[TP]) -> Dict[AgentT, Set[TP]]:
         by_agent: Dict[AgentT, Set[TP]] = defaultdict(set)
-        for topic, tps in tp_set_to_map(tps).items():
+        for topic, tps_of_topic in tp_set_to_map(tps).items():
             for agent in self._by_topic[topic]:
-                by_agent[agent].update(tps)
+                by_agent[agent].update(tps_of_topic)
         return by_agent

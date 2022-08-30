@@ -1,7 +1,6 @@
 """In-memory cache backend."""
 import sys
 import time
-
 from contextlib import suppress
 from typing import Callable, Dict, Generic, Optional, TypeVar
 
@@ -9,11 +8,11 @@ from mode.utils.compat import want_bytes
 
 from . import base
 
-KT = TypeVar('KT')
-VT = TypeVar('VT')
+KT = TypeVar("KT")
+VT = TypeVar("VT")
 
 TIME_MONOTONIC: Callable[[], float]
-if sys.platform == 'win32':
+if sys.platform == "win32":
     TIME_MONOTONIC = time.time
 else:
     TIME_MONOTONIC = time.monotonic
@@ -62,8 +61,7 @@ class CacheStorage(Generic[KT, VT]):
     def ttl(self, key: KT) -> Optional[float]:
         """Return the remaining TTL for key."""
         try:
-            return (
-                self._expires[key] - TIME_MONOTONIC() - self._time_index[key])
+            return self._expires[key] - TIME_MONOTONIC() - self._time_index[key]
         except KeyError:
             return None
 
@@ -90,8 +88,9 @@ class CacheBackend(base.CacheBackend):
     async def _get(self, key: str) -> Optional[bytes]:
         return self.storage.get(key)
 
-    async def _set(self, key: str, value: bytes,
-                   timeout: float = None) -> None:
+    async def _set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         if timeout is not None:
             self.storage.setex(key, timeout, want_bytes(value))
         else:

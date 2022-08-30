@@ -14,10 +14,10 @@ from faust.web.cache.exceptions import CacheUnavailable
 
 logger = get_logger(__name__)
 
-E_CACHE_IRRECOVERABLE = 'Cache disabled for irrecoverable error: %r'
-E_CACHE_INVALIDATING = 'Destroying cache for key %r caused error: %r'
-E_CANNOT_INVALIDATE = 'Unable to invalidate key %r: %r'
-E_CACHE_INOPERATIONAL = 'Cache operational error: %r'
+E_CACHE_IRRECOVERABLE = "Cache disabled for irrecoverable error: %r"
+E_CACHE_INVALIDATING = "Destroying cache for key %r caused error: %r"
+E_CANNOT_INVALIDATE = "Unable to invalidate key %r: %r"
+E_CACHE_INOPERATIONAL = "Cache operational error: %r"
 
 
 class CacheBackend(CacheBackendT, Service):
@@ -31,10 +31,9 @@ class CacheBackend(CacheBackendT, Service):
     invalidating_errors: ClassVar[Tuple[Type[BaseException], ...]] = ()
     irrecoverable_errors: ClassVar[Tuple[Type[BaseException], ...]] = ()
 
-    def __init__(self,
-                 app: AppT,
-                 url: Union[URL, str] = 'memory://',
-                 **kwargs: Any) -> None:
+    def __init__(
+        self, app: AppT, url: Union[URL, str] = "memory://", **kwargs: Any
+    ) -> None:
         self.app = app
         self.url = URL(url)
         Service.__init__(self, **kwargs)
@@ -44,8 +43,9 @@ class CacheBackend(CacheBackendT, Service):
         ...
 
     @abc.abstractmethod
-    async def _set(self, key: str, value: bytes,
-                   timeout: float = None) -> None:
+    async def _set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         ...
 
     @abc.abstractmethod
@@ -57,7 +57,9 @@ class CacheBackend(CacheBackendT, Service):
         async with self._recovery_context(key):
             return await self._get(key)
 
-    async def set(self, key: str, value: bytes, timeout: float = None) -> None:
+    async def set(
+        self, key: str, value: bytes, timeout: Optional[float] = None
+    ) -> None:
         """Set cached-value by key."""
         async with self._recovery_context(key):
             await self._set(key, value, timeout)
@@ -75,18 +77,15 @@ class CacheBackend(CacheBackendT, Service):
             self.log.exception(E_CACHE_IRRECOVERABLE, exc)  # noqa: G200
             raise self.Unavailable(exc)
         except self.invalidating_errors as exc:
-            self.log.warning(  # noqa: G200
-                E_CACHE_INVALIDATING, key, exc, exc_info=1)
+            self.log.warning(E_CACHE_INVALIDATING, key, exc, exc_info=1)  # noqa: G200
             try:
                 await self._delete(key)
             except self.operational_errors + self.invalidating_errors as exc:
-                self.log.exception(  # noqa: G200
-                    E_CANNOT_INVALIDATE, key, exc)
+                self.log.exception(E_CANNOT_INVALIDATE, key, exc)  # noqa: G200
             raise self.Unavailable()
         except self.operational_errors as exc:
-            self.log.warning(  # noqa: G200
-                E_CACHE_INOPERATIONAL, exc, exc_info=1)
+            self.log.warning(E_CACHE_INOPERATIONAL, exc, exc_info=1)  # noqa: G200
             raise self.Unavailable()
 
     def _repr_info(self) -> str:
-        return f'url={self.url!r}'
+        return f"url={self.url!r}"

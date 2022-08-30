@@ -5,9 +5,12 @@ from typing import Iterable
 if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
-    class _AppT: ...    # noqa
 
-__all__ = ['FixupT']
+    class _AppT:
+        ...  # noqa
+
+
+__all__ = ["FixupT"]
 
 
 class FixupT(abc.ABC):

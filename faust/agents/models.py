@@ -4,15 +4,17 @@ from typing import Any
 from faust.models import Record
 from faust.types import ModelT
 
-__all__ = ['ReqRepRequest', 'ReqRepResponse']
+__all__ = ["ReqRepRequest", "ReqRepResponse"]
 
 
-class ReqRepRequest(Record,
-                    serializer='json',
-                    namespace='@ReqRepRequest',  # internal namespace
-                    # any stream should allow this type
-                    # to wrap other values.
-                    polymorphic_fields=True):
+class ReqRepRequest(
+    Record,
+    serializer="json",
+    namespace="@ReqRepRequest",  # internal namespace
+    # any stream should allow this type
+    # to wrap other values.
+    polymorphic_fields=True,
+):
     """Value wrapped in a Request-Reply request."""
 
     # agent.ask(value) wraps the value in this record
@@ -29,7 +31,7 @@ class ModelReqRepRequest(ReqRepRequest):
     value: ModelT
 
 
-class ReqRepResponse(Record, serializer='json', namespace='@ReqRepResponse'):
+class ReqRepResponse(Record, serializer="json", namespace="@ReqRepResponse"):
     """Request-Reply response."""
 
     key: Any

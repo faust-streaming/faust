@@ -1,6 +1,5 @@
 """LiveCheck - Faust Application."""
 import asyncio
-
 from datetime import timedelta
 from typing import (
     Any,
@@ -23,7 +22,7 @@ from mode.utils.times import Seconds
 import faust
 from faust.app.base import SCAN_CATEGORIES
 from faust.sensors.base import Sensor
-from faust.types import AgentT, AppT, EventT, StreamT, TP, TopicT
+from faust.types import TP, AgentT, AppT, EventT, StreamT, TopicT
 from faust.utils import venusian
 
 from . import patches
@@ -33,9 +32,10 @@ from .locals import current_test, current_test_stack
 from .models import SignalEvent, TestExecution, TestReport
 from .signals import BaseSignal, Signal
 
-__all__ = ['LiveCheck']
+__all__ = ["LiveCheck"]
 
-SCAN_CASE = 'livecheck.case'
+SCAN_CASE = "livecheck.case"
+WARN_STALLED_AFTER_DEFAULT = timedelta(minutes=30)
 
 #: alias for mypy bug
 _Case = Case
@@ -44,12 +44,9 @@ patches.patch_all()  # XXX
 
 
 class LiveCheckSensor(Sensor):
-
-    def on_stream_event_in(self,
-                           tp: TP,
-                           offset: int,
-                           stream: StreamT,
-                           event: EventT) -> Optional[Dict]:
+    def on_stream_event_in(
+        self, tp: TP, offset: int, stream: StreamT, event: EventT
+    ) -> Optional[Dict]:
         """Call when stream starts processing event."""
         test = TestExecution.from_headers(event.headers)
         if test is not None:
@@ -57,14 +54,11 @@ class LiveCheckSensor(Sensor):
             current_test_stack.push_without_automatic_cleanup(test)
         return None
 
-    def on_stream_event_out(self,
-                            tp: TP,
-                            offset: int,
-                            stream: StreamT,
-                            event: EventT,
-                            state: Dict = None) -> None:
+    def on_stream_event_out(
+        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+    ) -> None:
         """Call when stream is finished handling event."""
-        has_active_test = getattr(stream, 'current_test', None)
+        has_active_test = getattr(stream, "current_test", None)
         if has_active_test:
             stream.current_test = None  # type: ignore
             current_test_stack.pop()
@@ -91,40 +85,45 @@ class LiveCheck(faust.App):
     #: the :attr:`report_topic_name` topic.
     send_reports: bool = True
 
-    test_topic_name: str = 'livecheck'
-    bus_topic_name: str = 'livecheck-bus'
-    report_topic_name: str = 'livecheck-report'
+    test_topic_name: str = "livecheck"
+    bus_topic_name: str = "livecheck-bus"
+    report_topic_name: str = "livecheck-report"
 
     cases: Dict[str, _Case]
 
     _resolved_signals: Dict[Tuple[str, str, Any], SignalEvent]
 
     @classmethod
-    def for_app(cls, app: AppT, *,
-                prefix: str = 'livecheck-',
-                web_port: int = 9999,
-                test_topic_name: str = None,
-                bus_topic_name: str = None,
-                report_topic_name: str = None,
-                bus_concurrency: int = None,
-                test_concurrency: int = None,
-                send_reports: bool = None,
-                **kwargs: Any) -> 'LiveCheck':
+    def for_app(
+        cls,
+        app: AppT,
+        *,
+        prefix: str = "livecheck-",
+        web_port: int = 9999,
+        test_topic_name: Optional[str] = None,
+        bus_topic_name: Optional[str] = None,
+        report_topic_name: Optional[str] = None,
+        bus_concurrency: Optional[int] = None,
+        test_concurrency: Optional[int] = None,
+        send_reports: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> "LiveCheck":
         """Create LiveCheck application targeting specific app.
 
         The target app will be used to configure the LiveCheck app.
         """
         app_id, passed_kwargs = app._default_options
-        livecheck_id = f'{prefix}{app_id}'
+        livecheck_id = f"{prefix}{app_id}"
         override = {
-            'web_port': web_port,
-            'test_topic_name': test_topic_name,
-            'bus_topic_name': bus_topic_name,
-            'report_topic_name': report_topic_name,
-            'bus_concurrency': bus_concurrency,
-            'test_concurrency': test_concurrency,
-            'send_reports': send_reports,
-            **kwargs}
+            "web_port": web_port,
+            "test_topic_name": test_topic_name,
+            "bus_topic_name": bus_topic_name,
+            "report_topic_name": report_topic_name,
+            "bus_concurrency": bus_concurrency,
+            "test_concurrency": test_concurrency,
+            "send_reports": send_reports,
+            **kwargs,
+        }
         options = {**passed_kwargs, **override}
 
         livecheck_app = cls(livecheck_id, **options)
@@ -134,21 +133,24 @@ class LiveCheck(faust.App):
 
     def _contribute_to_app(self, app: AppT) -> None:
         from .patches.aiohttp import LiveCheckMiddleware
+
         web_app = app.web.web_app  # type: ignore
         web_app.middlewares.append(LiveCheckMiddleware())
         app.sensors.add(LiveCheckSensor())
         app.livecheck = self  # type: ignore
 
-    def __init__(self,
-                 id: str,
-                 *,
-                 test_topic_name: str = None,
-                 bus_topic_name: str = None,
-                 report_topic_name: str = None,
-                 bus_concurrency: int = None,
-                 test_concurrency: int = None,
-                 send_reports: bool = None,
-                 **kwargs: Any) -> None:
+    def __init__(
+        self,
+        id: str,
+        *,
+        test_topic_name: Optional[str] = None,
+        bus_topic_name: Optional[str] = None,
+        report_topic_name: Optional[str] = None,
+        bus_concurrency: Optional[int] = None,
+        test_concurrency: Optional[int] = None,
+        send_reports: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(id, **kwargs)
 
         if test_topic_name is not None:
@@ -184,43 +186,46 @@ class LiveCheck(faust.App):
 
     def _connect_signals(self) -> None:
         AppT.on_produce_message.connect(
-            self.on_produce_attach_test_headers)  # type: ignore
+            self.on_produce_attach_test_headers
+        )  # type: ignore
 
     def on_produce_attach_test_headers(
-            self,
-            sender: AppT,
-            key: bytes = None,
-            value: bytes = None,
-            partition: int = None,
-            timestamp: float = None,
-            headers: List[Tuple[str, bytes]] = None,
-            signal: BaseSignalT = None,
-            **kwargs: Any) -> None:
+        self,
+        sender: AppT,
+        key: bytes = None,
+        value: bytes = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
+        headers: List[Tuple[str, bytes]] = None,
+        signal: Optional[BaseSignalT] = None,
+        **kwargs: Any,
+    ) -> None:
         """Attach test headers to Kafka produce requests."""
         test = current_test()
         if test is not None:
             if headers is None:
-                raise TypeError('Produce request missing headers list')
-            headers.extend([
-                (k, want_bytes(v)) for k, v in test.as_headers().items()
-            ])
+                raise TypeError("Produce request missing headers list")
+            headers.extend([(k, want_bytes(v)) for k, v in test.as_headers().items()])
 
-    def case(self, *,
-             name: str = None,
-             probability: float = None,
-             warn_stalled_after: Seconds = timedelta(minutes=30),
-             active: bool = None,
-             test_expires: Seconds = None,
-             frequency: Seconds = None,
-             max_history: int = None,
-             max_consecutive_failures: int = None,
-             url_timeout_total: float = None,
-             url_timeout_connect: float = None,
-             url_error_retries: float = None,
-             url_error_delay_min: float = None,
-             url_error_delay_backoff: float = None,
-             url_error_delay_max: float = None,
-             base: Type[_Case] = Case) -> Callable[[Type], _Case]:
+    def case(
+        self,
+        *,
+        name: Optional[str] = None,
+        probability: Optional[float] = None,
+        warn_stalled_after: Seconds = WARN_STALLED_AFTER_DEFAULT,
+        active: Optional[bool] = None,
+        test_expires: Optional[Seconds] = None,
+        frequency: Optional[Seconds] = None,
+        max_history: Optional[int] = None,
+        max_consecutive_failures: Optional[int] = None,
+        url_timeout_total: Optional[float] = None,
+        url_timeout_connect: Optional[float] = None,
+        url_error_retries: Optional[float] = None,
+        url_error_delay_min: Optional[float] = None,
+        url_error_delay_backoff: Optional[float] = None,
+        url_error_delay_max: Optional[float] = None,
+        base: Type[_Case] = Case,
+    ) -> Callable[[Type], _Case]:
         """Decorate class to be used as a test case.
 
         Returns:
@@ -229,10 +234,14 @@ class LiveCheck(faust.App):
         base_case = base
 
         def _inner(cls: Type) -> _Case:
-            case_cls = type(cls.__name__, (cls, base_case), {
-                '__module__': cls.__module__,
-                'app': self,
-            })
+            case_cls = type(
+                cls.__name__,
+                (cls, base_case),
+                {
+                    "__module__": cls.__module__,
+                    "app": self,
+                },
+            )
 
             signal_types = dict(self._extract_signals(case_cls, base_case))
             signals = []
@@ -246,33 +255,34 @@ class LiveCheck(faust.App):
                 else:
                     signal.index = i + 1
 
-            case = self.add_case(case_cls(
-                app=self,
-                name=self._prepare_case_name(name or qualname(cls)),
-                active=active,
-                probability=probability,
-                warn_stalled_after=warn_stalled_after,
-                signals=signals,
-                test_expires=test_expires,
-                frequency=frequency,
-                max_history=max_history,
-                max_consecutive_failures=max_consecutive_failures,
-                url_timeout_total=url_timeout_total,
-                url_timeout_connect=url_timeout_connect,
-                url_error_retries=url_error_retries,
-                url_error_delay_min=url_error_delay_min,
-                url_error_delay_backoff=url_error_delay_backoff,
-                url_error_delay_max=url_error_delay_max,
-            ))
+            case = self.add_case(
+                case_cls(
+                    app=self,
+                    name=self._prepare_case_name(name or qualname(cls)),
+                    active=active,
+                    probability=probability,
+                    warn_stalled_after=warn_stalled_after,
+                    signals=signals,
+                    test_expires=test_expires,
+                    frequency=frequency,
+                    max_history=max_history,
+                    max_consecutive_failures=max_consecutive_failures,
+                    url_timeout_total=url_timeout_total,
+                    url_timeout_connect=url_timeout_connect,
+                    url_error_retries=url_error_retries,
+                    url_error_delay_min=url_error_delay_min,
+                    url_error_delay_backoff=url_error_delay_backoff,
+                    url_error_delay_max=url_error_delay_max,
+                )
+            )
             venusian.attach(cast(Callable, case), category=SCAN_CASE)
             return case
 
         return _inner
 
     def _extract_signals(
-            self,
-            case_cls: Type[_Case],
-            base_case: Type[_Case]) -> Iterable[Tuple[str, Type[BaseSignal]]]:
+        self, case_cls: Type[_Case], base_case: Type[_Case]
+    ) -> Iterable[Tuple[str, Type[BaseSignal]]]:
         fields, defaults = annotations(
             case_cls,
             stop=base_case,
@@ -281,7 +291,7 @@ class LiveCheck(faust.App):
         )
 
         for attr_name, attr_type in fields.items():
-            actual_type = getattr(attr_type, '__origin__', attr_type)
+            actual_type = getattr(attr_type, "__origin__", attr_type)
             if actual_type is None:  # Python <3.7
                 actual_type = attr_type
             try:
@@ -332,8 +342,11 @@ class LiveCheck(faust.App):
             try:
                 case = self.cases[event.case_name]
             except KeyError:
-                self.log.error('Received signal %r for unregistered case %r',
-                               event, (test_id, event.case_name))
+                self.log.error(
+                    "Received signal %r for unregistered case %r",
+                    event,
+                    (test_id, event.case_name),
+                )
             else:
                 await case.resolve_signal(test_id, event)
 
@@ -343,8 +356,12 @@ class LiveCheck(faust.App):
             try:
                 case = self.cases[test.case_name]
             except KeyError:
-                self.log.error('Unregistered test case %r with id %r: %r',
-                               test.case_name, test_id, test)
+                self.log.error(
+                    "Unregistered test case %r with id %r: %r",
+                    test.case_name,
+                    test_id,
+                    test,
+                )
             else:
                 try:
                     await case.execute(test)
@@ -352,9 +369,9 @@ class LiveCheck(faust.App):
                     pass
 
     def _prepare_case_name(self, name: str) -> str:
-        if name.startswith('__main__.'):
+        if name.startswith("__main__."):
             if not self.conf.origin:
-                raise RuntimeError('LiveCheck app missing origin argument')
+                raise RuntimeError("LiveCheck app missing origin argument")
             return self.conf.origin + name[8:]
         return name
 
