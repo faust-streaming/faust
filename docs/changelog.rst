@@ -1,1 +1,1 @@
-.. include:: ../Changelog.rst
+.. include:: ../CHANGELOG.md

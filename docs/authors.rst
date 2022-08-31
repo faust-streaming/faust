@@ -7,4 +7,4 @@
 .. contents::
     :local:
 
-.. include:: ../AUTHORS.rst
+.. include:: ../AUTHORS.md
