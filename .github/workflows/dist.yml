@@ -6,7 +6,7 @@ on:
   release:
     types: [created]
     branches:
-      - 'master'
+      - 'gh-pages-test'
 
 jobs:
   build_wheels:
@@ -53,20 +53,38 @@ jobs:
         with:
           path: 'dist/*.tar.gz'
 
-  upload_pypi:
-    name: 'Upload packages'
-    needs: ['build_wheels', 'build_sdist']
-    runs-on: 'ubuntu-latest'
-    if: github.event_name == 'release' && github.event.action == 'created'
-    steps:
-      - uses: actions/download-artifact@v2
-        name: 'Download artifacts'
-        with:
-          name: 'artifact'
-          path: 'dist'
+#  upload_pypi:
+#    name: 'Upload packages'
+#    needs: ['build_wheels', 'build_sdist']
+#    runs-on: 'ubuntu-latest'
+#    if: github.event_name == 'release' && github.event.action == 'created'
+#    steps:
+#      - uses: actions/download-artifact@v2
+#        name: 'Download artifacts'
+#        with:
+#          name: 'artifact'
+#          path: 'dist'
+#
+#      - uses: pypa/gh-action-pypi-publish@release/v1
+#        name: "Publish package to PyPI"
+#        with:
+#          user: '__token__'
+#          password: '${{ secrets.PYPI_API_TOKEN }}'
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
-        name: "Publish package to PyPI"
-        with:
-          user: '__token__'
-          password: '${{ secrets.PYPI_API_TOKEN }}'
+  generate-docs:
+    name: "Update GitHub Pages"
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/setup-python@v2
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+    - name: "Build docs"
+      run: make build
+      uses: sphinx-notes/pages@v2
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: 'master'
+        sphinx_version: 5.1.1
