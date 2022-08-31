@@ -18,8 +18,11 @@ jobs:
       with:
         requirements_path: ./requirements/docs.txt
         sphinx_version: 5.1.1
-    - uses: actions/deploy-pages@v1
-      name: "Deploy to GitHub Pages"
+    - name: "Upload artifacts"
+      uses: actions/upload-pages-artifact@v1
+      with:
+        # Upload built docs
+        path: "./docs/_build/html/"
   deploy:
     name: "Deploy docs"
     needs: build
