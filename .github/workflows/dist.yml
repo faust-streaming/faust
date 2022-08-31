@@ -9,49 +9,49 @@ on:
       - 'gh-pages-test'
 
 jobs:
-  build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, windows-2019, macos-11]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build wheels
-        uses: pypa/cibuildwheel@v2.8.1
-        env:
-          CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
-          CIBW_ARCHS: auto64
-          CIBW_BUILD: 'cp3*'
-          CIBW_BEFORE_BUILD: pip3 install Cython
-
-      - uses: actions/upload-artifact@v3
-        with:
-          path: ./wheelhouse/*.whl
-
-  build_sdist:
-    name: 'Build source distribution'
-    runs-on: 'ubuntu-latest'
-    steps:
-      - uses: actions/checkout@v2
-        name: 'Checkout source repository'
-
-      - uses: actions/setup-python@v4
-        name: 'Set up Python 3.10'
-        with:
-          python-version: '3.10'
-
-      - name: 'Build sdist'
-        run: >
-          pip3 install pkgconfig cython --upgrade &&
-          python3 setup.py sdist
-
-      - uses: actions/upload-artifact@v2
-        name: 'Upload build artifacts'
-        with:
-          path: 'dist/*.tar.gz'
+#  build_wheels:
+#    name: Build wheels on ${{ matrix.os }}
+#    runs-on: ${{ matrix.os }}
+#    strategy:
+#      matrix:
+#        os: [ubuntu-20.04, windows-2019, macos-11]
+#
+#    steps:
+#      - uses: actions/checkout@v3
+#
+#      - name: Build wheels
+#        uses: pypa/cibuildwheel@v2.8.1
+#        env:
+#          CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
+#          CIBW_ARCHS: auto64
+#          CIBW_BUILD: 'cp3*'
+#          CIBW_BEFORE_BUILD: pip3 install Cython
+#
+#      - uses: actions/upload-artifact@v3
+#        with:
+#          path: ./wheelhouse/*.whl
+#
+#  build_sdist:
+#    name: 'Build source distribution'
+#    runs-on: 'ubuntu-latest'
+#    steps:
+#      - uses: actions/checkout@v2
+#        name: 'Checkout source repository'
+#
+#      - uses: actions/setup-python@v4
+#        name: 'Set up Python 3.10'
+#        with:
+#          python-version: '3.10'
+#
+#      - name: 'Build sdist'
+#        run: >
+#          pip3 install pkgconfig cython --upgrade &&
+#          python3 setup.py sdist
+#
+#      - uses: actions/upload-artifact@v2
+#        name: 'Upload build artifacts'
+#        with:
+#          path: 'dist/*.tar.gz'
 
 #  upload_pypi:
 #    name: 'Upload packages'
