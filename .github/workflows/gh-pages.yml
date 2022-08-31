@@ -1,9 +1,10 @@
 name: Pages
+
 on:
   push:
     branches:
     - master
-    - gh-pages-test
+
 jobs:
   build:
     name: "Build docs"

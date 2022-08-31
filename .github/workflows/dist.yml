@@ -6,7 +6,7 @@ on:
   release:
     types: [created]
     branches:
-      - 'gh-pages-test'
+      - 'master'
 
 jobs:
   build_wheels:
