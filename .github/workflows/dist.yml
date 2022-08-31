@@ -86,5 +86,6 @@ jobs:
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: 'gh-pages-test'
+        branch: 'gh-pages-test-deploy'
+        requirements_path: './requirements/docs.txt'
         sphinx_version: 5.1.1
