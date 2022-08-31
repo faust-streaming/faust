@@ -83,6 +83,7 @@ jobs:
       uses: sphinx-notes/pages@v2
       with:
         requirements_path: ./requirements/docs.txt
+        sphinx_version: 5.1.1
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
