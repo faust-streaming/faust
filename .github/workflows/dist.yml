@@ -80,7 +80,7 @@ jobs:
       with:
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
     - name: "Build docs"
-      run: make build
+#      run: make build
       uses: sphinx-notes/pages@v2
     - name: Push changes
       uses: ad-m/github-push-action@master
