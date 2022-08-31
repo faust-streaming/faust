@@ -19,7 +19,7 @@ jobs:
       uses: actions/upload-pages-artifact@v1
       with:
         # Upload built docs
-        path: "./docs/_build/html/"
+        path: "./Documentation"
   deploy:
     name: "Deploy docs"
     needs: build
