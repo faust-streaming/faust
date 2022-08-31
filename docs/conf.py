@@ -24,6 +24,7 @@ globals().update(conf.build_config(
         'alabaster',
         'typehints',
         'faustdocs',
+        'm2r2',
     ],
     extra_intersphinx_mapping={
         'aiohttp': ('https://aiohttp.readthedocs.io/en/stable/', None),
