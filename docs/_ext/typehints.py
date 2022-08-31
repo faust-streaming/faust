@@ -1,6 +1,6 @@
 import inspect
 from typing import Any, AnyStr, TypeVar, get_type_hints
-from sphinx.util.inspect import Signature
+from sphinx.util.inspect import signature as Signature
 
 try:
     from typing import GenericMeta  # Py3.7
