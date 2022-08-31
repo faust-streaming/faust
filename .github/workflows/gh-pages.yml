@@ -3,6 +3,7 @@ on:
   push:
     branches:
     - master
+    - gh-pages-test
 jobs:
   generate-docs:
     name: "Update GitHub Pages"
