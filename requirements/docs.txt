@@ -1,4 +1,4 @@
-sphinx
+sphinx<6.0.0
 sphinx-celery
 sphinx-autodoc-typehints
 m2r2

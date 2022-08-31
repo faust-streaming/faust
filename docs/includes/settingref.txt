@@ -128,7 +128,7 @@ The value for this argument can be:
 :type: :class:`str` / :class:`~pathlib.Path`
 :default: ``'{conf.name}-data'``
 :environment: :envvar:`APP_DATADIR`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust d`, :option:`faust a`, :option:`faust t`, :option:`faust a`, :option:`faust d`, :option:`faust i`, :option:`faust r`
+:related-command-options: :option:`faust --data-dir`
 
 Application data directory.
 
@@ -171,7 +171,7 @@ setting.
 :type: :class:`bool`
 :default: :const:`False`
 :environment: :envvar:`APP_DEBUG`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust d`, :option:`faust e`, :option:`faust b`, :option:`faust u`, :option:`faust g`
+:related-command-options: :option:`faust --debug`
 
 Use in development to expose sensor information endpoint.
 
@@ -290,7 +290,7 @@ the second version is 2, and so on.
 :type: :class:`float` / :class:`~datetime.timedelta`
 :default: :const:`None`
 :environment: :envvar:`BLOCKING_TIMEOUT`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust b`, :option:`faust l`, :option:`faust o`, :option:`faust c`, :option:`faust k`, :option:`faust i`, :option:`faust n`, :option:`faust g`, :option:`faust -`, :option:`faust t`, :option:`faust i`, :option:`faust m`, :option:`faust e`, :option:`faust o`, :option:`faust u`, :option:`faust t`
+:related-command-options: :option:`faust --blocking-timeout`
 
 Blocking timeout (in seconds).
 
@@ -1829,7 +1829,7 @@ not by passing it as a keyword argument to :class:`app`.
 
 :type: :class:`str` / :class:`~yarl.URL`
 :default: ``URL('tcp:')``
-:related-command-options: :option:`faust worker --web-transport`
+:related-command-options:  :option:`faust worker --web-transport`
 
 Network transport used for the web server.
 
@@ -2370,6 +2370,3 @@ Example using a class::
 Example using the string path to a class::
 
    app = faust.App(..., Monitor='myproj.monitors.Monitor')
-
-
-

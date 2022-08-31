@@ -1,4 +1,6 @@
-"""Streams."""
+"""Streams.
+
+"""
 import asyncio
 import os
 import reprlib

@@ -14,7 +14,7 @@ globals().update(conf.build_config(
     canonical_url='https://fauststream.com/en/latest',
     webdomain='',
     github_project='faust-streaming/faust',
-    copyright='2017-2020, 2022 Community',
+    copyright='2017-2020, 2021-2022 Community',
     html_logo='images/logo.png',
     html_favicon='images/favicon.ico',
     html_prepend_sidebars=[],

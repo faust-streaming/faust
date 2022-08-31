@@ -1,6 +1,9 @@
 import inspect
 from typing import Any, AnyStr, TypeVar, get_type_hints
-from sphinx.util.inspect import signature as Signature
+try:
+    from sphinx.ext.autodoc import Signature
+except ImportError:
+    from sphinx.util.inspect import signature as Signature
 
 try:
     from typing import GenericMeta  # Py3.7
@@ -124,7 +127,8 @@ def process_docstring(app, what, name, obj, options, lines):
         obj = inspect.unwrap(obj)
         try:
             type_hints = get_type_hints(obj)
-        except (AttributeError, TypeError):
+        # except (AttributeError, TypeError):
+        except:  # FIXME: A new exception is being raised, likely due to upgrading sphinx
             # Introspecting a slot wrapper will raise TypeError
             return
 

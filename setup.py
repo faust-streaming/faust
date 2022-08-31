@@ -50,7 +50,7 @@ if sys.version_info < (3, 6):
 
 from pathlib import Path  # noqa
 
-README = Path("README.rst")
+README = Path("README.md")
 
 # -*- Compiler Flags -*-
 
