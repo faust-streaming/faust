@@ -16,7 +16,6 @@ jobs:
     - uses: actions/setup-python@v4
     - uses: actions/checkout@v3
       with:
-        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
     - name: "Build docs"
       uses: sphinx-notes/pages@v2
