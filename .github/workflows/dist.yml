@@ -9,83 +9,64 @@ on:
       - 'gh-pages-test'
 
 jobs:
-#  build_wheels:
-#    name: Build wheels on ${{ matrix.os }}
-#    runs-on: ${{ matrix.os }}
-#    strategy:
-#      matrix:
-#        os: [ubuntu-20.04, windows-2019, macos-11]
-#
-#    steps:
-#      - uses: actions/checkout@v3
-#
-#      - name: Build wheels
-#        uses: pypa/cibuildwheel@v2.8.1
-#        env:
-#          CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
-#          CIBW_ARCHS: auto64
-#          CIBW_BUILD: 'cp3*'
-#          CIBW_BEFORE_BUILD: pip3 install Cython
-#
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          path: ./wheelhouse/*.whl
-#
-#  build_sdist:
-#    name: 'Build source distribution'
-#    runs-on: 'ubuntu-latest'
-#    steps:
-#      - uses: actions/checkout@v2
-#        name: 'Checkout source repository'
-#
-#      - uses: actions/setup-python@v4
-#        name: 'Set up Python 3.10'
-#        with:
-#          python-version: '3.10'
-#
-#      - name: 'Build sdist'
-#        run: >
-#          pip3 install pkgconfig cython --upgrade &&
-#          python3 setup.py sdist
-#
-#      - uses: actions/upload-artifact@v2
-#        name: 'Upload build artifacts'
-#        with:
-#          path: 'dist/*.tar.gz'
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2019, macos-11]
 
-#  upload_pypi:
-#    name: 'Upload packages'
-#    needs: ['build_wheels', 'build_sdist']
-#    runs-on: 'ubuntu-latest'
-#    if: github.event_name == 'release' && github.event.action == 'created'
-#    steps:
-#      - uses: actions/download-artifact@v2
-#        name: 'Download artifacts'
-#        with:
-#          name: 'artifact'
-#          path: 'dist'
-#
-#      - uses: pypa/gh-action-pypi-publish@release/v1
-#        name: "Publish package to PyPI"
-#        with:
-#          user: '__token__'
-#          password: '${{ secrets.PYPI_API_TOKEN }}'
-
-  generate-docs:
-    name: "Update GitHub Pages"
-    runs-on: ubuntu-latest
     steps:
-    - uses: actions/setup-python@v2
-    - uses: actions/checkout@master
-      with:
-        fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
-    - name: "Build docs"
-      uses: sphinx-notes/pages@v2
-      with:
-        requirements_path: ./requirements/docs.txt
-        sphinx_version: 5.1.1
-    - name: Push changes
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: 'gh-pages-test'
+      - uses: actions/checkout@v3
+
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v2.8.1
+        env:
+          CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
+          CIBW_ARCHS: auto64
+          CIBW_BUILD: 'cp3*'
+          CIBW_BEFORE_BUILD: pip3 install Cython
+
+      - uses: actions/upload-artifact@v3
+        with:
+          path: ./wheelhouse/*.whl
+
+  build_sdist:
+    name: 'Build source distribution'
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@v2
+        name: 'Checkout source repository'
+
+      - uses: actions/setup-python@v4
+        name: 'Set up Python 3.10'
+        with:
+          python-version: '3.10'
+
+      - name: 'Build sdist'
+        run: >
+          pip3 install pkgconfig cython --upgrade &&
+          python3 setup.py sdist
+
+      - uses: actions/upload-artifact@v2
+        name: 'Upload build artifacts'
+        with:
+          path: 'dist/*.tar.gz'
+
+  upload_pypi:
+    name: 'Upload packages'
+    needs: ['build_wheels', 'build_sdist']
+    runs-on: 'ubuntu-latest'
+    if: github.event_name == 'release' && github.event.action == 'created'
+    steps:
+      - uses: actions/download-artifact@v2
+        name: 'Download artifacts'
+        with:
+          name: 'artifact'
+          path: 'dist'
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        name: "Publish package to PyPI"
+        with:
+          user: '__token__'
+          password: '${{ secrets.PYPI_API_TOKEN }}'
