@@ -107,6 +107,7 @@ livedocs:
 
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
+	-rm -rf "$(DOCUMENTATION)"
 
 lint: flakecheck apicheck configcheck readmecheck pep257check vulture
 

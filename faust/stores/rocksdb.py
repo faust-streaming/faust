@@ -139,8 +139,14 @@ class RocksDBOptions:
 
 class Store(base.SerializedStore):
     """RocksDB table storage.
-    Pass 'options={'read_only': True}' as an option into a Table class
-    to allow a RocksDB store be used by multiple apps.
+
+    .. tip::
+        You can specify 'read_only' as an option into a Table class
+        to allow a RocksDB store be used by multiple apps::
+
+            app.App(..., store="rocksdb://")
+            app.GlobalTable(..., options={'read_only': True})
+
     """
 
     offset_key = b"__faust\0offset__"
