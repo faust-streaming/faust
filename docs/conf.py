@@ -11,7 +11,7 @@ globals().update(conf.build_config(
     project='Faust',
     version_dev='1.1',
     version_stable='1.0',
-    canonical_url='https://fauststream.com/en/latest',
+    canonical_url='https://faust-stream.github.io/faust',
     webdomain='',
     github_project='faust-streaming/faust',
     copyright='2017-2020, 2021-2022 Community',
