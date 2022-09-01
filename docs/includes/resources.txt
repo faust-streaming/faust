@@ -9,9 +9,8 @@ Slack
 -----
 
 For discussions about the usage, development, and future of Faust,
-please join the `fauststream`_ Slack.
+please join the faust-streaming Slack at https://fauststream.slack.com.
 
-* https://fauststream.slack.com
 * Sign-up: https://join.slack.com/t/fauststream/shared_invite/enQtNDEzMTIyMTUyNzU2LTIyMjNjY2M2YzA2OWFhMDlmMzVkODk3YTBlYThlYmZiNTUwZDJlYWZiZTdkN2Q4ZGU4NWM4YWMyNTM5MGQ5OTg
 
 Resources

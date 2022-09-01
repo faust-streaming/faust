@@ -1,5 +1,5 @@
 *Note*: Before submitting this pull request, please review our [contributing
-guidelines](https://fauststream.com/en/latest/contributing.html).
+guidelines](https://faust-streaming.github.io/faust/contributing.html).
 
 ## Description
 
