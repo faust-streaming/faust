@@ -795,7 +795,7 @@ Packages
 ---------
 
 :git: https://github.com/faust-streaming/faust
-:CI: http://travis-ci.org/#!/robinhood/faust
+:CI: https://app.travis-ci.com/github/faust-streaming/faust
 :Windows-CI: https://ci.appveyor.com/project/ask/faust
 :PyPI: :pypi:`faust-streaming`
 :docs: https://faust-streaming.github.io/faust/
@@ -804,7 +804,7 @@ Packages
 --------
 
 :git: https://github.com/faust-streaming/mode/
-:CI: https://www.travis-ci.com/#!/faust-streaming/mode
+:CI: https://www.travis-ci.com/github/faust-streaming/mode
 :Windows-CI: https://ci.appveyor.com/project/faust-streaming/mode
 :PyPI: :pypi:`mode-streaming`
 :docs: http://mode.readthedocs.io/
