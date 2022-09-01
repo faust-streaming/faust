@@ -8,19 +8,19 @@ repos:
       - id: end-of-file-fixer
       - id: check-added-large-files
 
-  - repo: local
-    hooks:
-    #   - id: black
-    #     name: black
-    #     stages: [commit]
-    #     language: system
-    #     entry: black
-    #     types: [python]
-    #     files: .*\.py$
-
-      - id: flake8
-        name: flake8
-        stages: [commit]
-        language: system
-        entry: flake8
-        types: [python]
+#  - repo: local
+#    hooks:
+#    #   - id: black
+#    #     name: black
+#    #     stages: [commit]
+#    #     language: system
+#    #     entry: black
+#    #     types: [python]
+#    #     files: .*\.py$
+#
+#      - id: flake8
+#        name: flake8
+#        stages: [commit]
+#        language: system
+#        entry: flake8
+#        types: [python]

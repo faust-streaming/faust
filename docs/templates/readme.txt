@@ -42,7 +42,7 @@ Be sure to also read the `Contributing to Faust`_ section in the
 documentation.
 
 .. _`Contributing to Faust`:
-    https://fauststream.com/en/latest/contributing.html
+    https://faust-streaming.github.io/faust/contributing.html
 
 .. include:: ../includes/code-of-conduct.txt
 

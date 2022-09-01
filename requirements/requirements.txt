@@ -10,3 +10,4 @@ croniter>=0.3.16
 mypy_extensions
 venusian==3.0.0
 intervaltree
+six
