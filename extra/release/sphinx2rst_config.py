@@ -1,4 +1,4 @@
-REFBASE = 'https://faust-stream.github.io/faust'
+REFBASE = 'https://faust-streaming.github.io/faust'
 REFS = {
     'slack-channel': 'getting-started/resources.html#slack-channel',
     'bundles': 'introduction/installation.html#bundles',

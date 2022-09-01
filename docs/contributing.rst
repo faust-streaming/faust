@@ -798,7 +798,7 @@ Packages
 :CI: http://travis-ci.org/#!/robinhood/faust
 :Windows-CI: https://ci.appveyor.com/project/ask/faust
 :PyPI: :pypi:`faust-streaming`
-:docs: https://faust-stream.github.io/faust/
+:docs: https://faust-streaming.github.io/faust/
 
 ``Mode``
 --------

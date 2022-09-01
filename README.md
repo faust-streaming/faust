@@ -12,9 +12,9 @@
 
 ## Documentation
 
-- `introduction`: https://faust-stream.github.io/faust/introduction.html
-- `quickstart`: https://faust-stream.github.io/faust/playbooks/quickstart.html
-- `User Guide`: https://faust-stream.github.io/faust/userguide/index.html
+- `introduction`: https://faust-streaming.github.io/faust/introduction.html
+- `quickstart`: https://faust-streaming.github.io/faust/playbooks/quickstart.html
+- `User Guide`: https://faust-streaming.github.io/faust/userguide/index.html
 
 ## Why the fork
 
@@ -285,7 +285,7 @@ Aerospike can be enabled as the state store by specifying
 
 By default, all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
 to a state store backed by RocksDB.
-The following configuration options should be passed in as keys to the options parameter in [Table](https://faust-stream.github.io/faust/reference/faust.tables.html)
+The following configuration options should be passed in as keys to the options parameter in [Table](https://faust-streaming.github.io/faust/reference/faust.tables.html)
 `namespace` : aerospike namespace
 
 `ttl`: TTL for all KV's in the table
