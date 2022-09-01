@@ -847,24 +847,5 @@ and make a new version tag:
 Releasing
 ---------
 
-Commands to make a new public stable release:
-
-.. sourcecode:: console
-
-    $ make distcheck  # checks pep8, autodoc index, runs tests and more
-    $ make dist  # NOTE: Runs git clean -xdf and removes files not in the repo.
-    $ python setup.py sdist upload --sign --identity='Celery Security Team'
-    $ python setup.py bdist_wheel upload --sign --identity='Celery Security Team'
-
-If this is a new release series then you also need to do the
-following:
-
-* Go to the Read The Docs management interface at:
-    http://readthedocs.org/projects/faust/?fromdocs=faust
-
-* Enter "Edit project"
-
-    Change default branch to the branch of this series, for example, use
-    the ``1.0`` branch for the 1.0 series.
-
-* Also add the previous version under the "versions" tab.
+This is all done automatically on GitHub when a release
+is tagged in https://github.com/faust-streaming/faust/releases.
