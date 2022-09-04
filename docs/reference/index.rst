@@ -128,7 +128,7 @@ Stores
     faust.stores.base
     faust.stores.memory
     faust.stores.rocksdb
-	faust.stores.aerospike
+    faust.stores.aerospike
 
 Tables
 ======
