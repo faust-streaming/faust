@@ -8,6 +8,7 @@
 [![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://fauststream.slack.com/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-green)
+![license](https://img.shields.io/pypi/l/faust-streaming)
 
 ## Installation
 
