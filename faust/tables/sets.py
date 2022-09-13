@@ -39,13 +39,15 @@ OPERATION_UPDATE: int = 0xF
 class SetWindowSet(wrappers.WindowSet):
     """A windowed set."""
 
-    def add(self, element: Any, *, event: EventT = None) -> None:
+    def add(self, element: Any, *, event: Optional[EventT] = None) -> None:
         self._apply_set_operation("add", element, event)
 
-    def discard(self, element: Any, *, event: EventT = None) -> None:
+    def discard(self, element: Any, *, event: Optional[EventT] = None) -> None:
         self._apply_set_operation("discard", element, event)
 
-    def _apply_set_operation(self, op: str, element: Any, event: EventT = None) -> None:
+    def _apply_set_operation(
+        self, op: str, element: Any, event: Optional[EventT] = None
+    ) -> None:
         table = cast(Table, self.table)
         timestamp = self.wrapper.get_timestamp(event or self.event)
         key = self.key
@@ -275,8 +277,8 @@ class SetTable(Table[KT, ChangeloggedSet[VT]]):
         app: AppT,
         *,
         start_manager: bool = False,
-        manager_topic_name: str = None,
-        manager_topic_suffix: str = None,
+        manager_topic_name: Optional[str] = None,
+        manager_topic_suffix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(app, **kwargs)

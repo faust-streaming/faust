@@ -1,6 +1,6 @@
 """Program ``faust model`` used to list details about a model."""
 from datetime import datetime
-from typing import Any, Sequence, Type
+from typing import Any, Optional, Sequence, Type
 
 import click
 from mode.utils import text
@@ -51,7 +51,9 @@ class model(AppCommand):
             )
         )
 
-    def _unknown_model(self, name: str, *, lookup: str = None) -> click.UsageError:
+    def _unknown_model(
+        self, name: str, *, lookup: Optional[str] = None
+    ) -> click.UsageError:
         lookup = lookup or name
         alt = text.didyoumean(
             registry,

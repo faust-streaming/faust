@@ -108,7 +108,7 @@ class TracerT(abc.ABC):
 
     @abc.abstractmethod
     def trace(
-        self, name: str, sample_rate: float = None, **extra_context: Any
+        self, name: str, sample_rate: Optional[float] = None, **extra_context: Any
     ) -> ContextManager:
         ...
 
@@ -137,11 +137,11 @@ class BootStrategyT:
         self,
         app: "AppT",
         *,
-        enable_web: bool = None,
+        enable_web: Optional[bool] = None,
         enable_kafka: bool = True,
-        enable_kafka_producer: bool = None,
-        enable_kafka_consumer: bool = None,
-        enable_sensors: bool = True
+        enable_kafka_producer: Optional[bool] = None,
+        enable_kafka_consumer: Optional[bool] = None,
+        enable_sensors: bool = True,
     ) -> None:
         ...
 
@@ -248,7 +248,7 @@ class AppT(ServiceT):
         self,
         *extra_modules: str,
         categories: Iterable[str] = ("a", "b", "c"),
-        ignore: Iterable[Any] = ("foo", "bar")
+        ignore: Iterable[Any] = ("foo", "bar"),
     ) -> None:
         ...
 
@@ -257,23 +257,23 @@ class AppT(ServiceT):
         self,
         *topics: str,
         pattern: Union[str, Pattern] = None,
-        schema: _SchemaT = None,
+        schema: Optional[_SchemaT] = None,
         key_type: _ModelArg = None,
         value_type: _ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        partitions: int = None,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
-        replicas: int = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
         acks: bool = True,
         internal: bool = False,
-        config: Mapping[str, Any] = None,
-        maxsize: int = None,
+        config: Optional[Mapping[str, Any]] = None,
+        maxsize: Optional[int] = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: asyncio.AbstractEventLoop = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> TopicT:
         ...
 
@@ -281,11 +281,11 @@ class AppT(ServiceT):
     def channel(
         self,
         *,
-        schema: _SchemaT = None,
+        schema: Optional[_SchemaT] = None,
         key_type: _ModelArg = None,
         value_type: _ModelArg = None,
-        maxsize: int = None,
-        loop: asyncio.AbstractEventLoop = None
+        maxsize: Optional[int] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> ChannelT:
         ...
 
@@ -294,13 +294,13 @@ class AppT(ServiceT):
         self,
         channel: Union[str, ChannelT[_T]] = None,
         *,
-        name: str = None,
+        name: Optional[str] = None,
         concurrency: int = 1,
         supervisor_strategy: Type[SupervisorStrategyT] = None,
         sink: Iterable[SinkT] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> Callable[[AgentFun[_T]], AgentT[_T]]:
         ...
 
@@ -317,7 +317,7 @@ class AppT(ServiceT):
         interval: Seconds,
         on_leader: bool = False,
         traced: bool = True,
-        name: str = None,
+        name: Optional[str] = None,
         max_drift_correction: float = 0.1,
     ) -> Callable:
         ...
@@ -329,7 +329,7 @@ class AppT(ServiceT):
         *,
         timezone: tzinfo = None,
         on_leader: bool = False,
-        traced: bool = True
+        traced: bool = True,
     ) -> Callable:
         ...
 
@@ -339,7 +339,7 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def stream(
-        self, channel: AsyncIterable, beacon: NodeT = None, **kwargs: Any
+        self, channel: AsyncIterable, beacon: Optional[NodeT] = None, **kwargs: Any
     ) -> StreamT:
         ...
 
@@ -349,10 +349,10 @@ class AppT(ServiceT):
         name: str,
         *,
         default: Callable[[], Any] = None,
-        window: WindowT = None,
-        partitions: int = None,
-        help: str = None,
-        **kwargs: Any
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -362,10 +362,10 @@ class AppT(ServiceT):
         name: str,
         *,
         default: Callable[[], Any] = None,
-        window: WindowT = None,
-        partitions: int = None,
-        help: str = None,
-        **kwargs: Any
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -374,11 +374,11 @@ class AppT(ServiceT):
         self,
         name: str,
         *,
-        window: WindowT = None,
-        partitions: int = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
         start_manager: bool = False,
-        help: str = None,
-        **kwargs: Any
+        help: Optional[str] = None,
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -387,11 +387,11 @@ class AppT(ServiceT):
         self,
         name: str,
         *,
-        window: WindowT = None,
-        partitions: int = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
         start_manager: bool = False,
-        help: str = None,
-        **kwargs: Any
+        help: Optional[str] = None,
+        **kwargs: Any,
     ) -> TableT:
         ...
 
@@ -402,7 +402,7 @@ class AppT(ServiceT):
         *,
         base: Type[View] = View,
         cors_options: Mapping[str, ResourceOptions] = None,
-        name: str = None
+        name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         ...
 
@@ -410,11 +410,11 @@ class AppT(ServiceT):
     def table_route(
         self,
         table: CollectionT,
-        shard_param: str = None,
+        shard_param: Optional[str] = None,
         *,
-        query_param: str = None,
-        match_info: str = None,
-        exact_key: str = None
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
     ) -> ViewDecorator:
         ...
 
@@ -450,13 +450,13 @@ class AppT(ServiceT):
         channel: Union[ChannelT, str],
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: _SchemaT = None,
+        schema: Optional[_SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -476,10 +476,9 @@ class AppT(ServiceT):
     @abc.abstractmethod
     def FlowControlQueue(
         self,
-        maxsize: int = None,
+        maxsize: Optional[int] = None,
         *,
         clear_on_resume: bool = False,
-        loop: asyncio.AbstractEventLoop = None
     ) -> ThrowableQueue:
         ...
 

@@ -50,7 +50,7 @@ if sys.version_info < (3, 6):
 
 from pathlib import Path  # noqa
 
-README = Path("README.rst")
+README = Path("README.md")
 
 # -*- Compiler Flags -*-
 
@@ -208,7 +208,7 @@ def do_setup(**kwargs):
         project_urls={
             "Bug Reports": "https://github.com/faust-streaming/faust/issues",
             "Source": "https://github.com/faust-streaming/faust",
-            "Documentation": "https://faust.readthedocs.io/",
+            "Documentation": "https://faust-streaming.github.io/faust",
         },
         keywords=[
             "stream",

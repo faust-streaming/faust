@@ -223,6 +223,19 @@ async def test_stream_filter__async(app):
 
 
 @pytest.mark.asyncio
+async def test_stream_filter_acks_filtered_out_messages(app, event_loop):
+    """
+    Test the filter function acknowledges the filtered out
+     messages regardless of the ack setting.
+    """
+    values = [1000, 3000, 99, 5000, 3, 9999]
+    async with app.stream(values).filter(lambda x: x > 1000) as stream:
+        async for event in stream.events():
+            assert event.value > 1000
+    assert len(app.consumer.unacked) == 0
+
+
+@pytest.mark.asyncio
 async def test_events(app):
     async with new_stream(app) as stream:
         for i in range(100):
@@ -776,4 +789,121 @@ async def test_take__no_event_crashes(app, loop):
         await asyncio.sleep(0)  # needed for some reason
         assert isinstance(s._crash_reason, RuntimeError)
     print("RETURNING")
+    assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
+async def test_take_wit_timestamp(app):
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        await s.channel.send(value={"id": 1})
+        event = None
+        async for value in s.take_with_timestamp(
+            1, within=1, timestamp_field_name="test_timestamp"
+        ):
+            assert "test_timestamp" in value[0].keys()
+            assert isinstance(value[0]["test_timestamp"], float)
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        if not event.ack.called:
+            assert event.message.acked
+            assert not event.message.refcount
+        assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
+async def test_take_wit_timestamp_wit_simple_value(app):
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        await s.channel.send(value=1)
+        event = None
+        async for value in s.take_with_timestamp(
+            1, within=1, timestamp_field_name="test_timestamp"
+        ):
+            assert value == [1]
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        if not event.ack.called:
+            assert event.message.acked
+            assert not event.message.refcount
+        assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
+async def test_take_wit_timestamp_without_timestamp_field(app):
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        await s.channel.send(value=1)
+        event = None
+        async for value in s.take_with_timestamp(
+            1, within=1, timestamp_field_name=None
+        ):
+            assert value == [1]
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+        if not event.ack.called:
+            assert event.message.acked
+            assert not event.message.refcount
+        assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
+async def test_take_wit_timestamp__5(app, loop):
+    s = new_stream(app)
+    async with s:
+        assert s.enable_acks is True
+        for i in range(5):
+            await s.channel.send(value={"id": i})
+
+        event = None
+        buffer_processor = s.take_with_timestamp(
+            5, within=10.0, timestamp_field_name="test_timestamp"
+        )
+        async for batch in buffer_processor:
+            assert len(batch) == 5
+            assert all("test_timestamp" in _m.keys() for _m in batch)
+            assert s.enable_acks is False
+
+            event = mock_stream_event_ack(s)
+            break
+
+        try:
+            await buffer_processor.athrow(asyncio.CancelledError())
+        except asyncio.CancelledError:
+            pass
+
+        assert event
+        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
+        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+        await asyncio.sleep(0)  # needed for some reason
+
+    if not event.ack.called:
+        assert event.message.acked
+        assert not event.message.refcount
     assert s.enable_acks is True

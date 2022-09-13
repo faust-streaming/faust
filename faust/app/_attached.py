@@ -13,6 +13,7 @@ from typing import (
     List,
     MutableMapping,
     NamedTuple,
+    Optional,
     Union,
     cast,
 )
@@ -91,13 +92,13 @@ class Attachments:
         channel: Union[ChannelT, str],
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset.
@@ -145,13 +146,13 @@ class Attachments:
         channel: Union[str, ChannelT],
         key: K,
         value: V,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset."""
         # This attaches message to be published when source message' is
@@ -185,7 +186,6 @@ class Attachments:
         await asyncio.wait(
             await self.publish_for_tp_offset(tp, offset),
             return_when=asyncio.ALL_COMPLETED,
-            loop=self.app.loop,
         )
 
     async def publish_for_tp_offset(

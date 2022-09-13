@@ -1,6 +1,7 @@
 import random
 from datetime import datetime, timezone
 from itertools import count
+from typing import Optional
 
 import faust
 
@@ -9,15 +10,15 @@ class Withdrawal(faust.Record, isodates=True, serializer="json"):
     user: str
     country: str
     amount: float
-    date: datetime = None
+    date: Optional[datetime] = None
 
 
-def generate_withdrawals(n: int = None):
+def generate_withdrawals(n: Optional[int] = None):
     for d in generate_withdrawals_dict(n):
         yield Withdrawal(**d)
 
 
-def generate_withdrawals_dict(n: int = None):
+def generate_withdrawals_dict(n: Optional[int] = None):
     num_countries = 5
     countries = [f"country_{i}" for i in range(num_countries)]
     country_dist = [0.9] + ([0.10 / num_countries] * (num_countries - 1))

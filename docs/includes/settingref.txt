@@ -128,7 +128,7 @@ The value for this argument can be:
 :type: :class:`str` / :class:`~pathlib.Path`
 :default: ``'{conf.name}-data'``
 :environment: :envvar:`APP_DATADIR`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust d`, :option:`faust a`, :option:`faust t`, :option:`faust a`, :option:`faust d`, :option:`faust i`, :option:`faust r`
+:related-command-options: :option:`faust --data-dir`
 
 Application data directory.
 
@@ -171,7 +171,7 @@ setting.
 :type: :class:`bool`
 :default: :const:`False`
 :environment: :envvar:`APP_DEBUG`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust d`, :option:`faust e`, :option:`faust b`, :option:`faust u`, :option:`faust g`
+:related-command-options: :option:`faust --debug`
 
 Use in development to expose sensor information endpoint.
 
@@ -290,7 +290,7 @@ the second version is 2, and so on.
 :type: :class:`float` / :class:`~datetime.timedelta`
 :default: :const:`None`
 :environment: :envvar:`BLOCKING_TIMEOUT`
-:related-command-options: :option:`faust -`, :option:`faust -`, :option:`faust b`, :option:`faust l`, :option:`faust o`, :option:`faust c`, :option:`faust k`, :option:`faust i`, :option:`faust n`, :option:`faust g`, :option:`faust -`, :option:`faust t`, :option:`faust i`, :option:`faust m`, :option:`faust e`, :option:`faust o`, :option:`faust u`, :option:`faust t`
+:related-command-options: :option:`faust --blocking-timeout`
 
 Blocking timeout (in seconds).
 
@@ -746,7 +746,7 @@ Automatically check the CRC32 of the records consumed.
 --------------------
 
 :type: :class:`str`
-:default: ``'faust-1.11.0a1'``
+:default: ``'faust-0.8.9'``
 :environment: :envvar:`BROKER_CLIENT_ID`
 
 Broker client ID.
@@ -1029,6 +1029,45 @@ If not set, default assignment strategy is used. Otherwise,
 each consumer instance has to have a unique id.
 
 
+.. setting:: consumer_metadata_max_age_ms
+
+``consumer_metadata_max_age_ms``
+--------------------------------
+
+.. versionadded:: 0.8.5
+
+:type: :class:`int`
+:default: ``300000``
+:environment: :envvar:`CONSUMER_METADATA_MAX_AGE_MS`
+
+Consumer metadata max age milliseconds
+
+The period of time in milliseconds after which we force
+a refresh of metadata even if we haven’t seen any partition
+leadership changes to proactively discover any new brokers or partitions.
+
+Default: 300000
+
+
+.. setting:: consumer_connections_max_idle_ms
+
+``consumer_connections_max_idle_ms``
+------------------------------------
+
+.. versionadded:: 0.8.5
+
+:type: :class:`int`
+:default: ``540000``
+:environment: :envvar:`CONSUMER_CONNECTIONS_MAX_IDLE_MS`
+
+Consumer connections max idle milliseconds.
+
+Close idle connections after the number of milliseconds
+specified by this config.
+
+Default: 540000 (9 minutes).
+
+
 .. setting:: ConsumerScheduler
 
 ``ConsumerScheduler``
@@ -1295,72 +1334,62 @@ This is set high by default, as this is also the time when
 producer batches expire and will no longer be retried.
 
 
+.. setting:: producer_threaded
 
-.. _settings-rpc:
+``producer_threaded``
+---------------------
 
-Agent RPC Settings
-==================
-
-.. setting:: reply_create_topic
-
-``reply_create_topic``
-----------------------
+.. versionadded:: 0.4.5
 
 :type: :class:`bool`
 :default: :const:`False`
-:environment: :envvar:`APP_REPLY_CREATE_TOPIC`
+:environment: :envvar:`PRODUCER_THREADED`
 
-Automatically create reply topics.
+Thread separate producer for send_soon.
 
-Set this to :const:`True` if you plan on using the RPC with agents.
-
-This will create the internal topic used for RPC replies on that
-instance at startup.
-
-
-.. setting:: reply_expires
-
-``reply_expires``
------------------
-
-:type: :class:`float` / :class:`~datetime.timedelta`
-:default: ``86400.0``
-:environment: :envvar:`APP_REPLY_EXPIRES`
-
-RPC reply expiry time in seconds.
-
-The expiry time (in seconds :class:`float`,
-or :class:`~datetime.timedelta`), for how long replies will stay
-in the instances local reply topic before being removed.
+If True, spin up a different producer in a different thread
+to be used for messages buffered up for producing via
+send_soon function.
 
 
-.. setting:: reply_to
+.. setting:: producer_metadata_max_age_ms
 
-``reply_to``
-------------
+``producer_metadata_max_age_ms``
+--------------------------------
 
-:type: :class:`str`
-:default: :const:`None`
+.. versionadded:: 0.8.5
 
-Reply to address.
+:type: :class:`int`
+:default: ``300000``
+:environment: :envvar:`PRODUCER_METADATA_MAX_AGE_MS`
 
-The name of the reply topic used by this instance.
-If not set one will be automatically generated when the app
-is created.
+Producer metadata max age milliseconds
+
+The period of time in milliseconds after which we force
+a refresh of metadata even if we haven’t seen any partition
+leadership changes to proactively discover any new brokers or partitions.
+
+Default: 300000
 
 
-.. setting:: reply_to_prefix
 
-``reply_to_prefix``
--------------------
+.. setting:: producer_connections_max_idle_ms
 
-:type: :class:`str`
-:default: ``'f-reply-'``
-:environment: :envvar:`APP_REPLY_TO_PREFIX`
+``producer_connections_max_idle_ms``
+------------------------------------
 
-Reply address topic name prefix.
+.. versionadded:: 0.8.5
 
-The prefix used when generating reply topic names.
+:type: :class:`int`
+:default: ``540000``
+:environment: :envvar:`PRODUCER_CONNECTIONS_MAX_IDLE_MS`
+
+Producer connections max idle milliseconds.
+
+Close idle connections after the number of milliseconds
+specified by this config.
+
+Default: 540000 (9 minutes).
 
 
 
@@ -1368,6 +1397,92 @@ The prefix used when generating reply topic names.
 
 Advanced Stream Settings
 ========================
+
+.. setting:: recovery_consistency_check
+
+``recovery_consistency_check``
+------------------------------
+
+.. versionadded:: 0.4.7
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`RECOVERY_CONSISTENCY_CHECK`
+
+Check Kafka and local offsets for consistency.
+
+If True, assert that Kafka highwater offsets >= local offset
+in the rocksdb state storee
+
+
+.. setting:: store_check_exists
+
+``store_check_exists``
+----------------------
+
+.. versionadded:: 0.6.0
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`STORE_CHECK_EXISTS`
+
+Execute exists on the underlying store.
+
+If True, executes exists on the underlying store. If False
+client has to catch KeyError
+
+
+.. setting:: crash_app_on_aerospike_exception
+
+``crash_app_on_aerospike_exception``
+------------------------------------
+
+.. versionadded:: 0.6.3
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`CRASH_APP_ON_AEROSPIKE_EXCEPTION`
+
+Crashes the app on an aerospike Exceptions.
+
+If True, crashes the app and prevents the commit offset on progressing. If False
+client has to catch the Error and implement a dead letter queue
+
+
+.. setting:: aerospike_retries_on_exception
+
+``aerospike_retries_on_exception``
+----------------------------------
+
+.. versionadded:: 0.6.10
+
+:type: :class:`int`
+:default: ``60``
+:environment: :envvar:`AEROSPIKE_RETRIES_ON_EXCEPTION`
+
+Number of retries to aerospike on a runtime error from the aerospike client.
+
+Set this to the number of retries using the aerospike client on a runtime
+Exception thrown by the client
+
+
+.. setting:: aerospike_sleep_seconds_between_retries_on_exception
+
+``aerospike_sleep_seconds_between_retries_on_exception``
+--------------------------------------------------------
+
+.. versionadded:: 0.6.10
+
+:type: :class:`int`
+:default: ``1``
+:environment: :envvar:`AEROSPIKE_SLEEP_SECONDS_BETWEEN_RETRIES_ON_EXCEPTION`
+
+Seconds to sleep between retries to aerospike on a runtime error from
+the aerospike client.
+
+Set this to the sleep in seconds between retries using the aerospike
+client on a runtime Exception thrown by the client
+
 
 .. setting:: stream_buffer_maxsize
 
@@ -1436,7 +1551,7 @@ consider doing retries (send to separate topic):
    main_topic = app.topic('main')
    deadletter_topic = app.topic('main_deadletter')
 
-   async def send_request(value, timeout: float = None) -> None:
+   async def send_request(value, timeout: Optional[float] = None) -> None:
        await app.http_client.get('http://foo.com', timeout=timeout)
 
    @app.agent(main_topic)
@@ -1517,6 +1632,74 @@ rebalance we will process that event again.
 
 By default we will wait for the currently active tasks, but if your
 streams are idempotent you can disable it using this setting.
+
+
+
+.. _settings-rpc:
+
+Agent RPC Settings
+==================
+
+.. setting:: reply_create_topic
+
+``reply_create_topic``
+----------------------
+
+:type: :class:`bool`
+:default: :const:`False`
+:environment: :envvar:`APP_REPLY_CREATE_TOPIC`
+
+Automatically create reply topics.
+
+Set this to :const:`True` if you plan on using the RPC with agents.
+
+This will create the internal topic used for RPC replies on that
+instance at startup.
+
+
+.. setting:: reply_expires
+
+``reply_expires``
+-----------------
+
+:type: :class:`float` / :class:`~datetime.timedelta`
+:default: ``86400.0``
+:environment: :envvar:`APP_REPLY_EXPIRES`
+
+RPC reply expiry time in seconds.
+
+The expiry time (in seconds :class:`float`,
+or :class:`~datetime.timedelta`), for how long replies will stay
+in the instances local reply topic before being removed.
+
+
+.. setting:: reply_to
+
+``reply_to``
+------------
+
+:type: :class:`str`
+:default: :const:`None`
+
+Reply to address.
+
+The name of the reply topic used by this instance.
+If not set one will be automatically generated when the app
+is created.
+
+
+.. setting:: reply_to_prefix
+
+``reply_to_prefix``
+-------------------
+
+:type: :class:`str`
+:default: ``'f-reply-'``
+:environment: :envvar:`APP_REPLY_TO_PREFIX`
+
+Reply address topic name prefix.
+
+The prefix used when generating reply topic names.
 
 
 
@@ -1818,6 +2001,21 @@ A port number between 1024 and 65535 to use for the web server.
 
 This option is usually set by :option:`faust worker --web-port`,
 not by passing it as a keyword argument to :class:`app`.
+
+
+.. setting:: web_ssl_context
+
+``web_ssl_context``
+-------------------
+
+.. versionadded:: 0.5.0
+
+:type: :class:`~ssl.SSLContext`
+:default: :const:`None`
+
+Web server SSL configuration.
+
+See :setting:`credentials`.
 
 
 .. setting:: web_transport
@@ -2370,6 +2568,3 @@ Example using a class::
 Example using the string path to a class::
 
    app = faust.App(..., Monitor='myproj.monitors.Monitor')
-
-
-

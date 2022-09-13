@@ -10,6 +10,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    Optional,
     Set,
     Tuple,
     Type,
@@ -92,17 +93,17 @@ class Record(Model, abstract=True):  # type: ignore
 
     def __init_subclass__(
         cls,
-        serializer: str = None,
-        namespace: str = None,
-        include_metadata: bool = None,
-        isodates: bool = None,
+        serializer: Optional[str] = None,
+        namespace: Optional[str] = None,
+        include_metadata: Optional[bool] = None,
+        isodates: Optional[bool] = None,
         abstract: bool = False,
-        allow_blessed_key: bool = None,
-        decimals: bool = None,
-        coerce: bool = None,
+        allow_blessed_key: Optional[bool] = None,
+        decimals: Optional[bool] = None,
+        coerce: Optional[bool] = None,
         coercions: CoercionMapping = None,
-        polymorphic_fields: bool = None,
-        validation: bool = None,
+        polymorphic_fields: Optional[bool] = None,
+        validation: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
         lazy_creation: bool = False,
         **kwargs: Any,
@@ -192,7 +193,10 @@ class Record(Model, abstract=True):  # type: ignore
 
     @classmethod
     def _contribute_field_descriptors(
-        cls, target: Type, options: ModelOptions, parent: FieldDescriptorT = None
+        cls,
+        target: Type,
+        options: ModelOptions,
+        parent: Optional[FieldDescriptorT] = None,
     ) -> FieldMap:
         fields = options.fields
         defaults = options.defaults

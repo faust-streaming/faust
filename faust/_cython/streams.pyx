@@ -84,7 +84,7 @@ cdef class StreamIterator:
         event = None
 
         while value is None and event is None:
-            await sleep(0, loop=self.loop)
+            await sleep(0)
             need_slow_get, channel_value = self._try_get_quick_value()
             if need_slow_get:
                 channel_value = await self.chan_slow_get()
@@ -109,7 +109,8 @@ cdef class StreamIterator:
             object consumer
         consumer = self.consumer
         last_stream_to_ack = False
-        if do_ack and event is not None:
+        # if do_ack and event is not None:
+        if event is not None and (do_ack or event.value is self._skipped_value):
             message = event.message
             if not message.acked:
                 refcount = message.refcount
@@ -160,13 +161,17 @@ cdef class StreamIterator:
             offset = message.offset
             consumer = self.consumer
 
-            if message.generation_id != self.app.consumer_generation_id:
+            if (
+                not self.app.flow_control.is_active()
+                or message.generation_id != self.app.consumer_generation_id
+            ):
                 self.app.log.dev(
                     "Skipping message %r with generation_id %r because "
-                    "app generation_id is %r",
+                    "app generation_id is %r flow control.is_active %r",
                     message,
                     message.generation_id,
                     self.app.consumer_generation_id,
+                    self.app.flow_control.is_active()
                 )
                 return None, self._skipped_value, stream_state
 

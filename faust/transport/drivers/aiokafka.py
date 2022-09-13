@@ -226,11 +226,11 @@ class Consumer(ThreadDelegateConsumer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -284,7 +284,9 @@ class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: Optional[asyncio.Queue] = None
     _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    _push_events_task: Optional[asyncio.Task] = None
     app: None
+    stopped: bool
 
     def __init__(
         self,
@@ -292,8 +294,8 @@ class ThreadedProducer(ServiceThread):
         app,
         *,
         executor: Any = None,
-        loop: asyncio.AbstractEventLoop = None,
-        thread_loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        thread_loop: Optional[asyncio.AbstractEventLoop] = None,
         Worker: Type[WorkerThread] = None,
         **kwargs: Any,
     ) -> None:
@@ -319,7 +321,9 @@ class ThreadedProducer(ServiceThread):
         if self._producer is not None:
             await self._producer.flush()
 
-    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+    def _new_producer(
+        self, transactional_id: Optional[str] = None
+    ) -> aiokafka.AIOKafkaProducer:
         return aiokafka.AIOKafkaProducer(
             loop=self.thread_loop,
             **{
@@ -334,20 +338,29 @@ class ThreadedProducer(ServiceThread):
         self.event_queue = asyncio.Queue()
         producer = self._producer = self._new_producer()
         await producer.start()
-        asyncio.create_task(self.push_events())
+        self.stopped = False
+        self._push_events_task = self.thread_loop.create_task(self.push_events())
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
         logger.info("Stopping producer thread")
         await super().on_thread_stop()
+        self.stopped = True
         # when method queue is stopped, we can stop the consumer
         if self._producer is not None:
             await self.flush()
             await self._producer.stop()
+        if self._push_events_task is not None:
+            while not self._push_events_task.done():
+                await asyncio.sleep(0.1)
 
     async def push_events(self):
-        while True:
-            event = await self.event_queue.get()
+        while not self.stopped:
+            try:
+                event = await asyncio.wait_for(self.event_queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
+
             self.app.sensors.on_threaded_producer_buffer_processed(
                 app=self.app, size=self.event_queue.qsize()
             )
@@ -394,7 +407,11 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            return await self._finalize_message(fut, ret)
+            fut.message.channel._on_published(
+                message=fut, state=state, producer=producer
+            )
+            fut.set_result(ret)
+            return fut
         else:
             fut2 = cast(
                 asyncio.Future,
@@ -515,6 +532,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
             rebalance_timeout_ms=int(rebalance_timeout * 1000.0),
             heartbeat_interval_ms=int(conf.broker_heartbeat_interval * 1000.0),
             isolation_level=isolation_level,
+            metadata_max_age_ms=conf.consumer_metadata_max_age_ms,
+            connections_max_idle_ms=conf.consumer_connections_max_idle_ms,
             # traced_from_parent_span=self.traced_from_parent_span,
             # start_rebalancing_span=self.start_rebalancing_span,
             # start_coordinator_span=self.start_coordinator_span,
@@ -975,8 +994,8 @@ class AIOKafkaConsumerThread(ConsumerThread):
         self,
         consumer: aiokafka.AIOKafkaConsumer,
         active_partitions: Set[TP],
-        timeout: float = None,
-        max_records: int = None,
+        timeout: Optional[float] = None,
+        max_records: Optional[int] = None,
     ) -> RecordMap:
         if not self.consumer.flow_active:
             return {}
@@ -999,11 +1018,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1030,7 +1049,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
         """Hash key to determine partition destination."""
         consumer = self._ensure_consumer()
@@ -1084,6 +1103,8 @@ class Producer(base.Producer):
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
             "api_version": self._api_version,
+            "metadata_max_age_ms": self.app.conf.producer_metadata_max_age_ms,
+            "connections_max_idle_ms": self.app.conf.producer_connections_max_idle_ms,
         }
 
     def _settings_auth(self) -> Mapping[str, Any]:
@@ -1207,7 +1228,9 @@ class Producer(base.Producer):
             return {"acks": "all", "enable_idempotence": True}
         return {}
 
-    def _new_producer(self, transactional_id: str = None) -> aiokafka.AIOKafkaProducer:
+    def _new_producer(
+        self, transactional_id: Optional[str] = None
+    ) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
             loop=self.loop,
             **{
@@ -1228,11 +1251,11 @@ class Producer(base.Producer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 20.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
@@ -1285,7 +1308,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be transmitted by producer."""
 
@@ -1349,7 +1372,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
         fut = await self.send(
@@ -1411,7 +1434,10 @@ class Transport(base.Transport):
         self._topic_waiters = {}
 
     def _topic_config(
-        self, retention: int = None, compacting: bool = None, deleting: bool = None
+        self,
+        retention: Optional[int] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
     ) -> MutableMapping[str, Any]:
         config: MutableMapping[str, Any] = {}
         cleanup_flags: Set[str] = set()
@@ -1481,11 +1507,11 @@ class Transport(base.Transport):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: int = 30000,
-        retention: int = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[int] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:  # pragma: no cover
         owner.log.info("Creating topic %r", topic)
@@ -1543,7 +1569,7 @@ class Transport(base.Transport):
 
 
 def credentials_to_aiokafka_auth(
-    credentials: CredentialsT = None, ssl_context: Any = None
+    credentials: Optional[CredentialsT] = None, ssl_context: Any = None
 ) -> Mapping:
     if credentials is not None:
         if isinstance(credentials, SSLCredentials):

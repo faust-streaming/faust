@@ -116,4 +116,4 @@ You can install the latest snapshot of Faust using the following
 
 .. sourcecode:: console
 
-    $ pip install https://github.com/robinhood/faust/zipball/master#egg=faust
+    $ pip install https://github.com/faust-streaming/faust/zipball/master#egg=faust

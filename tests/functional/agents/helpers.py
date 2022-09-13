@@ -43,7 +43,7 @@ class AgentCase(Service):
         value_serializer: CodecT = "raw",
         num_messages: int = 100,
         isolated_partitions: bool = False,
-        name: str = None,
+        name: Optional[str] = None,
         **kwargs: Any,
     ):
         self.app = app
@@ -67,10 +67,10 @@ class AgentCase(Service):
 
         super().__init__(**kwargs)
 
-        self.agent_started = asyncio.Event(loop=self.loop)
-        self.agent_started_processing = asyncio.Event(loop=self.loop)
-        self.agent_stopped_processing = asyncio.Event(loop=self.loop)
-        self.finished = asyncio.Event(loop=self.loop)
+        self.agent_started = asyncio.Event()
+        self.agent_started_processing = asyncio.Event()
+        self.agent_stopped_processing = asyncio.Event()
+        self.finished = asyncio.Event()
 
     async def on_start(self) -> None:
         app = self.app
@@ -169,8 +169,8 @@ class AgentCase(Service):
     def Message(
         self,
         tp: TP = None,
-        offset: int = None,
-        timestamp: float = None,
+        offset: Optional[int] = None,
+        timestamp: Optional[float] = None,
         timestamp_type: int = 1,
         headers: Optional[HeadersArg] = None,
         key: Optional[bytes] = None,

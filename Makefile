@@ -107,6 +107,7 @@ livedocs:
 
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
+	-rm -rf "$(DOCUMENTATION)"
 
 lint: flakecheck apicheck configcheck readmecheck pep257check vulture
 
@@ -223,7 +224,7 @@ reqs: reqs-default reqs-test reqs-dist reqs-docs reqs-ci reqs-debug
 
 .PHONY:
 reqs-default:
-	$(PIP) install -U -r requirements/default.txt
+	$(PIP) install -U -r requirements/requirements.txt
 
 .PHONY:
 reqs-test:
