@@ -372,7 +372,7 @@ Yes! Use ``eventlet`` as a bridge to integrate with ``asyncio``.
 
 This approach works with any blocking Python library that can work with `eventlet`
 
-Using `eventlet` requires you to install the `aioeventlet` module,
+Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
