@@ -1,2 +1,2 @@
-faust-aioeventlet~=0.5.1
+faust-aioeventlet
 dnspython
