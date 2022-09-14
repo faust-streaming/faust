@@ -89,7 +89,7 @@ html_theme_options = {
     'github_banner': True,
     'travis_button': True,
     'show_related': True,
-    'github_user': 'robinhood',
+    'github_user': 'faust-streaming',
     'pre_bg': '#4c4c4c',
     'github_repo': 'faust',
     'github_type': 'star',
