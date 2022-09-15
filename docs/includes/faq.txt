@@ -13,7 +13,7 @@ Using :pypi:`eventlet`
 This approach works with any blocking Python library that can work with
 :pypi:`eventlet`.
 
-Using :pypi:`eventlet` requires you to install the :pypi:`aioeventlet` module,
+Using :pypi:`eventlet` requires you to install the :pypi:`faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 .. sourcecode:: console

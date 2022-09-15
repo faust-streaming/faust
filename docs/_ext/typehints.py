@@ -1,4 +1,5 @@
 import inspect
+import logging
 from typing import Any, AnyStr, TypeVar, get_type_hints
 try:
     from sphinx.ext.autodoc import Signature
@@ -127,9 +128,11 @@ def process_docstring(app, what, name, obj, options, lines):
         obj = inspect.unwrap(obj)
         try:
             type_hints = get_type_hints(obj)
-        # except (AttributeError, TypeError):
-        except:  # FIXME: A new exception is being raised, likely due to upgrading sphinx
+        except (AttributeError, TypeError):
             # Introspecting a slot wrapper will raise TypeError
+            return
+        except Exception as e:  # FIXME: A new exception is being raised, likely due to upgrading sphinx
+            logging.exception(e)
             return
 
         for argname, annotation in type_hints.items():
