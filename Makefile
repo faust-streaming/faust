@@ -148,7 +148,7 @@ $(README):
 readme: clean-readme $(README) readmecheck
 
 changelog:
-	git-changelog . -o CHANGELOG.md
+	git-changelog . -o CHANGELOG.md -t path:"$(SPHINX_DIR)/keepachangelog/"
 
 clean-contrib:
 	-rm -f "$(CONTRIBUTING)"

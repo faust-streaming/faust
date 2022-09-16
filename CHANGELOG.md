@@ -6,12 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.10](https://github.com/faust-streaming/faust/releases/tag/v0.8.10) - 2022-09-14
 
-<small>[Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)</small>
+[Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)
 
 
 ## [v0.8.9](https://github.com/faust-streaming/faust/releases/tag/v0.8.9) - 2022-09-04
 
-<small>[Compare with v0.8.8](https://github.com/faust-streaming/faust/compare/v0.8.8...v0.8.9)</small>
+[Compare with v0.8.8](https://github.com/faust-streaming/faust/compare/v0.8.8...v0.8.9)
 
 ### Added
 - Add improvements to documentation (#351) ([2091326](https://github.com/faust-streaming/faust/commit/20913264c916d26f0ce50ba28f66e7008e38787e) by William Barnhart).
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.8](https://github.com/faust-streaming/faust/releases/tag/v0.8.8) - 2022-08-15
 
-<small>[Compare with v0.8.7](https://github.com/faust-streaming/faust/compare/v0.8.7...v0.8.8)</small>
+[Compare with v0.8.7](https://github.com/faust-streaming/faust/compare/v0.8.7...v0.8.8)
 
 ### Added
 - Adding intervaltree to manage gaps in topics to prevent oom (#282) ([1e7be3a](https://github.com/faust-streaming/faust/commit/1e7be3a1dba51e13e23dd804bfda9d630cc729bd) by Vikram Patki).
@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.7](https://github.com/faust-streaming/faust/releases/tag/v0.8.7) - 2022-08-11
 
-<small>[Compare with v0.8.6](https://github.com/faust-streaming/faust/compare/v0.8.6...v0.8.7)</small>
+[Compare with v0.8.6](https://github.com/faust-streaming/faust/compare/v0.8.6...v0.8.7)
 
 ### Added
 - Add dist.yml for uploading builds to pypi (#338) ([79d672c](https://github.com/faust-streaming/faust/commit/79d672cda7785803af43c9f2c0c28483788b7dd5) by William Barnhart).
@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.6](https://github.com/faust-streaming/faust/releases/tag/v0.8.6) - 2022-07-19
 
-<small>[Compare with v0.8.5](https://github.com/faust-streaming/faust/compare/v0.8.5...v0.8.6)</small>
+[Compare with v0.8.5](https://github.com/faust-streaming/faust/compare/v0.8.5...v0.8.6)
 
 ### Added
 - Add method to rocksdb for backing up partitions (#304) ([0bb2685](https://github.com/faust-streaming/faust/commit/0bb2685e545d28c4e8a604cc748c12e0911c1260) by William Barnhart).
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.5](https://github.com/faust-streaming/faust/releases/tag/v0.8.5) - 2022-06-02
 
-<small>[Compare with v0.8.4](https://github.com/faust-streaming/faust/compare/v0.8.4...v0.8.5)</small>
+[Compare with v0.8.4](https://github.com/faust-streaming/faust/compare/v0.8.4...v0.8.5)
 
 ### Added
 - Add support for additional sentry tags and arguments (#285) ([c230076](https://github.com/faust-streaming/faust/commit/c230076202e48cab273b656f01f938d3e12db54f) by Ran K).
@@ -81,7 +81,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.4](https://github.com/faust-streaming/faust/releases/tag/v0.8.4) - 2022-02-25
 
-<small>[Compare with v0.8.2](https://github.com/faust-streaming/faust/compare/v0.8.2...v0.8.4)</small>
+[Compare with v0.8.2](https://github.com/faust-streaming/faust/compare/v0.8.2...v0.8.4)
 
 ### Fixed
 - Fix: producer send pending check with threads (#270) ([4e32327](https://github.com/faust-streaming/faust/commit/4e32327ed784ab0d242a095eb2f45f760ecee3a1) by Christoph Brand).
@@ -90,7 +90,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.2](https://github.com/faust-streaming/faust/releases/tag/v0.8.2) - 2022-02-04
 
-<small>[Compare with v0.8.1](https://github.com/faust-streaming/faust/compare/v0.8.1...v0.8.2)</small>
+[Compare with v0.8.1](https://github.com/faust-streaming/faust/compare/v0.8.1...v0.8.2)
 
 ### Fixed
 - Fix errors in seek when flow is not active (#264) ([a313821](https://github.com/faust-streaming/faust/commit/a31382119c57da006b2ff073094358119f0d7f3d) by Vikram Patki).
@@ -98,17 +98,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.8.1](https://github.com/faust-streaming/faust/releases/tag/v0.8.1) - 2022-01-19
 
-<small>[Compare with v0.8.0](https://github.com/faust-streaming/faust/compare/v0.8.0...v0.8.1)</small>
+[Compare with v0.8.0](https://github.com/faust-streaming/faust/compare/v0.8.0...v0.8.1)
 
 
 ## [v0.8.0](https://github.com/faust-streaming/faust/releases/tag/v0.8.0) - 2022-01-11
 
-<small>[Compare with v0.7.9](https://github.com/faust-streaming/faust/compare/v0.7.9...v0.8.0)</small>
+[Compare with v0.7.9](https://github.com/faust-streaming/faust/compare/v0.7.9...v0.8.0)
 
 
 ## [v0.7.9](https://github.com/faust-streaming/faust/releases/tag/v0.7.9) - 2022-01-07
 
-<small>[Compare with v0.7.8](https://github.com/faust-streaming/faust/compare/v0.7.8...v0.7.9)</small>
+[Compare with v0.7.8](https://github.com/faust-streaming/faust/compare/v0.7.8...v0.7.9)
 
 ### Fixed
 - Fix condition to delete old table keys (#251) ([a0e9a31](https://github.com/faust-streaming/faust/commit/a0e9a31c8f831b99a40ed5245219d053831571e3) by Dima Kovalchuk).
@@ -116,12 +116,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.7.8](https://github.com/faust-streaming/faust/releases/tag/v0.7.8) - 2021-12-18
 
-<small>[Compare with v0.7.7](https://github.com/faust-streaming/faust/compare/v0.7.7...v0.7.8)</small>
+[Compare with v0.7.7](https://github.com/faust-streaming/faust/compare/v0.7.7...v0.7.8)
 
 
 ## [v0.7.7](https://github.com/faust-streaming/faust/releases/tag/v0.7.7) - 2021-12-17
 
-<small>[Compare with v0.7.6](https://github.com/faust-streaming/faust/compare/v0.7.6...v0.7.7)</small>
+[Compare with v0.7.6](https://github.com/faust-streaming/faust/compare/v0.7.6...v0.7.7)
 
 ### Fixed
 - Fix race conditions on rebalance (#241) ([6f3c783](https://github.com/faust-streaming/faust/commit/6f3c783022b612d171de33003968fa056f48b325) by Vikram Patki).
@@ -129,7 +129,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.7.6](https://github.com/faust-streaming/faust/releases/tag/v0.7.6) - 2021-12-15
 
-<small>[Compare with v0.7.5](https://github.com/faust-streaming/faust/compare/v0.7.5...v0.7.6)</small>
+[Compare with v0.7.5](https://github.com/faust-streaming/faust/compare/v0.7.5...v0.7.6)
 
 ### Removed
 - Remove wait_first and extra log (#240) ([6e5c301](https://github.com/faust-streaming/faust/commit/6e5c301e08ff0a8b9fc693ba9cc88d11e5951cd2) by ekerstens).
@@ -137,12 +137,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.7.5](https://github.com/faust-streaming/faust/releases/tag/v0.7.5) - 2021-12-14
 
-<small>[Compare with v0.7.4](https://github.com/faust-streaming/faust/compare/v0.7.4...v0.7.5)</small>
+[Compare with v0.7.4](https://github.com/faust-streaming/faust/compare/v0.7.4...v0.7.5)
 
 
 ## [v0.7.4](https://github.com/faust-streaming/faust/releases/tag/v0.7.4) - 2021-12-13
 
-<small>[Compare with v0.7.3](https://github.com/faust-streaming/faust/compare/v0.7.3...v0.7.4)</small>
+[Compare with v0.7.3](https://github.com/faust-streaming/faust/compare/v0.7.3...v0.7.4)
 
 ### Fixed
 - Fix race condition when buffers are full (#237) ([7d861dc](https://github.com/faust-streaming/faust/commit/7d861dc9616a26d0105b102eb70c793c69af2759) by Vikram Patki). Related issues/PRs: [#166](https://github.com/faust-streaming/faust/issues/166)
@@ -150,27 +150,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.7.3](https://github.com/faust-streaming/faust/releases/tag/v0.7.3) - 2021-12-10
 
-<small>[Compare with v0.7.2](https://github.com/faust-streaming/faust/compare/v0.7.2...v0.7.3)</small>
+[Compare with v0.7.2](https://github.com/faust-streaming/faust/compare/v0.7.2...v0.7.3)
 
 
 ## [v0.7.2](https://github.com/faust-streaming/faust/releases/tag/v0.7.2) - 2021-12-10
 
-<small>[Compare with v0.7.1](https://github.com/faust-streaming/faust/compare/v0.7.1...v0.7.2)</small>
+[Compare with v0.7.1](https://github.com/faust-streaming/faust/compare/v0.7.1...v0.7.2)
 
 
 ## [v0.7.1](https://github.com/faust-streaming/faust/releases/tag/v0.7.1) - 2021-12-10
 
-<small>[Compare with v0.7.0](https://github.com/faust-streaming/faust/compare/v0.7.0...v0.7.1)</small>
+[Compare with v0.7.0](https://github.com/faust-streaming/faust/compare/v0.7.0...v0.7.1)
 
 
 ## [v0.7.0](https://github.com/faust-streaming/faust/releases/tag/v0.7.0) - 2021-12-03
 
-<small>[Compare with v0.6.14](https://github.com/faust-streaming/faust/compare/v0.6.14...v0.7.0)</small>
+[Compare with v0.6.14](https://github.com/faust-streaming/faust/compare/v0.6.14...v0.7.0)
 
 
 ## [v0.6.14](https://github.com/faust-streaming/faust/releases/tag/v0.6.14) - 2021-11-30
 
-<small>[Compare with v0.6.13](https://github.com/faust-streaming/faust/compare/v0.6.13...v0.6.14)</small>
+[Compare with v0.6.13](https://github.com/faust-streaming/faust/compare/v0.6.13...v0.6.14)
 
 ### Fixed
 - Fix for out of order events (#228) ([7e3c60c](https://github.com/faust-streaming/faust/commit/7e3c60cad80b79fd177ca1e1448d1b33385a1f10) by Vikram Patki).
@@ -180,12 +180,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.13](https://github.com/faust-streaming/faust/releases/tag/v0.6.13) - 2021-11-29
 
-<small>[Compare with v0.6.12](https://github.com/faust-streaming/faust/compare/v0.6.12...v0.6.13)</small>
+[Compare with v0.6.12](https://github.com/faust-streaming/faust/compare/v0.6.12...v0.6.13)
 
 
 ## [v0.6.12](https://github.com/faust-streaming/faust/releases/tag/v0.6.12) - 2021-11-18
 
-<small>[Compare with v0.6.11](https://github.com/faust-streaming/faust/compare/v0.6.11...v0.6.12)</small>
+[Compare with v0.6.11](https://github.com/faust-streaming/faust/compare/v0.6.11...v0.6.12)
 
 ### Added
 - Add default to external_topic_distribution (#222) ([23c2d90](https://github.com/faust-streaming/faust/commit/23c2d902380419ec8804cd05b3f9e8c47279e5d0) by Stegallo).
@@ -193,7 +193,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.11](https://github.com/faust-streaming/faust/releases/tag/v0.6.11) - 2021-11-17
 
-<small>[Compare with v0.6.10](https://github.com/faust-streaming/faust/compare/v0.6.10...v0.6.11)</small>
+[Compare with v0.6.10](https://github.com/faust-streaming/faust/compare/v0.6.10...v0.6.11)
 
 ### Added
 - Add all partitions of global tables as active in order to let them recover in the beginning (#213) ([60a8696](https://github.com/faust-streaming/faust/commit/60a869654d1e13914d36f3db0c66fef28911c7ce) by aoberegg).
@@ -208,7 +208,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.10](https://github.com/faust-streaming/faust/releases/tag/v0.6.10) - 2021-10-21
 
-<small>[Compare with v0.6.9](https://github.com/faust-streaming/faust/compare/v0.6.9...v0.6.10)</small>
+[Compare with v0.6.9](https://github.com/faust-streaming/faust/compare/v0.6.9...v0.6.10)
 
 ### Added
 - Adding new feature to retry on aerospike runtime exceptions issue#202 (#203) ([868d7a4](https://github.com/faust-streaming/faust/commit/868d7a40c04450924237914591ea26dc88eb00ba) by Vikram Patki).
@@ -225,7 +225,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.9](https://github.com/faust-streaming/faust/releases/tag/v0.6.9) - 2021-07-06
 
-<small>[Compare with v0.6.8](https://github.com/faust-streaming/faust/compare/v0.6.8...v0.6.9)</small>
+[Compare with v0.6.8](https://github.com/faust-streaming/faust/compare/v0.6.8...v0.6.9)
 
 ### Fixed
 - Fix error messages in faust app #166 ([b06e579](https://github.com/faust-streaming/faust/commit/b06e5799653d75021aa8a409c3d3e6f83a266f1f) by Vikram Patki 24489).
@@ -233,7 +233,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.8](https://github.com/faust-streaming/faust/releases/tag/v0.6.8) - 2021-06-29
 
-<small>[Compare with v0.6.7](https://github.com/faust-streaming/faust/compare/v0.6.7...v0.6.8)</small>
+[Compare with v0.6.7](https://github.com/faust-streaming/faust/compare/v0.6.7...v0.6.8)
 
 ### Fixed
 - Fix for consumer errors in app #166 (#167) ([761713b](https://github.com/faust-streaming/faust/commit/761713b475f1ca4df45b1a0c3d833e4d18735184) by Vikram Patki).
@@ -242,12 +242,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.7](https://github.com/faust-streaming/faust/releases/tag/v0.6.7) - 2021-06-07
 
-<small>[Compare with v0.6.6](https://github.com/faust-streaming/faust/compare/v0.6.6...v0.6.7)</small>
+[Compare with v0.6.6](https://github.com/faust-streaming/faust/compare/v0.6.6...v0.6.7)
 
 
 ## [v0.6.6](https://github.com/faust-streaming/faust/releases/tag/v0.6.6) - 2021-06-03
 
-<small>[Compare with v0.6.5](https://github.com/faust-streaming/faust/compare/v0.6.5...v0.6.6)</small>
+[Compare with v0.6.5](https://github.com/faust-streaming/faust/compare/v0.6.5...v0.6.6)
 
 ### Fixed
 - Fix string formatting error when logging slow processing (#156) ([e71145c](https://github.com/faust-streaming/faust/commit/e71145c2053c4a9bf0b9f74eec0f5180f8f6b877) by Erik Forsberg). Related issues/PRs: [#153](https://github.com/faust-streaming/faust/issues/153)
@@ -256,7 +256,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.5](https://github.com/faust-streaming/faust/releases/tag/v0.6.5) - 2021-05-14
 
-<small>[Compare with v0.6.4](https://github.com/faust-streaming/faust/compare/v0.6.4...v0.6.5)</small>
+[Compare with v0.6.4](https://github.com/faust-streaming/faust/compare/v0.6.4...v0.6.5)
 
 ### Added
 - Adding replication factor to the leader topic (#150) ([7ab0647](https://github.com/faust-streaming/faust/commit/7ab0647b66e7c45ef255810e2cd5648cd631759e) by Vikram Patki).
@@ -267,7 +267,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.4](https://github.com/faust-streaming/faust/releases/tag/v0.6.4) - 2021-04-26
 
-<small>[Compare with v0.6.3](https://github.com/faust-streaming/faust/compare/v0.6.3...v0.6.4)</small>
+[Compare with v0.6.3](https://github.com/faust-streaming/faust/compare/v0.6.3...v0.6.4)
 
 ### Fixed
 - Fix rocksdb for use with global tables or tables that use_partitioner (#130) ([ec3ac3e](https://github.com/faust-streaming/faust/commit/ec3ac3ec5946be54134703bab53fe87a16abaa53) by aoberegg).
@@ -275,7 +275,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.3](https://github.com/faust-streaming/faust/releases/tag/v0.6.3) - 2021-04-06
 
-<small>[Compare with v0.6.2](https://github.com/faust-streaming/faust/compare/v0.6.2...v0.6.3)</small>
+[Compare with v0.6.2](https://github.com/faust-streaming/faust/compare/v0.6.2...v0.6.3)
 
 ### Added
 - Adding changelog ([72c59b7](https://github.com/faust-streaming/faust/commit/72c59b78553f5ee85e84f07c6962a7deaac1a22f) by Vikram Patki 24489).
@@ -286,7 +286,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.2](https://github.com/faust-streaming/faust/releases/tag/v0.6.2) - 2021-03-12
 
-<small>[Compare with v0.6.1](https://github.com/faust-streaming/faust/compare/v0.6.1...v0.6.2)</small>
+[Compare with v0.6.1](https://github.com/faust-streaming/faust/compare/v0.6.1...v0.6.2)
 
 ### Added
 - Add app_name to prometheus metrics (#120) ([e0010f7](https://github.com/faust-streaming/faust/commit/e0010f72b0b0084c24c328962184d455bf2a02c8) by Alexey Kuzyashin).
@@ -294,7 +294,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.1](https://github.com/faust-streaming/faust/releases/tag/v0.6.1) - 2021-02-28
 
-<small>[Compare with v0.6.0](https://github.com/faust-streaming/faust/compare/v0.6.0...v0.6.1)</small>
+[Compare with v0.6.0](https://github.com/faust-streaming/faust/compare/v0.6.0...v0.6.1)
 
 ### Fixed
 - Fix scan options (#117) ([750e3ad](https://github.com/faust-streaming/faust/commit/750e3ad2303bf6fa21fb4e1020b8f15dec3101a2) by Vikram Patki).
@@ -305,7 +305,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.6.0](https://github.com/faust-streaming/faust/releases/tag/v0.6.0) - 2021-02-25
 
-<small>[Compare with v0.5.2](https://github.com/faust-streaming/faust/compare/v0.5.2...v0.6.0)</small>
+[Compare with v0.5.2](https://github.com/faust-streaming/faust/compare/v0.5.2...v0.6.0)
 
 ### Fixed
 - Fix table rebalance issue (#110) ([cd136ad](https://github.com/faust-streaming/faust/commit/cd136ad791546c3b0e1fdac44a27cb6cd2caea21) by Bob Haddleton).
@@ -313,7 +313,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.5.2](https://github.com/faust-streaming/faust/releases/tag/v0.5.2) - 2021-02-19
 
-<small>[Compare with v0.5.1](https://github.com/faust-streaming/faust/compare/v0.5.1...v0.5.2)</small>
+[Compare with v0.5.1](https://github.com/faust-streaming/faust/compare/v0.5.1...v0.5.2)
 
 ### Fixed
 - Fix extra parameter (#101) (#109) ([d3f28bd](https://github.com/faust-streaming/faust/commit/d3f28bdfa657131877e8c8a7ad59c73397ac7797) by Bob Haddleton).
@@ -321,17 +321,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.5.1](https://github.com/faust-streaming/faust/releases/tag/v0.5.1) - 2021-02-18
 
-<small>[Compare with v0.5.0](https://github.com/faust-streaming/faust/compare/v0.5.0...v0.5.1)</small>
+[Compare with v0.5.0](https://github.com/faust-streaming/faust/compare/v0.5.0...v0.5.1)
 
 
 ## [v0.5.0](https://github.com/faust-streaming/faust/releases/tag/v0.5.0) - 2021-02-18
 
-<small>[Compare with v0.4.7](https://github.com/faust-streaming/faust/compare/v0.4.7...v0.5.0)</small>
+[Compare with v0.4.7](https://github.com/faust-streaming/faust/compare/v0.4.7...v0.5.0)
 
 
 ## [v0.4.7](https://github.com/faust-streaming/faust/releases/tag/v0.4.7) - 2021-02-10
 
-<small>[Compare with v0.4.6](https://github.com/faust-streaming/faust/compare/v0.4.6...v0.4.7)</small>
+[Compare with v0.4.6](https://github.com/faust-streaming/faust/compare/v0.4.6...v0.4.7)
 
 ### Added
 - Adding changelog for release ([4f7735d](https://github.com/faust-streaming/faust/commit/4f7735ddf8d591eeab5d54a0bbe3d38cd43644c4) by Vikram Patki 24489).
@@ -343,7 +343,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.4.6](https://github.com/faust-streaming/faust/releases/tag/v0.4.6) - 2021-01-29
 
-<small>[Compare with v0.4.5](https://github.com/faust-streaming/faust/compare/v0.4.5...v0.4.6)</small>
+[Compare with v0.4.5](https://github.com/faust-streaming/faust/compare/v0.4.5...v0.4.6)
 
 ### Fixed
 - Fixing race conditions in opening rocksdb (#90) ([f51a850](https://github.com/faust-streaming/faust/commit/f51a8508836ed0aa46e13fe9bb3d64a35d261b42) by Vikram Patki).
@@ -352,7 +352,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.4.5](https://github.com/faust-streaming/faust/releases/tag/v0.4.5) - 2021-01-28
 
-<small>[Compare with v0.4.3](https://github.com/faust-streaming/faust/compare/v0.4.3...v0.4.5)</small>
+[Compare with v0.4.3](https://github.com/faust-streaming/faust/compare/v0.4.3...v0.4.5)
 
 ### Added
 - Adding performance improvement for getters (#87) ([d4392d5](https://github.com/faust-streaming/faust/commit/d4392d5b84c99d654caf8b2848029948c1709a7d) by Vikram Patki).
@@ -360,12 +360,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.4.3](https://github.com/faust-streaming/faust/releases/tag/v0.4.3) - 2021-01-26
 
-<small>[Compare with v0.4.2](https://github.com/faust-streaming/faust/compare/v0.4.2...v0.4.3)</small>
+[Compare with v0.4.2](https://github.com/faust-streaming/faust/compare/v0.4.2...v0.4.3)
 
 
 ## [v0.4.2](https://github.com/faust-streaming/faust/releases/tag/v0.4.2) - 2021-01-21
 
-<small>[Compare with v0.4.1](https://github.com/faust-streaming/faust/compare/v0.4.1...v0.4.2)</small>
+[Compare with v0.4.1](https://github.com/faust-streaming/faust/compare/v0.4.1...v0.4.2)
 
 ### Added
 - Adding threaded producer (#68) ([fda7e52](https://github.com/faust-streaming/faust/commit/fda7e5264a4e19321e286d3151a0e0bb56ee5545) by Vikram Patki).
@@ -373,7 +373,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.4.1](https://github.com/faust-streaming/faust/releases/tag/v0.4.1) - 2021-01-15
 
-<small>[Compare with 0.4.0](https://github.com/faust-streaming/faust/compare/0.4.0...v0.4.1)</small>
+[Compare with 0.4.0](https://github.com/faust-streaming/faust/compare/0.4.0...v0.4.1)
 
 ### Added
 - Add web_ssl_context to allow internal web server to support https (#69) ([fcb6b18](https://github.com/faust-streaming/faust/commit/fcb6b185105239329fd21e4af0f23e5244a2c8eb) by Bob Haddleton).
@@ -384,7 +384,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [0.4.0](https://github.com/faust-streaming/faust/releases/tag/0.4.0) - 2020-12-22
 
-<small>[Compare with v0.4.0](https://github.com/faust-streaming/faust/compare/v0.4.0...0.4.0)</small>
+[Compare with v0.4.0](https://github.com/faust-streaming/faust/compare/v0.4.0...0.4.0)
 
 ### Changed
 - Change requirements from mode to mode-streaming (#65) ([e239534](https://github.com/faust-streaming/faust/commit/e23953473e3aca2c56f77963926ceec49aba1e57) by Thomas Sarboni).
@@ -392,7 +392,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.4.0](https://github.com/faust-streaming/faust/releases/tag/v0.4.0) - 2020-12-18
 
-<small>[Compare with v0.3.1](https://github.com/faust-streaming/faust/compare/v0.3.1...v0.4.0)</small>
+[Compare with v0.3.1](https://github.com/faust-streaming/faust/compare/v0.3.1...v0.4.0)
 
 ### Added
 - Add backpressure to slow stream processing to avoid filing up the buffer (#55) ([ccaf0a7](https://github.com/faust-streaming/faust/commit/ccaf0a77d37738873e39235d738172c6f6386035) by Vikram Patki).
@@ -404,7 +404,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.3.1](https://github.com/faust-streaming/faust/releases/tag/v0.3.1) - 2020-12-07
 
-<small>[Compare with v0.3.0](https://github.com/faust-streaming/faust/compare/v0.3.0...v0.3.1)</small>
+[Compare with v0.3.0](https://github.com/faust-streaming/faust/compare/v0.3.0...v0.3.1)
 
 ### Fixed
 - Fix recovery issue in transaction and reprocessing message in consumer (#49) ([be1e6db](https://github.com/faust-streaming/faust/commit/be1e6dbe2507fd068a40391dcd2ddd436372661e) by Vikram Patki).
@@ -412,12 +412,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.3.0](https://github.com/faust-streaming/faust/releases/tag/v0.3.0) - 2020-11-24
 
-<small>[Compare with v0.2.2](https://github.com/faust-streaming/faust/compare/v0.2.2...v0.3.0)</small>
+[Compare with v0.2.2](https://github.com/faust-streaming/faust/compare/v0.2.2...v0.3.0)
 
 
 ## [v0.2.2](https://github.com/faust-streaming/faust/releases/tag/v0.2.2) - 2020-11-20
 
-<small>[Compare with v0.2.1](https://github.com/faust-streaming/faust/compare/v0.2.1...v0.2.2)</small>
+[Compare with v0.2.1](https://github.com/faust-streaming/faust/compare/v0.2.1...v0.2.2)
 
 ### Fixed
 - Fix for canceled from mode (#42) ([1131106](https://github.com/faust-streaming/faust/commit/1131106b8c954c6df9f5a9d4f7321f3211f65327) by Vikram Patki).
@@ -431,7 +431,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.2.1](https://github.com/faust-streaming/faust/releases/tag/v0.2.1) - 2020-11-13
 
-<small>[Compare with v0.2.0](https://github.com/faust-streaming/faust/compare/v0.2.0...v0.2.1)</small>
+[Compare with v0.2.0](https://github.com/faust-streaming/faust/compare/v0.2.0...v0.2.1)
 
 ### Fixed
 - Fix typo (#26) ([0db67af](https://github.com/faust-streaming/faust/commit/0db67af566335f257c5bf1dbef7f3d352ad8218c) by M).
@@ -439,12 +439,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.2.0](https://github.com/faust-streaming/faust/releases/tag/v0.2.0) - 2020-11-11
 
-<small>[Compare with v0.1.1](https://github.com/faust-streaming/faust/compare/v0.1.1...v0.2.0)</small>
+[Compare with v0.1.1](https://github.com/faust-streaming/faust/compare/v0.1.1...v0.2.0)
 
 
 ## [v0.1.1](https://github.com/faust-streaming/faust/releases/tag/v0.1.1) - 2020-11-11
 
-<small>[Compare with v0.1.0rc6](https://github.com/faust-streaming/faust/compare/v0.1.0rc6...v0.1.1)</small>
+[Compare with v0.1.0rc6](https://github.com/faust-streaming/faust/compare/v0.1.0rc6...v0.1.1)
 
 ### Fixed
 - Fixed recovery hang ([107142c](https://github.com/faust-streaming/faust/commit/107142cedf2b193590847b52d3326d952e60f34b) by Vikram Patki 24489).
@@ -453,7 +453,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.1.0rc6](https://github.com/faust-streaming/faust/releases/tag/v0.1.0rc6) - 2020-11-10
 
-<small>[Compare with v0.1.0rc5](https://github.com/faust-streaming/faust/compare/v0.1.0rc5...v0.1.0rc6)</small>
+[Compare with v0.1.0rc5](https://github.com/faust-streaming/faust/compare/v0.1.0rc5...v0.1.0rc6)
 
 ### Fixed
 - Fixed recovery hang ([1f3111a](https://github.com/faust-streaming/faust/commit/1f3111a9cc692e4a25ea29d316b55acd95a889b0) by Vikram Patki 24489).
@@ -461,7 +461,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.1.0rc5](https://github.com/faust-streaming/faust/releases/tag/v0.1.0rc5) - 2020-11-09
 
-<small>[Compare with v0.1.0rc3-2](https://github.com/faust-streaming/faust/compare/v0.1.0rc3-2...v0.1.0rc5)</small>
+[Compare with v0.1.0rc3-2](https://github.com/faust-streaming/faust/compare/v0.1.0rc3-2...v0.1.0rc5)
 
 ### Fixed
 - Fixed recovery hang ([40ea0b0](https://github.com/faust-streaming/faust/commit/40ea0b0967ad5a4fee2754bacefa8ee8f9d45ee5) by Vikram Patki 24489).
@@ -469,7 +469,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.1.0rc3-2](https://github.com/faust-streaming/faust/releases/tag/v0.1.0rc3-2) - 2020-11-08
 
-<small>[Compare with v0.1.0](https://github.com/faust-streaming/faust/compare/v0.1.0...v0.1.0rc3-2)</small>
+[Compare with v0.1.0](https://github.com/faust-streaming/faust/compare/v0.1.0...v0.1.0rc3-2)
 
 ### Fixed
 - Fixed recovery hang ([7902e02](https://github.com/faust-streaming/faust/commit/7902e0280971410ff50e5ebc4a4b911872e4bccf) by Vikram Patki 24489).
@@ -481,7 +481,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [v0.1.0](https://github.com/faust-streaming/faust/releases/tag/v0.1.0) - 2020-11-04
 
-<small>[Compare with first commit](https://github.com/faust-streaming/faust/compare/b4d2fde2f5170aecf56c46c502a95266486bff04...v0.1.0)</small>
+[Compare with first commit](https://github.com/faust-streaming/faust/compare/b4d2fde2f5170aecf56c46c502a95266486bff04...v0.1.0)
 
 ### Added
 
