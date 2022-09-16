@@ -1,13 +1,16 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
+The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [v0.8.10](https://github.com/faust-streaming/faust/releases/tag/v0.8.10) - 2022-09-14
 
 [Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)
 
+### Changed
+- Change `aioeventlet` extension to `faust-aioeventlet`
+- Update versioning of `click>=6.7,<8.2`
 
 ## [v0.8.9](https://github.com/faust-streaming/faust/releases/tag/v0.8.9) - 2022-09-04
 
