@@ -313,7 +313,7 @@ class raw(Codec):
 #: Codec registry, mapping of name to :class:`Codec` instance.
 codecs: MutableMapping[str, CodecT] = {
     "json": json(),
-    "pickle": pickle(),    # nosec B403
+    "pickle": pickle(),  # nosec B403
     "binary": binary(),
     "raw": raw(),
     "yaml": yaml(),
