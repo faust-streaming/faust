@@ -276,8 +276,8 @@ class Node(abc.ABC):
 
     def random_identifier(self, n: int = 8) -> str:
         return "".join(
-            random.choice(string.ascii_letters) for _ in range(n)
-        )  # nosec B311
+            random.choice(string.ascii_letters) for _ in range(n)  # nosec B311
+        )
 
     @abc.abstractmethod
     def build(self, var: Variable, *args: Type) -> str:

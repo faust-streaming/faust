@@ -83,6 +83,6 @@ class send(AppCommand):
             self.say(self.dumps(meta._asdict()))
             if i and max_latency:
                 await asyncio.sleep(
-                    random.uniform(min_latency, max_latency)
-                )  # nosec B311
+                    random.uniform(min_latency, max_latency)  # nosec B311
+                )
         await self.app.producer.stop()
