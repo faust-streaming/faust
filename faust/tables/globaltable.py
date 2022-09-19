@@ -11,5 +11,3 @@ class GlobalTable(Table, GlobalTableT):
 
             app.GlobalTable(..., partitions=1, recovery_buffer_size=1)
     """
-
-    pass
