@@ -279,7 +279,7 @@ class raw_pickle(Codec):
     """:mod:`pickle` serializer with no encoding."""
 
     def _loads(self, s: bytes) -> Any:
-        return _pickle.loads(s)  # nosec B403
+        return _pickle.loads(s)  # nosec B301
 
     def _dumps(self, obj: Any) -> bytes:
         return _pickle.dumps(obj)  # nosec B403
