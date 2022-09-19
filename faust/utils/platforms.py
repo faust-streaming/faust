@@ -16,7 +16,7 @@ def max_open_files() -> Optional[int]:
             # macOS bash always returns infinity, even though there
             # is an actual system limit.
             if platform.system() == "Darwin":
-                output = subprocess.check_output(  # nosec: B603
+                output = subprocess.check_output(  # nosec: B603,B607
                     [
                         "sysctl",
                         "-q",
