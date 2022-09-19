@@ -59,7 +59,7 @@ SPINNERS: Sequence[Sequence[str]] = [
     SPINNER_MOON,
 ]
 
-ACTIVE_SPINNER: Sequence[str] = random.choice(SPINNERS)
+ACTIVE_SPINNER: Sequence[str] = random.choice(SPINNERS)  # nosec B311
 
 
 class Spinner:
