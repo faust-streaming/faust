@@ -1,5 +1,5 @@
 """Platform/OS utilities."""
-import platform
+import platform  # nosec: B404
 import subprocess
 from typing import Optional
 
