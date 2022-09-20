@@ -141,12 +141,11 @@ class Cache(CacheT):
         self, request: Request, method: str, prefix: str, headers: Mapping[str, str]
     ) -> str:
         """Build cache key from web request and environment."""
-        context = hashlib.md5(
+        context = hashlib.md5(  # nosec B324
             b"".join(want_bytes(k) + want_bytes(v) for k, v in headers.items()),
-            usedforsecurity=False,
         ).hexdigest()
-        url = hashlib.md5(
-            iri_to_uri(str(request.url)).encode("ascii"), usedforsecurity=False
+        url = hashlib.md5(  # nosec B324
+            iri_to_uri(str(request.url)).encode("ascii"),
         ).hexdigest()
         return f"{self.ident}.{prefix}.{method}.{url}.{context}"
 
