@@ -1,4 +1,4 @@
 django
 faust[rocksdb]
 eventlet
-aioeventlet
+faust-aioeventlet

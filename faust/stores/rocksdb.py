@@ -139,8 +139,14 @@ class RocksDBOptions:
 
 class Store(base.SerializedStore):
     """RocksDB table storage.
-    Pass 'options={'read_only': True}' as an option into a Table class
-    to allow a RocksDB store be used by multiple apps.
+
+    .. tip::
+        You can specify 'read_only' as an option into a Table class
+        to allow a RocksDB store be used by multiple apps::
+
+            app.App(..., store="rocksdb://")
+            app.GlobalTable(..., options={'read_only': True})
+
     """
 
     offset_key = b"__faust\0offset__"
@@ -226,6 +232,12 @@ class Store(base.SerializedStore):
         This is only supported in newer versions of python-rocksdb which can read
         the RocksDB database using multi-process read access.
         See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
+
+        Example usage::
+
+            table = app.GlobalTable(..., partitions=1)
+            table.data.backup_partition(0, flush=True, purge=True, keep=1)
+
         """
         if self._backup_engine:
             partition = tp
@@ -253,6 +265,11 @@ class Store(base.SerializedStore):
             tp: Partition to restore
             latest: Restore the latest backup, set as False to restore a specific ID
             backup_id: Backup to restore
+
+        An example of how the method can be accessed::
+
+            table = app.GlobalTable(..., partitions=1)
+            table.data.restore_backup(0)
 
         """
         if self._backup_engine:

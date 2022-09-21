@@ -2,9 +2,13 @@
 
 # Python Stream Processing Fork
 
-![python versions](https://img.shields.io/badge/python-3.6%203.7%203.8%203.9-blue)
-![version](https://img.shields.io/badge/version-0.6.9-green)
+![python versions](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
+![version](https://img.shields.io/badge/version-0.8.10-green)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
+[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://fauststream.slack.com/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![pre-commit](https://img.shields.io/badge/pre--commit-enabled-green)
+![license](https://img.shields.io/pypi/l/faust-streaming)
 
 ## Installation
 
@@ -12,9 +16,9 @@
 
 ## Documentation
 
-- `introduction`: https://fauststream.com/en/latest/introduction.html
-- `quickstart`: https://fauststream.com/en/latest/playbooks/quickstart.html
-- `User Guide`: https://fauststream.com/en/latest/userguide/index.html
+- `introduction`: https://faust-streaming.github.io/faust/introduction.html
+- `quickstart`: https://faust-streaming.github.io/faust/playbooks/quickstart.html
+- `User Guide`: https://faust-streaming.github.io/faust/userguide/index.html
 
 ## Why the fork
 
@@ -285,7 +289,7 @@ Aerospike can be enabled as the state store by specifying
 
 By default, all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
 to a state store backed by RocksDB.
-The following configuration options should be passed in as keys to the options parameter in [Table](https://fauststream.com/en/latest/reference/faust.tables.html)
+The following configuration options should be passed in as keys to the options parameter in [Table](https://faust-streaming.github.io/faust/reference/faust.tables.html)
 `namespace` : aerospike namespace
 
 `ttl`: TTL for all KV's in the table
@@ -368,7 +372,7 @@ Yes! Use ``eventlet`` as a bridge to integrate with ``asyncio``.
 
 This approach works with any blocking Python library that can work with `eventlet`
 
-Using `eventlet` requires you to install the `aioeventlet` module,
+Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
@@ -407,14 +411,14 @@ introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this
 
-You may need to increase the limit for the maximum number of open files. 
-On macOS and Linux you can use: 
+You may need to increase the limit for the maximum number of open files.
+On macOS and Linux you can use:
 
 ```ulimit -n max_open_files``` to increase the open files limit to max_open_files.
 
 On docker, you can use the --ulimit flag:
 
-```docker run --ulimit nofile=50000:100000 <image-tag>``` 
+```docker run --ulimit nofile=50000:100000 <image-tag>```
 where 50000 is the soft limit, and 100000 is the hard limit [See the difference](https://unix.stackexchange.com/a/29579).
 
 ### What kafka versions faust supports
