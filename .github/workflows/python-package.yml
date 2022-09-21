@@ -19,7 +19,7 @@ jobs:
       # for example if a test fails only when Cython is enabled
       fail-fast: false
       matrix:
-        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10"]
+        python-version: ["3.6", "3.7", "3.8", "3.9", "3.10", "3.11"]
         use-cython: ["true", "false"]
     env:
       USE_CYTHON: ${{ matrix.use-cython }}
