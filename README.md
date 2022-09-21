@@ -2,7 +2,7 @@
 
 # Python Stream Processing Fork
 
-![python versions](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
+![python versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
 ![version](https://img.shields.io/badge/version-0.8.10-green)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
 [![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://fauststream.slack.com/)
