@@ -204,7 +204,7 @@ class Case(Service):
         """Schedule test execution, or not, based on probability setting."""
         execution: Optional[TestExecution] = None
         with ExitStack() as exit_stack:
-            if uniform(0, 1) < self.probability:
+            if uniform(0, 1) < self.probability:  # nosec B311
                 execution = await self.trigger(id, *args, **kwargs)
                 exit_stack.enter_context(current_test_stack.push(execution))
             yield execution
