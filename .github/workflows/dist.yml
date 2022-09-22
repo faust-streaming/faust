@@ -25,6 +25,7 @@ jobs:
           CIBW_MANYLINUX_X86_64_IMAGE: 'manylinux2014'
           CIBW_ARCHS: auto64
           CIBW_BUILD: 'cp3*'
+          CIBW_SKIP: '*p36*'
           CIBW_BEFORE_BUILD: pip3 install Cython
 
       - uses: actions/upload-artifact@v3
@@ -39,9 +40,6 @@ jobs:
         name: 'Checkout source repository'
 
       - uses: actions/setup-python@v4
-        name: 'Set up Python 3.10'
-        with:
-          python-version: '3.10'
 
       - name: 'Build sdist'
         run: >
