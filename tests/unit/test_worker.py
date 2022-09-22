@@ -152,8 +152,8 @@ class Test_Worker:
         worker.default_on_first_start = AsyncMock(name="on_first_start")
         await worker.on_first_start()
         worker.change_workdir.assert_called_once_with(worker.workdir)
-        worker.autodiscover.assert_called_once_with()
         worker.default_on_first_start.assert_called_once_with()
+        worker.autodiscover.assert_called_once_with()
 
     def test_change_workdir(self, worker):
         with patch("os.chdir") as chdir:
