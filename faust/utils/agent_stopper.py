@@ -8,8 +8,8 @@ async def agent_stopper(app) -> None:
     """
     Raise exception and crash app
     """
-    log.error('%s', traceback.format_exc())
-    log.warning('Closing application')
+    log.error("%s", traceback.format_exc())
+    log.warning("Closing application")
 
     # force the exit code of the application not to be 0
     # and prevent offsets from progressing
