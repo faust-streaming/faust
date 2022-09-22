@@ -4,6 +4,7 @@ import traceback
 
 log = logging.getLogger(__name__)
 
+
 async def agent_stopper(app) -> None:
     """
     Raise exception and crash app
