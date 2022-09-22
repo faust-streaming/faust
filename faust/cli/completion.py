@@ -28,7 +28,7 @@ class completion(AppCommand):
                 "Run `pip install click_completion` from your virtualenv\n"
                 "and try again!"
             )
-        self.say(click_completion.get_code(shell=self.shell()))
+        self.say(click_completion.get_code(shell=self.shell()))  # nosec: B604
 
     def shell(self) -> str:
         """Return the current shell used in this environment."""

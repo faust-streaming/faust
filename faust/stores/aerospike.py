@@ -1,3 +1,4 @@
+"""Aerospike storage."""
 import time
 import typing
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
@@ -41,13 +42,13 @@ class AeroSpikeStore(base.SerializedStore):
     ttl: int
     policies: typing.Mapping[str, Any]
     BIN_KEY = "value_key"
-    USERNAME_KEY = "username"
-    HOSTS_KEY = "hosts"
-    PASSWORD_KEY = "password"  # nosec
-    NAMESPACE_KEY = "namespace"
-    TTL_KEY = "ttl"
-    POLICIES_KEY = "policies"
-    CLIENT_OPTIONS_KEY = "client"
+    USERNAME_KEY: str = "username"
+    HOSTS_KEY: str = "hosts"
+    PASSWORD_KEY: str = "password"  # nosec
+    NAMESPACE_KEY: str = "namespace"
+    TTL_KEY: str = "ttl"
+    POLICIES_KEY: str = "policies"
+    CLIENT_OPTIONS_KEY: str = "client"
 
     def __init__(
         self,
@@ -70,6 +71,7 @@ class AeroSpikeStore(base.SerializedStore):
 
     @staticmethod
     def get_aerospike_client(aerospike_config: Dict[Any, Any]) -> Client:
+        """Try to get Aerospike client instance."""
         global aerospike_client
         if aerospike_client:
             return aerospike_client
@@ -200,6 +202,7 @@ class AeroSpikeStore(base.SerializedStore):
             raise ex
 
     def _size(self) -> int:
+        """Always returns 0 for Aerospike."""
         return 0
 
     def _contains(self, key: bytes) -> bool:
@@ -224,10 +227,20 @@ class AeroSpikeStore(base.SerializedStore):
             raise ex
 
     def _clear(self) -> None:
-        pass
+        """This is typically used to clear data.
+
+        This does nothing when using the Aerospike store.
+
+        """
+        ...
 
     def reset_state(self) -> None:
-        pass
+        """Remove system state.
+
+        This does nothing when using the Aerospike store.
+
+        """
+        ...
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the persisted offset.
@@ -237,6 +250,7 @@ class AeroSpikeStore(base.SerializedStore):
         return None
 
     def aerospike_fun_call_with_retry(self, fun, *args, **kwargs):
+        """Call function and retry until Aerospike throws exception."""
         f_tries = self.app.conf.aerospike_retries_on_exception
         f_delay = self.app.conf.aerospike_sleep_seconds_between_retries_on_exception
         while f_tries > 1:

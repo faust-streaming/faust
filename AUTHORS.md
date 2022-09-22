@@ -12,47 +12,48 @@ The award for doing this in any significant capacity for one year or longer, is 
 
 ## Contributors
 
-| Name                | Email                                 |
-|---------------------|---------------------------------------|
-| Allison Wang        | <allison.wang@robinhood.com>          |
-| Jamshed Vesuna      | <jamshed@robinhood.com>               |
-| Jaren Glover        | <jaren@robinhood.com>                 |
-| Jerry Li            | <jerry.li@robinhood.com>              |
-| Prithvi Narasimhan  | <narasimhan.prithvi@gmail.com>        |
-| Ruby Wang           | <ruby.wang@robinhood.com>             |
-| Shrey Kumar Shahi   | <shrey@robinhood.com>                 |
-| Mika Eloranta       | <mel@aiven.io>                        |
-| Omar Rayward        | <orayward@yahoo.com>                  |
-| Alexander Oberegger | <alexander.oberegger@smaxtec.com>     |
-| Matthew Stump       | <mstump@vorstella.com>                |
-| Martin Maillard     | <self@martin-maillard.com>            |
-| Mattias Karlsson    | <mattias@hemmabolan.se>               |
-| Matthias Wutte      | <matthias.wutte@smaxtec.com>          |
-| Thibault Serot      | <thibserot@gmail.com>                 |
-| Ryan Whitten        | <ryan@pixability.com>                 |
-| Nimi Wariboko Jr    | <nimiwaribokoj@gmail.com>             |
-| Chris Seto          | <chriskseto@gmail.com>                |
-| Amit Ripshtos       | <amit.r@qspark.prod>                  |
-|  Miha Troha         | <miha.troha@comcom.si>                |
-|  Perk Lim           | <perk@robinhood.com>                  |
-| Julien Surloppe     | <julien@surloppe.fr>                  |
-| Bob Haddleton       | <bob.haddleton@nokia.com>             |
-| Nimish Telang       | <nimish@telang.net>                   |
-| Cesar Pantoja       | <cesarpantoj@gmail.com>               |
-| Tomasz Nguyen       | <me@swistofon.pl>                     |
-| Artak Papikyan      | <artakp@patriot1tech.com>             |
-| Andrei Tuppitcyn    | <andrew.tupitsin@gmail.com>           |
-| Vikram Patki        | <vpatki@wayfair.com>                  |
-| Victor Miroshnikov  | <me@vmiroshnikov.com>                 |
-| Tobias Rauter       | <tobias.rauter@smaxtec.com>           |
-| DhruvaPatil98       | <dhruva.patil@galepartners.com>       |
-| Leandro Vonwerra    | <leandro.vonwerra@spoud.io>           |
-| Ignacio Peluffo     | <ipeluffo@gmail.com>                  |
-| Sergej Herbert      | <herbert.sergej@gmail.com>            |
-| Marcos Schroh       | <schrohm@gmail.com>                   |
-| Denis Kovalev       | <aikikode@gmail.com>                  |
-| Jonathan A. Booth   | <jonathan.booth@mastery.net>          |
-| Eran Kampf          | <ekampf@users.noreply.github.com>     |
-| Wjatscheslaw Kewlin | <Wjatscheslaw.Kewlin@d-fine.de>       |
-| Ramkumar M          | <ramchiyan1093@gmail.com>             |
-| Mark Lambert        | <mark.lambert@gmail.com>              |
+| Name                | Email                             |
+|---------------------|-----------------------------------|
+| Allison Wang        | <allison.wang@robinhood.com>      |
+| Jamshed Vesuna      | <jamshed@robinhood.com>           |
+| Jaren Glover        | <jaren@robinhood.com>             |
+| Jerry Li            | <jerry.li@robinhood.com>          |
+| Prithvi Narasimhan  | <narasimhan.prithvi@gmail.com>    |
+| Ruby Wang           | <ruby.wang@robinhood.com>         |
+| Shrey Kumar Shahi   | <shrey@robinhood.com>             |
+| Mika Eloranta       | <mel@aiven.io>                    |
+| Omar Rayward        | <orayward@yahoo.com>              |
+| Alexander Oberegger | <alexander.oberegger@smaxtec.com> |
+| Matthew Stump       | <mstump@vorstella.com>            |
+| Martin Maillard     | <self@martin-maillard.com>        |
+| Mattias Karlsson    | <mattias@hemmabolan.se>           |
+| Matthias Wutte      | <matthias.wutte@smaxtec.com>      |
+| Thibault Serot      | <thibserot@gmail.com>             |
+| Ryan Whitten        | <ryan@pixability.com>             |
+| Nimi Wariboko Jr    | <nimiwaribokoj@gmail.com>         |
+| Chris Seto          | <chriskseto@gmail.com>            |
+| Amit Ripshtos       | <amit.r@qspark.prod>              |
+| Miha Troha          | <miha.troha@comcom.si>            |
+| Perk Lim            | <perk@robinhood.com>              |
+| Julien Surloppe     | <julien@surloppe.fr>              |
+| Bob Haddleton       | <bob.haddleton@nokia.com>         |
+| Nimish Telang       | <nimish@telang.net>               |
+| Cesar Pantoja       | <cesarpantoj@gmail.com>           |
+| Tomasz Nguyen       | <me@swistofon.pl>                 |
+| Artak Papikyan      | <artakp@patriot1tech.com>         |
+| Andrei Tuppitcyn    | <andrew.tupitsin@gmail.com>       |
+| Vikram Patki        | <vpatki@wayfair.com>              |
+| Victor Miroshnikov  | <me@vmiroshnikov.com>             |
+| Tobias Rauter       | <tobias.rauter@smaxtec.com>       |
+| DhruvaPatil98       | <dhruva.patil@galepartners.com>   |
+| Leandro Vonwerra    | <leandro.vonwerra@spoud.io>       |
+| Ignacio Peluffo     | <ipeluffo@gmail.com>              |
+| Sergej Herbert      | <herbert.sergej@gmail.com>        |
+| Marcos Schroh       | <schrohm@gmail.com>               |
+| Denis Kovalev       | <aikikode@gmail.com>              |
+| Jonathan A. Booth   | <jonathan.booth@mastery.net>      |
+| Eran Kampf          | <ekampf@users.noreply.github.com> |
+| Wjatscheslaw Kewlin | <Wjatscheslaw.Kewlin@d-fine.de>   |
+| Ramkumar M          | <ramchiyan1093@gmail.com>         |
+| Mark Lambert        | <mark.lambert@gmail.com>          |
+| William Barnhart    | <williambbarnhart@gmail.com>      |

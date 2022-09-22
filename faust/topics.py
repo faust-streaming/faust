@@ -465,7 +465,8 @@ class Topic(SerializedChannel, TopicT):
             message.set_exception(exc)
             logger.warning(
                 f"_on_published error for message topic "
-                f"{message.channel.get_topic_name()} error {exc} message {message}"
+                f"{message.message.channel.get_topic_name()} "
+                f"error {exc} message {message}"
             )
             self.app.sensors.on_send_error(producer, exc, state)
         else:

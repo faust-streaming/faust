@@ -1,6 +1,6 @@
 """Platform/OS utilities."""
 import platform
-import subprocess
+import subprocess  # nosec: B404
 from typing import Optional
 
 
@@ -16,7 +16,7 @@ def max_open_files() -> Optional[int]:
             # macOS bash always returns infinity, even though there
             # is an actual system limit.
             if platform.system() == "Darwin":
-                output = subprocess.check_output(
+                output = subprocess.check_output(  # nosec
                     [
                         "sysctl",
                         "-q",
