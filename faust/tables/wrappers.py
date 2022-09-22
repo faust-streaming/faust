@@ -341,6 +341,7 @@ class WindowWrapper(WindowWrapperT):
                 key_type=self.table.key_type,
                 window=None,
             )
+            self.table.app.tables.add(self.key_index_table)
         self._get_relative_timestamp = self._relative_handler(relative_to)
 
     def clone(self, relative_to: RelativeArg) -> WindowWrapperT:

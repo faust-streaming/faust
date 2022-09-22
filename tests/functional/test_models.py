@@ -106,7 +106,7 @@ def test_paramters_with_custom_init():
     assert p.y == 10
 
     payload = p.dumps(serializer="json")
-    assert payload == b'{"x": 30, "y": 10}'
+    assert payload == b'{"x":30,"y":10}'
 
     data = json.loads(payload)
     p2 = Point.from_data(data)
@@ -128,7 +128,7 @@ def test_parameters_with_custom_init_and_super():
     assert p.z == 40
 
     payload = p.dumps(serializer="json")
-    assert payload == b'{"x": 30, "y": 10}'
+    assert payload == b'{"x":30,"y":10}'
 
     data = json.loads(payload)
     p2 = Point.from_data(data)
@@ -837,7 +837,7 @@ def test_compat_enabled_blessed_key(app):
 
 
 def test__polymorphic_fields_deeply_nested():
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -868,7 +868,7 @@ def test__polymorphic_fields_deeply_nested():
 
 
 def test_compat_blessed_key_deeply_nested():
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self, *args, **kwargs) -> None:
             self.data_store = None
 
@@ -934,7 +934,7 @@ ADTRIBUTE_PAYLOAD = """
 
 
 def test_adtribute_payload(app):
-    class BaseAttribution(Record, abc.ABC):
+    class BaseAttribution(Record, abc.ABC):  # noqa: B024
         def __post_init__(self) -> None:
             self.data_store = None
 

@@ -442,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://faust.readthedocs.io
+    https://faust-streaming.github.io/faust
     """
     return _prepare_cli(*args, **kwargs)
 
@@ -481,7 +481,7 @@ def _prepare_cli(
             os.environ["F_DATADIR"] = datadir
 
 
-class Command(abc.ABC):
+class Command(abc.ABC):  # noqa: B024
     """Base class for subcommands."""
 
     UsageError: Type[Exception] = click.UsageError
