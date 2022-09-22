@@ -2,8 +2,8 @@
 
 # Python Stream Processing Fork
 
-![python versions](https://img.shields.io/badge/python-3.6%20%7C%203.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
-![version](https://img.shields.io/badge/version-0.8.9-green)
+![python versions](https://img.shields.io/badge/python-3.7%20%7C%203.8%20%7C%203.9%20%7C%203.10-blue)
+![version](https://img.shields.io/badge/version-0.8.10-green)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
 [![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://fauststream.slack.com/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -372,7 +372,7 @@ Yes! Use ``eventlet`` as a bridge to integrate with ``asyncio``.
 
 This approach works with any blocking Python library that can work with `eventlet`
 
-Using `eventlet` requires you to install the `aioeventlet` module,
+Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
@@ -406,7 +406,7 @@ Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documen
 
 ### Will you support Python 2.7 or Python 3.5
 
-No. Faust requires Python 3.6 or later, since it heavily uses features that were
+No. Faust requires Python 3.7 or later, since it heavily uses features that were
 introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this

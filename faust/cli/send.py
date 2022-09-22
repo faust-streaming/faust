@@ -82,5 +82,7 @@ class send(AppCommand):
             meta: RecordMetadata = await fut_send_complete
             self.say(self.dumps(meta._asdict()))
             if i and max_latency:
-                await asyncio.sleep(random.uniform(min_latency, max_latency))
+                await asyncio.sleep(
+                    random.uniform(min_latency, max_latency)  # nosec B311
+                )
         await self.app.producer.stop()

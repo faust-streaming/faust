@@ -159,7 +159,7 @@ That's it! To install and use our new extension we do:
 At this point may want to publish this on PyPI to share
 the extension with other Faust users.
 """
-import pickle as _pickle
+import pickle as _pickle  # nosec B403
 from base64 import b64decode, b64encode
 from types import ModuleType
 from typing import Any, Dict, MutableMapping, Optional, Tuple, cast
@@ -279,10 +279,10 @@ class raw_pickle(Codec):
     """:mod:`pickle` serializer with no encoding."""
 
     def _loads(self, s: bytes) -> Any:
-        return _pickle.loads(s)
+        return _pickle.loads(s)  # nosec B301
 
     def _dumps(self, obj: Any) -> bytes:
-        return _pickle.dumps(obj)
+        return _pickle.dumps(obj)  # nosec B403
 
 
 def pickle() -> Codec:
@@ -313,7 +313,7 @@ class raw(Codec):
 #: Codec registry, mapping of name to :class:`Codec` instance.
 codecs: MutableMapping[str, CodecT] = {
     "json": json(),
-    "pickle": pickle(),
+    "pickle": pickle(),  # nosec B403
     "binary": binary(),
     "raw": raw(),
     "yaml": yaml(),

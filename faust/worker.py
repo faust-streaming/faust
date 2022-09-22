@@ -331,8 +331,8 @@ class Worker(mode.Worker):
         worker is restarted by an exception being raised.
         """
         self.change_workdir(self.workdir)
-        self.autodiscover()
         await self.default_on_first_start()
+        self.autodiscover()
 
     def change_workdir(self, path: Path) -> None:
         """Change the current working directory (CWD)."""
