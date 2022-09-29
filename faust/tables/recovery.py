@@ -706,7 +706,7 @@ class Recovery(Service):
         earliest = await consumer.earliest_offsets(*tps)
         # FIXME To be consistent with the offset -1 logic
         earliest = {
-            tp: offset - 1 if offset is not None else None
+            tp: offset if offset is not None else None
             for tp, offset in earliest.items()
         }
 
