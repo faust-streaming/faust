@@ -486,7 +486,7 @@ class Topic(SerializedChannel, TopicT):
         if partitions is None:
             partitions = self.app.conf.topic_partitions
         replicas: int
-        if self.replicas is None:
+        if not self.replicas:
             replicas = self.app.conf.topic_replication_factor
         else:
             replicas = self.replicas
