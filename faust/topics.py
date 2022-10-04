@@ -496,7 +496,7 @@ class Topic(SerializedChannel, TopicT):
                 await producer.create_topic(
                     topic=topic,
                     partitions=partitions,
-                    replication=replicas or 0,
+                    replication=replicas or 1,
                     config=self.config,
                     compacting=self.compacting,
                     deleting=self.deleting,
