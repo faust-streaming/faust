@@ -1067,7 +1067,7 @@ class Settings(base.SettingsRegistry):
         params.UnsignedInt,
         version_introduced="1.4",
         env_name="CONSUMER_MAX_FETCH_SIZE",
-        default=1024 ** 2,
+        default=1024**2,
     )
     def consumer_max_fetch_size(self) -> int:
         """Consumer max fetch size.

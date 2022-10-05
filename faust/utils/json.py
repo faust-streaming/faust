@@ -181,7 +181,6 @@ if orjson is not None:  # pragma: no cover
         """Deserialize json string."""
         return json_loads(s)
 
-
 else:
 
     def dumps(

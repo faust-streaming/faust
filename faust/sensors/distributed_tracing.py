@@ -5,11 +5,10 @@ from typing import Any, Dict
 import aiohttp
 import opentracing
 from mode import get_logger
-from mode.utils.compat import want_str
 from opentracing import Format
 from opentracing.ext import tags
 
-from faust import App, EventT, Sensor, StreamT
+from faust import EventT, Sensor, StreamT
 from faust.types import TP, Message, PendingMessage, ProducerT, RecordMetadata
 from faust.types.core import OpenHeadersArg, merge_headers
 from faust.utils.tracing import current_span, set_current_span
@@ -36,7 +35,7 @@ class TracingSensor(Sensor):
 
     # Message received by a consumer.
     def on_message_in(self, tp: TP, offset: int, message: Message) -> None:
-        carrier_headers = {want_str(k): want_str(v) for k, v in message.headers}
+        carrier_headers = {want_str(k): want_str(v) for k, v in message.headers}  # type: ignore
 
         if carrier_headers:
             parent_context = self.app_tracer.extract(
@@ -160,5 +159,5 @@ class TracingSensor(Sensor):
             logger.warning(f"Exception in trace_inject_headers {ex} ")
             return None
 
-    def on_threaded_producer_buffer_processed(self, app: App, size: int) -> None:
+    def on_threaded_producer_buffer_processed(self, app: App, size: int) -> None:  # type: ignore
         pass
