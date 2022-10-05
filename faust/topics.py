@@ -482,21 +482,23 @@ class Topic(SerializedChannel, TopicT):
 
     async def declare(self) -> None:
         """Declare/create this topic on the server."""
-        partitions = self.partitions
-        if partitions is None:
+        partitions: int
+        if self.partitions:
+            partitions = self.partitions
+        else:
             partitions = self.app.conf.topic_partitions
         replicas: int
-        if self.replicas is None:
-            replicas = self.app.conf.topic_replication_factor
-        else:
+        if self.replicas:
             replicas = self.replicas
+        else:
+            replicas = self.app.conf.topic_replication_factor
         if self.app.conf.topic_allow_declare:
             producer = await self._get_producer()
             for topic in self.topics:
                 await producer.create_topic(
                     topic=topic,
                     partitions=partitions,
-                    replication=replicas or 0,
+                    replication=replicas or 1,
                     config=self.config,
                     compacting=self.compacting,
                     deleting=self.deleting,
