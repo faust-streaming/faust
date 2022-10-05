@@ -1,4 +1,4 @@
-:Version: 0.8.11
+:Version: 0.9.0
 :Web: https://faust-streaming.github.io/faust
 :Download: https://pypi.org/project/faust-streaming
 :Source: https://github.com/faust-streaming/faust
