@@ -691,7 +691,6 @@ class Test_VEP_no_commit(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
 
-# @pytest.mark.skip("Needs fixing")
 class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     def test_constructor(self, *, cthread):
         assert cthread._partitioner
