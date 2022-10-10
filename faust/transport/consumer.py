@@ -1189,7 +1189,7 @@ class Consumer(Service, ConsumerT):
                             if gap > 1 and r_offset:
                                 acks_enabled = acks_enabled_for(message.topic)
                                 if acks_enabled:
-                                    await self._add_gap(tp, r_offset, offset)
+                                    await self._add_gap(tp, r_offset + 1, offset)
                             if commit_every is not None:
                                 if self._n_acked >= commit_every:
                                     self._n_acked = 0
