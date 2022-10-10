@@ -1114,7 +1114,7 @@ class Consumer(Service, ConsumerT):
             # self._committed_offset[tp] is 31
             # the return value will be None (the same as 31)
             if self._committed_offset[tp]:
-                if min(acked) - self._committed_offset[tp] > 0:
+                if min(acked) - self._committed_offset[tp] > 1:
                     return None
 
             # Note: acked is always kept sorted.
@@ -1189,7 +1189,7 @@ class Consumer(Service, ConsumerT):
                             if gap > 1 and r_offset:
                                 acks_enabled = acks_enabled_for(message.topic)
                                 if acks_enabled:
-                                    await self._add_gap(tp, r_offset, offset)
+                                    await self._add_gap(tp, r_offset + 1, offset)
                             if commit_every is not None:
                                 if self._n_acked >= commit_every:
                                     self._n_acked = 0
