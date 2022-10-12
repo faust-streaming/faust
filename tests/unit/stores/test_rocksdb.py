@@ -444,7 +444,7 @@ class Test_Store:
     @pytest.mark.asyncio
     async def test_open_db_for_partition_max_retries(self, *, store, db_for_partition):
         store.sleep = AsyncMock(name="sleep")
-        store._dbs = {'test': None}
+        store._dbs = {"test": None}
         with patch("faust.stores.rocksdb.rocksdb.errors.RocksIOError", KeyError):
             db_for_partition.side_effect = KeyError("lock already")
             with pytest.raises(KeyError):
