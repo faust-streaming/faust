@@ -441,15 +441,16 @@ class Test_Store:
                 is db_for_partition.return_value
             )
 
-    @pytest.mark.skip("Fix is TBD")
     @pytest.mark.asyncio
     async def test_open_db_for_partition_max_retries(self, *, store, db_for_partition):
         store.sleep = AsyncMock(name="sleep")
+        store._dbs = {'test': None}
         with patch("faust.stores.rocksdb.rocksdb.errors.RocksIOError", KeyError):
             db_for_partition.side_effect = KeyError("lock already")
             with pytest.raises(KeyError):
                 await store._try_open_db_for_partition(3)
-        assert store.sleep.call_count == 4
+        assert store.sleep.call_count == 29
+        assert len(store._dbs) == 0
 
     @pytest.mark.asyncio
     async def test_open_db_for_partition__raises_unexpected_error(
