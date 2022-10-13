@@ -1117,23 +1117,23 @@ class Stream(StreamT[T_co], Service):
                         # otherwise the lag would increase
                         value = skipped_value
 
-                try:
-                    if value is not skipped_value:
-                        self.events_total += 1
+                if value is not skipped_value:
+                    self.events_total += 1
+                    try:
                         yield value
-                finally:
-                    self.current_event = None
-                    # We want to ack the filtered out message
-                    # otherwise the lag would increase
-                    if event is not None and (do_ack or value is skipped_value):
-                        # This inlines self.ack
-                        last_stream_to_ack = event.ack()
-                        message = event.message
-                        tp = event.message.tp
-                        offset = event.message.offset
-                        on_stream_event_out(tp, offset, self, event, sensor_state)
-                        if last_stream_to_ack:
-                            on_message_out(tp, offset, message)
+                    finally:
+                        self.current_event = None
+                        # We want to ack the filtered out message
+                        # otherwise the lag would increase
+                        if event is not None and (do_ack or value is skipped_value):
+                            # This inlines self.ack
+                            last_stream_to_ack = event.ack()
+                            message = event.message
+                            tp = event.message.tp
+                            offset = event.message.offset
+                            on_stream_event_out(tp, offset, self, event, sensor_state)
+                            if last_stream_to_ack:
+                                on_message_out(tp, offset, message)
 
         except StopAsyncIteration:
             # We are not allowed to propagate StopAsyncIteration in __aiter__
