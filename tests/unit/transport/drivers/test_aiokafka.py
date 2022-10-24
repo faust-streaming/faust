@@ -691,7 +691,6 @@ class Test_VEP_no_commit(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     def test_constructor(self, *, cthread):
         assert cthread._partitioner
@@ -802,6 +801,8 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
                 session_timeout_ms=int(conf.broker_session_timeout * 1000.0),
                 heartbeat_interval_ms=int(conf.broker_heartbeat_interval * 1000.0),
                 isolation_level=isolation_level,
+                connections_max_idle_ms=conf.consumer_connections_max_idle_ms,
+                metadata_max_age_ms=conf.consumer_metadata_max_age_ms,
                 # traced_from_parent_span=cthread.traced_from_parent_span,
                 # start_rebalancing_span=cthread.start_rebalancing_span,
                 # start_coordinator_span=cthread.start_coordinator_span,
@@ -854,6 +855,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     def test_trace_category(self, *, cthread, app):
         assert cthread.trace_category == f"{app.conf.name}-_aiokafka"
 
+    @pytest.mark.skip("Needs fixing")
     def test_transform_span_lazy(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -866,6 +868,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread.on_generation_id_known()
         assert not pending
 
+    @pytest.mark.skip("Needs fixing")
     def test_transform_span_flush_spans(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -884,6 +887,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
 
         assert cthread._on_span_cancelled_early(span) is None
 
+    @pytest.mark.skip("Needs fixing")
     def test_transform_span_lazy_no_consumer(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -897,6 +901,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             span = pending.popleft()
             cthread._on_span_generation_known(span)
 
+    @pytest.mark.skip("Needs fixing")
     def test_transform_span_eager(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = 10
@@ -991,6 +996,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         with self.assert_calls_thread(cthread, _consumer, cthread._commit, offsets):
             await cthread.commit(offsets)
 
+    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit(self, *, cthread, _consumer):
         offsets = {TP1: 1001}
@@ -1001,12 +1007,14 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             {TP1: OffsetAndMetadata(1001, "")},
         )
 
+    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__already_rebalancing(self, *, cthread, _consumer):
         cthread._consumer = _consumer
         _consumer.commit.side_effect = CommitFailedError("already rebalanced")
         assert not (await cthread._commit({TP1: 1001}))
 
+    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__CommitFailedError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
@@ -1017,6 +1025,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread.crash.assert_called_once_with(exc)
         cthread.supervisor.wakeup.assert_called_once()
 
+    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__IllegalStateError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
