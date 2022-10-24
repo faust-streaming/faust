@@ -391,8 +391,9 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
-    async def take_events(self, max_: int,
-                          within: Seconds) -> AsyncIterable[Sequence[EventT]]:
+    async def take_events(
+        self, max_: int, within: Seconds
+    ) -> AsyncIterable[Sequence[EventT]]:
         """Buffer n events at a time and yield a list of buffered events.
         Arguments:
             max_: Max number of messages to receive. When more than this
@@ -432,8 +433,7 @@ class Stream(StreamT[T_co], Service):
                 buffer_add(cast(T_co, value))
                 event = self.current_event
                 if event is None:
-                    raise RuntimeError(
-                        'Take buffer found current_event is None')
+                    raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
                 if buffer_size() >= max_:
                     # signal that the buffer is full and should be emptied.
@@ -445,7 +445,7 @@ class Stream(StreamT[T_co], Service):
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
-                self.log.exception('Error adding to take buffer: %r', exc)
+                self.log.exception("Error adding to take buffer: %r", exc)
                 await self.crash(exc)
             return value
 
