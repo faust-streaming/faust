@@ -592,7 +592,7 @@ class Command(abc.ABC):  # noqa: B024
         self._blocking_timeout = self.state.blocking_timeout
         self._console_port = self.state.console_port
 
-    @no_type_check  # Subclasses can omit *args, **kwargs in signature.
+    @no_type_check  # Subclasses can omit *args, **kwargs in signature.  # noqa: B027
     async def run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: B027
         """Override this method to define what your command does."""
         # NOTE: If you override __call__ below, you have a non-async command.
