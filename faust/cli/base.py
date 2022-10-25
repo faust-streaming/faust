@@ -592,8 +592,8 @@ class Command(abc.ABC):  # noqa: B024
         self._blocking_timeout = self.state.blocking_timeout
         self._console_port = self.state.console_port
 
-    @no_type_check  # Subclasses can omit *args, **kwargs in signature.
-    async def run(self, *args: Any, **kwargs: Any) -> Any:
+    @no_type_check  # Subclasses can omit *args, **kwargs in signature.  # noqa: B027
+    async def run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: B027
         """Override this method to define what your command does."""
         # NOTE: If you override __call__ below, you have a non-async command.
         # This is used by .worker to call the
@@ -607,7 +607,7 @@ class Command(abc.ABC):  # noqa: B024
         finally:
             await self.on_stop()
 
-    async def on_stop(self) -> None:
+    async def on_stop(self) -> None:  # noqa: B027
         """Call after command executed."""
         ...
 
@@ -629,7 +629,7 @@ class Command(abc.ABC):  # noqa: B024
         self.on_worker_created(worker)
         raise worker.execute_from_commandline()
 
-    def on_worker_created(self, worker: Worker) -> None:
+    def on_worker_created(self, worker: Worker) -> None:  # noqa: B027
         """Call when creating :class:`faust.Worker` to execute this command."""
         ...
 
