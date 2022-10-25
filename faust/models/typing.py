@@ -271,7 +271,7 @@ class Node(abc.ABC):
         if DEBUG:
             print(f"NODE {self!r}")
 
-    def __post_init__(self) -> None:
+    def __post_init__(self) -> None:  # noqa: B027
         ...
 
     def random_identifier(self, n: int = 8) -> str:

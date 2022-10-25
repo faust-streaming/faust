@@ -175,7 +175,7 @@ class SettingsRegistry(abc.ABC):
         object.__setattr__(self, "_accessed", set())
         object.__setattr__(self, "_initializing", False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self) -> None:  # noqa: B027
         ...
 
     def __getattribute__(self, key: str) -> Any:
