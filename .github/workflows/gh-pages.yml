@@ -1,9 +1,11 @@
 name: Pages
 
 on:
-  push:
+  # Only run when release is created in the master branch
+  release:
+    types: [created]
     branches:
-    - master
+      - 'master'
 
 jobs:
   build:
