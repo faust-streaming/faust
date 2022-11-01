@@ -349,7 +349,7 @@ class TransactionManager(Service, TransactionManagerT):
 
     def key_partition(self, topic: str, key: bytes) -> TP:
         raise NotImplementedError()
-   
+
     async def create_topic(
         self,
         topic: str,
