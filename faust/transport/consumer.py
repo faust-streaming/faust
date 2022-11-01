@@ -349,7 +349,7 @@ class TransactionManager(Service, TransactionManagerT):
 
     def key_partition(self, topic: str, key: bytes) -> TP:
         raise NotImplementedError()
-
+   
     async def create_topic(
         self,
         topic: str,
@@ -364,17 +364,20 @@ class TransactionManager(Service, TransactionManagerT):
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
-        return await self.producer.create_topic(
-            topic,
-            partitions,
-            replication,
-            config=config,
-            timeout=timeout,
-            retention=retention,
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
+        if self.app.conf.topic_allow_declare:
+            return await self.producer.create_topic(
+                topic,
+                partitions,
+                replication,
+                config=config,
+                timeout=timeout,
+                retention=retention,
+                compacting=compacting,
+                deleting=deleting,
+                ensure_created=ensure_created,
+            )
+        else:
+            logger.warning(f"Topic creation disabled! Can't create topic {topic}")
 
     def supports_headers(self) -> bool:
         """Return :const:`True` if the Kafka server supports headers."""
