@@ -4,6 +4,15 @@
   Introducing Faust
 =====================
 
+.. image:: https://img.shields.io/pypi/v/faust-streaming.svg
+    :target: https://pypi.python.org/pypi/faust-streaming/
+
+.. image:: https://img.shields.io/pypi/pyversions/faust-streaming.svg
+    :target: https://pypi.org/project/faust-streaming/
+
+.. image:: https://img.shields.io/pypi/dm/faust-streaming
+   :target: https://pypi.python.org/pypi/faust-streaming/
+
 .. include:: includes/tags.txt
 
 **Table of Contents**
