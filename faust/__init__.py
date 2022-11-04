@@ -268,7 +268,5 @@ new_module.__dict__.update(
         "__package__": __package__,
         "VersionInfo": VersionInfo,
         "version_info_t": version_info_t,
-        "version_info": version_info,
-        "VERSION": VERSION,
     }
 )
