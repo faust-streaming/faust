@@ -18,7 +18,6 @@
 #  faust/agents.py         - Agents use all of the above.
 # --- ~~~~~ ~ ~  ~           ~             ~   ~                   ~
 import os
-import re
 import sys
 import typing
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
@@ -40,20 +39,6 @@ class VersionInfo(NamedTuple):
 
 
 version_info_t = VersionInfo  # XXX compat
-
-
-# bumpversion can only search for {current_version}
-# so we have to parse the version here.
-_match = re.match(r"(\d+)\.(\d+).(\d+)(.+)?", __version__)
-if _match is None:  # pragma: no cover
-    raise RuntimeError("THIS IS A BROKEN RELEASE!")
-_temp = _match.groups()
-VERSION = version_info = VersionInfo(
-    int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or "", ""
-)
-del _match
-del _temp
-del re
 
 
 # This is here to support setting the --datadir argument
