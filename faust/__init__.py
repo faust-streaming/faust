@@ -248,7 +248,6 @@ class _module(ModuleType):
         "VersionInfo",
         "version_info",
         "__package__",
-        "__version__",
         "__author__",
         "__contact__",
         "__homepage__",
@@ -277,7 +276,6 @@ new_module.__dict__.update(
         "__path__": __path__,  # type: ignore
         "__doc__": __doc__,
         "__all__": tuple(object_origins),
-        "__version__": __version__,
         "__author__": __author__,
         "__contact__": __contact__,
         "__homepage__": __homepage__,
