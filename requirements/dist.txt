@@ -1,5 +1,4 @@
 asyncio-ipython-magic
-bumpversion>=0.5.1
 packaging
 pre-commit
 pydocstyle
