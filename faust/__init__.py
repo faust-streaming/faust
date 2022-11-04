@@ -21,7 +21,12 @@ import os
 import re
 import sys
 import typing
-from importlib.metadata import version
+
+if sys.version_info < (3, 8):
+    from importlib_metadata import version
+else:
+    from importlib.metadata import version
+
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 __version__ = version("faust-streaming")
