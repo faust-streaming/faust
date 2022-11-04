@@ -183,7 +183,7 @@ def do_setup(**kwargs):
     setup(
         name="faust-streaming",
         use_scm_version=True,
-        setup_requires=['setuptools_scm'],
+        setup_requires=["setuptools_scm"],
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
