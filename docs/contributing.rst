@@ -817,32 +817,8 @@ Release Procedure
 Updating the version number
 ---------------------------
 
-The version number must be updated two places:
+This is done automatically by `setuptools_scm`.
 
-    * :file:`faust/__init__.py`
-    * :file:`docs/include/introduction.txt`
-
-After you have changed these files you must render
-the :file:`README` files. There's a script to convert sphinx syntax
-to generic reStructured Text syntax, and the make target `readme`
-does this for you:
-
-.. sourcecode:: console
-
-    $ make readme
-
-Now commit the changes:
-
-.. sourcecode:: console
-
-    $ git commit -a -m "Bumps version to X.Y.Z"
-
-and make a new version tag:
-
-.. sourcecode:: console
-
-    $ git tag vX.Y.Z
-    $ git push --tags
 
 Releasing
 ---------

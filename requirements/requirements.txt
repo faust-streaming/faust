@@ -11,3 +11,4 @@ mypy_extensions
 venusian==3.0.0
 intervaltree
 six
+setuptools_scm
