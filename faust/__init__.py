@@ -18,10 +18,13 @@
 #  faust/agents.py         - Agents use all of the above.
 # --- ~~~~~ ~ ~  ~           ~             ~   ~                   ~
 import os
+import re
 import sys
 import typing
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
+from setuptools_scm import get_version
 
+__version__ = get_version(root="../", relative_to=__file__)
 __author__ = "Robinhood Markets, Inc."
 __contact__ = "schrohm@gmail.com, vpatki@wayfair.com, williambbarnhart@gmail.com"
 __homepage__ = "https://github.com/faust-streaming/faust"
@@ -39,6 +42,20 @@ class VersionInfo(NamedTuple):
 
 
 version_info_t = VersionInfo  # XXX compat
+
+
+# bumpversion can only search for {current_version}
+# so we have to parse the version here.
+_match = re.match(r"(\d+)\.(\d+).(\d+)(.+)?", __version__)
+if _match is None:  # pragma: no cover
+    raise RuntimeError("THIS IS A BROKEN RELEASE!")
+_temp = _match.groups()
+VERSION = version_info = VersionInfo(
+    int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or "", ""
+)
+del _match
+del _temp
+del re
 
 
 # This is here to support setting the --datadir argument
@@ -233,6 +250,7 @@ class _module(ModuleType):
         "VersionInfo",
         "version_info",
         "__package__",
+        "__version__",
         "__author__",
         "__contact__",
         "__homepage__",
@@ -261,6 +279,7 @@ new_module.__dict__.update(
         "__path__": __path__,  # type: ignore
         "__doc__": __doc__,
         "__all__": tuple(object_origins),
+        "__version__": __version__,
         "__author__": __author__,
         "__contact__": __contact__,
         "__homepage__": __homepage__,
@@ -268,5 +287,7 @@ new_module.__dict__.update(
         "__package__": __package__,
         "VersionInfo": VersionInfo,
         "version_info_t": version_info_t,
+        "version_info": version_info,
+        "VERSION": VERSION,
     }
 )
