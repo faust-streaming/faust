@@ -22,6 +22,7 @@ import re
 import sys
 import typing
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
+
 from setuptools_scm import get_version
 
 __version__ = get_version(root="../", relative_to=__file__)
