@@ -191,6 +191,7 @@ class Test_Collection:
         assert table.last_closed_window == 0.0
 
         table.window = Mock(name="window")
+        self.mock_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -233,6 +234,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
 
         table.window = Mock(name="window")
+        self.mock_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -289,6 +291,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = Mock(name="on_window_close")
 
         table.window = Mock(name="window")
+        self.mock_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
