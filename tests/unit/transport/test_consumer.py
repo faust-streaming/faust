@@ -1,6 +1,7 @@
 import asyncio
 
 import pytest
+from intervaltree import Interval, IntervalTree
 from mode import Service
 from mode.threads import MethodQueue
 from mode.utils.futures import done_future
@@ -386,7 +387,7 @@ class MockedConsumerAbstractMethods:
         ...
 
     async def seek_to_committed(self, *args, **kwargs):
-        ...
+        return {}
 
     async def seek_wait(self, *args, **kwargs):
         ...
@@ -840,6 +841,7 @@ class TestConsumer:
     async def test_commit_tps(self, *, consumer):
         consumer._handle_attached = AsyncMock(name="_handle_attached")
         consumer._commit_offsets = AsyncMock(name="_commit_offsets")
+        consumer.app.producer.flush = AsyncMock()
         consumer._filter_committable_offsets = Mock(name="filt")
         consumer._filter_committable_offsets.return_value = {
             TP1: 4,
@@ -942,6 +944,7 @@ class TestConsumer:
     async def test_commit_offsets(self, *, consumer):
         consumer._commit = AsyncMock(name="_commit")
         consumer.current_assignment.update({TP1, TP2})
+        consumer.app.producer.flush = AsyncMock()
         await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -959,6 +962,7 @@ class TestConsumer:
     async def test_commit_offsets__did_not_commit(self, *, consumer):
         consumer.in_transaction = False
         consumer._commit = AsyncMock(return_value=False)
+        consumer.app.producer.flush = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.tables = Mock(name="app.tables")
         await consumer._commit_offsets(
@@ -973,6 +977,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__in_transaction(self, *, consumer):
         consumer.in_transaction = True
+        consumer.app.producer.flush = AsyncMock()
         consumer.transactions.commit = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         ret = await consumer._commit_offsets(
@@ -991,6 +996,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__no_committable_offsets(self, *, consumer):
         consumer.current_assignment.clear()
+        consumer.app.producer.flush = AsyncMock()
         assert not await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -1070,13 +1076,21 @@ class TestConsumer:
         "tp,acked,gaps,expected_offset",
         [
             (TP1, [], [], None),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], [], 11),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], [9], 11),
-            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], [5], 9),
-            (TP1, [1, 3, 4, 6, 7, 8, 10], [2, 5, 9], 11),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], IntervalTree(), 11),
+            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], IntervalTree([Interval(9, 10)]), 11),
+            (TP1, [1, 2, 3, 4, 6, 7, 8, 10], IntervalTree([Interval(5, 6)]), 9),
+            (
+                TP1,
+                [1, 3, 4, 6, 7, 8, 10],
+                IntervalTree([Interval(2, 3), Interval(5, 6), Interval(9, 10)]),
+                11,
+            ),
+            (TP1, [3, 4], IntervalTree(), None),
+            (TP1, [3, 4], IntervalTree([Interval(2, 3)]), 5),
         ],
     )
     def test_new_offset_with_gaps(self, tp, acked, gaps, expected_offset, *, consumer):
+        consumer._committed_offset[tp] = 1
         consumer._acked[tp] = acked
         consumer._gap[tp] = gaps
         assert consumer._new_offset(tp) == expected_offset
@@ -1087,19 +1101,21 @@ class TestConsumer:
         await consumer.on_task_error(KeyError())
         consumer.commit.assert_called_once_with()
 
-    def test__add_gap(self, *, consumer):
+    @pytest.mark.asyncio
+    async def test__add_gap(self, *, consumer):
         tp = TP1
         consumer._committed_offset[tp] = 299
-        consumer._add_gap(TP1, 300, 343)
+        await consumer._add_gap(TP1, 300, 343)
 
-        assert consumer._gap[tp] == list(range(300, 343))
+        assert consumer._gap[tp] == IntervalTree([Interval(300, 344)])
 
-    def test__add_gap__previous_to_committed(self, *, consumer):
+    @pytest.mark.asyncio
+    async def test__add_gap__previous_to_committed(self, *, consumer):
         tp = TP1
         consumer._committed_offset[tp] = 400
-        consumer._add_gap(TP1, 300, 343)
+        await consumer._add_gap(TP1, 300, 343)
 
-        assert consumer._gap[tp] == []
+        assert consumer._gap[tp] == IntervalTree()
 
     @pytest.mark.asyncio
     async def test_commit_handler(self, *, consumer):

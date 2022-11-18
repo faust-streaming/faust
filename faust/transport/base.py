@@ -9,7 +9,7 @@ To see a reference transport implementation go to:
 :file:`faust/transport/drivers/aiokafka.py`
 """
 import asyncio
-from typing import Any, ClassVar, List, Type
+from typing import Any, ClassVar, List, Optional, Type
 
 from mode.services import ServiceT
 from yarl import URL
@@ -54,7 +54,10 @@ class Transport(TransportT):
     driver_version: str
 
     def __init__(
-        self, url: List[URL], app: AppT, loop: asyncio.AbstractEventLoop = None
+        self,
+        url: List[URL],
+        app: AppT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         self.url = url
         self.app = app

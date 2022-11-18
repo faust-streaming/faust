@@ -112,21 +112,21 @@ class Case(Service):
         *,
         app: _LiveCheck,
         name: str,
-        probability: float = None,
-        warn_stalled_after: Seconds = None,
-        active: bool = None,
+        probability: Optional[float] = None,
+        warn_stalled_after: Optional[Seconds] = None,
+        active: Optional[bool] = None,
         signals: Iterable[BaseSignal] = None,
-        test_expires: Seconds = None,
-        frequency: Seconds = None,
-        realtime_logs: bool = None,
-        max_history: int = None,
-        max_consecutive_failures: int = None,
-        url_timeout_total: float = None,
-        url_timeout_connect: float = None,
-        url_error_retries: int = None,
-        url_error_delay_min: float = None,
-        url_error_delay_backoff: float = None,
-        url_error_delay_max: float = None,
+        test_expires: Optional[Seconds] = None,
+        frequency: Optional[Seconds] = None,
+        realtime_logs: Optional[bool] = None,
+        max_history: Optional[int] = None,
+        max_consecutive_failures: Optional[int] = None,
+        url_timeout_total: Optional[float] = None,
+        url_timeout_connect: Optional[float] = None,
+        url_error_retries: Optional[int] = None,
+        url_error_delay_min: Optional[float] = None,
+        url_error_delay_backoff: Optional[float] = None,
+        url_error_delay_max: Optional[float] = None,
         **kwargs: Any,
     ) -> None:
         self.app = app
@@ -199,17 +199,19 @@ class Case(Service):
 
     @asynccontextmanager
     async def maybe_trigger(
-        self, id: str = None, *args: Any, **kwargs: Any
+        self, id: Optional[str] = None, *args: Any, **kwargs: Any
     ) -> AsyncGenerator[Optional[TestExecution], None]:
         """Schedule test execution, or not, based on probability setting."""
         execution: Optional[TestExecution] = None
         with ExitStack() as exit_stack:
-            if uniform(0, 1) < self.probability:
+            if uniform(0, 1) < self.probability:  # nosec B311
                 execution = await self.trigger(id, *args, **kwargs)
                 exit_stack.enter_context(current_test_stack.push(execution))
             yield execution
 
-    async def trigger(self, id: str = None, *args: Any, **kwargs: Any) -> TestExecution:
+    async def trigger(
+        self, id: Optional[str] = None, *args: Any, **kwargs: Any
+    ) -> TestExecution:
         """Schedule test execution ASAP."""
         id = id or uuid()
         execution = TestExecution(

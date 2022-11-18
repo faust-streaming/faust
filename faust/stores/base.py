@@ -37,7 +37,7 @@ class Store(StoreT[KT, VT], Service):
         value_type: ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        options: Mapping[str, Any] = None,
+        options: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         Service.__init__(self, **kwargs)

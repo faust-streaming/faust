@@ -6,7 +6,7 @@ from yarl import URL
 URIListArg = Union[str, URL, List[URL], List[str]]
 
 
-def urllist(arg: URIListArg, *, default_scheme: str = None) -> List[URL]:
+def urllist(arg: URIListArg, *, default_scheme: Optional[str] = None) -> List[URL]:
     """Create list of URLs.
 
     You can pass in a comma-separated string, or an actual list
@@ -43,7 +43,7 @@ def urllist(arg: URIListArg, *, default_scheme: str = None) -> List[URL]:
 
 
 def _find_first_actual_scheme(
-    urls: List[str], default_scheme: str = None
+    urls: List[str], default_scheme: Optional[str] = None
 ) -> Optional[str]:
     for url in urls:
         scheme, sep, rest = url.partition("://")
@@ -52,7 +52,7 @@ def _find_first_actual_scheme(
     return default_scheme
 
 
-def _prepare_str_url(s: str, default_scheme: str = None) -> str:
+def _prepare_str_url(s: str, default_scheme: Optional[str] = None) -> str:
     # yarl.URL parses b:9092 into scheme=b,port=9092
     # where we would expect it to be scheme=None,host=b,port=9092
     if default_scheme:

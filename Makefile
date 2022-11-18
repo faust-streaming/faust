@@ -11,7 +11,6 @@ FLAKE8 ?= flake8
 PYDOCSTYLE ?= pydocstyle
 MYPY ?= mypy
 SPHINX2RST ?= sphinx2rst
-BUMPVERSION ?= bumpversion
 VULTURE ?= vulture
 VULTURE_MIN_CONFIDENCE ?= 100
 PRE_COMMIT ?= pre-commit
@@ -39,7 +38,7 @@ help:
 	@echo "livedocs             - Start documentation live web server."
 	@echo "develop              - Start contributing to Faust"
 	@echo "  develop-hooks      - Install Git commit hooks (required)"
-	@echo "  reqs"              - Install requirements
+	@echo "  reqs               - Install requirements"
 	@echo "  setup-develop      - Run setup.py develop"
 	@echo "cdevelop             - Like develop but installs C extensions"
 	@echo "  reqs-rocksdb       -   Install python-rocksdb (require rocksdb)"
@@ -59,6 +58,7 @@ help:
 	@echo "    pep257check      - Run pep257 on the source code."
 	@echo "    vulture          - Run vulture to find unused code."
 	@echo "readme               - Regenerate README.rst file."
+	@echo "changelog            - Regenerate CHANGELOG.md file."
 	@echo "contrib              - Regenerate CONTRIBUTING.rst file"
 	@echo "configref            - Regenerate docs/userguide/settings.rst"
 	@echo "coc                  - Regenerate CODE_OF_CONDUCT.rst file"
@@ -71,21 +71,12 @@ help:
 	@echo "bump                 - Bump patch version number."
 	@echo "bump-minor           - Bump minor version number."
 	@echo "bump-major           - Bump major version number."
-	@echo "hooks"               - Update pre-commit hooks
+	@echo "hooks                - Update pre-commit hooks"
 	@echo "release              - Make PyPI release."
 
 clean: clean-docs clean-pyc clean-build
 
 clean-dist: clean clean-git-force
-
-bump:
-	$(BUMPVERSION) patch
-
-bump-minor:
-	$(BUMPVERSION) minor
-
-bump-major:
-	$(BUMPVERSION) major
 
 release:
 	$(PYTHON) setup.py register sdist bdist_wheel upload --sign --identity="$(PGPIDENT)"
@@ -107,6 +98,7 @@ livedocs:
 
 clean-docs:
 	-rm -rf "$(SPHINX_BUILDDIR)"
+	-rm -rf "$(DOCUMENTATION)"
 
 lint: flakecheck apicheck configcheck readmecheck pep257check vulture
 
@@ -144,6 +136,9 @@ $(README):
 	$(SPHINX2RST) "$(README_SRC)" --ascii > $@
 
 readme: clean-readme $(README) readmecheck
+
+changelog:
+	git-changelog . -o CHANGELOG.md -t path:"$(SPHINX_DIR)/keepachangelog/"
 
 clean-contrib:
 	-rm -f "$(CONTRIBUTING)"
@@ -223,7 +218,7 @@ reqs: reqs-default reqs-test reqs-dist reqs-docs reqs-ci reqs-debug
 
 .PHONY:
 reqs-default:
-	$(PIP) install -U -r requirements/default.txt
+	$(PIP) install -U -r requirements/requirements.txt
 
 .PHONY:
 reqs-test:

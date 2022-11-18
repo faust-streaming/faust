@@ -96,29 +96,29 @@ class Topic(SerializedChannel, TopicT):
         self,
         app: AppT,
         *,
-        topics: Sequence[str] = None,
+        topics: Optional[Sequence[str]] = None,
         pattern: Union[str, Pattern] = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         is_iterator: bool = False,
-        partitions: int = None,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
-        replicas: int = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
         acks: bool = True,
         internal: bool = False,
-        config: Mapping[str, Any] = None,
-        queue: ThrowableQueue = None,
+        config: Optional[Mapping[str, Any]] = None,
+        queue: Optional[ThrowableQueue] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        maxsize: int = None,
-        root: ChannelT = None,
-        active_partitions: Set[TP] = None,
-        allow_empty: bool = None,
+        maxsize: Optional[int] = None,
+        root: Optional[ChannelT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        allow_empty: Optional[bool] = None,
         has_prefix: bool = False,
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         super().__init__(
             app,
@@ -160,13 +160,13 @@ class Topic(SerializedChannel, TopicT):
         *,
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
         """Send message to topic."""
@@ -203,13 +203,13 @@ class Topic(SerializedChannel, TopicT):
         *,
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
         force: bool = False,
         eager_partitioning: bool = False,
     ) -> FutureMessage:
@@ -321,18 +321,18 @@ class Topic(SerializedChannel, TopicT):
     def derive_topic(
         self,
         *,
-        topics: Sequence[str] = None,
-        schema: SchemaT = None,
+        topics: Optional[Sequence[str]] = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        partitions: int = None,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
-        internal: bool = None,
-        config: Mapping[str, Any] = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        internal: Optional[bool] = None,
+        config: Optional[Mapping[str, Any]] = None,
         prefix: str = "",
         suffix: str = "",
         **kwargs: Any,
@@ -465,7 +465,8 @@ class Topic(SerializedChannel, TopicT):
             message.set_exception(exc)
             logger.warning(
                 f"_on_published error for message topic "
-                f"{message.channel.get_topic_name()} error {exc} message {message}"
+                f"{message.message.channel.get_topic_name()} "
+                f"error {exc} message {message}"
             )
             self.app.sensors.on_send_error(producer, exc, state)
         else:
@@ -481,21 +482,23 @@ class Topic(SerializedChannel, TopicT):
 
     async def declare(self) -> None:
         """Declare/create this topic on the server."""
-        partitions = self.partitions
-        if partitions is None:
+        partitions: int
+        if self.partitions:
+            partitions = self.partitions
+        else:
             partitions = self.app.conf.topic_partitions
         replicas: int
-        if self.replicas is None:
-            replicas = self.app.conf.topic_replication_factor
-        else:
+        if self.replicas:
             replicas = self.replicas
+        else:
+            replicas = self.app.conf.topic_replication_factor
         if self.app.conf.topic_allow_declare:
             producer = await self._get_producer()
             for topic in self.topics:
                 await producer.create_topic(
                     topic=topic,
                     partitions=partitions,
-                    replication=replicas or 0,
+                    replication=replicas or 1,
                     config=self.config,
                     compacting=self.compacting,
                     deleting=self.deleting,

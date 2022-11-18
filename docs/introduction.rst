@@ -4,6 +4,15 @@
   Introducing Faust
 =====================
 
+.. image:: https://img.shields.io/pypi/v/faust-streaming.svg
+    :target: https://pypi.python.org/pypi/faust-streaming/
+
+.. image:: https://img.shields.io/pypi/pyversions/faust-streaming.svg
+    :target: https://pypi.org/project/faust-streaming/
+
+.. image:: https://img.shields.io/pypi/dm/faust-streaming
+   :target: https://pypi.python.org/pypi/faust-streaming/
+
 .. include:: includes/tags.txt
 
 **Table of Contents**
@@ -146,14 +155,14 @@ What do I need?
 
     **Core**
 
-    - Python 3.6 or later.
+    - Python 3.7 or later.
     - Kafka 0.10.1 or later.
 
     **Extensions**
 
     - RocksDB 5.0 or later, :pypi:`python-rocksdb`
 
-Faust requires Python 3.6 or later, and a running Kafka broker.
+Faust requires Python 3.7 or later, and a running Kafka broker.
 
 There's no plan to support earlier Python versions.
 Please get in touch if this is something you want to work on.

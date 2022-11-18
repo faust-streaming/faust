@@ -1,7 +1,7 @@
 """Program ``faust send`` used to send events to agents and topics."""
 import asyncio
 import random
-from typing import Any
+from typing import Any, Optional
 
 from faust.types import CodecArg, K, RecordMetadata, V
 
@@ -51,13 +51,13 @@ class send(AppCommand):
         entity: str,
         value: str,
         *args: Any,
-        key: str = None,
-        key_type: str = None,
-        key_serializer: str = None,
-        value_type: str = None,
-        value_serializer: str = None,
+        key: Optional[str] = None,
+        key_type: Optional[str] = None,
+        key_serializer: Optional[str] = None,
+        value_type: Optional[str] = None,
+        value_serializer: Optional[str] = None,
         partition: int = 1,
-        timestamp: float = None,
+        timestamp: Optional[float] = None,
         repeat: int = 1,
         min_latency: float = 0.0,
         max_latency: float = 0.0,
@@ -82,5 +82,7 @@ class send(AppCommand):
             meta: RecordMetadata = await fut_send_complete
             self.say(self.dumps(meta._asdict()))
             if i and max_latency:
-                await asyncio.sleep(random.uniform(min_latency, max_latency))
+                await asyncio.sleep(
+                    random.uniform(min_latency, max_latency)  # nosec B311
+                )
         await self.app.producer.stop()

@@ -1,6 +1,6 @@
 """HTTP and related errors."""
 import http
-from typing import Any, Dict, cast
+from typing import Any, Dict, Optional, cast
 
 from faust.exceptions import FaustError
 
@@ -34,7 +34,11 @@ class WebError(FaustError):
     extra_context: Dict
 
     def __init__(
-        self, detail: str = None, *, code: int = None, **extra_context: Any
+        self,
+        detail: Optional[str] = None,
+        *,
+        code: Optional[int] = None,
+        **extra_context: Any
     ) -> None:
         if detail:
             self.detail = detail

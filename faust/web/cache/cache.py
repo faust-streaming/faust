@@ -23,9 +23,9 @@ class Cache(CacheT):
 
     def __init__(
         self,
-        timeout: Seconds = None,
+        timeout: Optional[Seconds] = None,
         include_headers: bool = False,
-        key_prefix: str = None,
+        key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
         **kwargs: Any,
     ) -> None:
@@ -36,9 +36,9 @@ class Cache(CacheT):
 
     def view(
         self,
-        timeout: Seconds = None,
+        timeout: Optional[Seconds] = None,
         include_headers: bool = False,
-        key_prefix: str = None,
+        key_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> Callable[[Callable], Callable]:
         """Decorate view to be cached."""
@@ -99,7 +99,11 @@ class Cache(CacheT):
         return cast(CacheBackendT, self.backend or view.app.cache)
 
     async def set_view(
-        self, key: str, view: View, response: Response, timeout: Seconds = None
+        self,
+        key: str,
+        view: View,
+        response: Response,
+        timeout: Optional[Seconds] = None,
     ) -> None:
         """Set cached value for HTTP view request."""
         backend = self._view_backend(view)
@@ -122,8 +126,8 @@ class Cache(CacheT):
     def key_for_request(
         self,
         request: Request,
-        prefix: str = None,
-        method: str = None,
+        prefix: Optional[str] = None,
+        method: Optional[str] = None,
         include_headers: bool = False,
     ) -> str:
         """Return a cache key created from web request."""
@@ -137,10 +141,12 @@ class Cache(CacheT):
         self, request: Request, method: str, prefix: str, headers: Mapping[str, str]
     ) -> str:
         """Build cache key from web request and environment."""
-        context = hashlib.md5(
-            b"".join(want_bytes(k) + want_bytes(v) for k, v in headers.items())
+        context = hashlib.md5(  # nosec
+            b"".join(want_bytes(k) + want_bytes(v) for k, v in headers.items()),
         ).hexdigest()
-        url = hashlib.md5(iri_to_uri(str(request.url)).encode("ascii")).hexdigest()
+        url = hashlib.md5(  # nosec
+            iri_to_uri(str(request.url)).encode("ascii"),
+        ).hexdigest()
         return f"{self.ident}.{prefix}.{method}.{url}.{context}"
 
 

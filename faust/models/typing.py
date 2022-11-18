@@ -183,7 +183,9 @@ class Variable:
     def __getitem__(self, name: Any) -> "Variable":
         return self.clone(getitem=name)
 
-    def clone(self, *, name: str = None, getitem: Any = MISSING) -> "Variable":
+    def clone(
+        self, *, name: Optional[str] = None, getitem: Any = MISSING
+    ) -> "Variable":
         return type(self)(
             name=name if name is not None else self.name,
             getitem=getitem if getitem is not MISSING else self.getitem,
@@ -269,11 +271,13 @@ class Node(abc.ABC):
         if DEBUG:
             print(f"NODE {self!r}")
 
-    def __post_init__(self) -> None:
+    def __post_init__(self) -> None:  # noqa: B027
         ...
 
     def random_identifier(self, n: int = 8) -> str:
-        return "".join(random.choice(string.ascii_letters) for _ in range(n))
+        return "".join(
+            random.choice(string.ascii_letters) for _ in range(n)  # nosec B311
+        )
 
     @abc.abstractmethod
     def build(self, var: Variable, *args: Type) -> str:

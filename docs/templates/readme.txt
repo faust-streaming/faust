@@ -33,7 +33,7 @@ Faust is...
 Contributing
 ============
 
-Development of `Faust` happens at GitHub: https://github.com/robinhood/faust
+Development of `Faust` happens at GitHub: https://github.com/faust-streaming/faust
 
 You're highly encouraged to participate in the development
 of `Faust`.
@@ -42,7 +42,7 @@ Be sure to also read the `Contributing to Faust`_ section in the
 documentation.
 
 .. _`Contributing to Faust`:
-    http://faust.readthedocs.io/en/latest/contributing.html
+    https://faust-streaming.github.io/faust/contributing.html
 
 .. include:: ../includes/code-of-conduct.txt
 

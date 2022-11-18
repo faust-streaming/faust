@@ -412,7 +412,7 @@ class _Group(click.Group):
         self,
         info_name: str,
         args: str,
-        app: AppT = None,
+        app: Optional[AppT] = None,
         parent: click.Context = None,
         stdout: IO = None,
         stderr: IO = None,
@@ -442,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://faust.readthedocs.io
+    https://faust-streaming.github.io/faust
     """
     return _prepare_cli(*args, **kwargs)
 
@@ -481,7 +481,7 @@ def _prepare_cli(
             os.environ["F_DATADIR"] = datadir
 
 
-class Command(abc.ABC):
+class Command(abc.ABC):  # noqa: B024
     """Base class for subcommands."""
 
     UsageError: Type[Exception] = click.UsageError
@@ -592,8 +592,8 @@ class Command(abc.ABC):
         self._blocking_timeout = self.state.blocking_timeout
         self._console_port = self.state.console_port
 
-    @no_type_check  # Subclasses can omit *args, **kwargs in signature.
-    async def run(self, *args: Any, **kwargs: Any) -> Any:
+    @no_type_check  # Subclasses can omit *args, **kwargs in signature.  # noqa: B027
+    async def run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: B027
         """Override this method to define what your command does."""
         # NOTE: If you override __call__ below, you have a non-async command.
         # This is used by .worker to call the
@@ -607,7 +607,7 @@ class Command(abc.ABC):
         finally:
             await self.on_stop()
 
-    async def on_stop(self) -> None:
+    async def on_stop(self) -> None:  # noqa: B027
         """Call after command executed."""
         ...
 
@@ -629,7 +629,7 @@ class Command(abc.ABC):
         self.on_worker_created(worker)
         raise worker.execute_from_commandline()
 
-    def on_worker_created(self, worker: Worker) -> None:
+    def on_worker_created(self, worker: Worker) -> None:  # noqa: B027
         """Call when creating :class:`faust.Worker` to execute this command."""
         ...
 
@@ -644,7 +644,7 @@ class Command(abc.ABC):
         )
 
     def worker_for_service(
-        self, service: ServiceT, loop: asyncio.AbstractEventLoop = None
+        self, service: ServiceT, loop: Optional[asyncio.AbstractEventLoop] = None
     ) -> Worker:
         """Create :class:`faust.Worker` instance for this command."""
         return self._Worker(
@@ -670,7 +670,7 @@ class Command(abc.ABC):
     def tabulate(
         self,
         data: terminal.TableDataT,
-        headers: Sequence[str] = None,
+        headers: Optional[Sequence[str]] = None,
         wrap_last_row: bool = True,
         title: str = "",
         **kwargs: Any,
@@ -698,7 +698,7 @@ class Command(abc.ABC):
         return table.table
 
     def _tabulate_json(
-        self, data: terminal.TableDataT, headers: Sequence[str] = None
+        self, data: terminal.TableDataT, headers: Optional[Sequence[str]] = None
     ) -> str:
         if headers:
             return json.dumps([dict(zip(headers, row)) for row in data])
@@ -836,7 +836,7 @@ class AppCommand(Command):
         else:
             return self._app_from_str(self.state.app)
 
-    def _app_from_str(self, appstr: str = None) -> Optional[AppT]:
+    def _app_from_str(self, appstr: Optional[str] = None) -> Optional[AppT]:
         if appstr:
             return find_app(appstr)
         else:

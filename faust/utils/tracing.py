@@ -66,7 +66,7 @@ def operation_name_from_fun(fun: Any) -> str:
 
 def traced_from_parent_span(
     parent_span: opentracing.Span = None,
-    callback: Callable = None,
+    callback: Optional[Callable] = None,
     **extra_context: Any,
 ) -> Callable:
     """Decorate function to be traced from parent span."""

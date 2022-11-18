@@ -2,7 +2,7 @@
 import os
 import typing
 from math import floor
-from typing import List, Type, cast
+from typing import List, Optional, Type, cast
 
 from mode import Seconds, want_seconds
 
@@ -31,7 +31,9 @@ class _PyHoppingWindow(Window):
     size: float
     step: float
 
-    def __init__(self, size: Seconds, step: Seconds, expires: Seconds = None) -> None:
+    def __init__(
+        self, size: Seconds, step: Seconds, expires: Optional[Seconds] = None
+    ) -> None:
         self.size = want_seconds(size)
         self.step = want_seconds(step)
         self.expires = want_seconds(expires) if expires else None
@@ -94,7 +96,7 @@ class TumblingWindow(HoppingWindow):
     Fixed-size, non-overlapping, gap-less windows.
     """
 
-    def __init__(self, size: Seconds, expires: Seconds = None) -> None:
+    def __init__(self, size: Seconds, expires: Optional[Seconds] = None) -> None:
         super(TumblingWindow, self).__init__(size, size, expires)
 
 
