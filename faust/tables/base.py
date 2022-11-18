@@ -375,14 +375,23 @@ class Collection(Service, CollectionT):
         window = cast(WindowT, self.window)
         assert window
         for partition, timestamps in self._partition_timestamps.items():
-            while timestamps and window.stale(
-                    timestamps[0],
-                    time.time()):
+            while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
-                keysList = [self._partition_timestamp_keys.get((partition, window_range[1])) for window_range in self._window_ranges(timestamp)]
-                keys_to_remove = self._partition_timestamp_keys.pop((partition, timestamp), None)
+                keysList = [
+                    self._partition_timestamp_keys.get((partition, window_range[1]))
+                    for window_range in self._window_ranges(timestamp)
+                ]
+                keys_to_remove = self._partition_timestamp_keys.pop(
+                    (partition, timestamp), None
+                )
                 if keys_to_remove:
-                    windowData = [item for keys in keysList if keys for key in keys for item in self.data.get(key, None)]
+                    windowData = [
+                        item
+                        for keys in keysList
+                        if keys
+                        for key in keys
+                        for item in self.data.get(key, None)
+                    ]
                     for key in keys_to_remove:
                         value = self.data.pop(key, None)
                         if key[1][0] > self.last_closed_window:
