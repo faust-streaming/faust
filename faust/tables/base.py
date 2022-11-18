@@ -393,7 +393,7 @@ class Collection(Service, CollectionT):
                         for item in self.data.get(key, None)
                     ]
                     for key in keys_to_remove:
-                        value = self.data.pop(key, None)
+                        self.data.pop(key, None)
                         if key[1][0] > self.last_closed_window:
                             await self.on_window_close(key, windowData)
                     self.last_closed_window = max(
