@@ -6,6 +6,7 @@ flake8-bugbear
 flake8-comprehensions
 hypothesis>=3.31
 freezegun>=0.3.11
+mock; python_version<'3.8'  # backport that contains AsyncMock class, includes mock library as dependency
 pre-commit
 pytest-aiofiles>=0.2.0
 pytest-aiohttp>=0.3.0

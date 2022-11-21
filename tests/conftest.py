@@ -11,6 +11,8 @@ from aiohttp.client import ClientError, ClientSession
 from aiohttp.web import Response
 from mode.utils.futures import all_tasks
 
+from tests.helpers import AsyncContextManagerMock
+
 sentinel = object()
 
 

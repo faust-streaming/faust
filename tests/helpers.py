@@ -2,18 +2,31 @@ import asyncio
 import builtins
 import sys
 import types
-import unittest
 import unittest.mock
 from contextlib import contextmanager
 from time import time
 from types import ModuleType
-from typing import Any, Iterator, cast
+from typing import Any, Callable, ContextManager, Iterator, Optional, Type, Union, cast
 from unittest.mock import Mock
+
+if sys.version_info < (3, 8):
+    from mock.mock import AsyncMock
+else:
+    from unittest.mock import AsyncMock
 
 from faust.events import Event
 from faust.types.tuples import Message
 
-__all__ = ["message", "new_event", "FutureMock", "mask_module", "patch_module"]
+__all__ = [
+    "message",
+    "new_event",
+    "FutureMock",
+    "mask_module",
+    "patch_module",
+    "ContextMock",
+    "AsyncContextMock",
+    "AsyncContextManagerMock",
+]
 
 
 def message(
@@ -137,3 +150,111 @@ def mask_module(*modnames: str) -> Iterator:
         yield
     finally:
         builtins.__import__ = realimport
+
+
+class AsyncContextMock(unittest.mock.Mock):
+    """Mock for :class:`typing.AsyncContextManager`.
+
+    You can use this to mock asynchronous context managers,
+    when an object with a fully defined ``__aenter__`` and ``__aexit__``
+    is required.
+
+    Here's an example mocking an :pypi:`aiohttp` client:
+
+    .. code-block:: python
+
+        import http
+        from aiohttp.client import ClientSession
+        from aiohttp.web import Response
+        from mode.utils.mocks import AsyncContextManagerMock, AsyncMock, Mock
+
+        @pytest.fixture()
+        def session(monkeypatch):
+            session = Mock(
+                name='http_client',
+                autospec=ClientSession,
+                request=Mock(
+                    return_value=AsyncContextManagerMock(
+                        return_value=Mock(
+                            autospec=Response,
+                            status=http.HTTPStatus.OK,
+                            json=AsyncMock(
+                                return_value={'hello': 'json'},
+                            ),
+                        ),
+                    ),
+                ),
+            )
+            monkeypatch.setattr('where.is.ClientSession', session)
+            return session
+
+        @pytest.mark.asyncio
+        async def test_session(session):
+            from where.is import ClientSession
+            session = ClientSession()
+            async with session.get('http://example.com') as response:
+                assert response.status == http.HTTPStatus.OK
+                assert await response.json() == {'hello': 'json'}
+    """
+
+    def __init__(
+        self,
+        *args: Any,
+        aenter_return: Any = None,
+        aexit_return: Any = None,
+        side_effect: Union[Callable, BaseException] = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self.aenter_return = aenter_return
+        self.aexit_return = aexit_return
+        self.side_effect = side_effect
+
+    async def __aenter__(self) -> Any:
+        mgr = self.aenter_return or self.return_value
+        if self.side_effect:
+            if isinstance(self.side_effect, BaseException):
+                raise self.side_effect
+            else:
+                return self.side_effect()
+        if isinstance(mgr, AsyncMock):
+            return mgr.coro
+        return mgr
+
+    async def __aexit__(self, *args: Any) -> Any:
+        return self.aexit_return
+
+
+AsyncContextManagerMock = AsyncContextMock  # XXX compat alias
+
+
+class _ContextMock(Mock, ContextManager):
+    """Internal context mock class.
+
+    Dummy class implementing __enter__ and __exit__
+    as the :keyword:`with` statement requires these to be implemented
+    in the class, not just the instance.
+    """
+
+    def __enter__(self) -> "_ContextMock":
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Type[BaseException] = None,
+        exc_val: BaseException = None,
+        exc_tb: types.TracebackType = None,
+    ) -> Optional[bool]:
+        pass
+
+
+def ContextMock(*args: Any, **kwargs: Any) -> _ContextMock:
+    """Mock that mocks :keyword:`with` statement contexts."""
+    obj = _ContextMock(*args, **kwargs)
+    obj.attach_mock(_ContextMock(), "__enter__")
+    obj.attach_mock(_ContextMock(), "__exit__")
+    obj.__enter__.return_value = obj  # type: ignore
+    # if __exit__ return a value the exception is ignored,
+    # so it must return None here.
+    obj.__exit__.return_value = None  # type: ignore
+    return obj

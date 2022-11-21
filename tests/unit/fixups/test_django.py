@@ -4,6 +4,7 @@ import pytest
 
 from faust.fixups import fixups
 from faust.fixups.django import Fixup
+from tests.helpers import ContextMock, mask_module, patch_module
 
 
 class Test_Fixup:
