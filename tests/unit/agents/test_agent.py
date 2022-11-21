@@ -111,9 +111,9 @@ class Test_AgentService:
         )
         await agent._on_start_supervisor()
 
-        aref = agent._start_one.coro.return_value
+        aref = agent._start_one.return_value
 
-        agent._start_one.coro.assert_has_calls(
+        agent._start_one.assert_has_calls(
             [
                 call(
                     index=i,
@@ -550,7 +550,7 @@ class Test_Agent:
         agent._reply.assert_called_once_with(
             None, word, word_req.reply_to, word_req.correlation_id
         )
-        agent._delegate_to_sinks.coro.assert_has_calls(
+        agent._delegate_to_sinks.assert_has_calls(
             [
                 call(word),
                 call("bar"),
@@ -597,7 +597,7 @@ class Test_Agent:
         await agent._slurp(aref, it)
 
         agent._reply.assert_called_once_with(None, word, "reply_to", "correlation_id")
-        agent._delegate_to_sinks.coro.assert_has_calls(
+        agent._delegate_to_sinks.assert_has_calls(
             [
                 call(word),
                 call("bar"),

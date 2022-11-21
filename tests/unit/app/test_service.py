@@ -80,7 +80,7 @@ class Test_AppService:
         app.on_started_init_extra_tasks = AsyncMock(name="osiet")
         app.on_started_init_extra_services = AsyncMock(name="osies")
         app.on_startup_finished = None
-        app._wait_for_table_recovery_completed.coro.return_value = True
+        app._wait_for_table_recovery_completed.return_value = True
         await app.on_started()
 
         app._wait_for_table_recovery_completed.coro.return_value = False

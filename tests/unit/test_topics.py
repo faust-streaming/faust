@@ -394,7 +394,7 @@ class Test_Topic:
         topic.replicas = 202
         topic.topics = ["foo", "bar"]
         await topic.declare()
-        producer.create_topic.coro.assert_not_called()
+        producer.create_topic.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_declare(self, *, topic):

@@ -189,7 +189,7 @@ class Test_SetTableManager:
     async def test_add(self, *, man):
         man._send_operation = AsyncMock()
         await man.add("key", "member")
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.ADD,
             "key",
             ["member"],
@@ -199,7 +199,7 @@ class Test_SetTableManager:
     async def test_discard(self, *, man):
         man._send_operation = AsyncMock()
         await man.discard("key", "member")
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.DISCARD,
             "key",
             ["member"],
@@ -209,7 +209,7 @@ class Test_SetTableManager:
     async def test_clear(self, *, man):
         man._send_operation = AsyncMock()
         await man.clear("key")
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.CLEAR,
             "key",
             [],
@@ -219,7 +219,7 @@ class Test_SetTableManager:
     async def test_difference_update(self, *, man):
         man._send_operation = AsyncMock()
         await man.difference_update("key", ["v1", "v2"])
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.DISCARD,
             "key",
             ["v1", "v2"],
@@ -229,7 +229,7 @@ class Test_SetTableManager:
     async def test_intersection_update(self, *, man):
         man._send_operation = AsyncMock()
         await man.intersection_update("key", ["v1", "v2"])
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.INTERSECTION,
             "key",
             ["v1", "v2"],
@@ -239,7 +239,7 @@ class Test_SetTableManager:
     async def test_symmetric_difference_update(self, *, man):
         man._send_operation = AsyncMock()
         await man.symmetric_difference_update("key", ["v1", "v2"])
-        man._send_operation.coro.assert_called_once_with(
+        man._send_operation.assert_called_once_with(
             SetAction.SYMDIFF,
             "key",
             ["v1", "v2"],

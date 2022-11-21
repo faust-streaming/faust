@@ -83,7 +83,7 @@ class Test_Signal:
     async def test_send__no_test_force(self, *, signal):
         signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
         await signal.send("value", key="k", force=True)
-        signal.case.app.bus.send.coro.assert_called_once_with(
+        signal.case.app.bus.send.assert_called_once_with(
             key="k",
             value=SignalEvent(
                 signal_name=signal.name,
@@ -98,7 +98,7 @@ class Test_Signal:
         with current_test_stack.push(execution):
             signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
             await signal.send("value", key=None, force=True)
-            signal.case.app.bus.send.coro.assert_called_once_with(
+            signal.case.app.bus.send.assert_called_once_with(
                 key=execution.id,
                 value=SignalEvent(
                     signal_name=signal.name,

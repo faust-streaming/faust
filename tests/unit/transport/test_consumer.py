@@ -71,7 +71,7 @@ class TestFetcher:
     async def test_on_stop_drainer__drainer_done2(self, *, fetcher):
         fetcher._drainer = Mock(done=Mock(return_value=False))
         with patch("asyncio.wait_for", AsyncMock()) as wait_for:
-            wait_for.coro.return_value = None
+            wait_for.return_value = None
             await fetcher.on_stop()
         fetcher._drainer.cancel.assert_called_once_with()
         assert wait_for.call_count
@@ -101,7 +101,7 @@ class TestFetcher:
     async def test_on_stop__drainer_raises_CancelledError(self, *, fetcher):
         fetcher._drainer = Mock(done=Mock(return_value=False))
         with patch("asyncio.wait_for", AsyncMock()) as wait_for:
-            wait_for.coro.side_effect = asyncio.CancelledError()
+            wait_for.side_effect = asyncio.CancelledError()
             await fetcher.on_stop()
             wait_for.assert_called_once_with(
                 fetcher._drainer,
@@ -112,7 +112,7 @@ class TestFetcher:
     async def test_on_stop__drainer_raises_TimeoutError(self, *, fetcher):
         fetcher._drainer = Mock(done=Mock(return_value=False))
         with patch("asyncio.wait_for", AsyncMock()) as wait_for:
-            wait_for.coro.side_effect = [
+            wait_for.side_effect = [
                 asyncio.TimeoutError(),
                 asyncio.TimeoutError(),
                 None,

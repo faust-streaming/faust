@@ -135,8 +135,8 @@ class TestRecovery:
     async def assert_wait(self, recovery, stopped=False, done=None, timeout=None):
         coro = Mock()
         recovery.wait_first = AsyncMock()
-        recovery.wait_first.coro.return_value.stopped = stopped
-        recovery.wait_first.coro.return_value.done = {done} if done else set()
+        recovery.wait_first.return_value.stopped = stopped
+        recovery.wait_first.return_value.done = {done} if done else set()
 
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(

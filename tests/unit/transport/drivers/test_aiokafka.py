@@ -1133,9 +1133,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     async def test__highwaters(self, *, cthread, _consumer):
         cthread.consumer.in_transaction = False
         cthread._consumer = _consumer
-        assert await cthread._highwaters([TP1]) is (
-            _consumer.end_offsets.coro.return_value
-        )
+        assert await cthread._highwaters([TP1]) is (_consumer.end_offsets.return_value)
 
     @pytest.mark.asyncio
     async def test__highwaters__in_transaction(self, *, cthread, _consumer):
@@ -1195,7 +1193,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         ret = await cthread._fetch_records(
             _consumer, {TP1}, timeout=312.3, max_records=1000
         )
-        assert ret is fetcher.fetched_records.coro.return_value
+        assert ret is fetcher.fetched_records.return_value
         fetcher.fetched_records.assert_called_once_with(
             {TP1},
             timeout=312.3,
@@ -1523,7 +1521,7 @@ class TestProducer(ProducerBaseTest):
             deleting=True,
             ensure_created=True,
         )
-        producer.transport._create_topic.coro.assert_called_once_with(
+        producer.transport._create_topic.assert_called_once_with(
             producer,
             _producer.client,
             "foo",
@@ -1558,7 +1556,7 @@ class TestProducer(ProducerBaseTest):
         assert producer._producer is _producer
         producer._new_producer.assert_called_once_with()
         producer.beacon.add.assert_called_with(_producer)
-        _producer.start.coro.assert_called_once_with()
+        _producer.start.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_on_stop(self, *, producer, _producer):
@@ -1702,7 +1700,7 @@ class TestProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_send__KafkaError(self, producer, _producer):
-        _producer.send.coro.side_effect = KafkaError()
+        _producer.send.side_effect = KafkaError()
         with pytest.raises(ProducerSendError):
             await producer.send(
                 "topic",
@@ -1715,7 +1713,7 @@ class TestProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_send__trn_KafkaError(self, producer, _producer):
-        _producer.send.coro.side_effect = KafkaError()
+        _producer.send.side_effect = KafkaError()
         await producer.begin_transaction("tid")
         with pytest.raises(ProducerSendError):
             await producer.send(
@@ -1793,7 +1791,7 @@ class TestThreadedProducer(ProducerBaseTest):
         try:
             assert threaded_producer._producer is mocked_producer
             threaded_producer._new_producer.assert_called_once_with()
-            mocked_producer.start.coro.assert_called_once_with()
+            mocked_producer.start.assert_called_once_with()
         finally:
             await threaded_producer.start()
             await threaded_producer.stop()
@@ -1805,8 +1803,8 @@ class TestThreadedProducer(ProducerBaseTest):
         await threaded_producer.start()
         await threaded_producer.on_thread_stop()
         try:
-            mocked_producer.flush.coro.assert_called_once_with()
-            mocked_producer.stop.coro.assert_called_once_with()
+            mocked_producer.flush.assert_called_once_with()
+            mocked_producer.stop.assert_called_once_with()
         finally:
             await threaded_producer.stop()
 
@@ -1831,7 +1829,7 @@ class TestThreadedProducer(ProducerBaseTest):
                     )
                 )
             )
-            mocked_producer.send.coro.assert_called_once()
+            mocked_producer.send.assert_called_once()
         finally:
             await threaded_producer.stop()
 
@@ -1857,7 +1855,7 @@ class TestThreadedProducer(ProducerBaseTest):
                     )
                 ),
             )
-            mocked_producer.send_and_wait.coro.assert_called_once()
+            mocked_producer.send_and_wait.assert_called_once()
         finally:
             await threaded_producer.stop()
 
@@ -1906,7 +1904,7 @@ class TestTransport:
             partitions=100,
             replication=3,
         )
-        transport._topic_waiters["foo"].coro.assert_called_with()
+        transport._topic_waiters["foo"].assert_called_with()
 
     @pytest.mark.asyncio
     async def test__create_topic__missing(self, *, transport, loop):
@@ -1930,7 +1928,7 @@ class TestTransport:
                 3,
                 loop=loop,
             )
-            SW.return_value.coro.assert_called_once_with()
+            SW.return_value.assert_called_once_with()
             assert transport._topic_waiters["foo"] is SW.return_value
 
     @pytest.mark.asyncio
@@ -1939,7 +1937,7 @@ class TestTransport:
         transport._topic_waiters.clear()
         with patch("faust.transport.drivers.aiokafka.StampedeWrapper") as SW:
             SW.return_value = AsyncMock()
-            SW.return_value.coro.side_effect = KeyError("foo")
+            SW.return_value.side_effect = KeyError("foo")
             with pytest.raises(KeyError):
                 await transport._create_topic(
                     transport,

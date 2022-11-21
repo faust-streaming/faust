@@ -230,4 +230,4 @@ class Test_View:
         web.read_request_content = AsyncMock()
         ret = await view.read_request_content(request)
         web.read_request_content.assert_called_once_with(request)
-        assert ret is web.read_request_content.coro.return_value
+        assert ret is web.read_request_content.return_value

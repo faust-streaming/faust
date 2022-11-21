@@ -49,7 +49,7 @@ class Test_Conductor:
         cb = con_client_only._tp_to_callback[tp] = AsyncMock(name="cb")
 
         ret = await con_client_only.on_message(message)
-        assert ret is cb.coro.return_value
+        assert ret is cb.return_value
 
         cb.assert_called_once_with(message)
 
