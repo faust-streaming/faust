@@ -1,9 +1,9 @@
 import asyncio
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from mode import label, shortlabel
 from mode.utils.futures import done_future
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 from faust import App, Channel, Topic
 from faust.transport.conductor import Conductor

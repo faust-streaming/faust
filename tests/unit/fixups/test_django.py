@@ -1,5 +1,6 @@
+from unittest.mock import Mock, mask_module, patch_module
+
 import pytest
-from mode.utils.mocks import Mock, mask_module, patch_module
 
 from faust.fixups import fixups
 from faust.fixups.django import Fixup

@@ -1,10 +1,10 @@
 import asyncio
 from copy import copy
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 from mode import label
 from mode.utils.aiter import aiter, anext
-from mode.utils.mocks import AsyncMock, Mock
 
 import faust
 from faust.exceptions import ImproperlyConfigured

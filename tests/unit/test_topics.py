@@ -1,8 +1,8 @@
 import asyncio
 import re
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 import faust
 from faust import Event, Record

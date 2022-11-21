@@ -2,6 +2,7 @@ import random
 import string
 from contextlib import contextmanager
 from typing import Optional
+from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call, patch
 
 import aiokafka
 import opentracing
@@ -10,7 +11,6 @@ from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
 from mode.utils import text
 from mode.utils.futures import done_future
-from mode.utils.mocks import ANY, AsyncMock, MagicMock, Mock, call, patch
 from opentracing.ext import tags
 
 import faust

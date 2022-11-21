@@ -1,8 +1,8 @@
 import asyncio
 import json
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust import Record
 from faust.agents.models import ReqRepResponse

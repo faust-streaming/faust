@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust import Event
 

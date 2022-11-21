@@ -1,7 +1,7 @@
 import asyncio
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
-from mode.utils.mocks import ANY, AsyncMock, Mock, patch
 
 from faust.livecheck.exceptions import (
     LiveCheckError,

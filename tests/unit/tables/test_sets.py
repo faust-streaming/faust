@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, Mock, call
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call
 
 import faust
 from faust.tables.sets import (

@@ -1,8 +1,8 @@
 import asyncio
 import collections.abc
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.agents import Agent
 from faust.agents.actor import Actor, AsyncIterableActor, AwaitableActor

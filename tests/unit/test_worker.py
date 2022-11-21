@@ -2,10 +2,10 @@ import asyncio
 import logging
 import warnings
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from mode.utils.logging import CompositeLogger
-from mode.utils.mocks import AsyncMock, Mock, patch
 from mode.utils.trees import Node
 from yarl import URL
 

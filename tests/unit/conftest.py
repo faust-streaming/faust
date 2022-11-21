@@ -1,7 +1,7 @@
 import os
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 import faust
 from faust.transport.producer import Producer

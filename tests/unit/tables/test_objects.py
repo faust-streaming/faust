@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, Mock, patch
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 from faust.tables.objects import ChangeloggedObjectManager
 from faust.types import TP

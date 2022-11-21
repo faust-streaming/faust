@@ -1,8 +1,8 @@
 from pathlib import Path
 from typing import List, Mapping, Tuple
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured

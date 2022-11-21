@@ -1,11 +1,11 @@
 import asyncio
+from unittest.mock import ANY, AsyncMock, FutureMock, Mock, call, patch
 
 import pytest
 from mode import SupervisorStrategy, label
 from mode.utils.aiter import aiter
 from mode.utils.futures import done_future
 from mode.utils.logging import CompositeLogger
-from mode.utils.mocks import ANY, AsyncMock, FutureMock, Mock, call, patch
 from mode.utils.trees import Node
 
 import faust

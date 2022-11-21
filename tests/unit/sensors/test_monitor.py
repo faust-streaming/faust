@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from statistics import median
 from typing import Any
+from unittest.mock import AsyncMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust import Event, Stream, Table, Topic
 from faust.sensors.monitor import Monitor, TableState

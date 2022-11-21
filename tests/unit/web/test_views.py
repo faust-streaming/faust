@@ -1,5 +1,6 @@
+from unittest.mock import AsyncMock, Mock
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.web import Request, View, Web
 from faust.web.exceptions import MethodNotAllowed

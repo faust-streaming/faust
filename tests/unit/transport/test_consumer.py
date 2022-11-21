@@ -1,11 +1,11 @@
 import asyncio
+from unittest.mock import ANY, AsyncMock, Mock, call, patch
 
 import pytest
 from intervaltree import Interval, IntervalTree
 from mode import Service
 from mode.threads import MethodQueue
 from mode.utils.futures import done_future
-from mode.utils.mocks import ANY, AsyncMock, Mock, call, patch
 
 from faust import App
 from faust.app._attached import Attachments

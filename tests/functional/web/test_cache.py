@@ -1,8 +1,8 @@
 from itertools import count
+from unittest.mock import Mock
 
 import aredis
 import pytest
-from mode.utils.mocks import Mock
 
 import faust
 from faust.exceptions import ImproperlyConfigured

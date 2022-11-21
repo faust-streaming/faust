@@ -1,10 +1,10 @@
 import asyncio
 import operator
 from copy import copy
+from unittest.mock import AsyncMock, Mock, call, patch
 
 import pytest
 from mode import label, shortlabel
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 from faust import Event, Record, Stream, Topic, joins
 from faust.exceptions import PartitionsMismatch

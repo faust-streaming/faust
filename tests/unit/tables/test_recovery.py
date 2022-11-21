@@ -1,8 +1,7 @@
 from collections import Counter
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.tables.recovery import RebalanceAgain, Recovery, ServiceStopped
 from faust.types import TP

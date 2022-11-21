@@ -1,10 +1,10 @@
 import collections
 import re
+from unittest.mock import ANY, AsyncMock, Mock, call, patch
 
 import pytest
 from mode import Service
 from mode.utils.compat import want_bytes
-from mode.utils.mocks import ANY, AsyncMock, Mock, call, patch
 from yarl import URL
 
 import faust

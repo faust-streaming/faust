@@ -1,9 +1,9 @@
 import asyncio
 from typing import Union
+from unittest.mock import AsyncMock, Mock, call
 
 import pytest
 from mode.utils.compat import want_bytes
-from mode.utils.mocks import AsyncMock, Mock, call
 
 from faust.livecheck import LiveCheck
 from faust.livecheck.app import LiveCheckSensor

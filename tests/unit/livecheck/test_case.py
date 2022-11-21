@@ -1,10 +1,10 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from statistics import median
+from unittest.mock import ANY, AsyncMock, Mock, patch
 
 import pytest
 from mode import label
-from mode.utils.mocks import ANY, AsyncMock, Mock, patch
 
 from faust.livecheck import Case
 from faust.livecheck.exceptions import SuiteFailed
