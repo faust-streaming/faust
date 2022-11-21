@@ -10,7 +10,6 @@ from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
 from tests.helpers import AsyncMock
 
 
-
 class Account(Record, serializer="json"):
     id: str
     name: str

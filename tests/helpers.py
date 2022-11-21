@@ -4,9 +4,20 @@ import sys
 import types
 import unittest.mock
 from contextlib import contextmanager
+from itertools import count
 from time import time
 from types import ModuleType
-from typing import Any, Callable, ContextManager, Iterator, Optional, Type, Union, cast
+from typing import (
+    Any,
+    Callable,
+    ContextManager,
+    Iterator,
+    List,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 from unittest.mock import Mock
 
 if sys.version_info < (3, 8):
@@ -27,6 +38,8 @@ __all__ = [
     "AsyncContextMock",
     "AsyncContextManagerMock",
 ]
+
+MOCK_CALL_COUNT = count(0)
 
 
 def message(
@@ -258,3 +271,25 @@ def ContextMock(*args: Any, **kwargs: Any) -> _ContextMock:
     # so it must return None here.
     obj.__exit__.return_value = None  # type: ignore
     return obj
+
+
+class Mock(unittest.mock.Mock):
+    """Mock object."""
+
+    global_call_count: Optional[int] = None
+    call_counts: List[int] = cast(List[int], None)
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        ret = super().__call__(*args, **kwargs)
+        count = self.global_call_count = next(MOCK_CALL_COUNT)
+        if self.call_counts is None:
+            # mypy thinks this is unreachable as we mask that this is Optional
+            self.call_counts = [count]  # type: ignore
+        else:
+            self.call_counts.append(count)
+        return ret
+
+    def reset_mock(self, *args: Any, **kwargs: Any) -> None:
+        super().reset_mock(*args, **kwargs)
+        if self.call_counts is not None:
+            self.call_counts.clear()

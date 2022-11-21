@@ -21,7 +21,7 @@ from faust.agents.replies import ReplyConsumer
 from faust.events import Event
 from faust.exceptions import ImproperlyConfigured
 from faust.types import TP, Message
-from tests.helpers import AsyncMock, FutureMock
+from tests.helpers import AsyncMock, FutureMock, Mock
 
 
 class Word(Record):

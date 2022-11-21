@@ -10,7 +10,6 @@ from faust.livecheck.signals import BaseSignal, Signal
 from tests.helpers import AsyncMock
 
 
-
 class Test_BaseSignal:
     @pytest.fixture()
     def signal(self, *, case):
