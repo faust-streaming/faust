@@ -10,6 +10,7 @@ from faust.sensors.monitor import Monitor, TableState
 from faust.transport.consumer import Consumer
 from faust.transport.producer import Producer
 from faust.types import TP, Message
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 
