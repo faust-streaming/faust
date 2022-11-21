@@ -1,11 +1,12 @@
 import os
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 import faust
 from faust.transport.producer import Producer
 from faust.utils.tracing import set_current_span
+from tests.helpers import AsyncMock
 
 
 @pytest.fixture()
