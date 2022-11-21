@@ -38,6 +38,7 @@ from faust.transport.drivers.aiokafka import (
 )
 from faust.types import TP
 from faust.types.tuples import FutureMessage, PendingMessage
+from tests.helpers import AsyncMock
 
 TP1 = TP("topic", 23)
 TP2 = TP("topix", 23)
