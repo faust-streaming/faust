@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, Mock, call, patch
+from unittest.mock import ANY, call, patch
 
 import pytest
 from mode import SupervisorStrategy, label
