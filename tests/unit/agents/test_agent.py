@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, AsyncMock, FutureMock, Mock, call, patch
+from unittest.mock import ANY, AsyncMock, Mock, call, patch
 
 import pytest
 from mode import SupervisorStrategy, label
@@ -21,6 +21,7 @@ from faust.agents.replies import ReplyConsumer
 from faust.events import Event
 from faust.exceptions import ImproperlyConfigured
 from faust.types import TP, Message
+from tests.helpers import FutureMock
 
 
 class Word(Record):

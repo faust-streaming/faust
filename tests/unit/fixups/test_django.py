@@ -1,4 +1,4 @@
-from unittest.mock import Mock, mask_module, patch_module
+from unittest.mock import Mock
 
 import pytest
 
