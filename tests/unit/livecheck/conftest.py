@@ -5,6 +5,7 @@ import pytest
 
 from faust.livecheck.models import TestExecution
 from faust.livecheck.runners import TestRunner
+from tests.helpers import ContextMock
 
 
 @pytest.fixture()
