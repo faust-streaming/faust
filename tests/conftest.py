@@ -3,7 +3,7 @@ import threading
 import time
 from http import HTTPStatus
 from typing import Any, NamedTuple, Optional
-from unittest.mock import AsyncMock, MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from _pytest.assertion.util import _compare_eq_dict, _compare_eq_set
@@ -11,7 +11,7 @@ from aiohttp.client import ClientError, ClientSession
 from aiohttp.web import Response
 from mode.utils.futures import all_tasks
 
-from tests.helpers import AsyncContextManagerMock
+from tests.helpers import AsyncContextManagerMock, AsyncMock
 
 sentinel = object()
 
