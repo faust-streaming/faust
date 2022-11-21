@@ -1,10 +1,11 @@
 from collections import Counter
-from unittest.mock import AsyncMock, MagicMock, Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
 from faust.tables.recovery import RebalanceAgain, Recovery, ServiceStopped
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 6)
 TP2 = TP("bar", 3)

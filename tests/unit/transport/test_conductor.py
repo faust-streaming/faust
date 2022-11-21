@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from mode import label, shortlabel
@@ -9,6 +9,7 @@ from faust import App, Channel, Topic
 from faust.transport.conductor import Conductor
 from faust.transport.consumer import Consumer
 from faust.types import TP, Message
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)

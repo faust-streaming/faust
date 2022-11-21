@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, AsyncMock, Mock, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from intervaltree import Interval, IntervalTree
@@ -22,6 +22,7 @@ from faust.transport.consumer import (
     TransactionManager,
 )
 from faust.types import TP, Message
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)

@@ -1,10 +1,11 @@
 import asyncio
 from typing import Any, Optional
-from unittest.mock import AsyncMock, Mock, PropertyMock, call
+from unittest.mock import Mock, PropertyMock, call
 
 import pytest
 
 from faust.transport.producer import Producer, ProducerBuffer
+from tests.helpers import AsyncMock
 
 
 class TestProducerBuffer:

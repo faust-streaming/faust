@@ -1,7 +1,7 @@
 import asyncio
 import sys
 from pathlib import Path
-from unittest.mock import ANY, AsyncMock, Mock, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import aiohttp_cors
 import pytest
@@ -16,6 +16,7 @@ from faust.web.drivers.aiohttp import (
     ServerThread,
     _prepare_cors_options,
 )
+from tests.helpers import AsyncMock
 
 if sys.platform == "win32":
     DATAPATH = "c:/Program Files/Faust/data"

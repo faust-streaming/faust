@@ -1,12 +1,14 @@
 import asyncio
 import json
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from faust import Record
 from faust.agents.models import ReqRepResponse
 from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
+from tests.helpers import AsyncMock
+
 
 
 class Account(Record, serializer="json"):

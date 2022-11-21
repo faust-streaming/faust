@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import List, Mapping, Tuple
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 from yarl import URL
@@ -9,6 +9,7 @@ from faust.exceptions import ImproperlyConfigured
 from faust.stores import rocksdb
 from faust.stores.rocksdb import RocksDBOptions, Store
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)

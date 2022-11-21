@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, AsyncMock, Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -11,6 +11,7 @@ from faust.livecheck.exceptions import (
     LiveCheckTestTimeout,
 )
 from faust.livecheck.models import State
+from tests.helpers import AsyncMock
 
 
 class TestTestRunner:

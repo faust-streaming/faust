@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, Mock, call
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -14,6 +14,7 @@ from faust.tables.sets import (
     SetTableManager,
     SetWindowSet,
 )
+from tests.helpers import AsyncMock
 
 
 @pytest.fixture()

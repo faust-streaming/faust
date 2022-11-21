@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -7,6 +7,8 @@ from faust.livecheck.exceptions import LiveCheckTestTimeout
 from faust.livecheck.locals import current_execution_stack, current_test_stack
 from faust.livecheck.models import SignalEvent
 from faust.livecheck.signals import BaseSignal, Signal
+from tests.helpers import AsyncMock
+
 
 
 class Test_BaseSignal:

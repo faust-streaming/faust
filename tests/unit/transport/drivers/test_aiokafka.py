@@ -2,7 +2,7 @@ import random
 import string
 from contextlib import contextmanager
 from typing import Optional
-from unittest.mock import ANY, AsyncMock, MagicMock, Mock, call, patch
+from unittest.mock import ANY, MagicMock, Mock, call, patch
 
 import aiokafka
 import opentracing

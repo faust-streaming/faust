@@ -1,7 +1,7 @@
 import asyncio
 import operator
 from copy import copy
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 from mode import label, shortlabel
@@ -12,6 +12,7 @@ from faust.stores.base import Store
 from faust.tables.base import Collection
 from faust.types import TP
 from faust.windows import Window
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 

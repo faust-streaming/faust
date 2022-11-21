@@ -1,7 +1,7 @@
 from http import HTTPStatus
 from statistics import median
 from typing import Any
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 

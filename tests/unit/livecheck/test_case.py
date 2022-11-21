@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from statistics import median
-from unittest.mock import ANY, AsyncMock, Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from mode import label
@@ -9,6 +9,7 @@ from mode import label
 from faust.livecheck import Case
 from faust.livecheck.exceptions import SuiteFailed
 from faust.livecheck.models import State, TestReport
+from tests.helpers import AsyncMock
 
 
 class TestCase:

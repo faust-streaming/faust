@@ -1,12 +1,13 @@
 import asyncio
 import collections.abc
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from faust.agents import Agent
 from faust.agents.actor import Actor, AsyncIterableActor, AwaitableActor
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 
 class FakeActor(Actor):

@@ -1,10 +1,11 @@
 import asyncio
 from typing import Hashable
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 import pytest
 
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 
 class Test_AgentManager:
