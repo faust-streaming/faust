@@ -64,7 +64,7 @@ class Test_BarrierState:
             p.done.return_value = True
             return None
 
-        p._results.get.coro.side_effect = se
+        p._results.get.side_effect = se
 
         assert [x async for x in p.iterate()] == []
 
