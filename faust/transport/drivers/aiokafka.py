@@ -305,7 +305,6 @@ class ThreadedProducer(ServiceThread):
     ) -> None:
         super().__init__(
             executor=executor,
-
             thread_loop=thread_loop,
             Worker=Worker,
             **kwargs,
@@ -521,7 +520,6 @@ class AIOKafkaConsumerThread(ConsumerThread):
             )
 
         return aiokafka.AIOKafkaConsumer(
-
             api_version=conf.consumer_api_version,
             client_id=conf.broker_client_id,
             group_id=conf.id,
@@ -559,7 +557,6 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
         max_poll_interval = conf.broker_max_poll_interval or 0
         return aiokafka.AIOKafkaConsumer(
-
             client_id=conf.broker_client_id,
             bootstrap_servers=server_list(transport.url, transport.default_port),
             request_timeout_ms=int(conf.broker_request_timeout * 1000.0),
