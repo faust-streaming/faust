@@ -144,7 +144,7 @@ class Producer(Service, ProducerT):
         self.partitioner = conf.producer_partitioner
         api_version = self._api_version = conf.producer_api_version
         assert api_version is not None
-        super().__init__(loop=loop or self.transport.loop, **kwargs)
+        super().__init__(**kwargs)
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
         if conf.producer_threaded:
             self.threaded_producer = self.create_threaded_producer()
