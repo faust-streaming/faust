@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, call, patch, MagicMock
+from unittest.mock import ANY, call, patch
 
 import pytest
 from mode import SupervisorStrategy, label
@@ -123,9 +123,7 @@ class Test_AgentService:
                 for i in range(10)
             ]
         )
-        agent.supervisor.add.assert_has_calls(
-            [call(aref) for _ in range(10)]
-        )
+        agent.supervisor.add.assert_has_calls([call(aref) for _ in range(10)])
         agent.supervisor.start.assert_called_once_with()
 
     def test_get_active_partitions(self, *, agent):
@@ -139,7 +137,7 @@ class Test_AgentService:
     async def test_replace_actor(self, *, agent):
         aref = Mock(name="aref", autospec=Actor)
         agent._start_one = AsyncMock(name="_start_one")
-        assert await agent._replace_actor(aref, 101) == agent._start_one.coro()
+        assert await agent._replace_actor(aref, 101) == agent._start_one.return_value
         agent._start_one.assert_called_once_with(
             index=101,
             active_partitions=aref.active_partitions,
@@ -346,7 +344,7 @@ class Test_Agent:
         )
         ret = await agent._start_isolated(TP("foo", 0))
         agent._start_for_partitions.assert_called_once_with({TP("foo", 0)})
-        assert ret is agent._start_for_partitions.coro()
+        assert ret is agent._start_for_partitions.return_value
 
     @pytest.mark.asyncio
     async def test_on_shared_partitions_revoked(self, *, agent):
@@ -391,7 +389,7 @@ class Test_Agent:
         agent._prepare_actor = AsyncMock(name="_prepare_actor")
         ret = await agent._start_task(index=0)
         agent._prepare_actor.assert_called_once_with(ANY, agent.beacon)
-        assert ret is agent._prepare_actor.coro()
+        assert ret is agent._prepare_actor.return_value
 
     @pytest.mark.asyncio
     async def test_prepare_actor__AsyncIterable(self, *, agent):
@@ -846,7 +844,7 @@ class Test_Agent:
             force=True,
         )
 
-        assert ret is agent.channel.send.coro()
+        assert ret is agent.channel.send.return_value
 
     @pytest.mark.asyncio
     async def test_send__without_reply_to(self, *, agent):
@@ -885,7 +883,7 @@ class Test_Agent:
             force=True,
         )
 
-        assert ret is agent.channel.send.coro()
+        assert ret is agent.channel.send.return_value
 
     def test_get_strtopic__agent(self, *, agent, agent2):
         assert agent._get_strtopic(agent2) == agent2.channel.get_topic_name()
