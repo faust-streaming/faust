@@ -205,7 +205,8 @@ class TestTransactionManager:
         producer.stop_transaction.assert_called()
         producer.stop_transaction.assert_called_once_with(
             [
-                # The problem is that some reason calls with extra (commented out) garbage are being included
+                # The problem is that some reason calls with extra
+                # (commented out) garbage are being included
                 # call.shortlabel.__bool__(),
                 # call.shortlabel._str__(),
                 call("0-0"),
