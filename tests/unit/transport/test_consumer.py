@@ -198,8 +198,11 @@ class TestTransactionManager:
 
     @pytest.mark.asyncio
     async def test__stop_transactions(self, *, manager, producer):
-        await manager._stop_transactions(["0-0", "1-0"])
-        producer.stop_transaction.assert_has_calls(
+        tids = ["0-0", "1-0"]
+        manager._start_new_producer = AsyncMock()
+        await manager._stop_transactions(tids)
+        producer.stop_transaction.assert_called()
+        producer.stop_transaction.assert_called_once_with(
             [
                 call("0-0"),
                 call("1-0"),
@@ -208,8 +211,9 @@ class TestTransactionManager:
 
     @pytest.mark.asyncio
     async def test_start_transactions(self, *, manager, producer):
+        tids = ["0-0", "1-0"]
         manager._start_new_producer = AsyncMock()
-        await manager._start_transactions(["0-0", "1-0"])
+        await manager._start_transactions(tids)
         producer.maybe_begin_transaction.assert_has_calls(
             [
                 call("0-0"),
