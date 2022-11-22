@@ -1,6 +1,6 @@
 import collections
 import re
-from unittest.mock import ANY, AsyncMock, Mock, call, patch
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from mode import Service
@@ -30,6 +30,7 @@ from faust.types.models import ModelT
 from faust.types.settings import Settings
 from faust.types.tables import GlobalTableT
 from faust.types.web import ResourceOptions
+from tests.helpers import AsyncMock
 
 TEST_TOPIC = "test"
 CONFIG_DICT = {
