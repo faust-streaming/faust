@@ -19,7 +19,7 @@ class CoroEq:
         self.coro = coro
 
     def __eq__(self, other):
-        return other.cr_code.co_name == self.__name__
+        return other.cr_code.co_name == self.coro.__name__
 
 
 class Test_Worker:
