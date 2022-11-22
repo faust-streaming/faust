@@ -784,8 +784,6 @@ class Stream(StreamT[T_co], Service):
             await asyncio.wait(
                 [
                     asyncio.ensure_future(maybe_forward(value, channel))
-                    if isinstance(value, asyncio.Event)
-                    else maybe_forward(value, channel)
                     for channel in _channels
                 ],
                 return_when=asyncio.ALL_COMPLETED,
