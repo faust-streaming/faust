@@ -249,7 +249,7 @@ class TestRecovery:
         destination = {TP1: None, TP2: 1, TP3: 8, TP4: -1}
         await recovery._build_offsets(consumer, tps, destination, "some-title")
         assert len(destination) == 4
-        assert destination[TP1] == -1
+        assert destination[TP1] == 0
         assert destination[TP2] == 2
         assert destination[TP3] == 8
         assert destination[TP4] == -1
