@@ -11,7 +11,6 @@ FLAKE8 ?= flake8
 PYDOCSTYLE ?= pydocstyle
 MYPY ?= mypy
 SPHINX2RST ?= sphinx2rst
-BUMPVERSION ?= bumpversion
 VULTURE ?= vulture
 VULTURE_MIN_CONFIDENCE ?= 100
 PRE_COMMIT ?= pre-commit
@@ -78,15 +77,6 @@ help:
 clean: clean-docs clean-pyc clean-build
 
 clean-dist: clean clean-git-force
-
-bump:
-	$(BUMPVERSION) patch
-
-bump-minor:
-	$(BUMPVERSION) minor
-
-bump-major:
-	$(BUMPVERSION) major
 
 release:
 	$(PYTHON) setup.py register sdist bdist_wheel upload --sign --identity="$(PGPIDENT)"

@@ -186,6 +186,44 @@ class Test_Collection:
         )
 
     @pytest.mark.asyncio
+    async def test_last_closed_window(self, *, table):
+
+        assert table.last_closed_window == 0.0
+
+        table.window = Mock(name="window")
+        table._data = {
+            ("boo", (1.1, 1.4)): "BOO",
+            ("moo", (1.4, 1.6)): "MOO",
+            ("faa", (1.9, 2.0)): "FAA",
+            ("bar", (4.1, 4.2)): "BAR",
+        }
+        table._partition_timestamps = {
+            TP1: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+        }
+        table._partition_timestamp_keys = {
+            (TP1, 2.0): [
+                ("boo", (1.1, 1.4)),
+                ("moo", (1.4, 1.6)),
+                ("faa", (1.9, 2.0)),
+            ],
+            (TP1, 5.0): [
+                ("bar", (4.1, 4.2)),
+            ],
+        }
+
+        def get_stale(limit):
+            def is_stale(timestamp, latest_timestamp):
+                return timestamp < limit
+
+            return is_stale
+
+        table.window.stale.side_effect = get_stale(4.0)
+
+        await table._del_old_keys()
+
+        assert table.last_closed_window == 1.9
+
+    @pytest.mark.asyncio
     async def test_del_old_keys__empty(self, *, table):
         table.window = Mock(name="window")
         await table._del_old_keys()

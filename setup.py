@@ -182,7 +182,8 @@ with open("README.md") as readme_file:
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
-        version=meta["version"],
+        use_scm_version=True,
+        setup_requires=["setuptools_scm"],
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
@@ -226,8 +227,10 @@ def do_setup(**kwargs):
             "License :: OSI Approved :: BSD License",
             "Programming Language :: Python",
             "Programming Language :: Python :: 3 :: Only",
-            "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: Implementation :: CPython",
             "Programming Language :: Python :: Implementation :: PyPy",
             "Operating System :: POSIX",
