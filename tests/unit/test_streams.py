@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from mode.utils.contexts import ExitStack
@@ -8,7 +8,7 @@ from mode.utils.contexts import ExitStack
 import faust
 from faust import joins
 from faust.exceptions import Skip
-from tests.helpers import new_event
+from tests.helpers import AsyncMock, new_event
 
 
 class Model(faust.Record):

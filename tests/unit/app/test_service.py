@@ -1,7 +1,9 @@
-from unittest.mock import AsyncMock, Mock, call
+from unittest.mock import Mock, call
 
 import pytest
 from mode import Service, label
+
+from tests.helpers import AsyncMock
 
 
 class OtherService(Service):

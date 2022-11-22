@@ -2,7 +2,7 @@ import asyncio
 import logging
 import warnings
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 from mode.utils.logging import CompositeLogger
@@ -12,6 +12,7 @@ from yarl import URL
 from faust import Sensor
 from faust.utils import terminal
 from faust.worker import Worker
+from tests.helpers import AsyncMock
 
 
 class CoroEq:

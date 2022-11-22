@@ -1,6 +1,6 @@
 import asyncio
 import re
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -8,6 +8,7 @@ import faust
 from faust import Event, Record
 from faust.exceptions import KeyDecodeError, ValueDecodeError
 from faust.types import Message
+from tests.helpers import AsyncMock
 
 
 class Dummy(Record):
