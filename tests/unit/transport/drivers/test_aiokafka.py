@@ -727,7 +727,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         c = cthread._create_consumer(loop=loop)
         assert c is cthread._create_client_consumer.return_value
         cthread._create_client_consumer.assert_called_once_with(
-            cthread.transport, loop=loop
+            cthread.transport
         )
 
     def test__create_consumer__worker(self, *, cthread, app):
@@ -737,7 +737,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         c = cthread._create_consumer(loop=loop)
         assert c is cthread._create_worker_consumer.return_value
         cthread._create_worker_consumer.assert_called_once_with(
-            cthread.transport, loop=loop
+            cthread.transport
         )
 
     def test_session_gt_request_timeout(self, *, cthread, app):
@@ -783,7 +783,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             assert c is AIOKafkaConsumer.return_value
             max_poll_interval = conf.broker_max_poll_interval
             AIOKafkaConsumer.assert_called_once_with(
-                loop=loop,
+
                 api_version=app.conf.consumer_api_version,
                 client_id=conf.broker_client_id,
                 group_id=conf.id,
@@ -824,7 +824,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             max_poll_interval = conf.broker_max_poll_interval
             assert c is AIOKafkaConsumer.return_value
             AIOKafkaConsumer.assert_called_once_with(
-                loop=loop,
+
                 client_id=conf.broker_client_id,
                 bootstrap_servers=server_list(transport.url, transport.default_port),
                 request_timeout_ms=int(conf.broker_request_timeout * 1000.0),
@@ -1803,8 +1803,8 @@ class TestThreadedProducer(ProducerBaseTest):
         await threaded_producer.start()
         await threaded_producer.on_thread_stop()
         try:
-            mocked_producer.flush.assert_called_once_with()
-            mocked_producer.stop.assert_called_once_with()
+            mocked_producer.flush.assert_called_once()
+            mocked_producer.stop.assert_called_once()
         finally:
             await threaded_producer.stop()
 

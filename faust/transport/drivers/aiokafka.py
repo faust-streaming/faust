@@ -305,7 +305,7 @@ class ThreadedProducer(ServiceThread):
     ) -> None:
         super().__init__(
             executor=executor,
-            loop=loop,
+
             thread_loop=thread_loop,
             Worker=Worker,
             **kwargs,
@@ -488,9 +488,9 @@ class AIOKafkaConsumerThread(ConsumerThread):
     ) -> aiokafka.AIOKafkaConsumer:
         transport = cast(Transport, self.transport)
         if self.app.client_only:
-            return self._create_client_consumer(transport, loop=loop)
+            return self._create_client_consumer(transport)
         else:
-            return self._create_worker_consumer(transport, loop=loop)
+            return self._create_worker_consumer(transport)
 
     def _create_worker_consumer(
         self, transport: "Transport", loop: asyncio.AbstractEventLoop
@@ -521,7 +521,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             )
 
         return aiokafka.AIOKafkaConsumer(
-            loop=loop,
+
             api_version=conf.consumer_api_version,
             client_id=conf.broker_client_id,
             group_id=conf.id,
@@ -559,7 +559,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
         max_poll_interval = conf.broker_max_poll_interval or 0
         return aiokafka.AIOKafkaConsumer(
-            loop=loop,
+
             client_id=conf.broker_client_id,
             bootstrap_servers=server_list(transport.url, transport.default_port),
             request_timeout_ms=int(conf.broker_request_timeout * 1000.0),
