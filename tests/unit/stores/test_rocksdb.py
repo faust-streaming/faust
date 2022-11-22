@@ -421,9 +421,7 @@ class Test_Store:
         store._try_open_db_for_partition.assert_has_calls(
             [
                 call(TP2.partition, generation_id=generation_id),
-                call.coro(TP2.partition, generation_id=generation_id),
                 call(TP1.partition, generation_id=generation_id),
-                call.coro(TP1.partition, generation_id=generation_id),
             ],
             any_order=True,
         )
