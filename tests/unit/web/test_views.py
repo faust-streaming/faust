@@ -70,7 +70,7 @@ class Test_View:
         request.match_info = {}
         handler = AsyncMock(name=method)
         view.methods[method.lower()] = handler
-        assert await view(request) is handler.coro()
+        assert await view(request) is handler.return_value
         handler.assert_called_once_with(request)
 
     def test_path_for(self, *, view):

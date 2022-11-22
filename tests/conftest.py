@@ -133,7 +133,7 @@ def mock_http_client(*, app, monkeypatch, request) -> ClientSession:
         if 400 <= options.status_code:
             raise ClientError()
 
-    response = AsyncMock(
+    response = Mock(
         autospec=Response,
         text=AsyncMock(return_value=options.text),
         read=AsyncMock(return_value=options.text),

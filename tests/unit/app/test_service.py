@@ -83,7 +83,7 @@ class Test_AppService:
         app._wait_for_table_recovery_completed.return_value = True
         await app.on_started()
 
-        app._wait_for_table_recovery_completed.coro.return_value = False
+        app._wait_for_table_recovery_completed.return_value = False
         await app.on_started()
 
         app.on_started_init_extra_tasks.assert_called_once_with()

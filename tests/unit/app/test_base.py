@@ -882,9 +882,9 @@ class Test_App:
         request.query = {"q": "KEY"}
 
         ret = await routed(view, request)
-        assert ret is app.router.route_req.coro.return_value
+        assert ret is app.router.route_req.return_value
 
-        app.router.route_req.coro.side_effect = SameNode()
+        app.router.route_req.side_effect = SameNode()
         ret = await routed(view, request)
         assert ret == 42
 
@@ -902,9 +902,9 @@ class Test_App:
         request.match_info = {"q": "KEY"}
 
         ret = await routed(view, request)
-        assert ret is app.router.route_req.coro.return_value
+        assert ret is app.router.route_req.return_value
 
-        app.router.route_req.coro.side_effect = SameNode()
+        app.router.route_req.side_effect = SameNode()
         ret = await routed(view, request)
         assert ret == 42
 
@@ -920,9 +920,9 @@ class Test_App:
             return 42
 
         ret = await routed(view, request)
-        assert ret is app.router.route_req.coro.return_value
+        assert ret is app.router.route_req.return_value
 
-        app.router.route_req.coro.side_effect = SameNode()
+        app.router.route_req.side_effect = SameNode()
         ret = await routed(view, request)
         assert ret == 42
 
@@ -965,9 +965,9 @@ class Test_App:
         request.query = {"q": "KEY"}
 
         ret = await routed(view, request)
-        assert ret is app.router.route_topic_req.coro.return_value
+        assert ret is app.router.route_topic_req.return_value
 
-        app.router.route_topic_req.coro.side_effect = SameNode()
+        app.router.route_topic_req.side_effect = SameNode()
         ret = await routed(view, request)
         assert ret == 42
 
@@ -985,9 +985,9 @@ class Test_App:
         request.match_info = {"q": "KEY"}
 
         ret = await routed(view, request)
-        assert ret is app.router.route_topic_req.coro.return_value
+        assert ret is app.router.route_topic_req.return_value
 
-        app.router.route_topic_req.coro.side_effect = SameNode()
+        app.router.route_topic_req.side_effect = SameNode()
         ret = await routed(view, request)
         assert ret == 42
 
