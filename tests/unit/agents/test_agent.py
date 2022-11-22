@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import ANY, call, patch
+from unittest.mock import ANY, call, patch, MagicMock
 
 import pytest
 from mode import SupervisorStrategy, label
@@ -124,7 +124,7 @@ class Test_AgentService:
             ]
         )
         agent.supervisor.add.assert_has_calls(
-            [call(agent._start_one.coro()) for i in range(10)]
+            [call(aref) for _ in range(10)]
         )
         agent.supervisor.start.assert_called_once_with()
 
