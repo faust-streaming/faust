@@ -34,6 +34,7 @@ __all__ = [
     "FutureMock",
     "mask_module",
     "patch_module",
+    "AsyncMock",
     "ContextMock",
     "AsyncContextMock",
     "AsyncContextManagerMock",
