@@ -487,9 +487,9 @@ class AIOKafkaConsumerThread(ConsumerThread):
     ) -> aiokafka.AIOKafkaConsumer:
         transport = cast(Transport, self.transport)
         if self.app.client_only:
-            return self._create_client_consumer(transport)
+            return self._create_client_consumer(transport, loop=loop)
         else:
-            return self._create_worker_consumer(transport)
+            return self._create_worker_consumer(transport, loop=loop)
 
     def _create_worker_consumer(
         self, transport: "Transport", loop: asyncio.AbstractEventLoop
