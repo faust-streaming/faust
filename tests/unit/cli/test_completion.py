@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import pytest
-from mode.utils.mocks import patch
 
 from faust.cli.completion import completion
 

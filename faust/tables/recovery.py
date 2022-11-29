@@ -615,9 +615,11 @@ class Recovery(Service):
         self._set_recovery_ended()
         # This needs to happen if all goes well
         callback_coros = [
-            table.on_recovery_completed(
-                self.actives_for_table[table],
-                self.standbys_for_table[table],
+            asyncio.ensure_future(
+                table.on_recovery_completed(
+                    self.actives_for_table[table],
+                    self.standbys_for_table[table],
+                )
             )
             for table in self.tables.values()
         ]

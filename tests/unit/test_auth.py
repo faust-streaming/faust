@@ -1,7 +1,7 @@
 import ssl
+from unittest.mock import Mock, patch
 
 import pytest
-from mode.utils.mocks import Mock, patch
 
 from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
 from faust.types.auth import AuthProtocol, SASLMechanism

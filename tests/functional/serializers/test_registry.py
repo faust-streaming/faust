@@ -1,8 +1,8 @@
 import typing
 from decimal import Decimal
+from unittest.mock import Mock
 
 import pytest
-from mode.utils.mocks import Mock
 
 import faust
 from faust.exceptions import KeyDecodeError, ValueDecodeError

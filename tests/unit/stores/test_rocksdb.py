@@ -1,14 +1,15 @@
 from pathlib import Path
 from typing import List, Mapping, Tuple
+from unittest.mock import Mock, call, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured
 from faust.stores import rocksdb
 from faust.stores.rocksdb import RocksDBOptions, Store
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)
@@ -420,9 +421,7 @@ class Test_Store:
         store._try_open_db_for_partition.assert_has_calls(
             [
                 call(TP2.partition, generation_id=generation_id),
-                call.coro(TP2.partition, generation_id=generation_id),
                 call(TP1.partition, generation_id=generation_id),
-                call.coro(TP1.partition, generation_id=generation_id),
             ],
             any_order=True,
         )

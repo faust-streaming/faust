@@ -1,5 +1,6 @@
+from unittest.mock import Mock, call
+
 import pytest
-from mode.utils.mocks import Mock, call
 
 from faust.exceptions import ImproperlyConfigured
 from faust.sensors.datadog import DatadogMonitor, DatadogStatsClient  # noqa

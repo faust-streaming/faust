@@ -4,11 +4,11 @@ import os
 import sys
 import types
 from pathlib import Path
+from unittest.mock import Mock, call, patch
 
 import click
 import pytest
 from mode import Worker
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 from faust.cli import AppCommand, Command, call_command
 from faust.cli.base import (
@@ -21,6 +21,7 @@ from faust.cli.base import (
     option,
 )
 from faust.types._env import CONSOLE_PORT
+from tests.helpers import AsyncMock
 
 
 class Test_argument:
