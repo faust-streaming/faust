@@ -621,7 +621,7 @@ class Command(abc.ABC):  # noqa: B024
 
     def run_using_worker(self, *args: Any, **kwargs: Any) -> NoReturn:
         """Execute command using :class:`faust.Worker`."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop_policy().get_event_loop()
         args = self.args + args
         kwargs = {**self.kwargs, **kwargs}
         service = self.as_service(loop, *args, **kwargs)
@@ -640,7 +640,7 @@ class Command(abc.ABC):  # noqa: B024
         return Service.from_awaitable(
             self.execute(*args, **kwargs),
             name=type(self).__name__,
-            loop=loop or asyncio.get_event_loop(),
+            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
         )
 
     def worker_for_service(
@@ -659,7 +659,7 @@ class Command(abc.ABC):  # noqa: B024
             console_port=self.console_port,
             redirect_stdouts=self.redirect_stdouts or False,
             redirect_stdouts_level=self.redirect_stdouts_level,
-            loop=loop or asyncio.get_event_loop(),
+            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
             daemon=self.daemon,
         )
 

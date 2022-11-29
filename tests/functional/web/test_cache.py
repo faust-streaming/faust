@@ -2,13 +2,13 @@ from itertools import count
 
 import aredis
 import pytest
-from mode.utils.mocks import Mock
 
 import faust
 from faust.exceptions import ImproperlyConfigured
 from faust.web import Blueprint, View
 from faust.web.cache import backends
 from faust.web.cache.backends import redis
+from tests.helpers import Mock
 
 DEFAULT_TIMEOUT = 361.363
 VIEW_B_TIMEOUT = 64.3
@@ -364,7 +364,7 @@ async def test_redis__start_twice_same_client(*, app, mocked_redis):
 async def test_redis_get__irrecoverable_errors(*, app, mocked_redis):
     from aredis.exceptions import AuthenticationError
 
-    mocked_redis.return_value.get.coro.side_effect = AuthenticationError()
+    mocked_redis.return_value.get.side_effect = AuthenticationError()
 
     with pytest.raises(app.cache.Unavailable):
         async with app.cache:
@@ -386,10 +386,10 @@ async def test_redis_invalidating_error(operation, delete_error, *, app, mocked_
     from aredis.exceptions import DataError
 
     mocked_op = getattr(mocked_redis.return_value, operation)
-    mocked_op.coro.side_effect = DataError()
+    mocked_op.side_effect = DataError()
     if delete_error:
         # then the delete fails
-        mocked_redis.return_value.delete.coro.side_effect = DataError()
+        mocked_redis.return_value.delete.side_effect = DataError()
 
     with pytest.raises(app.cache.Unavailable):
         async with app.cache:
@@ -416,7 +416,7 @@ async def test_memory_delete(*, app):
 async def test_redis_get__operational_error(*, app, mocked_redis):
     from aredis.exceptions import TimeoutError
 
-    mocked_redis.return_value.get.coro.side_effect = TimeoutError()
+    mocked_redis.return_value.get.side_effect = TimeoutError()
 
     with pytest.raises(app.cache.Unavailable):
         async with app.cache:

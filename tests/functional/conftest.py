@@ -2,14 +2,15 @@ import logging as _logging
 import os
 from copy import copy
 from typing import IO, Dict, NamedTuple, Union
+from unittest.mock import Mock
 
 import pytest
 from mode.utils.logging import setup_logging
-from mode.utils.mocks import AsyncMock, Mock
 
 import faust
 from faust.utils.tracing import set_current_span
 from faust.web.cache.backends.memory import CacheStorage
+from tests.helpers import AsyncMock
 
 
 class AppMarks(NamedTuple):

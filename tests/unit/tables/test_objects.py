@@ -1,8 +1,10 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 from faust.tables.objects import ChangeloggedObjectManager
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 3)
 

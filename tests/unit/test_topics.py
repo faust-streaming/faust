@@ -1,13 +1,14 @@
 import asyncio
 import re
+from unittest.mock import Mock, call, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 import faust
 from faust import Event, Record
 from faust.exceptions import KeyDecodeError, ValueDecodeError
 from faust.types import Message
+from tests.helpers import AsyncMock
 
 
 class Dummy(Record):
@@ -151,7 +152,7 @@ class Test_Topic:
         await topic.publish_message(fm, wait=True)
         key, headers = topic.prepare_key("foo", "json", None, headers)
         value, headers = topic.prepare_value("bar", "json", None, headers)
-        producer.send_and_wait.coro.assert_called_once_with(
+        producer.send_and_wait.assert_called_once_with(
             topic.get_topic_name(),
             key,
             value,
@@ -394,7 +395,7 @@ class Test_Topic:
         topic.replicas = 202
         topic.topics = ["foo", "bar"]
         await topic.declare()
-        producer.create_topic.coro.assert_not_called()
+        producer.create_topic.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_declare(self, *, topic):
@@ -405,7 +406,7 @@ class Test_Topic:
         topic.replicas = 202
         topic.topics = ["foo", "bar"]
         await topic.declare()
-        producer.create_topic.coro.assert_has_calls(
+        producer.create_topic.assert_has_calls(
             [
                 call(
                     topic="foo",
@@ -437,7 +438,7 @@ class Test_Topic:
         topic.replicas = None
         topic.topics = ["foo", "bar"]
         await topic.declare()
-        producer.create_topic.coro.assert_has_calls(
+        producer.create_topic.assert_has_calls(
             [
                 call(
                     topic="foo",

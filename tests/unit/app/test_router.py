@@ -1,5 +1,6 @@
+from unittest.mock import ANY, Mock
+
 import pytest
-from mode.utils.mocks import ANY, Mock
 from yarl import URL
 
 from faust.app.router import Router

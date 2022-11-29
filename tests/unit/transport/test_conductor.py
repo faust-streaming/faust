@@ -1,14 +1,15 @@
 import asyncio
+from unittest.mock import Mock, patch
 
 import pytest
 from mode import label, shortlabel
 from mode.utils.futures import done_future
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 from faust import App, Channel, Topic
 from faust.transport.conductor import Conductor
 from faust.transport.consumer import Consumer
 from faust.types import TP, Message
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)
@@ -48,7 +49,7 @@ class Test_Conductor:
         cb = con_client_only._tp_to_callback[tp] = AsyncMock(name="cb")
 
         ret = await con_client_only.on_message(message)
-        assert ret is cb.coro.return_value
+        assert ret is cb.return_value
 
         cb.assert_called_once_with(message)
 

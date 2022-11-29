@@ -1,5 +1,6 @@
+from unittest.mock import Mock
+
 import pytest
-from mode.utils.mocks import Mock
 
 
 @pytest.fixture()

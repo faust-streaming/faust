@@ -2,16 +2,17 @@ import asyncio
 import logging
 import warnings
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 from mode.utils.logging import CompositeLogger
-from mode.utils.mocks import AsyncMock, Mock, patch
 from mode.utils.trees import Node
 from yarl import URL
 
 from faust import Sensor
 from faust.utils import terminal
 from faust.worker import Worker
+from tests.helpers import AsyncMock
 
 
 class CoroEq:

@@ -1,11 +1,10 @@
 name: Pages
 
 on:
-  # Only run when release is created in the master branch
-  release:
-    types: [created]
-    branches:
-      - 'master'
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
 
 jobs:
   build:
@@ -27,6 +26,7 @@ jobs:
         path: "./Documentation"
   deploy:
     name: "Deploy docs"
+    if: github.event_name == 'release' && github.event.action == 'published'
     needs: build
     runs-on: ubuntu-latest
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment

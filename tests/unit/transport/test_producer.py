@@ -1,11 +1,11 @@
 import asyncio
 from typing import Any, Optional
-from unittest.mock import PropertyMock
+from unittest.mock import Mock, PropertyMock, call
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call
 
 from faust.transport.producer import Producer, ProducerBuffer
+from tests.helpers import AsyncMock
 
 
 class TestProducerBuffer:
@@ -26,14 +26,14 @@ class TestProducerBuffer:
     async def test_on_stop(self, *, buf):
         buf.flush = AsyncMock(name="flush")
         await buf.on_stop()
-        buf.flush.coro.assert_called_once_with()
+        buf.flush.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test__send_pending(self, *, buf):
         fut = Mock(name="future_message")
         fut.message.channel.publish_message = AsyncMock()
         await buf._send_pending(fut)
-        fut.message.channel.publish_message.coro.assert_called_once_with(
+        fut.message.channel.publish_message.assert_called_once_with(
             fut,
             wait=False,
         )
@@ -53,8 +53,8 @@ class TestProducerBuffer:
 
         buf._send_pending.assert_has_calls(
             [
-                call(buf.pending.get.coro.return_value),
-                call(buf.pending.get.coro.return_value),
+                call(buf.pending.get.return_value),
+                call(buf.pending.get.return_value),
             ]
         )
 
