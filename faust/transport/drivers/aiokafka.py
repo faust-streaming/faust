@@ -1482,7 +1482,7 @@ class Transport(base.Transport):
                 topic,
                 partitions,
                 replication,
-                loop=asyncio.get_event_loop(),
+                loop=asyncio.get_event_loop_policy().get_event_loop(),
                 **kwargs,
             )
         try:
