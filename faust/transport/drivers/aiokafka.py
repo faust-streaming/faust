@@ -492,7 +492,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             return self._create_worker_consumer(transport)
 
     def _create_worker_consumer(
-        self, transport: "Transport", loop: asyncio.AbstractEventLoop
+        self, transport: "Transport"
     ) -> aiokafka.AIOKafkaConsumer:
         isolation_level: str = "read_uncommitted"
         conf = self.app.conf
@@ -549,7 +549,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def _create_client_consumer(
-        self, transport: "Transport", loop: asyncio.AbstractEventLoop
+        self, transport: "Transport"
     ) -> aiokafka.AIOKafkaConsumer:
         conf = self.app.conf
         auth_settings = credentials_to_aiokafka_auth(

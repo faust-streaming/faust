@@ -767,7 +767,6 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         isolation_level="read_uncommitted",
         api_version=None,
     ):
-        loop = Mock(name="loop")
         transport = cthread.transport
         conf = app.conf
         cthread.consumer.in_transaction = in_transaction
@@ -775,7 +774,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             conf.broker_credentials, conf.ssl_context
         )
         with patch("aiokafka.AIOKafkaConsumer") as AIOKafkaConsumer:
-            c = cthread._create_worker_consumer(transport, loop)
+            c = cthread._create_worker_consumer(transport)
             assert c is AIOKafkaConsumer.return_value
             max_poll_interval = conf.broker_max_poll_interval
             AIOKafkaConsumer.assert_called_once_with(
@@ -808,14 +807,13 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             )
 
     def test__create_client_consumer(self, *, cthread, app):
-        loop = Mock(name="loop")
         transport = cthread.transport
         conf = app.conf
         auth_settings = credentials_to_aiokafka_auth(
             conf.broker_credentials, conf.ssl_context
         )
         with patch("aiokafka.AIOKafkaConsumer") as AIOKafkaConsumer:
-            c = cthread._create_client_consumer(transport, loop)
+            c = cthread._create_client_consumer(transport)
             max_poll_interval = conf.broker_max_poll_interval
             assert c is AIOKafkaConsumer.return_value
             AIOKafkaConsumer.assert_called_once_with(
