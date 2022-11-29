@@ -1,14 +1,15 @@
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from statistics import median
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from mode import label
-from mode.utils.mocks import ANY, AsyncMock, Mock, patch
 
 from faust.livecheck import Case
 from faust.livecheck.exceptions import SuiteFailed
 from faust.livecheck.models import State, TestReport
+from tests.helpers import AsyncMock
 
 
 class TestCase:
@@ -45,7 +46,7 @@ class TestCase:
             if case._sample.call_count == 3:
                 case._stopped.set()
 
-        case._sample.coro.side_effect = on_sample
+        case._sample.side_effect = on_sample
 
         await case._sampler(case)
 
@@ -78,7 +79,7 @@ class TestCase:
 
                 uniform.return_value = 0.0
                 async with case.maybe_trigger() as test:
-                    assert test is case.trigger.coro.return_value
+                    assert test is case.trigger.return_value
                     assert case.current_test is test
 
     @pytest.mark.asyncio
@@ -91,7 +92,7 @@ class TestCase:
         case.app = Mock(pending_tests=Mock(send=AsyncMock()))
         t = await case.trigger("id1", 30, kw=2)
         assert t.id == "id1"
-        case.app.pending_tests.send.coro.assert_called_once_with(
+        case.app.pending_tests.send.assert_called_once_with(
             key="id1",
             value=t,
         )
@@ -106,7 +107,7 @@ class TestCase:
         event = Mock(name="event")
         case.signals[event.signal_name] = Mock(resolve=AsyncMock())
         await case.resolve_signal(key, event)
-        case.signals[event.signal_name].resolve.coro.assert_called_once_with(
+        case.signals[event.signal_name].resolve.assert_called_once_with(
             key,
             event,
         )
@@ -123,7 +124,7 @@ class TestCase:
         case.Runner.assert_called_once_with(
             case, execution, started=frozen_monotonic.return_value
         )
-        runner.execute.coro.assert_called_once_with()
+        runner.execute.assert_called_once_with()
         current_execution_stack.push.assert_called_once_with(runner)
 
     @pytest.mark.asyncio
@@ -172,19 +173,19 @@ class TestCase:
     async def test_on_test_failed(self, *, case, runner):
         case._set_test_error_state = AsyncMock()
         await case.on_test_failed(runner, KeyError())
-        case._set_test_error_state.coro.assert_called_once_with(State.FAIL)
+        case._set_test_error_state.assert_called_once_with(State.FAIL)
 
     @pytest.mark.asyncio
     async def test_on_test_error(self, *, case, runner):
         case._set_test_error_state = AsyncMock()
         await case.on_test_error(runner, KeyError())
-        case._set_test_error_state.coro.assert_called_once_with(State.ERROR)
+        case._set_test_error_state.assert_called_once_with(State.ERROR)
 
     @pytest.mark.asyncio
     async def test_on_test_timeout(self, *, case, runner):
         case._set_test_error_state = AsyncMock()
         await case.on_test_timeout(runner, KeyError())
-        case._set_test_error_state.coro.assert_called_once_with(State.TIMEOUT)
+        case._set_test_error_state.assert_called_once_with(State.TIMEOUT)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -208,7 +209,7 @@ class TestCase:
         assert case.total_failures == 1
         assert case.total_by_state[state] == 1
         if fail_suite:
-            case.on_suite_fail.coro.assert_called_once_with(ANY)
+            case.on_suite_fail.assert_called_once_with(ANY)
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -332,7 +333,7 @@ class TestCase:
             if case.make_fake_request.call_count == 3:
                 case._stopped.set()
 
-        case.make_fake_request.coro.side_effect = on_make_fake_request
+        case.make_fake_request.side_effect = on_make_fake_request
 
         def on_is_leader():
             if case.app.is_leader.call_count >= 2:
@@ -442,7 +443,7 @@ class TestCase:
             assert case.last_fail == now
             if posts_report:
                 case.log.exception.assert_called_once_with(str(exc))
-                case.post_report.coro.assert_called_once_with(
+                case.post_report.assert_called_once_with(
                     TestReport(
                         case_name=case.name,
                         state=State.FAIL,
@@ -517,8 +518,8 @@ class TestCase:
     async def assert_url_called(self, case, fut, method, url, **kwargs):
         case.url_request = AsyncMock("url_request")
         response = await fut
-        assert response is case.url_request.coro.return_value
-        case.url_request.coro.assert_called_once_with(
+        assert response is case.url_request.return_value
+        case.url_request.assert_called_once_with(
             method,
             url,
             **kwargs,

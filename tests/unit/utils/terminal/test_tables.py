@@ -1,8 +1,8 @@
 from contextlib import ExitStack, contextmanager
+from unittest.mock import Mock, patch
 
 import pytest
 import terminaltables
-from mode.utils.mocks import Mock, patch
 
 from faust.utils.terminal import tables
 

@@ -1,11 +1,11 @@
 import base64
 from typing import Mapping
+from unittest.mock import patch
 
 import pytest
 from hypothesis import given
 from hypothesis.strategies import binary, dictionaries, text
 from mode.utils.compat import want_str
-from mode.utils.mocks import patch
 
 from faust.exceptions import ImproperlyConfigured
 from faust.serializers.codecs import (

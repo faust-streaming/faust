@@ -3,9 +3,9 @@ import io
 import os
 import sys
 from contextlib import ExitStack, redirect_stderr, redirect_stdout
+from unittest.mock import patch
 
 import pytest
-from mode.utils.mocks import patch
 
 
 def test_main(*, app, loop):

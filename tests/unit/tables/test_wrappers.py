@@ -1,9 +1,9 @@
 import operator
 import random
 from datetime import datetime
+from unittest.mock import Mock, patch
 
 import pytest
-from mode.utils.mocks import Mock, patch
 
 import faust
 from faust.events import Event

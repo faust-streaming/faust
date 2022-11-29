@@ -1,10 +1,10 @@
 import asyncio
 import operator
 from copy import copy
+from unittest.mock import Mock, call, patch
 
 import pytest
 from mode import label, shortlabel
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 from faust import Event, Record, Stream, Topic, joins
 from faust.exceptions import PartitionsMismatch
@@ -12,6 +12,7 @@ from faust.stores.base import Store
 from faust.tables.base import Collection
 from faust.types import TP
 from faust.windows import Window
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 
@@ -119,7 +120,7 @@ class Test_Collection:
         )
         assert (
             await table.need_active_standby_for(TP1)
-            == table._data.need_active_standby_for.coro()
+            == table._data.need_active_standby_for.return_value
         )
 
     def test_reset_state(self, *, table):
@@ -270,12 +271,12 @@ class Test_Collection:
 
         on_window_close.assert_has_calls(
             [
+                call.__bool__(),
                 call(("boo", (1.1, 1.4)), "BOO"),
-                call.coro(("boo", (1.1, 1.4)), "BOO"),
+                call.__bool__(),
                 call(("moo", (1.4, 1.6)), "MOO"),
-                call.coro(("moo", (1.4, 1.6)), "MOO"),
+                call.__bool__(),
                 call(("faa", (1.9, 2.0)), "FAA"),
-                call.coro(("faa", (1.9, 2.0)), "FAA"),
             ]
         )
 

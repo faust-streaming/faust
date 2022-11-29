@@ -1,7 +1,7 @@
 from pathlib import Path
+from unittest.mock import Mock, call, patch
 
 import pytest
-from mode.utils.mocks import Mock, call, patch
 
 from faust.cli.clean_versions import clean_versions
 
