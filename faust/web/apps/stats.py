@@ -15,7 +15,14 @@ blueprint = web.Blueprint("monitor")
 
 @blueprint.route("/", name="index")
 class Stats(web.View):
-    """Monitor statistics."""
+    """
+    ---
+    description: Monitor statistics.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
 
     async def get(self, request: web.Request) -> web.Response:
         """Return JSON response with sensor information."""
@@ -26,7 +33,14 @@ class Stats(web.View):
 
 @blueprint.route("/assignment/", name="assignment")
 class Assignment(web.View):
-    """Cluster assignment information."""
+    """
+    ---
+    description: Cluster assignment information.
+    tags:
+    - Faust
+    produces:
+    - application/json
+    """
 
     @classmethod
     def _topic_grouped(cls, assignment: Set[TP]) -> TPMap:

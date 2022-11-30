@@ -183,7 +183,9 @@ class Variable:
     def __getitem__(self, name: Any) -> "Variable":
         return self.clone(getitem=name)
 
-    def clone(self, *, name: str = None, getitem: Any = MISSING) -> "Variable":
+    def clone(
+        self, *, name: Optional[str] = None, getitem: Any = MISSING
+    ) -> "Variable":
         return type(self)(
             name=name if name is not None else self.name,
             getitem=getitem if getitem is not MISSING else self.getitem,

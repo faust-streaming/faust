@@ -69,6 +69,7 @@ class PendingMessage(NamedTuple):
     callback: Optional[MessageSentCallback]
     topic: Optional[str] = None
     offset: Optional[int] = None
+    generation_id: Optional[int] = None
 
 
 def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
@@ -92,6 +93,7 @@ def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
         value=p.value,
         checksum=None,
         tp=tp,
+        generation_id=p.generation_id,
     )
 
 
@@ -133,6 +135,7 @@ class Message:
         "tracked",
         "span",
         "__weakref__",
+        "generation_id",
     )
 
     use_tracking: bool = False
@@ -148,12 +151,13 @@ class Message:
         key: Optional[bytes],
         value: Optional[bytes],
         checksum: Optional[bytes],
-        serialized_key_size: int = None,
-        serialized_value_size: int = None,
+        serialized_key_size: Optional[int] = None,
+        serialized_value_size: Optional[int] = None,
         tp: TP = None,
-        time_in: float = None,
-        time_out: float = None,
-        time_total: float = None,
+        time_in: Optional[float] = None,
+        time_out: Optional[float] = None,
+        time_total: Optional[float] = None,
+        generation_id: Optional[int] = None,
     ) -> None:
         self.topic: str = topic
         self.partition: int = partition
@@ -182,6 +186,12 @@ class Message:
         #: Total processing time (in seconds), or None if the event is
         #: still processing.
         self.time_total: Optional[float] = time_total
+
+        # In some edge cases a message can slip through to the stream from before a
+        # rebalance occured if it gets stuck in the conductor or somewhere else. We
+        # track the generation_id when the message is fetched so we can discard if
+        # needed.
+        self.generation_id: Optional[int] = generation_id
 
     def ack(self, consumer: _ConsumerT, n: int = 1) -> bool:
         if not self.acked:

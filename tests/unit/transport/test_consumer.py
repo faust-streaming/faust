@@ -386,7 +386,7 @@ class MockedConsumerAbstractMethods:
         ...
 
     async def seek_to_committed(self, *args, **kwargs):
-        ...
+        return {}
 
     async def seek_wait(self, *args, **kwargs):
         ...
@@ -840,6 +840,7 @@ class TestConsumer:
     async def test_commit_tps(self, *, consumer):
         consumer._handle_attached = AsyncMock(name="_handle_attached")
         consumer._commit_offsets = AsyncMock(name="_commit_offsets")
+        consumer.app.producer.flush = AsyncMock()
         consumer._filter_committable_offsets = Mock(name="filt")
         consumer._filter_committable_offsets.return_value = {
             TP1: 4,
@@ -942,6 +943,7 @@ class TestConsumer:
     async def test_commit_offsets(self, *, consumer):
         consumer._commit = AsyncMock(name="_commit")
         consumer.current_assignment.update({TP1, TP2})
+        consumer.app.producer.flush = AsyncMock()
         await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -959,6 +961,7 @@ class TestConsumer:
     async def test_commit_offsets__did_not_commit(self, *, consumer):
         consumer.in_transaction = False
         consumer._commit = AsyncMock(return_value=False)
+        consumer.app.producer.flush = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.tables = Mock(name="app.tables")
         await consumer._commit_offsets(
@@ -973,6 +976,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__in_transaction(self, *, consumer):
         consumer.in_transaction = True
+        consumer.app.producer.flush = AsyncMock()
         consumer.transactions.commit = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         ret = await consumer._commit_offsets(
@@ -991,6 +995,7 @@ class TestConsumer:
     @pytest.mark.asyncio
     async def test_commit_offsets__no_committable_offsets(self, *, consumer):
         consumer.current_assignment.clear()
+        consumer.app.producer.flush = AsyncMock()
         assert not await consumer._commit_offsets(
             {
                 TP1: 3003,

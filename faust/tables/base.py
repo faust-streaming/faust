@@ -4,7 +4,6 @@ import time
 from collections import defaultdict
 from contextlib import suppress
 from datetime import datetime
-from functools import lru_cache
 from heapq import heappop, heappush
 from typing import (
     Any,
@@ -103,25 +102,25 @@ class Collection(Service, CollectionT):
         self,
         app: AppT,
         *,
-        name: str = None,
+        name: Optional[str] = None,
         default: Callable[[], Any] = None,
         store: Union[str, URL] = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
-        partitions: int = None,
-        window: WindowT = None,
-        changelog_topic: TopicT = None,
-        help: str = None,
+        partitions: Optional[int] = None,
+        window: Optional[WindowT] = None,
+        changelog_topic: Optional[TopicT] = None,
+        help: Optional[str] = None,
         on_recover: RecoverCallback = None,
-        on_changelog_event: ChangelogEventCallback = None,
+        on_changelog_event: Optional[ChangelogEventCallback] = None,
         recovery_buffer_size: int = 1000,
-        standby_buffer_size: int = None,
-        extra_topic_configs: Mapping[str, Any] = None,
+        standby_buffer_size: Optional[int] = None,
+        extra_topic_configs: Optional[Mapping[str, Any]] = None,
         recover_callbacks: Set[RecoverCallback] = None,
-        options: Mapping[str, Any] = None,
+        options: Optional[Mapping[str, Any]] = None,
         use_partitioner: bool = False,
-        on_window_close: WindowCloseCallback = None,
+        on_window_close: Optional[WindowCloseCallback] = None,
         is_global: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -168,6 +167,8 @@ class Collection(Service, CollectionT):
         self._sensor_on_get = self.app.sensors.on_table_get
         self._sensor_on_set = self.app.sensors.on_table_set
         self._sensor_on_del = self.app.sensors.on_table_del
+
+        self._verified_source_topics_for_partitions: Set[str] = set()
 
     def _serializer_from_type(self, typ: Optional[ModelArg]) -> Optional[CodecArg]:
         if typ is bytes:
@@ -312,8 +313,15 @@ class Collection(Service, CollectionT):
             self._verify_source_topic_partitions(event.message.topic)
             return event.message.partition
 
-    @lru_cache()
     def _verify_source_topic_partitions(self, source_topic: str) -> None:
+        # This was formerly wrapped in an lru_cache. The linter sees issues with this
+        # as an instance stays cached.
+        # This is why we implement a non lru_cached lookup which checks if the
+        # function has already been executed once on the instance level.
+
+        if source_topic in self._verified_source_topics_for_partitions:
+            return
+
         change_topic = self.changelog_topic_name
         source_n = self.app.consumer.topic_partitions(source_topic)
         if source_n is not None:
@@ -329,6 +337,8 @@ class Collection(Service, CollectionT):
                             change_n=change_n,
                         ),
                     )
+
+        self._verified_source_topics_for_partitions.add(source_topic)
 
     def _on_changelog_sent(self, fut: FutureMessage) -> None:
         # This is what keeps the offset in RocksDB so that at startup
@@ -365,9 +375,7 @@ class Collection(Service, CollectionT):
         window = cast(WindowT, self.window)
         assert window
         for partition, timestamps in self._partition_timestamps.items():
-            while timestamps and window.stale(
-                timestamps[0], self._partition_latest_timestamp[partition]
-            ):
+            while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 keys_to_remove = self._partition_timestamp_keys.pop(
                     (partition, timestamp), None
@@ -456,9 +464,9 @@ class Collection(Service, CollectionT):
     def _new_changelog_topic(
         self,
         *,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
     ) -> TopicT:
         if compacting is None:
             compacting = self._changelog_compacting
@@ -513,14 +521,14 @@ class Collection(Service, CollectionT):
         for window_range in window.ranges(timestamp):
             yield window_range
 
-    def _relative_now(self, event: EventT = None) -> float:
+    def _relative_now(self, event: Optional[EventT] = None) -> float:
         # get current timestamp
         event = event if event is not None else current_event()
         if event is None:
             return time.time()
         return self._partition_latest_timestamp[event.message.partition]
 
-    def _relative_event(self, event: EventT = None) -> float:
+    def _relative_event(self, event: Optional[EventT] = None) -> float:
         event = event if event is not None else current_event()
         # get event timestamp
         if event is None:
@@ -528,7 +536,7 @@ class Collection(Service, CollectionT):
         return event.message.timestamp
 
     def _relative_field(self, field: FieldDescriptorT) -> RelativeHandler:
-        def to_value(event: EventT = None) -> Union[float, datetime]:
+        def to_value(event: Optional[EventT] = None) -> Union[float, datetime]:
             if event is None:
                 raise RuntimeError("Operation outside of stream iteration")
             return field.getattr(cast(ModelT, event.value))
@@ -536,7 +544,7 @@ class Collection(Service, CollectionT):
         return to_value
 
     def _relative_timestamp(self, timestamp: float) -> RelativeHandler:
-        def handler(event: EventT = None) -> Union[float, datetime]:
+        def handler(event: Optional[EventT] = None) -> Union[float, datetime]:
             return timestamp
 
         return handler
@@ -553,7 +561,9 @@ class Collection(Service, CollectionT):
         window = cast(WindowT, self.window)
         return self._has_key((key, window.current(timestamp)))
 
-    def _windowed_delta(self, key: Any, d: Seconds, event: EventT = None) -> Any:
+    def _windowed_delta(
+        self, key: Any, d: Seconds, event: Optional[EventT] = None
+    ) -> Any:
         window = cast(WindowT, self.window)
         return self._get_key(
             (key, window.delta(self._relative_event(event), d)),

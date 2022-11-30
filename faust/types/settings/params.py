@@ -196,7 +196,7 @@ class Param(Generic[IT, OT], property):
     #: Default template.
     #: If set the default value will be generated from this format string
     #: template.
-    #: For exmaple the :setting:`canonical_url` setting uses
+    #: For example the :setting:`canonical_url` setting uses
     #: ``default_template='http://{conf.web_host}:{conf.web_port}' to
     #: generate a default value from the :setting:`web_host` and
     #: :setting:`web_port` settings.
@@ -295,21 +295,21 @@ class Param(Generic[IT, OT], property):
         self,
         *,
         name: str,
-        env_name: str = None,
+        env_name: Optional[str] = None,
         default: IT = None,
-        default_alias: str = None,
-        default_template: str = None,
-        allow_none: bool = None,
-        ignore_default: bool = None,
+        default_alias: Optional[str] = None,
+        default_template: Optional[str] = None,
+        allow_none: Optional[bool] = None,
+        ignore_default: Optional[bool] = None,
         section: _Section = None,
-        version_introduced: str = None,
-        version_deprecated: str = None,
-        version_removed: str = None,
+        version_introduced: Optional[str] = None,
+        version_deprecated: Optional[str] = None,
+        version_removed: Optional[str] = None,
         version_changed: Mapping[str, str] = None,
-        deprecation_reason: str = None,
+        deprecation_reason: Optional[str] = None,
         related_cli_options: Mapping[str, List[str]] = None,
         related_settings: List[Any] = None,
-        help: str = None,
+        help: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         assert name
@@ -522,8 +522,8 @@ class Number(Param[IT, OT]):
 
     def _init_options(
         self,
-        min_value: int = None,
-        max_value: int = None,
+        min_value: Optional[int] = None,
+        max_value: Optional[int] = None,
         number_aliases: Mapping[IT, OT] = None,
         **kwargs: Any,
     ) -> None:

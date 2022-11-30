@@ -91,10 +91,10 @@ def _build_sentry_handler() -> Type[_SentryHandler]:
 
 
 def handler_from_dsn(
-    dsn: str = None,
+    dsn: Optional[str] = None,
     workers: int = 5,
     include_paths: Iterable[str] = None,
-    loglevel: int = None,
+    loglevel: Optional[int] = None,
     qsize: int = 1000,
     **kwargs: Any
 ) -> Optional[logging.Handler]:
@@ -126,16 +126,14 @@ def handler_from_dsn(
 def setup(
     app: AppT,
     *,
-    dsn: str = None,
+    dsn: Optional[str] = None,
     workers: int = 4,
     max_queue_size: int = 1000,
-    loglevel: int = None
+    loglevel: Optional[int] = None,
+    **kwargs
 ) -> None:
     sentry_handler = handler_from_dsn(
-        dsn=dsn,
-        workers=workers,
-        qsize=max_queue_size,
-        loglevel=loglevel,
+        dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs
     )
     if sentry_handler is not None:
         if sentry_sdk is None or _sdk_aiohttp is None:

@@ -8,6 +8,7 @@ from typing import (
     Mapping,
     MutableMapping,
     Optional,
+    Set,
     Type,
     Union,
     cast,
@@ -71,11 +72,30 @@ class View:
             "options": self.options,
             "search": self.search,
         }
+
         self.__post_init__()
 
     def __post_init__(self) -> None:
         """Override this to add custom initialization to your view."""
         ...
+
+    def get_methods(self) -> Set:
+        """Return the supported methods for this view"""
+        methods = set({"HEAD"})
+        base_methods = {
+            "head": View.head,
+            "get": View.get,
+            "post": View.post,
+            "patch": View.patch,
+            "delete": View.delete,
+            "put": View.put,
+            "options": View.options,
+            "search": View.search,
+        }
+        for method_name, method in self.methods.items():
+            if method.__code__ is not base_methods[method_name].__code__:
+                methods.add(method_name.upper())
+        return methods
 
     async def __call__(self, request: Any) -> Any:
         """Perform HTTP request."""
@@ -177,9 +197,9 @@ class View:
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create text response, using "text/plain" content-type."""
@@ -195,9 +215,9 @@ class View:
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
@@ -213,9 +233,9 @@ class View:
         self,
         value: Any,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create new JSON response.
@@ -237,9 +257,9 @@ class View:
         self,
         value: _bytes,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Response:
         """Create new ``bytes`` response - for binary data."""

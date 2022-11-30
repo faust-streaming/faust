@@ -128,9 +128,9 @@ class Web(base.Web):
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create text response, using "text/plain" content-type."""
@@ -147,9 +147,9 @@ class Web(base.Web):
         self,
         value: str,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create HTML response from string, ``text/html`` content-type."""
@@ -165,9 +165,9 @@ class Web(base.Web):
         self,
         value: Any,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> Any:
         """Create new JSON response.
@@ -201,9 +201,9 @@ class Web(base.Web):
         self,
         value: _bytes,
         *,
-        content_type: str = None,
+        content_type: Optional[str] = None,
         status: int = 200,
-        reason: str = None,
+        reason: Optional[str] = None,
         headers: MutableMapping = None,
     ) -> base.Response:
         """Create new ``bytes`` response - for binary data."""
@@ -227,15 +227,14 @@ class Web(base.Web):
         cors_options: Mapping[str, ResourceOptions] = None,
     ) -> None:
         """Add route for web view or handler."""
+        async_handler = self._wrap_into_asyncdef(handler)
         if cors_options or self.cors_options:
-            async_handler = self._wrap_into_asyncdef(handler)
-            for method in NON_OPTIONS_METHODS:
+            for method in NON_OPTIONS_METHODS & handler.get_methods():
                 r = self.web_app.router.add_route(method, pattern, async_handler)
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
-            self.web_app.router.add_route(
-                "*", pattern, self._wrap_into_asyncdef(handler)
-            )
+            for method in handler.get_methods():
+                self.web_app.router.add_route(method, pattern, async_handler)
 
     def _wrap_into_asyncdef(self, handler: Callable) -> Callable:
         # get rid of pesky "DeprecationWarning: Bare functions are
@@ -246,6 +245,7 @@ class Web(base.Web):
         async def _dispatch(request: base.Request) -> base.Response:
             return await handler(request)
 
+        _dispatch.__doc__ = handler.__doc__
         return _dispatch
 
     def add_static(self, prefix: str, path: Union[Path, str], **kwargs: Any) -> None:

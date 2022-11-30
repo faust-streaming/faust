@@ -43,8 +43,8 @@ class models(AppCommand):
     def model_to_row(self, model: Type[ModelT]) -> Sequence[str]:
         """Convert model fields to terminal table columns."""
         return [
-            self.bold_tail(self._name(model)),
-            self.dark(self._help(model)),
+            self._name(model),
+            self._help(model),
         ]
 
     def _name(self, model: Type[ModelT]) -> str:

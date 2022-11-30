@@ -15,7 +15,8 @@ def message(
     timestamp=None,
     headers=None,
     offset=1,
-    checksum=None
+    checksum=None,
+    generation_id=0,
 ):
     return Message(
         key=key,
@@ -27,6 +28,7 @@ def message(
         timestamp_type=1 if timestamp else 0,
         headers=headers,
         checksum=checksum,
+        generation_id=generation_id,
     )
 
 

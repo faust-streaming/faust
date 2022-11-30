@@ -1,6 +1,6 @@
 """Monitor using Prometheus."""
 import typing
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple, Optional, cast
 
 from aiohttp.web import Response
 
@@ -43,14 +43,27 @@ def setup_prometheus_sensors(
     app: AppT,
     pattern: str = "/metrics",
     registry: CollectorRegistry = REGISTRY,
-    name_prefix: str = None,
+    name_prefix: Optional[str] = None,
 ) -> None:
+    """
+    A utility function which sets up prometheus and attaches the config to the app.
+
+    @param app: the faust app instance
+    @param pattern: the url pattern for prometheus
+    @param registry: the prometheus registry
+    @param name_prefix: the name prefix. Defaults to the app name
+    @return: None
+    """
     if prometheus_client is None:
         raise ImproperlyConfigured(
             "prometheus_client requires `pip install prometheus_client`."
         )
+    if name_prefix is None:
+        name_prefix = app.conf.name
 
-    faust_metrics = FaustMetrics.create(registry, name_prefix or app.conf.name)
+    name_prefix = name_prefix.replace("-", "_").replace(".", "_")
+
+    faust_metrics = FaustMetrics.create(registry, name_prefix)
     app.monitor = PrometheusMonitor(metrics=faust_metrics)
 
     @app.page(pattern)

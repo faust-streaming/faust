@@ -31,7 +31,6 @@ from typing import (
 
 import click
 from click import echo
-from colorclass import Color, disable_all_colors, enable_all_colors
 from mode import Service, ServiceT, Worker
 from mode.utils import text
 from mode.utils.compat import want_bytes
@@ -152,7 +151,6 @@ class State:
     workdir: Optional[str] = None
     datadir: Optional[str] = None
     json: bool = False
-    no_color: bool = False
     loop: Optional[str] = None
     logfile: Optional[str] = None
     loglevel: Optional[int] = None
@@ -227,12 +225,6 @@ core_options: OptionSequence = [
         "--debug/--no-debug",
         default=DEBUG,
         help="Enable debugging output, and the blocking detector.",
-    ),
-    option(
-        "--no-color/--color",
-        "--no_color/--color",
-        default=False,
-        help="Enable colors in output.",
     ),
     option(
         "--workdir",
@@ -420,7 +412,7 @@ class _Group(click.Group):
         self,
         info_name: str,
         args: str,
-        app: AppT = None,
+        app: Optional[AppT] = None,
         parent: click.Context = None,
         stdout: IO = None,
         stderr: IO = None,
@@ -450,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://faust.readthedocs.io
+    https://fauststream.com/en/latest
     """
     return _prepare_cli(*args, **kwargs)
 
@@ -463,7 +455,6 @@ def _prepare_cli(
     workdir: str,
     datadir: str,
     json: bool,
-    no_color: bool,
     loop: str,
 ) -> None:
     """Faust command-line interface."""
@@ -474,7 +465,6 @@ def _prepare_cli(
     state.workdir = workdir
     state.datadir = datadir
     state.json = json
-    state.no_color = no_color
     state.loop = loop
 
     root = cast(_FaustRootContextT, ctx.find_root())
@@ -489,12 +479,6 @@ def _prepare_cli(
             # WARNING: Note that the faust.app module *MUST not* have
             # been imported before setting the envvar.
             os.environ["F_DATADIR"] = datadir
-        if not no_color and terminal.isatty(sys.stdout):
-            enable_all_colors()
-        else:
-            disable_all_colors()
-        if json:
-            disable_all_colors()
 
 
 class Command(abc.ABC):
@@ -521,7 +505,6 @@ class Command(abc.ABC):
     workdir: str
     datadir: str
     json: bool
-    no_color: bool
     logfile: str
     _loglevel: Optional[str]
     _blocking_timeout: Optional[float]
@@ -596,7 +579,6 @@ class Command(abc.ABC):
         self.workdir = self.state.workdir
         self.datadir = self.state.datadir
         self.json = self.state.json
-        self.no_color = self.state.no_color
         self.logfile = self.state.logfile
         self.stdout = root.stdout or sys.stdout
         self.stderr = root.stderr or sys.stderr
@@ -662,7 +644,7 @@ class Command(abc.ABC):
         )
 
     def worker_for_service(
-        self, service: ServiceT, loop: asyncio.AbstractEventLoop = None
+        self, service: ServiceT, loop: Optional[asyncio.AbstractEventLoop] = None
     ) -> Worker:
         """Create :class:`faust.Worker` instance for this command."""
         return self._Worker(
@@ -688,10 +670,9 @@ class Command(abc.ABC):
     def tabulate(
         self,
         data: terminal.TableDataT,
-        headers: Sequence[str] = None,
+        headers: Optional[Sequence[str]] = None,
         wrap_last_row: bool = True,
         title: str = "",
-        title_color: str = "blue",
         **kwargs: Any,
     ) -> str:
         """Create an ANSI representation of a table of two-row tuples.
@@ -708,7 +689,6 @@ class Command(abc.ABC):
             return self._tabulate_json(data, headers=headers)
         if headers:
             data = [headers] + list(data)
-        title = self.bold(self.color(title_color, title))
         table = self.table(data, title=title, **kwargs)
         if wrap_last_row:
             # slow, but not big data
@@ -718,7 +698,7 @@ class Command(abc.ABC):
         return table.table
 
     def _tabulate_json(
-        self, data: terminal.TableDataT, headers: Sequence[str] = None
+        self, data: terminal.TableDataT, headers: Optional[Sequence[str]] = None
     ) -> str:
         if headers:
             return json.dumps([dict(zip(headers, row)) for row in data])
@@ -729,31 +709,6 @@ class Command(abc.ABC):
     ) -> terminal.Table:
         """Format table data as ANSI/ASCII table."""
         return terminal.table(data, title=title, target=sys.stdout, **kwargs)
-
-    def color(self, name: str, text: str) -> str:
-        """Return text having a certain color by name.
-
-        Examples::
-            >>> self.color('blue', 'text_to_color')
-            >>> self.color('hiblue', text_to_color')
-
-        See Also:
-            :pypi:`colorclass`: for a list of available colors.
-        """
-        return Color(f"{{{name}}}{text}{{/{name}}}")
-
-    def dark(self, text: str) -> str:
-        """Return cursor text."""
-        return self.color("autoblack", text)
-
-    def bold(self, text: str) -> str:
-        """Return text in bold."""
-        return self.color("b", text)
-
-    def bold_tail(self, text: str, *, sep: str = ".") -> str:
-        """Put bold emphasis on the last part of a ``foo.bar.baz`` string."""
-        head, fsep, tail = text.rpartition(sep)
-        return fsep.join([head, self.bold(tail)])
 
     def _table_wrap(self, table: terminal.Table, text: str) -> str:
         max_width = max(table.column_max_width(1), 10)
@@ -881,7 +836,7 @@ class AppCommand(Command):
         else:
             return self._app_from_str(self.state.app)
 
-    def _app_from_str(self, appstr: str = None) -> Optional[AppT]:
+    def _app_from_str(self, appstr: Optional[str] = None) -> Optional[AppT]:
         if appstr:
             return find_app(appstr)
         else:

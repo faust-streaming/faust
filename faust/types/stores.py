@@ -56,7 +56,7 @@ class StoreT(ServiceT, FastUserDict[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = "",
         value_serializer: CodecArg = "",
-        options: Mapping[str, Any] = None,
+        options: Optional[Mapping[str, Any]] = None,
         **kwargs: Any
     ) -> None:
         ...

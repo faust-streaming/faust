@@ -12,9 +12,9 @@
 
 ## Documentation
 
-- `introduction`: http://faust.readthedocs.io/en/latest/introduction.html
-- `quickstart`: http://faust.readthedocs.io/en/latest/playbooks/quickstart.html
-- `User Guide`: http://faust.readthedocs.io/en/latest/userguide/index.html
+- `introduction`: https://fauststream.com/en/latest/introduction.html
+- `quickstart`: https://fauststream.com/en/latest/playbooks/quickstart.html
+- `User Guide`: https://fauststream.com/en/latest/userguide/index.html
 
 ## Why the fork
 
@@ -277,7 +277,7 @@ The following bundles are available:
 
 `pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
 
-`pip install faust[aerospike` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+`pip install faust[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
 ### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
@@ -285,7 +285,7 @@ Aerospike can be enabled as the state store by specifying
 
 By default all tables backed by Aerospike use `use_partitioner=True` and generate changelog topic events similar
 to a state store backed by RocksDB.
-The following configuration options should be passed in as keys to the options parameter in [Table](https://faust.readthedocs.io/en/latest/reference/faust.tables.html)
+The following configuration options should be passed in as keys to the options parameter in [Table](https://fauststream.com/en/latest/reference/faust.tables.html)
 `namespace` : aerospike namespace
 
 `ttl`: TTL for all KV's in the table
@@ -355,7 +355,7 @@ you are not currently using a virtualenv.
 You can install the latest snapshot of Faust using the following `pip` command:
 
 ```sh
-pip install https://github.com/robinhood/faust/zipball/master#egg=faust
+pip install https://github.com/faust-streaming/faust/zipball/master#egg=faust
 ```
 
 ## FAQ
@@ -428,7 +428,7 @@ For discussions about the usage, development, and future of Faust, please join t
 ### Bug tracker
 
 If you have any suggestions, bug reports, or annoyances please report them
-to our issue tracker at https://github.com/robinhood/faust/issues/
+to our issue tracker at https://github.com/faust-streaming/faust/issues/
 
 ## License
 
@@ -436,7 +436,7 @@ This software is licensed under the `New BSD License`. See the `LICENSE` file in
 
 ### Contributing
 
-Development of `Faust` happens at [GitHub](https://github.com/robinhood/faust)
+Development of `Faust` happens at [GitHub](https://github.com/faust-streaming/faust)
 
 You're highly encouraged to participate in the development of `Faust`.
 

@@ -183,18 +183,18 @@ class Agent(AgentT, Service):
         fun: AgentFun,
         *,
         app: AppT,
-        name: str = None,
+        name: Optional[str] = None,
         channel: Union[str, ChannelT] = None,
         concurrency: int = 1,
         sink: Iterable[SinkT] = None,
         on_error: AgentErrorHandler = None,
         supervisor_strategy: Type[SupervisorStrategyT] = None,
-        help: str = None,
-        schema: SchemaT = None,
+        help: Optional[str] = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         isolated_partitions: bool = False,
-        use_reply_headers: bool = None,
+        use_reply_headers: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:
         self.app = app
@@ -242,8 +242,8 @@ class Agent(AgentT, Service):
         *,
         index: Optional[int] = None,
         active_partitions: Optional[Set[TP]] = None,
-        stream: StreamT = None,
-        channel: ChannelT = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
     ) -> ActorT:
         # an index of None means there's only one instance,
         # and `index is None` is used as a test by functions that
@@ -261,7 +261,7 @@ class Agent(AgentT, Service):
         self,
         index: Optional[int] = None,
         active_partitions: Optional[Set[TP]] = None,
-        stream: StreamT = None,
+        stream: Optional[StreamT] = None,
     ) -> ActorT:
         aref = await self._start_one(
             index=index,
@@ -456,7 +456,7 @@ class Agent(AgentT, Service):
 
     def test_context(
         self,
-        channel: ChannelT = None,
+        channel: Optional[ChannelT] = None,
         supervisor_strategy: SupervisorStrategyT = None,
         on_error: AgentErrorHandler = None,
         **kwargs: Any,
@@ -487,7 +487,7 @@ class Agent(AgentT, Service):
         self,
         channel: Union[str, ChannelT] = None,
         internal: bool = True,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         **kwargs: Any,
@@ -514,10 +514,10 @@ class Agent(AgentT, Service):
     def __call__(
         self,
         *,
-        index: int = None,
-        active_partitions: Set[TP] = None,
-        stream: StreamT = None,
-        channel: ChannelT = None,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
     ) -> ActorRefT:
         """Create new actor instance for this agent."""
         # The agent function can be reused by other agents/tasks.
@@ -545,9 +545,9 @@ class Agent(AgentT, Service):
         self,
         stream: Optional[StreamT],
         *,
-        index: int = None,
-        active_partitions: Set[TP] = None,
-        channel: ChannelT = None,
+        index: Optional[int] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        channel: Optional[ChannelT] = None,
     ) -> ActorRefT:
         """Create new actor from stream."""
         we_created_stream = False
@@ -601,7 +601,10 @@ class Agent(AgentT, Service):
             self._sinks.append(sink)
 
     def stream(
-        self, channel: ChannelT = None, active_partitions: Set[TP] = None, **kwargs: Any
+        self,
+        channel: Optional[ChannelT] = None,
+        active_partitions: Optional[Set[TP]] = None,
+        **kwargs: Any,
     ) -> StreamT:
         """Create underlying stream used by this agent."""
         if channel is None:
@@ -631,9 +634,9 @@ class Agent(AgentT, Service):
         *,
         index: Optional[int],
         active_partitions: Optional[Set[TP]] = None,
-        stream: StreamT = None,
-        channel: ChannelT = None,
-        beacon: NodeT = None,
+        stream: Optional[StreamT] = None,
+        channel: Optional[ChannelT] = None,
+        beacon: Optional[NodeT] = None,
     ) -> ActorRefT:
         # If the agent is an async function we simply start it,
         # if it returns an AsyncIterable/AsyncGenerator we start a task
@@ -750,8 +753,8 @@ class Agent(AgentT, Service):
         value: V = None,
         *,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
     ) -> None:
         """RPC operation: like :meth:`ask` but do not expect reply.
@@ -772,11 +775,11 @@ class Agent(AgentT, Service):
         value: V = None,
         *,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
     ) -> Any:
         """RPC operation: ask agent for result of processing value.
 
@@ -803,11 +806,11 @@ class Agent(AgentT, Service):
         value: V = None,
         *,
         key: K = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
         force: bool = False,
     ) -> ReplyPromise:
         """RPC operation: ask agent for result of processing value.
@@ -835,7 +838,7 @@ class Agent(AgentT, Service):
         key: K = None,
         value: V = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
         headers: HeadersArg = None,
     ) -> Tuple[V, Optional[HeadersArg]]:
         if reply_to is None:
@@ -871,14 +874,14 @@ class Agent(AgentT, Service):
         *,
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
         """Send message to topic used by agent."""
@@ -1091,11 +1094,11 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
     _stream: StreamT
 
     def __init__(
-        self, *args: Any, original_channel: ChannelT = None, **kwargs: Any
+        self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
     ) -> None:
         super().__init__(*args, **kwargs)
         self.results = {}
-        self.new_value_processed = asyncio.Condition(loop=self.loop)
+        self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
         self.add_sink(self._on_value_processed)
         self._stream = self.channel.stream()
@@ -1131,7 +1134,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         value_serializer: CodecArg = None,
         *,
         reply_to: ReplyToArg = None,
-        correlation_id: str = None,
+        correlation_id: Optional[str] = None,
         wait: bool = True,
     ) -> EventT:
         if reply_to:
@@ -1164,7 +1167,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         *,
         partition: Optional[int] = None,
         offset: int = 0,
-        timestamp: float = None,
+        timestamp: Optional[float] = None,
         timestamp_type: int = 0,
         headers: HeadersArg = None,
     ) -> Message:
@@ -1184,6 +1187,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
             checksum=b"",
             serialized_key_size=0,
             serialized_value_size=0,
+            generation_id=self.app.consumer_generation_id,
         )
 
     async def throw(self, exc: BaseException) -> None:

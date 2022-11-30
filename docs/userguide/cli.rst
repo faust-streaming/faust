@@ -122,7 +122,6 @@ Example:
     --json / --no-json              Prefer data to be emitted in json format.
     -D, --datadir DIRECTORY         Directory to keep application state.
     -W, --workdir DIRECTORY         Working directory to change to after start.
-    --no-color / --color            Enable colors in output.
     --debug / --no-debug            Enable debugging output, and the blocking
                                     detector.
     -q, --quiet / --no-quiet        Silence output to <stdout>/<stderr>.

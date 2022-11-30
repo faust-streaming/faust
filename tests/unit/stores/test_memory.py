@@ -42,17 +42,68 @@ class Test_Store:
         store.apply_changelog_batch(events, to_key=to_key, to_value=to_value)
         assert to_key() in store.data
 
-    def mock_event_to_key_value(self, key=b"key", value=b"value"):
-        event = self.mock_event(key=key, value=value)
+    def test_apply_changelog_batch__different_partitions(self, *, store):
+        events = [
+            self.mock_event(key=f"key-{i}".encode(), partition=i) for i in range(2)
+        ]
+        to_key, to_value = self.mock_to_key_value_multi(events)
+
+        store.apply_changelog_batch(events, to_key=to_key, to_value=to_value)
+
+        assert to_key.call_args_list[0][0][0] in store.data
+        assert to_key.call_args_list[1][0][0] in store.data
+
+        assert store._key_partition.get(to_key.call_args_list[0][0][0]) == 0
+        assert store._key_partition.get(to_key.call_args_list[1][0][0]) == 1
+
+    def test_apply_changelog_batch__different_partitions_deletion(self, *, store):
+        self.test_apply_changelog_batch__different_partitions(store=store)
+
+        events = [
+            self.mock_event(key=f"key-{i}".encode(), value=None, partition=i)
+            for i in range(2)
+        ]
+        to_key, to_value = self.mock_to_key_value_multi(events)
+
+        store.apply_changelog_batch(events, to_key=to_key, to_value=to_value)
+
+        assert not store._key_partition
+        assert not store.data
+
+    @pytest.mark.asyncio
+    async def test_apply_changelog_batch__different_partitions_repartition_single(
+        self, *, store
+    ):
+        self.test_apply_changelog_batch__different_partitions(store=store)
+
+        await store.on_recovery_completed({TP("foo", 0)}, set())
+
+        assert len(store.data) == 1
+        assert len(store._key_partition) == 1
+
+    @pytest.mark.asyncio
+    async def test_apply_changelog_batch__different_partitions_repartition_multi(
+        self, *, store
+    ):
+        self.test_apply_changelog_batch__different_partitions(store=store)
+
+        await store.on_recovery_completed({TP("foo", 0), TP("foo", 1)}, set())
+
+        assert len(store.data) == 2
+        assert len(store._key_partition) == 2
+
+    def mock_event_to_key_value(self, key=b"key", value=b"value", partition=0):
+        event = self.mock_event(key=key, value=value, partition=partition)
         to_key, to_value = self.mock_to_key_value(event)
         return event, to_key, to_value
 
-    def mock_event(self, key=b"key", value=b"value"):
+    def mock_event(self, key=b"key", value=b"value", partition=0):
         event = Mock(name="event", autospec=Event)
         event.key = key
         event.value = value
         event.message.key = key
         event.message.value = value
+        event.message.partition = partition
         return event
 
     def mock_to_key_value(self, event):
@@ -60,6 +111,13 @@ class Test_Store:
         to_key.return_value = event.key
         to_value = Mock(name="to_value")
         to_value.return_value = event.value
+        return to_key, to_value
+
+    def mock_to_key_value_multi(self, events):
+        to_key = Mock(name="to_key")
+        to_key.side_effect = [e.key for e in events]
+        to_value = Mock(name="to_value")
+        to_value.side_effect = [e.value for e in events]
         return to_key, to_value
 
     def test_persisted_offset(self, *, store):

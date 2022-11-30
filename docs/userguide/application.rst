@@ -244,7 +244,7 @@ Use :meth:`~@channel` to create an in-memory communication channel:
 
     @app.timer(1.0)
     async def populate():
-        await channel.send(MyModel(303))
+        await channel.send(value=MyModel(303))
 
 .. seealso::
 
@@ -856,8 +856,8 @@ This can be used to attach custom headers to Kafka messages:
             sender: AppT,
             key: bytes = None,
             value: bytes = None,
-            partition: int = None,
-            timestamp: float = None,
+            partition: Optional[int] = None,
+            timestamp: Optional[float] = None,
             headers: List[Tuple[str, bytes]] = None,
             **kwargs: Any) -> None:
         test = current_test()

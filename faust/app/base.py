@@ -244,11 +244,11 @@ class BootStrategy(BootStrategyT):
         self,
         app: AppT,
         *,
-        enable_web: bool = None,
-        enable_kafka: bool = None,
-        enable_kafka_producer: bool = None,
-        enable_kafka_consumer: bool = None,
-        enable_sensors: bool = None,
+        enable_web: Optional[bool] = None,
+        enable_kafka: Optional[bool] = None,
+        enable_kafka_producer: Optional[bool] = None,
+        enable_kafka_consumer: Optional[bool] = None,
+        enable_sensors: Optional[bool] = None,
     ) -> None:
         self.app = app
 
@@ -458,8 +458,8 @@ class App(AppT, Service):
         *,
         monitor: Monitor = None,
         config_source: Any = None,
-        loop: asyncio.AbstractEventLoop = None,
-        beacon: NodeT = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        beacon: Optional[NodeT] = None,
         **options: Any,
     ) -> None:
         # This is passed to the configuration in self.conf
@@ -765,23 +765,23 @@ class App(AppT, Service):
         self,
         *topics: str,
         pattern: Union[str, Pattern] = None,
-        schema: SchemaT = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        schema: Optional[SchemaT] = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        partitions: int = None,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
-        replicas: int = None,
+        partitions: Optional[int] = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
+        replicas: Optional[int] = None,
         acks: bool = True,
         internal: bool = False,
-        config: Mapping[str, Any] = None,
-        maxsize: int = None,
+        config: Optional[Mapping[str, Any]] = None,
+        maxsize: Optional[int] = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: asyncio.AbstractEventLoop = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> TopicT:
         """Create topic description.
 
@@ -820,11 +820,11 @@ class App(AppT, Service):
     def channel(
         self,
         *,
-        schema: SchemaT = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        maxsize: int = None,
-        loop: asyncio.AbstractEventLoop = None,
+        schema: Optional[SchemaT] = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        maxsize: Optional[int] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> ChannelT:
         """Create new channel.
 
@@ -849,7 +849,7 @@ class App(AppT, Service):
         self,
         channel: Union[str, ChannelT[_T]] = None,
         *,
-        name: str = None,
+        name: Optional[str] = None,
         concurrency: int = 1,
         supervisor_strategy: Type[SupervisorStrategyT] = None,
         sink: Iterable[SinkT] = None,
@@ -978,7 +978,7 @@ class App(AppT, Service):
         interval: Seconds,
         on_leader: bool = False,
         traced: bool = True,
-        name: str = None,
+        name: Optional[str] = None,
         max_drift_correction: float = 0.1,
     ) -> Callable:
         """Define an async def function to be run at periodic intervals.
@@ -1109,7 +1109,7 @@ class App(AppT, Service):
     def stream(
         self,
         channel: Union[AsyncIterable, Iterable],
-        beacon: NodeT = None,
+        beacon: Optional[NodeT] = None,
         **kwargs: Any,
     ) -> StreamT:
         """Create new stream from channel/topic/iterable/async iterable.
@@ -1138,9 +1138,9 @@ class App(AppT, Service):
         name: str,
         *,
         default: Callable[[], Any] = None,
-        window: WindowT = None,
-        partitions: int = None,
-        help: str = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
         **kwargs: Any,
     ) -> TableT:
         """Define new table.
@@ -1183,9 +1183,9 @@ class App(AppT, Service):
         name: str,
         *,
         default: Callable[[], Any] = None,
-        window: WindowT = None,
-        partitions: int = None,
-        help: str = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
         **kwargs: Any,
     ) -> GlobalTableT:
         """Define new global table.
@@ -1231,10 +1231,10 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        window: WindowT = None,
-        partitions: int = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
         start_manager: bool = False,
-        help: str = None,
+        help: Optional[str] = None,
         **kwargs: Any,
     ) -> TableT:
         """Table of sets."""
@@ -1258,10 +1258,10 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        window: WindowT = None,
-        partitions: int = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
         start_manager: bool = False,
-        help: str = None,
+        help: Optional[str] = None,
         **kwargs: Any,
     ) -> TableT:
         """Table of sets (global)."""
@@ -1287,7 +1287,7 @@ class App(AppT, Service):
         *,
         base: Type[View] = View,
         cors_options: Mapping[str, ResourceOptions] = None,
-        name: str = None,
+        name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         """Decorate view to be included in the web server."""
         view_base: Type[View] = base if base is not None else View
@@ -1313,11 +1313,11 @@ class App(AppT, Service):
     def table_route(
         self,
         table: CollectionT,
-        shard_param: str = None,
+        shard_param: Optional[str] = None,
         *,
-        query_param: str = None,
-        match_info: str = None,
-        exact_key: str = None,
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
     ) -> ViewDecorator:
         """Decorate view method to route request to table key destination."""
 
@@ -1346,6 +1346,50 @@ class App(AppT, Service):
                 try:
                     return await self.router.route_req(
                         table.name, key, view.web, request
+                    )
+                except SameNode:
+                    return await fun(view, request, *args, **kwargs)  # type: ignore
+
+            return get
+
+        return _decorator
+
+    def topic_route(
+        self,
+        topic: CollectionT,
+        shard_param: Optional[str] = None,
+        *,
+        query_param: Optional[str] = None,
+        match_info: Optional[str] = None,
+        exact_key: Optional[str] = None,
+    ) -> ViewDecorator:
+        """Decorate view method to route request to a topic partition destination."""
+
+        def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
+            _query_param = query_param
+            if shard_param is not None:
+                warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
+                if query_param:
+                    raise TypeError("Cannot specify shard_param and query_param")
+                _query_param = shard_param
+            if _query_param is None and match_info is None and exact_key is None:
+                raise TypeError("Need one of query_param, shard_param, or exact key")
+
+            @wraps(fun)
+            async def get(
+                view: View, request: Request, *args: Any, **kwargs: Any
+            ) -> Response:
+                if exact_key:
+                    key = exact_key
+                elif match_info:
+                    key = request.match_info[match_info]
+                elif _query_param:
+                    key = request.query[_query_param]
+                else:  # pragma: no cover
+                    raise Exception("cannot get here")
+                try:
+                    return await self.router.route_topic_req(
+                        topic, key, view.web, request
                     )
                 except SameNode:
                     return await fun(view, request, *args, **kwargs)  # type: ignore
@@ -1409,7 +1453,11 @@ class App(AppT, Service):
             return self.tracer.trace(name=name, **extra_context)
 
     def traced(
-        self, fun: Callable, name: str = None, sample_rate: float = 1.0, **context: Any
+        self,
+        fun: Callable,
+        name: Optional[str] = None,
+        sample_rate: float = 1.0,
+        **context: Any,
     ) -> Callable:
         """Decorate function to be traced using the OpenTracing API."""
         assert fun
@@ -1441,13 +1489,13 @@ class App(AppT, Service):
         channel: Union[ChannelT, str],
         key: K = None,
         value: V = None,
-        partition: int = None,
-        timestamp: float = None,
+        partition: Optional[int] = None,
+        timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-        schema: SchemaT = None,
+        schema: Optional[SchemaT] = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        callback: MessageSentCallback = None,
+        callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Send event to channel/topic.
 
@@ -1637,6 +1685,7 @@ class App(AppT, Service):
                     T(self.flow_control.suspend)()
                     on_timeout.info("consumer.pause_partitions")
                     T(consumer.pause_partitions)(assignment)
+
                     # Every agent instance has an incoming buffer of messages
                     # (a asyncio.Queue) -- we clear those to make sure
                     # agents will not start processing them.
@@ -1770,17 +1819,15 @@ class App(AppT, Service):
 
     def FlowControlQueue(
         self,
-        maxsize: int = None,
+        maxsize: Optional[int] = None,
         *,
         clear_on_resume: bool = False,
-        loop: asyncio.AbstractEventLoop = None,
     ) -> ThrowableQueue:
         """Like :class:`asyncio.Queue`, but can be suspended/resumed."""
         return ThrowableQueue(
             maxsize=maxsize,
             flow_control=self.flow_control,
             clear_on_resume=clear_on_resume,
-            loop=loop or self.loop,
         )
 
     def Worker(self, **kwargs: Any) -> _Worker:

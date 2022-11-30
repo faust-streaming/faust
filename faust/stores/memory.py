@@ -2,15 +2,17 @@
 from typing import Any, Callable, Iterable, MutableMapping, Optional, Set, Tuple
 
 from faust.types import TP, EventT
+from faust.types.stores import KT, VT
 
 from . import base
 
 
-class Store(base.Store):
+class Store(base.Store, base.StoreT[KT, VT]):
     """Table storage using an in-memory dictionary."""
 
     def __post_init__(self) -> None:
         self.data: MutableMapping = {}
+        self._key_partition: MutableMapping[KT, int] = {}
 
     def _clear(self) -> None:
         self.data.clear()
@@ -34,6 +36,7 @@ class Store(base.Store):
             # If the key was assigned a value again, it will not be deleted.
             if not self.data[key]:
                 delete_key(key, None)
+                self._key_partition.pop(key, None)
 
     def _create_batch_iterator(
         self,
@@ -47,7 +50,23 @@ class Store(base.Store):
             # to delete keys in the table we set the raw value to None
             if event.message.value is None:
                 mark_as_delete(key)
+            self._key_partition[key] = event.message.partition
             yield key, to_value(event.value)
+
+    async def on_recovery_completed(
+        self, active_tps: Set[TP], standby_tps: Set[TP]
+    ) -> None:
+        partitions = {partition for _, partition in active_tps}
+
+        delete_keys = []
+
+        for k, p in self._key_partition.items():
+            if p not in partitions:
+                delete_keys.append(k)
+
+        for k in delete_keys:
+            self.data.pop(k, None)
+            self._key_partition.pop(k, None)
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the persisted offset.

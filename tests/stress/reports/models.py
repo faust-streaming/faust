@@ -1,3 +1,5 @@
+from typing import Optional
+
 import faust
 
 __all__ = ["Error", "Status"]
@@ -11,29 +13,29 @@ class Error(faust.Record):
     #: Format (sent to logging, e.g. 'the %s for %s did %r'
     format: str  # noqa
 
-    hostname: str = None
+    hostname: Optional[str] = None
 
     #: Traceback (if any)
-    traceback: str = None
+    traceback: Optional[str] = None
 
     #: Name of the origin logger.
-    logger: str = None
+    logger: Optional[str] = None
 
     #: Path to the file logging this.
-    filename: str = None
+    filename: Optional[str] = None
 
     #: Name of module logging this.
-    module: str = None
+    module: Optional[str] = None
 
     #: Line number
-    lineno: int = None
+    lineno: Optional[int] = None
 
     #: Logging severity
     severity: str = "ERROR"
 
-    timestamp: float = None
+    timestamp: Optional[float] = None
 
-    app_id: str = None
+    app_id: Optional[str] = None
 
 
 class Status(faust.Record):
