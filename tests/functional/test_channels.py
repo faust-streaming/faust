@@ -1,9 +1,9 @@
 import asyncio
+from unittest.mock import Mock
 
 import pytest
 from mode import label
 from mode.utils.aiter import aiter, anext
-from mode.utils.mocks import Mock
 from mode.utils.queues import FlowControlQueue
 
 import faust

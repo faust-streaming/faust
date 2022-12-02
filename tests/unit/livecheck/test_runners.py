@@ -1,7 +1,7 @@
 import asyncio
+from unittest.mock import ANY, Mock, patch
 
 import pytest
-from mode.utils.mocks import ANY, AsyncMock, Mock, patch
 
 from faust.livecheck.exceptions import (
     LiveCheckError,
@@ -11,6 +11,7 @@ from faust.livecheck.exceptions import (
     LiveCheckTestTimeout,
 )
 from faust.livecheck.models import State
+from tests.helpers import AsyncMock
 
 
 class TestTestRunner:
@@ -60,7 +61,7 @@ class TestTestRunner:
     async def test_execute__pass(self, *, runner, execution):
         runner.on_pass = AsyncMock()
         await self._do_execute(runner, execution)
-        runner.on_pass.coro.assert_called_once_with()
+        runner.on_pass.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_execute__CancelledError(self, *, runner, execution):
@@ -82,7 +83,7 @@ class TestTestRunner:
         with pytest.raises(LiveCheckTestSkipped):
             runner.on_skipped = AsyncMock()
             await runner.skip("broken")
-            runner.on_skipped.coro.assert_called_once_with(ANY)
+            runner.on_skipped.assert_called_once_with(ANY)
 
     def test__prepare_args(self, *, runner):
         assert runner._prepare_args((1, 2, 3, object()))
@@ -136,8 +137,8 @@ class TestTestRunner:
 
         assert runner.error is exc
         assert runner.state == State.FAIL
-        runner.case.on_test_failed.coro.assert_called_once_with(runner, exc)
-        runner._finalize_report.coro.assert_called_once_with()
+        runner.case.on_test_failed.assert_called_once_with(runner, exc)
+        runner._finalize_report.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_on_error(self, *, runner):
@@ -150,8 +151,8 @@ class TestTestRunner:
 
         assert runner.error is exc
         assert runner.state == State.ERROR
-        runner.case.on_test_error.coro.assert_called_once_with(runner, exc)
-        runner._finalize_report.coro.assert_called_once_with()
+        runner.case.on_test_error.assert_called_once_with(runner, exc)
+        runner._finalize_report.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_on_timeout(self, *, runner):
@@ -164,8 +165,8 @@ class TestTestRunner:
 
         assert runner.error is exc
         assert runner.state == State.TIMEOUT
-        runner.case.on_test_timeout.coro.assert_called_once_with(runner, exc)
-        runner._finalize_report.coro.assert_called_once_with()
+        runner.case.on_test_timeout.assert_called_once_with(runner, exc)
+        runner._finalize_report.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test_on_pass(self, *, runner):
@@ -177,8 +178,8 @@ class TestTestRunner:
         assert runner.state == State.DO_NOT_SHARE
         assert runner.error is None
 
-        runner.case.on_test_pass.coro.assert_called_once_with(runner)
-        runner._finalize_report.coro.assert_called_once_with()
+        runner.case.on_test_pass.assert_called_once_with(runner)
+        runner._finalize_report.assert_called_once_with()
 
     @pytest.mark.asyncio
     async def test__finalize_report(self, *, runner):
@@ -201,7 +202,7 @@ class TestTestRunner:
         assert report.signal_latency == {}
         assert report.error == str(exc)
         assert report.traceback
-        runner.case.post_report.coro.assert_called_once_with(report)
+        runner.case.post_report.assert_called_once_with(report)
 
     @pytest.mark.asyncio
     async def test__finalize_report__no_error(self, *, runner):
@@ -219,7 +220,7 @@ class TestTestRunner:
         assert report.signal_latency == {}
         assert report.error is None
         assert report.traceback is None
-        runner.case.post_report.coro.assert_called_once_with(report)
+        runner.case.post_report.assert_called_once_with(report)
 
     def test_log_info(self, *, runner):
         runner.case.realtime_logs = False

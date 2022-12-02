@@ -1,10 +1,11 @@
 import asyncio
 from typing import Hashable
+from unittest.mock import Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 
 class Test_AgentManager:
@@ -46,8 +47,8 @@ class Test_AgentManager:
 
     @pytest.mark.asyncio
     async def test_on_stop__agent_raises_cancel(self, *, many, agent1, agent2):
-        agent1.stop.coro.side_effect = asyncio.CancelledError()
-        agent2.stop.coro.side_effect = asyncio.CancelledError()
+        agent1.stop.side_effect = asyncio.CancelledError()
+        agent2.stop.side_effect = asyncio.CancelledError()
         await many.on_stop()
         agent1.stop.assert_called_once_with()
         agent2.stop.assert_called_once_with()

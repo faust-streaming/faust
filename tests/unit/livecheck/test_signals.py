@@ -1,12 +1,13 @@
 import asyncio
+from unittest.mock import Mock, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 from faust.livecheck.exceptions import LiveCheckTestTimeout
 from faust.livecheck.locals import current_execution_stack, current_test_stack
 from faust.livecheck.models import SignalEvent
 from faust.livecheck.signals import BaseSignal, Signal
+from tests.helpers import AsyncMock
 
 
 class Test_BaseSignal:
@@ -82,7 +83,7 @@ class Test_Signal:
     async def test_send__no_test_force(self, *, signal):
         signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
         await signal.send("value", key="k", force=True)
-        signal.case.app.bus.send.coro.assert_called_once_with(
+        signal.case.app.bus.send.assert_called_once_with(
             key="k",
             value=SignalEvent(
                 signal_name=signal.name,
@@ -97,7 +98,7 @@ class Test_Signal:
         with current_test_stack.push(execution):
             signal.case = Mock(app=Mock(bus=Mock(send=AsyncMock())))
             await signal.send("value", key=None, force=True)
-            signal.case.app.bus.send.coro.assert_called_once_with(
+            signal.case.app.bus.send.assert_called_once_with(
                 key=execution.id,
                 value=SignalEvent(
                     signal_name=signal.name,

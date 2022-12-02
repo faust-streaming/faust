@@ -1,6 +1,7 @@
+from unittest.mock import Mock
+
 import pytest
 from mode import label
-from mode.utils.mocks import Mock
 
 from faust import Event, Table
 from faust.stores.base import SerializedStore, Store

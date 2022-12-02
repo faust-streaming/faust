@@ -1,5 +1,6 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from mode.utils.mocks import Mock, patch
 from yarl import URL
 
 from faust.web import Blueprint

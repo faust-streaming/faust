@@ -1,8 +1,10 @@
+from unittest.mock import Mock
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.web import Request, View, Web
 from faust.web.exceptions import MethodNotAllowed
+from tests.helpers import AsyncMock
 
 
 @View.from_handler
@@ -69,7 +71,7 @@ class Test_View:
         request.match_info = {}
         handler = AsyncMock(name=method)
         view.methods[method.lower()] = handler
-        assert await view(request) is handler.coro()
+        assert await view(request) is handler.return_value
         handler.assert_called_once_with(request)
 
     def test_path_for(self, *, view):
@@ -229,4 +231,4 @@ class Test_View:
         web.read_request_content = AsyncMock()
         ret = await view.read_request_content(request)
         web.read_request_content.assert_called_once_with(request)
-        assert ret is web.read_request_content.coro.return_value
+        assert ret is web.read_request_content.return_value

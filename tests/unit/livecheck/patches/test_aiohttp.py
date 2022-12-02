@@ -1,7 +1,7 @@
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
-from mode.utils.mocks import Mock
 
 from faust.livecheck.locals import current_test_stack
 from faust.livecheck.patches.aiohttp import LiveCheckMiddleware, patch_aiohttp_session

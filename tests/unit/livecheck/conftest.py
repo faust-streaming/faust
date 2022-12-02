@@ -1,10 +1,11 @@
 from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
 
 import pytest
-from mode.utils.mocks import ContextMock, patch
 
 from faust.livecheck.models import TestExecution
 from faust.livecheck.runners import TestRunner
+from tests.helpers import ContextMock
 
 
 @pytest.fixture()

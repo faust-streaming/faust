@@ -1,11 +1,11 @@
 from collections import Counter
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.tables.recovery import RebalanceAgain, Recovery, ServiceStopped
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 6)
 TP2 = TP("bar", 3)
@@ -135,8 +135,8 @@ class TestRecovery:
     async def assert_wait(self, recovery, stopped=False, done=None, timeout=None):
         coro = Mock()
         recovery.wait_first = AsyncMock()
-        recovery.wait_first.coro.return_value.stopped = stopped
-        recovery.wait_first.coro.return_value.done = {done} if done else set()
+        recovery.wait_first.return_value.stopped = stopped
+        recovery.wait_first.return_value.done = {done} if done else set()
 
         ret = await recovery._wait(coro)
         recovery.wait_first.assert_called_once_with(

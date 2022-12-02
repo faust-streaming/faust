@@ -1,8 +1,10 @@
+from unittest.mock import Mock
+
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust.tables.recovery import Recovery
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 3)
 TP2 = TP("bar", 4)

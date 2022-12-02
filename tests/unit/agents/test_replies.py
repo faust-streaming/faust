@@ -1,12 +1,13 @@
 import asyncio
 import json
+from unittest.mock import Mock
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock
 
 from faust import Record
 from faust.agents.models import ReqRepResponse
 from faust.agents.replies import BarrierState, ReplyConsumer, ReplyPromise
+from tests.helpers import AsyncMock
 
 
 class Account(Record, serializer="json"):
@@ -63,7 +64,7 @@ class Test_BarrierState:
             p.done.return_value = True
             return None
 
-        p._results.get.coro.side_effect = se
+        p._results.get.side_effect = se
 
         assert [x async for x in p.iterate()] == []
 
@@ -75,10 +76,10 @@ class Test_BarrierState:
 
         done, pending = await asyncio.wait(
             [
-                self.adder(p),
-                self.fulfiller(p),
-                self.finalizer(p, 1.0),
-                self.consumer(p),
+                asyncio.ensure_future(self.adder(p)),
+                asyncio.ensure_future(self.fulfiller(p)),
+                asyncio.ensure_future(self.finalizer(p, 1.0)),
+                asyncio.ensure_future(self.consumer(p)),
             ],
             timeout=5.0,
         )
