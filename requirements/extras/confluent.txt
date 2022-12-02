@@ -1,1 +1,1 @@
-confluent-kafka-python
+confluent-kafka
