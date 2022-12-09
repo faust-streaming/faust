@@ -75,11 +75,9 @@ cdef class ConductorHandler:
                         continue
                     delivered.add(chan)
                 if full:
-                    task_list = []
-                    for event, chan in full:
-                        task = self._handle_full(event, chan, delivered)
-                        task_list.add(task)
-                    await wait(task_list, return_when=ALL_COMPLETED)
+                    await wait([self._handle_full(event, chan, delivered)
+                                        for event, chan in full],
+                                        return_when=ALL_COMPLETED)
             except KeyDecodeError as exc:
                 remaining = channels - delivered
                 message.ack(self.consumer, n=len(remaining))
