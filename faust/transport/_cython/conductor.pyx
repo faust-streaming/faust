@@ -1,5 +1,5 @@
 # cython: language_level=3
-from asyncio import ALL_COMPLETED, wait, ensure_future
+from asyncio import ALL_COMPLETED, ensure_future, wait
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
 
