@@ -592,9 +592,7 @@ class Record(Model, abstract=True):  # type: ignore
         payload = self.asdict()
         options = self._options
         if options.include_metadata:
-            payload[self._blessed_key if self._blessed_key else "__faust"] = {
-                "ns": options.namespace
-            }
+            payload[self._blessed_key] = {"ns": options.namespace}
         return payload
 
     def asdict(self) -> Dict[str, Any]:  # pragma: no cover
