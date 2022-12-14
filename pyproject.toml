@@ -1,3 +1,0 @@
-[tool.codereviewdoctor]
-
-disable = ["redundant-settings"]
