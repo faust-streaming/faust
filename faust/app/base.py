@@ -1227,6 +1227,56 @@ class App(AppT, Service):
         )
         return cast(GlobalTableT, gtable.using_window(window) if window else gtable)
 
+    def GlobalGlobalTable(
+        self,
+        name: str,
+        *,
+        default: Callable[[], Any] = None,
+        window: Optional[WindowT] = None,
+        partitions: Optional[int] = None,
+        help: Optional[str] = None,
+        **kwargs: Any,
+    ) -> GlobalTableT:
+        """Define new global table.
+
+        Arguments:
+            name: Name used for global table, note that two global tables
+                living in the same application cannot have the same name.
+
+            default: A callable, or type that will return a default valu
+               for keys missing in this global table.
+            window: A windowing strategy to wrap this window in.
+
+        Examples:
+            >>> gtable = app.GlobalTable('user_to_amount', default=int)
+            >>> gtable['George']
+            0
+            >>> gtable['Elaine'] += 1
+            >>> gtable['Elaine'] += 1
+            >>> gtable['Elaine']
+            2
+        """
+        gtable = self.tables.add(
+            cast(
+                GlobalTableT,
+                self.conf.GlobalTable(  # type: ignore
+                    self,
+                    name=name,
+                    default=default,
+                    beacon=self.tables.beacon,
+                    partitions=partitions,
+                    # we want to apply standby changes
+                    # as they come min (using 1 buffer size).
+                    standby_buffer_size=1,
+                    is_global=True,
+                    is_global_global=True,
+                    help=help,
+                    **kwargs,
+                ),
+            )
+        )
+        return cast(GlobalTableT, gtable.using_window(window) if window else gtable)
+
     def SetTable(
         self,
         name: str,
