@@ -327,7 +327,10 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                         assignment.actives.get(changelog_topic_name, [])
                     )
                     # Only add those partitions as standby which aren't active
-                    standby_partitions = all_partitions - active_partitions
+                    if not table.is_global_global:
+                        standby_partitions = all_partitions - active_partitions
+                    else:
+                        standby_partitions = all_partitions
                     assignment.standbys[changelog_topic_name] = list(standby_partitions)
                     # We add all_partitions as active so they are recovered
                     # in the beginning.

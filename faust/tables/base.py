@@ -122,6 +122,7 @@ class Collection(Service, CollectionT):
         use_partitioner: bool = False,
         on_window_close: Optional[WindowCloseCallback] = None,
         is_global: bool = False,
+        is_global_global: bool = False,
         **kwargs: Any,
     ) -> None:
         Service.__init__(self, **kwargs)
@@ -144,6 +145,7 @@ class Collection(Service, CollectionT):
         self._on_window_close = on_window_close
         self.last_closed_window = 0.0
         self.is_global = is_global
+        self.is_global_global = is_global_global
         assert self.recovery_buffer_size > 0 and self.standby_buffer_size > 0
 
         self.options = options
