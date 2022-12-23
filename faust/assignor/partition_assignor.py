@@ -326,11 +326,19 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                     active_partitions = set(
                         assignment.actives.get(changelog_topic_name, [])
                     )
-                    # Only add those partitions as standby which aren't active
-                    if not table.is_global_global:
-                        standby_partitions = all_partitions - active_partitions
-                    else:
+                    
+                    # if we use_partitioner it could happen that we write in Worker A
+                    # to a partitions which is not active in Worker A but active in Worker B.
+                    # To let Worker B consume the update we have to have all_partitions as
+                    # standbys as well.
+                    # A similar situation is happening if Global tables are shared over 
+                    # multiple consumer groups. Consumer group A could write to the table
+                    # and consumer group B, C, D only consuming. With the global_global flag it's
+                    # possible to have shared state over multiple consumer groups.
+                    if table.is_global_global or self.table.use_partitioner:
                         standby_partitions = all_partitions
+                    else: # Only add those partitions as standby which aren't active
+                        standby_partitions = all_partitions - active_partitions
                     assignment.standbys[changelog_topic_name] = list(standby_partitions)
                     # We add all_partitions as active so they are recovered
                     # in the beginning.
