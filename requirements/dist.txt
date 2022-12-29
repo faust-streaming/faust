@@ -1,6 +1,4 @@
--r flakes.txt
 asyncio-ipython-magic
-bumpversion>=0.5.1
 packaging
 pre-commit
 pydocstyle
@@ -12,3 +10,5 @@ tox>=2.3.1
 twine
 vulture
 wheel>=0.29.0
+intervaltree
+importlib-metadata; python_version<'3.8'

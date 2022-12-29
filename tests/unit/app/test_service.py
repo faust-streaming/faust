@@ -1,6 +1,9 @@
+from unittest.mock import Mock, call
+
 import pytest
 from mode import Service, label
-from mode.utils.mocks import AsyncMock, Mock, call
+
+from tests.helpers import AsyncMock
 
 
 class OtherService(Service):
@@ -79,10 +82,10 @@ class Test_AppService:
         app.on_started_init_extra_tasks = AsyncMock(name="osiet")
         app.on_started_init_extra_services = AsyncMock(name="osies")
         app.on_startup_finished = None
-        app._wait_for_table_recovery_completed.coro.return_value = True
+        app._wait_for_table_recovery_completed.return_value = True
         await app.on_started()
 
-        app._wait_for_table_recovery_completed.coro.return_value = False
+        app._wait_for_table_recovery_completed.return_value = False
         await app.on_started()
 
         app.on_started_init_extra_tasks.assert_called_once_with()

@@ -1,14 +1,15 @@
 from pathlib import Path
 from typing import List, Mapping, Tuple
+from unittest.mock import Mock, call, patch
 
 import pytest
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured
 from faust.stores import rocksdb
 from faust.stores.rocksdb import RocksDBOptions, Store
 from faust.types import TP
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)
@@ -236,7 +237,7 @@ class Test_Store:
     def test_open_for_partition(self, *, store):
         open = store.rocksdb_options.open = Mock(name="options.open")
         assert store._open_for_partition(1) is open.return_value
-        open.assert_called_once_with(store.partition_path(1))
+        open.assert_called_once_with(store.partition_path(1), read_only=False)
 
     def test__get__missing(self, *, store):
         store._get_bucket_for_key = Mock(name="get_bucket_for_key")
@@ -430,9 +431,7 @@ class Test_Store:
         store._try_open_db_for_partition.assert_has_calls(
             [
                 call(TP2.partition, generation_id=generation_id),
-                call.coro(TP2.partition, generation_id=generation_id),
                 call(TP1.partition, generation_id=generation_id),
-                call.coro(TP1.partition, generation_id=generation_id),
             ],
             any_order=True,
         )
@@ -451,15 +450,16 @@ class Test_Store:
                 is db_for_partition.return_value
             )
 
-    @pytest.mark.skip("Fix is TBD")
     @pytest.mark.asyncio
     async def test_open_db_for_partition_max_retries(self, *, store, db_for_partition):
         store.sleep = AsyncMock(name="sleep")
+        store._dbs = {"test": None}
         with patch("faust.stores.rocksdb.rocksdb.errors.RocksIOError", KeyError):
             db_for_partition.side_effect = KeyError("lock already")
             with pytest.raises(KeyError):
                 await store._try_open_db_for_partition(3)
-        assert store.sleep.call_count == 4
+        assert store.sleep.call_count == 29
+        assert len(store._dbs) == 0
 
     @pytest.mark.asyncio
     async def test_open_db_for_partition__raises_unexpected_error(

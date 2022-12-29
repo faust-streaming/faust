@@ -1,10 +1,10 @@
 import asyncio
 import operator
 from copy import copy
+from unittest.mock import Mock, call, patch
 
 import pytest
 from mode import label, shortlabel
-from mode.utils.mocks import AsyncMock, Mock, call, patch
 
 from faust import Event, Record, Stream, Topic, joins
 from faust.exceptions import PartitionsMismatch
@@ -12,6 +12,7 @@ from faust.stores.base import Store
 from faust.tables.base import Collection
 from faust.types import TP
 from faust.windows import Window
+from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
 
@@ -119,7 +120,7 @@ class Test_Collection:
         )
         assert (
             await table.need_active_standby_for(TP1)
-            == table._data.need_active_standby_for.coro()
+            == table._data.need_active_standby_for.return_value
         )
 
     def test_reset_state(self, *, table):
@@ -186,6 +187,44 @@ class Test_Collection:
         )
 
     @pytest.mark.asyncio
+    async def test_last_closed_window(self, *, table):
+
+        assert table.last_closed_window == 0.0
+
+        table.window = Mock(name="window")
+        table._data = {
+            ("boo", (1.1, 1.4)): "BOO",
+            ("moo", (1.4, 1.6)): "MOO",
+            ("faa", (1.9, 2.0)): "FAA",
+            ("bar", (4.1, 4.2)): "BAR",
+        }
+        table._partition_timestamps = {
+            TP1: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0],
+        }
+        table._partition_timestamp_keys = {
+            (TP1, 2.0): [
+                ("boo", (1.1, 1.4)),
+                ("moo", (1.4, 1.6)),
+                ("faa", (1.9, 2.0)),
+            ],
+            (TP1, 5.0): [
+                ("bar", (4.1, 4.2)),
+            ],
+        }
+
+        def get_stale(limit):
+            def is_stale(timestamp, latest_timestamp):
+                return timestamp < limit
+
+            return is_stale
+
+        table.window.stale.side_effect = get_stale(4.0)
+
+        await table._del_old_keys()
+
+        assert table.last_closed_window == 1.9
+
+    @pytest.mark.asyncio
     async def test_del_old_keys__empty(self, *, table):
         table.window = Mock(name="window")
         await table._del_old_keys()
@@ -230,12 +269,12 @@ class Test_Collection:
 
         on_window_close.assert_has_calls(
             [
+                call.__bool__(),
                 call(("boo", (1.1, 1.4)), "BOO"),
-                call.coro(("boo", (1.1, 1.4)), "BOO"),
+                call.__bool__(),
                 call(("moo", (1.4, 1.6)), "MOO"),
-                call.coro(("moo", (1.4, 1.6)), "MOO"),
+                call.__bool__(),
                 call(("faa", (1.9, 2.0)), "FAA"),
-                call.coro(("faa", (1.9, 2.0)), "FAA"),
             ]
         )
 

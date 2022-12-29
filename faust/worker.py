@@ -164,7 +164,7 @@ class Worker(mode.Worker):
                         await worker.start()
 
                     def manage_loop():
-                        loop = asyncio.get_event_loop()
+                        loop = asyncio.get_event_loop_policy().get_event_loop()
                         worker = Worker(app, loop=loop)
                         try:
                             loop.run_until_complete(start_worker(worker)
@@ -331,8 +331,8 @@ class Worker(mode.Worker):
         worker is restarted by an exception being raised.
         """
         self.change_workdir(self.workdir)
-        self.autodiscover()
         await self.default_on_first_start()
+        self.autodiscover()
 
     def change_workdir(self, path: Path) -> None:
         """Change the current working directory (CWD)."""

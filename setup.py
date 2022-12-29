@@ -45,12 +45,12 @@ LDFLAGS = []
 LIBRARIES = []
 E_UNSUPPORTED_PYTHON = NAME + " 1.0 requires Python %%s or later!"
 
-if sys.version_info < (3, 6):
-    raise Exception(E_UNSUPPORTED_PYTHON % ("3.6",))  # NOQA
+if sys.version_info < (3, 7):
+    raise Exception(E_UNSUPPORTED_PYTHON % ("3.7",))  # NOQA
 
 from pathlib import Path  # noqa
 
-README = Path("README.rst")
+README = Path("README.md")
 
 # -*- Compiler Flags -*-
 
@@ -182,7 +182,8 @@ with open("README.md") as readme_file:
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
-        version=meta["version"],
+        use_scm_version=True,
+        setup_requires=["setuptools_scm"],
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
@@ -195,7 +196,7 @@ def do_setup(**kwargs):
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
         package_data={"faust": ["py.typed"]},
         include_package_data=True,
-        python_requires=">=3.6.0",
+        python_requires=">=3.7.0",
         zip_safe=False,
         install_requires=reqs("requirements.txt"),
         tests_require=reqs("test.txt"),
@@ -208,7 +209,7 @@ def do_setup(**kwargs):
         project_urls={
             "Bug Reports": "https://github.com/faust-streaming/faust/issues",
             "Source": "https://github.com/faust-streaming/faust",
-            "Documentation": "https://fauststream.com/en/latest",
+            "Documentation": "https://faust-streaming.github.io/faust",
         },
         keywords=[
             "stream",
@@ -226,8 +227,11 @@ def do_setup(**kwargs):
             "License :: OSI Approved :: BSD License",
             "Programming Language :: Python",
             "Programming Language :: Python :: 3 :: Only",
-            "Programming Language :: Python :: 3.6",
             "Programming Language :: Python :: 3.7",
+            "Programming Language :: Python :: 3.8",
+            "Programming Language :: Python :: 3.9",
+            "Programming Language :: Python :: 3.10",
+            "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: Implementation :: CPython",
             "Programming Language :: Python :: Implementation :: PyPy",
             "Operating System :: POSIX",

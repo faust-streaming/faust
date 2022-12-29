@@ -1,6 +1,5 @@
 import logging
-
-from mode.utils.mocks import Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 from faust.utils.terminal.spinners import Spinner, SpinnerHandler
 

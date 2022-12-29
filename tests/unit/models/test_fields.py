@@ -1,7 +1,7 @@
 from decimal import Decimal
+from unittest.mock import Mock
 
 import pytest
-from mode.utils.mocks import Mock
 
 from faust import Record
 from faust.exceptions import ValidationError

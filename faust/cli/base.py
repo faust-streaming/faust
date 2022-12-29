@@ -442,7 +442,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
     Use --help for help, --version for version information.
 
-    https://fauststream.com/en/latest
+    https://faust-streaming.github.io/faust
     """
     return _prepare_cli(*args, **kwargs)
 
@@ -481,7 +481,7 @@ def _prepare_cli(
             os.environ["F_DATADIR"] = datadir
 
 
-class Command(abc.ABC):
+class Command(abc.ABC):  # noqa: B024
     """Base class for subcommands."""
 
     UsageError: Type[Exception] = click.UsageError
@@ -592,8 +592,8 @@ class Command(abc.ABC):
         self._blocking_timeout = self.state.blocking_timeout
         self._console_port = self.state.console_port
 
-    @no_type_check  # Subclasses can omit *args, **kwargs in signature.
-    async def run(self, *args: Any, **kwargs: Any) -> Any:
+    @no_type_check  # Subclasses can omit *args, **kwargs in signature.  # noqa: B027
+    async def run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: B027
         """Override this method to define what your command does."""
         # NOTE: If you override __call__ below, you have a non-async command.
         # This is used by .worker to call the
@@ -607,7 +607,7 @@ class Command(abc.ABC):
         finally:
             await self.on_stop()
 
-    async def on_stop(self) -> None:
+    async def on_stop(self) -> None:  # noqa: B027
         """Call after command executed."""
         ...
 
@@ -621,7 +621,7 @@ class Command(abc.ABC):
 
     def run_using_worker(self, *args: Any, **kwargs: Any) -> NoReturn:
         """Execute command using :class:`faust.Worker`."""
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_event_loop_policy().get_event_loop()
         args = self.args + args
         kwargs = {**self.kwargs, **kwargs}
         service = self.as_service(loop, *args, **kwargs)
@@ -629,7 +629,7 @@ class Command(abc.ABC):
         self.on_worker_created(worker)
         raise worker.execute_from_commandline()
 
-    def on_worker_created(self, worker: Worker) -> None:
+    def on_worker_created(self, worker: Worker) -> None:  # noqa: B027
         """Call when creating :class:`faust.Worker` to execute this command."""
         ...
 
@@ -640,7 +640,7 @@ class Command(abc.ABC):
         return Service.from_awaitable(
             self.execute(*args, **kwargs),
             name=type(self).__name__,
-            loop=loop or asyncio.get_event_loop(),
+            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
         )
 
     def worker_for_service(
@@ -659,7 +659,7 @@ class Command(abc.ABC):
             console_port=self.console_port,
             redirect_stdouts=self.redirect_stdouts or False,
             redirect_stdouts_level=self.redirect_stdouts_level,
-            loop=loop or asyncio.get_event_loop(),
+            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
             daemon=self.daemon,
         )
 

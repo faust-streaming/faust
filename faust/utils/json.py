@@ -28,7 +28,10 @@ __all__ = [
 if typing.TYPE_CHECKING:
     import orjson
 else:  # pragma: no cover
-    orjson = None  # noqa
+    try:
+        import orjson
+    except ImportError:
+        orjson = None  # noqa
 
 DEFAULT_TEXTUAL_TYPES: List[Type] = [Decimal, uuid.UUID, bytes]
 
@@ -172,7 +175,6 @@ if orjson is not None:  # pragma: no cover
         return json_dumps(
             obj,
             default=on_default,
-            option=orjson.OPT_NAIVE_UTC,
         )
 
     def loads(s: str, json_loads: Callable = orjson.loads, **kwargs: Any) -> Any:
@@ -188,7 +190,12 @@ else:
         **kwargs: Any,
     ) -> str:
         """Serialize to json.  See :func:`json.dumps`."""
-        return json_dumps(obj, cls=cls, **dict(_JSON_DEFAULT_KWARGS, **kwargs))
+        return json_dumps(
+            obj,
+            cls=cls,
+            **dict(_JSON_DEFAULT_KWARGS, **kwargs),
+            separators=(",", ":"),
+        )
 
     def loads(s: str, json_loads: Callable = json.loads, **kwargs: Any) -> Any:
         """Deserialize json string.  See :func:`json.loads`."""

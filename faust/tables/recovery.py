@@ -470,6 +470,21 @@ class Recovery(Service):
                     T(self.app.flow_control.resume)()
                     T(consumer.resume_flow)()
                     self._set_recovery_ended()
+
+                # The changelog partitions only in the active_tps set need to be resumed
+                active_only_partitions = active_tps - standby_tps
+                if active_only_partitions:
+                    # Support for the specific scenario where recovery_buffer=1
+                    tps_resuming = [
+                        tp
+                        for tp in active_only_partitions
+                        if self.tp_to_table[tp].recovery_buffer_size == 1
+                    ]
+                    if tps_resuming:
+                        T(consumer.resume_partitions)(tps_resuming)
+                        T(self.app.flow_control.resume)()
+                        T(consumer.resume_flow)()
+
                 self.log.info("Recovery complete")
                 if span:
                     span.set_tag("Recovery-Completed", True)
@@ -600,9 +615,11 @@ class Recovery(Service):
         self._set_recovery_ended()
         # This needs to happen if all goes well
         callback_coros = [
-            table.on_recovery_completed(
-                self.actives_for_table[table],
-                self.standbys_for_table[table],
+            asyncio.ensure_future(
+                table.on_recovery_completed(
+                    self.actives_for_table[table],
+                    self.standbys_for_table[table],
+                )
             )
             for table in self.tables.values()
         ]
@@ -690,12 +707,18 @@ class Recovery(Service):
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
         # FIXME To be consistent with the offset -1 logic
-        earliest = {tp: offset - 1 for tp, offset in earliest.items()}
+        earliest = {
+            tp: offset - 1 if offset is not None else None
+            for tp, offset in earliest.items()
+        }
+
         for tp in tps:
             last_value = destination[tp]
-            new_value = earliest[tp]
+            new_value = earliest.get(tp, None)
 
-            if last_value is None:
+            if last_value is None and new_value is None:
+                destination[tp] = -1
+            elif last_value is None:
                 destination[tp] = new_value
             elif new_value is None:
                 destination[tp] = last_value

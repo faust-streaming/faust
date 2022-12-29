@@ -36,6 +36,7 @@ from aiokafka.errors import (
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
 from kafka import TopicPartition
+from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from kafka.errors import (
     NotControllerError,
     TopicAlreadyExistsError as TopicExistsError,
@@ -234,17 +235,20 @@ class Consumer(ThreadDelegateConsumer):
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
-        await self._thread.create_topic(
-            topic,
-            partitions,
-            replication,
-            config=config,
-            timeout=timeout,
-            retention=retention,
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
+        if self.app.conf.topic_allow_declare:
+            await self._thread.create_topic(
+                topic,
+                partitions,
+                replication,
+                config=config,
+                timeout=timeout,
+                retention=retention,
+                compacting=compacting,
+                deleting=deleting,
+                ensure_created=ensure_created,
+            )
+        else:
+            logger.warning(f"Topic creation disabled! Can't create topic {topic}")
 
     def _new_topicpartition(self, topic: str, partition: int) -> TP:
         return cast(TP, _TopicPartition(topic, partition))
@@ -301,7 +305,6 @@ class ThreadedProducer(ServiceThread):
     ) -> None:
         super().__init__(
             executor=executor,
-            loop=loop,
             thread_loop=thread_loop,
             Worker=Worker,
             **kwargs,
@@ -484,18 +487,22 @@ class AIOKafkaConsumerThread(ConsumerThread):
     ) -> aiokafka.AIOKafkaConsumer:
         transport = cast(Transport, self.transport)
         if self.app.client_only:
-            return self._create_client_consumer(transport, loop=loop)
+            return self._create_client_consumer(transport)
         else:
-            return self._create_worker_consumer(transport, loop=loop)
+            return self._create_worker_consumer(transport)
 
     def _create_worker_consumer(
-        self, transport: "Transport", loop: asyncio.AbstractEventLoop
+        self, transport: "Transport"
     ) -> aiokafka.AIOKafkaConsumer:
         isolation_level: str = "read_uncommitted"
         conf = self.app.conf
         if self.consumer.in_transaction:
             isolation_level = "read_committed"
-        self._assignor = self.app.assignor
+        self._assignor = (
+            self.app.assignor
+            if self.app.conf.table_standby_replicas > 0
+            else RoundRobinPartitionAssignor
+        )
         auth_settings = credentials_to_aiokafka_auth(
             conf.broker_credentials, conf.ssl_context
         )
@@ -513,7 +520,6 @@ class AIOKafkaConsumerThread(ConsumerThread):
             )
 
         return aiokafka.AIOKafkaConsumer(
-            loop=loop,
             api_version=conf.consumer_api_version,
             client_id=conf.broker_client_id,
             group_id=conf.id,
@@ -543,7 +549,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def _create_client_consumer(
-        self, transport: "Transport", loop: asyncio.AbstractEventLoop
+        self, transport: "Transport"
     ) -> aiokafka.AIOKafkaConsumer:
         conf = self.app.conf
         auth_settings = credentials_to_aiokafka_auth(
@@ -551,7 +557,6 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
         max_poll_interval = conf.broker_max_poll_interval or 0
         return aiokafka.AIOKafkaConsumer(
-            loop=loop,
             client_id=conf.broker_client_id,
             bootstrap_servers=server_list(transport.url, transport.default_port),
             request_timeout_ms=int(conf.broker_request_timeout * 1000.0),
@@ -1026,27 +1031,30 @@ class AIOKafkaConsumerThread(ConsumerThread):
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
-        transport = cast(Transport, self.consumer.transport)
-        _consumer = self._ensure_consumer()
-        _retention = int(want_seconds(retention) * 1000.0) if retention else None
-        if len(topic) > TOPIC_LENGTH_MAX:
-            raise ValueError(
-                f"Topic name {topic!r} is too long (max={TOPIC_LENGTH_MAX})"
+        if self.app.conf.topic_allow_declare:
+            transport = cast(Transport, self.consumer.transport)
+            _consumer = self._ensure_consumer()
+            _retention = int(want_seconds(retention) * 1000.0) if retention else None
+            if len(topic) > TOPIC_LENGTH_MAX:
+                raise ValueError(
+                    f"Topic name {topic!r} is too long (max={TOPIC_LENGTH_MAX})"
+                )
+            await self.call_thread(
+                transport._create_topic,
+                self,
+                _consumer._client,
+                topic,
+                partitions,
+                replication,
+                config=config,
+                timeout=int(want_seconds(timeout) * 1000.0),
+                retention=_retention,
+                compacting=compacting,
+                deleting=deleting,
+                ensure_created=ensure_created,
             )
-        await self.call_thread(
-            transport._create_topic,
-            self,
-            _consumer._client,
-            topic,
-            partitions,
-            replication,
-            config=config,
-            timeout=int(want_seconds(timeout) * 1000.0),
-            retention=_retention,
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
+        else:
+            logger.warning(f"Topic creation disabled! Can't create topic {topic}")
 
     def key_partition(
         self, topic: str, key: Optional[bytes], partition: Optional[int] = None
@@ -1259,22 +1267,25 @@ class Producer(base.Producer):
         ensure_created: bool = False,
     ) -> None:
         """Create/declare topic on server."""
-        _retention = int(want_seconds(retention) * 1000.0) if retention else None
-        producer = self._ensure_producer()
-        await cast(Transport, self.transport)._create_topic(
-            self,
-            producer.client,
-            topic,
-            partitions,
-            replication,
-            config=config,
-            timeout=int(want_seconds(timeout) * 1000.0),
-            retention=_retention,
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
-        await producer.client.force_metadata_update()  # Fixes #499
+        if self.app.conf.topic_allow_declare:
+            _retention = int(want_seconds(retention) * 1000.0) if retention else None
+            producer = self._ensure_producer()
+            await cast(Transport, self.transport)._create_topic(
+                self,
+                producer.client,
+                topic,
+                partitions,
+                replication,
+                config=config,
+                timeout=int(want_seconds(timeout) * 1000.0),
+                retention=_retention,
+                compacting=compacting,
+                deleting=deleting,
+                ensure_created=ensure_created,
+            )
+            await producer.client.force_metadata_update()  # Fixes #499
+        else:
+            logger.warning(f"Topic creation disabled! Can't create topic {topic}")
 
     def _ensure_producer(self) -> aiokafka.AIOKafkaProducer:
         if self._producer is None:
@@ -1471,7 +1482,7 @@ class Transport(base.Transport):
                 topic,
                 partitions,
                 replication,
-                loop=asyncio.get_event_loop(),
+                loop=asyncio.get_event_loop_policy().get_event_loop(),
                 **kwargs,
             )
         try:

@@ -1,6 +1,4 @@
-:Version: 1.10.4
-:Web: https://fauststream.com/en/latest
-:Download: http://pypi.org/project/faust
-:Source: http://github.com/faust-streaming/faust
+:Web: https://faust-streaming.github.io/faust
+:Download: https://pypi.org/project/faust-streaming
+:Source: https://github.com/faust-streaming/faust
 :Keywords: distributed, stream, async, processing, data, queue, state management
-

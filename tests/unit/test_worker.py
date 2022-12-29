@@ -2,16 +2,17 @@ import asyncio
 import logging
 import warnings
 from pathlib import Path
+from unittest.mock import Mock, patch
 
 import pytest
 from mode.utils.logging import CompositeLogger
-from mode.utils.mocks import AsyncMock, Mock, patch
 from mode.utils.trees import Node
 from yarl import URL
 
 from faust import Sensor
 from faust.utils import terminal
 from faust.worker import Worker
+from tests.helpers import AsyncMock
 
 
 class CoroEq:
@@ -152,8 +153,8 @@ class Test_Worker:
         worker.default_on_first_start = AsyncMock(name="on_first_start")
         await worker.on_first_start()
         worker.change_workdir.assert_called_once_with(worker.workdir)
-        worker.autodiscover.assert_called_once_with()
         worker.default_on_first_start.assert_called_once_with()
+        worker.autodiscover.assert_called_once_with()
 
     def test_change_workdir(self, worker):
         with patch("os.chdir") as chdir:

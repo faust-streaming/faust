@@ -1,14 +1,14 @@
 import asyncio
 from collections import defaultdict
+from unittest.mock import Mock, patch
 
 import pytest
 from mode.utils.contexts import ExitStack
-from mode.utils.mocks import AsyncMock, Mock, patch
 
 import faust
 from faust import joins
 from faust.exceptions import Skip
-from tests.helpers import new_event
+from tests.helpers import AsyncMock, new_event
 
 
 class Model(faust.Record):
@@ -51,7 +51,7 @@ class Test_Stream:
     @pytest.mark.asyncio
     async def test_on_merge__with_join_strategy(self, *, stream):
         join = stream.join_strategy = Mock(process=AsyncMock())
-        assert (await stream.on_merge("v")) is join.process.coro.return_value
+        assert (await stream.on_merge("v")) is join.process.return_value
 
     def test_combine__finalized(self, *, stream):
         stream._finalized = True

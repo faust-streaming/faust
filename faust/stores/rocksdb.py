@@ -2,7 +2,9 @@
 import asyncio
 import gc
 import math
+import os
 import shutil
+import tempfile
 import typing
 from collections import defaultdict
 from contextlib import suppress
@@ -136,7 +138,16 @@ class RocksDBOptions:
 
 
 class Store(base.SerializedStore):
-    """RocksDB table storage."""
+    """RocksDB table storage.
+
+    .. tip::
+        You can specify 'read_only' as an option into a Table class
+        to allow a RocksDB store be used by multiple apps::
+
+            app.App(..., store="rocksdb://")
+            app.GlobalTable(..., options={'read_only': True})
+
+    """
 
     offset_key = b"__faust\0offset__"
 
@@ -159,6 +170,7 @@ class Store(base.SerializedStore):
         *,
         key_index_size: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
+        read_only: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
         if rocksdb is None:
@@ -175,6 +187,7 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
+        self.read_only = self.options.pop("read_only", read_only)
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
@@ -183,6 +196,94 @@ class Store(base.SerializedStore):
         self._key_index = LRUCache(limit=self.key_index_size)
         self.db_lock = asyncio.Lock()
         self.rebalance_ack = False
+        self._backup_path = os.path.join(self.path, f"{str(self.basename)}-backups")
+        try:
+            self._backup_engine = None
+            if not os.path.isdir(self._backup_path):
+                os.makedirs(self._backup_path, exist_ok=True)
+            testfile = tempfile.TemporaryFile(dir=self._backup_path)
+            testfile.close()
+        except PermissionError:
+            self.log.warning(
+                f'Unable to make directory for path "{self._backup_path}",'
+                f"disabling backups."
+            )
+        except OSError:
+            self.log.warning(
+                f'Unable to create files in "{self._backup_path}",' f"disabling backups"
+            )
+        else:
+            self._backup_engine = rocksdb.BackupEngine(self._backup_path)
+
+    async def backup_partition(
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
+    ) -> None:
+        """Backup partition from this store.
+
+        This will be saved in a separate directory in the data directory called
+        '{table-name}-backups'.
+
+        Arguments:
+            tp: Partition to backup
+            flush: Flush the memset before backing up the state of the table.
+            purge: Purge old backups in the process
+            keep: How many backups to keep after purging
+
+        This is only supported in newer versions of python-rocksdb which can read
+        the RocksDB database using multi-process read access.
+        See https://github.com/facebook/rocksdb/wiki/How-to-backup-RocksDB to know more.
+
+        Example usage::
+
+            table = app.GlobalTable(..., partitions=1)
+            table.data.backup_partition(0, flush=True, purge=True, keep=1)
+
+        """
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            try:
+                if flush:
+                    db = await self._try_open_db_for_partition(partition)
+                else:
+                    db = self.rocksdb_options.open(
+                        self.partition_path(partition), read_only=True
+                    )
+                self._backup_engine.create_backup(db, flush_before_backup=flush)
+                if purge:
+                    self._backup_engine.purge_old_backups(keep)
+            except Exception:
+                self.log.info(f"Unable to backup partition {partition}.")
+
+    def restore_backup(
+        self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
+    ) -> None:
+        """Restore partition backup from this store.
+
+        Arguments:
+            tp: Partition to restore
+            latest: Restore the latest backup, set as False to restore a specific ID
+            backup_id: Backup to restore
+
+        An example of how the method can be accessed::
+
+            table = app.GlobalTable(..., partitions=1)
+            table.data.restore_backup(0)
+
+        """
+        if self._backup_engine:
+            partition = tp
+            if isinstance(tp, TP):
+                partition = tp.partition
+            if latest:
+                self._backup_engine.restore_latest_backup(
+                    str(self.partition_path(partition)), self._backup_path
+                )
+            else:
+                self._backup_engine.restore_backup(
+                    backup_id, str(self.partition_path(partition)), self._backup_path
+                )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
@@ -285,7 +386,10 @@ class Store(base.SerializedStore):
             return db
 
     def _open_for_partition(self, partition: int) -> DB:
-        return self.rocksdb_options.open(self.partition_path(partition))
+        path = self.partition_path(partition)
+        return self.rocksdb_options.open(
+            path, read_only=self.read_only if os.path.isfile(path) else False
+        )
 
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()

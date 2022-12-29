@@ -21,11 +21,17 @@ import os
 import re
 import sys
 import typing
+
+if sys.version_info < (3, 8):
+    from importlib_metadata import version
+else:
+    from importlib.metadata import version
+
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
 
-__version__ = "0.8.5"
+__version__ = version("faust-streaming")
 __author__ = "Robinhood Markets, Inc."
-__contact__ = "schrohm@gmail.com, vpatki@wayfair.com"
+__contact__ = "schrohm@gmail.com, vpatki@wayfair.com, williambbarnhart@gmail.com"
 __homepage__ = "https://github.com/faust-streaming/faust"
 __docformat__ = "markdown"
 

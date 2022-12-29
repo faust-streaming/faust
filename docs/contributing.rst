@@ -159,7 +159,7 @@ Bugs for a package in the Faust ecosystem should be reported to the relevant
 issue tracker.
 
 * :pypi:`Faust` - https://github.com/faust-streaming/faust/issues
-* :pypi:`Mode` - https://github.com/ask/mode/issues
+* :pypi:`Mode` - https://github.com/faust-streaming/mode/issues
 
 If you're unsure of the origin of the bug you can ask the
 :ref:`mailing-list`, or just use the Faust issue tracker.
@@ -795,18 +795,18 @@ Packages
 ---------
 
 :git: https://github.com/faust-streaming/faust
-:CI: http://travis-ci.org/#!/robinhood/faust
+:CI: https://app.travis-ci.com/github/faust-streaming/faust
 :Windows-CI: https://ci.appveyor.com/project/ask/faust
-:PyPI: :pypi:`faust`
-:docs: https://fauststream.com/en/latest/
+:PyPI: :pypi:`faust-streaming`
+:docs: https://faust-streaming.github.io/faust/
 
 ``Mode``
 --------
 
-:git: https://github.com/ask/mode
-:CI: http://travis-ci.org/#!/ask/mode
-:Windows-CI: https://ci.appveyor.com/project/ask/mode
-:PyPI: :pypi:`Mode`
+:git: https://github.com/faust-streaming/mode/
+:CI: https://www.travis-ci.com/github/faust-streaming/mode
+:Windows-CI: https://ci.appveyor.com/project/faust-streaming/mode
+:PyPI: :pypi:`mode-streaming`
 :docs: http://mode.readthedocs.io/
 
 .. _release-procedure:
@@ -817,54 +817,11 @@ Release Procedure
 Updating the version number
 ---------------------------
 
-The version number must be updated two places:
+This is done automatically by `setuptools_scm`.
 
-    * :file:`faust/__init__.py`
-    * :file:`docs/include/introduction.txt`
-
-After you have changed these files you must render
-the :file:`README` files. There's a script to convert sphinx syntax
-to generic reStructured Text syntax, and the make target `readme`
-does this for you:
-
-.. sourcecode:: console
-
-    $ make readme
-
-Now commit the changes:
-
-.. sourcecode:: console
-
-    $ git commit -a -m "Bumps version to X.Y.Z"
-
-and make a new version tag:
-
-.. sourcecode:: console
-
-    $ git tag vX.Y.Z
-    $ git push --tags
 
 Releasing
 ---------
 
-Commands to make a new public stable release:
-
-.. sourcecode:: console
-
-    $ make distcheck  # checks pep8, autodoc index, runs tests and more
-    $ make dist  # NOTE: Runs git clean -xdf and removes files not in the repo.
-    $ python setup.py sdist upload --sign --identity='Celery Security Team'
-    $ python setup.py bdist_wheel upload --sign --identity='Celery Security Team'
-
-If this is a new release series then you also need to do the
-following:
-
-* Go to the Read The Docs management interface at:
-    http://readthedocs.org/projects/faust/?fromdocs=faust
-
-* Enter "Edit project"
-
-    Change default branch to the branch of this series, for example, use
-    the ``1.0`` branch for the 1.0 series.
-
-* Also add the previous version under the "versions" tab.
+This is all done automatically on GitHub when a release
+is tagged in https://github.com/faust-streaming/faust/releases.

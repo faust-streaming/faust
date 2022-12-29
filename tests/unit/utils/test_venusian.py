@@ -1,4 +1,4 @@
-from mode.utils.mocks import Mock, patch
+from unittest.mock import Mock, patch
 
 from faust.utils import venusian
 
