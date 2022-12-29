@@ -146,6 +146,8 @@ class Collection(Service, CollectionT):
         self.last_closed_window = 0.0
         self.is_global = is_global
         self.is_global_global = is_global_global
+        if self.is_global_global:
+            assert self.is_global
         assert self.recovery_buffer_size > 0 and self.standby_buffer_size > 0
 
         self.options = options
