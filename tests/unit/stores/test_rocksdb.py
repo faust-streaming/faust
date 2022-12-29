@@ -328,7 +328,7 @@ class Test_Store:
 
         # A global table ignores the event partition and pulls from the proper db
         assert store._get(b"key") == b"value"
-        
+
         store.table.is_global = False
         store.table.use_partitioner = True
 
