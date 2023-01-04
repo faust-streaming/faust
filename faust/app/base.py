@@ -1220,7 +1220,7 @@ class App(AppT, Service):
                     # as they come min (using 1 buffer size).
                     standby_buffer_size=1,
                     is_global=True,
-                    is_global_global=False,
+                    synchronize_all_active_partitions=False,
                     help=help,
                     **kwargs,
                 ),
