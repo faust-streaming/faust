@@ -1,5 +1,5 @@
 # cython: language_level=3
-from asyncio import ALL_COMPLETED, wait
+from asyncio import ALL_COMPLETED, ensure_future, wait
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
 
@@ -75,7 +75,7 @@ cdef class ConductorHandler:
                         continue
                     delivered.add(chan)
                 if full:
-                    await wait([self._handle_full(event, chan, delivered)
+                    await wait([ensure_future(self._handle_full(event, chan, delivered))
                                         for event, chan in full],
                                         return_when=ALL_COMPLETED)
             except KeyDecodeError as exc:
