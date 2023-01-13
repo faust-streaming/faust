@@ -1186,6 +1186,7 @@ class App(AppT, Service):
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
+        synchronize_all_active_partitions: Optional[bool] = False,
         **kwargs: Any,
     ) -> GlobalTableT:
         """Define new global table.
@@ -1220,6 +1221,7 @@ class App(AppT, Service):
                     # as they come min (using 1 buffer size).
                     standby_buffer_size=1,
                     is_global=True,
+                    synchronize_all_active_partitions=synchronize_all_active_partitions,
                     help=help,
                     **kwargs,
                 ),
