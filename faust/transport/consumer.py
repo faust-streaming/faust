@@ -485,7 +485,7 @@ class Consumer(Service, ConsumerT):
         self.not_waiting_next_records = Event()
         self.not_waiting_next_records.set()
         self._reset_state()
-        super().__init__(**kwargs)
+        super().__init__(loop=loop, **kwargs)
         self.transactions = self.transport.create_transaction_manager(
             consumer=self,
             producer=self.app.producer,
