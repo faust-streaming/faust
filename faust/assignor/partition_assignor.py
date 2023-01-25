@@ -338,7 +338,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                     # shared state over multiple consumer groups.
                     if (
                         table.synchronize_all_active_partitions
-                        or self.table.use_partitioner
+                        or table.use_partitioner
                     ):
                         standby_partitions = all_partitions
                     else:  # Only add those partitions as standby which aren't active
