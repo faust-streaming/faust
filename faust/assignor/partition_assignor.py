@@ -336,10 +336,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
                     # the table and consumer group B, C, D only consuming. With the
                     # synchronize_all_active_partitions flag it's possible to have
                     # shared state over multiple consumer groups.
-                    if (
-                        table.synchronize_all_active_partitions
-                        or table.use_partitioner
-                    ):
+                    if table.synchronize_all_active_partitions or table.use_partitioner:
                         standby_partitions = all_partitions
                     else:  # Only add those partitions as standby which aren't active
                         standby_partitions = all_partitions - active_partitions
