@@ -466,7 +466,7 @@ class App(AppT, Service):
         self._default_options = (id, options)
 
         # The agent manager manages all agents.
-        self.agents = AgentManager(self)
+        self.agents = AgentManager(self, loop=loop)
 
         # Sensors monitor Faust using a standard sensor API.
         self.sensors = SensorDelegate(self)
@@ -1791,7 +1791,7 @@ class App(AppT, Service):
         return revoked, newly_assigned
 
     def _new_producer(self) -> ProducerT:
-        return self.transport.create_producer(beacon=self.beacon)
+        return self.transport.create_producer(loop=self.loop, beacon=self.beacon)
 
     def _new_consumer(self) -> ConsumerT:
         return self.transport.create_consumer(

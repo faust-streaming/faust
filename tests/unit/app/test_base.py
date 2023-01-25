@@ -119,7 +119,7 @@ class Test_App:
             autospec=Transport,
         )
         assert app._new_producer() is transport.create_producer.return_value
-        transport.create_producer.assert_called_with(beacon=ANY)
+        transport.create_producer.assert_called_with(loop=app.loop, beacon=ANY)
         assert app.producer is transport.create_producer.return_value
 
     @pytest.mark.parametrize(
