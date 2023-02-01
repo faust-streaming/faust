@@ -226,7 +226,7 @@ class Agent(AgentT, Service):
                 "Agent concurrency must be 1 when using isolated partitions"
             )
         self.use_reply_headers = use_reply_headers
-        Service.__init__(self)
+        Service.__init__(self, loop=app.loop)
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services dependencies required to start agent."""
