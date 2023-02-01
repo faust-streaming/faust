@@ -30,7 +30,7 @@ jobs:
         path: "./Documentation"
   deploy:
     name: "Deploy docs"
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: github.event_name == 'release' && github.event.action == 'created'
     needs: build
     runs-on: ubuntu-latest
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
