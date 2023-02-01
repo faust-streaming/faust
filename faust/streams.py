@@ -866,7 +866,6 @@ class Stream(StreamT[T_co], Service):
         if topic is not None:
             channel = topic
         else:
-
             prefix = ""
             if self.prefix and not cast(TopicT, self.channel).has_prefix:
                 prefix = self.prefix + "-"

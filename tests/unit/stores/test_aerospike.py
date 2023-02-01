@@ -100,7 +100,6 @@ class TestAerospikeStore:
         store,
     ):
         with patch("faust.stores.aerospike.aerospike", MagicMock()) as aero:
-
             store.client.put = MagicMock()
             key = b"key"
             value = b"value"
@@ -198,7 +197,6 @@ class TestAerospikeStore:
 
     def test_iteritems_success(self, store):
         with patch("faust.stores.aerospike.aerospike", MagicMock()):
-
             scan = MagicMock()
             store.client.scan = MagicMock(return_value=scan)
             scan_result = [

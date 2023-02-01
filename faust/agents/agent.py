@@ -1090,7 +1090,6 @@ class Agent(AgentT, Service):
 
 
 class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
-
     _stream: StreamT
 
     def __init__(

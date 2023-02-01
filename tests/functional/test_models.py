@@ -939,7 +939,6 @@ def test_adtribute_payload(app):
             self.data_store = None
 
     class AdjustData(Record):
-
         activity_kind: str
         network_name: str
         adid: str
@@ -998,7 +997,6 @@ def test_adtribute_payload(app):
 
 
 def test_overwrite_asdict():
-
     with pytest.raises(RuntimeError):
 
         class R(Record):
@@ -1115,7 +1113,6 @@ def test_abstract_model_repr():
 
 
 def test_raises_when_defaults_in_wrong_order():
-
     with pytest.raises(TypeError):
 
         class X(Record):

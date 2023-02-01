@@ -28,7 +28,6 @@ T = TypeVar("T")
 
 
 class EventT(Generic[T], AsyncContextManager):
-
     app: _AppT
     key: K
     value: V

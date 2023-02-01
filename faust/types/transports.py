@@ -78,7 +78,6 @@ PartitionerT = Callable[
 
 
 class ProducerBufferT(ServiceT):
-
     max_messages: int
 
     pending: asyncio.Queue
@@ -106,7 +105,6 @@ class ProducerBufferT(ServiceT):
 
 
 class ProducerT(ServiceT):
-
     #: The transport that created this Producer.
     transport: "TransportT"
 
@@ -289,7 +287,6 @@ class SchedulingStrategyT:
 
 
 class ConsumerT(ServiceT):
-
     #: The transport that created this Consumer.
     transport: "TransportT"
 
@@ -451,7 +448,6 @@ class ConsumerT(ServiceT):
 
 
 class ConductorT(ServiceT, MutableSet[TopicT]):
-
     # The topic conductor delegates messages from the Consumer
     # to the various Topic instances subscribed to a topic.
 
@@ -492,7 +488,6 @@ class ConductorT(ServiceT, MutableSet[TopicT]):
 
 
 class TransportT(abc.ABC):
-
     #: The Consumer class used for this type of transport.
     Consumer: ClassVar[Type[ConsumerT]]
 

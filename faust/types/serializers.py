@@ -28,7 +28,6 @@ VT = TypeVar("VT")
 
 
 class RegistryT(abc.ABC):
-
     key_serializer: CodecArg
     value_serializer: CodecArg
 
@@ -72,7 +71,6 @@ class RegistryT(abc.ABC):
 
 
 class SchemaT(Generic[KT, VT]):
-
     key_type: Optional[_ModelArg] = None
     value_type: Optional[_ModelArg] = None
 

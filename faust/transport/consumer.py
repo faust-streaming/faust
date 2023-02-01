@@ -1363,7 +1363,6 @@ class ConsumerThread(QueueServiceThread):
 
 
 class ThreadDelegateConsumer(Consumer):
-
     _thread: ConsumerThread
 
     #: Main thread method queue.
