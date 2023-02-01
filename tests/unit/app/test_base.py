@@ -828,7 +828,6 @@ class Test_App:
         assert isinstance(app.tables.data["name"], GlobalTableT)
 
     def test_page(self, *, app):
-
         with patch("faust.app.base.venusian") as venusian:
 
             @app.page("/foo")
@@ -840,7 +839,6 @@ class Test_App:
             venusian.attach.assert_called_once_with(view, category=SCAN_PAGE)
 
     def test_page__with_cors_options(self, *, app):
-
         with patch("faust.app.base.venusian") as venusian:
 
             @app.page(

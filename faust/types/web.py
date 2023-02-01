@@ -96,7 +96,6 @@ class ResourceOptions(NamedTuple):
 
 
 class CacheBackendT(ServiceT):
-
     Unavailable: Type[BaseException]
 
     @abc.abstractmethod
@@ -121,7 +120,6 @@ class CacheBackendT(ServiceT):
 
 
 class CacheT(abc.ABC):
-
     timeout: Optional[Seconds]
     include_headers: bool
     key_prefix: str

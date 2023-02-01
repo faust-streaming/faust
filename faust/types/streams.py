@@ -104,7 +104,6 @@ class JoinableT(abc.ABC):
 
 
 class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
-
     app: _AppT
     channel: AsyncIterator[T_co]
     outbox: Optional[asyncio.Queue] = None

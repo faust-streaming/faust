@@ -529,7 +529,6 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
 
 @pytest.mark.skip("Needs fixing")
 class Test_VEP_stream_idle_no_highwater(Test_verify_event_path_base):
-
     highwater = 10
     committed_offset = 10
 
