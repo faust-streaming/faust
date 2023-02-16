@@ -269,9 +269,9 @@ You can specify these in your requirements or on the ``pip``
 command-line by using brackets. Separate multiple bundles using the comma:
 
 ```sh
-pip install "faust[rocksdb]"
+pip install "faust-streaming[rocksdb]"
 
-pip install "faust[rocksdb,uvloop,fast,redis, aerospike]"
+pip install "faust-streaming[rocksdb,uvloop,fast,redis, aerospike]"
 ```
 
 The following bundles are available:
@@ -280,9 +280,9 @@ The following bundles are available:
 
 ### Stores
 
-`pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
+`pip install faust-streaming[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
 
-`pip install faust[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+`pip install faust-streaming[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
 ### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
@@ -307,35 +307,35 @@ The following configuration options should be passed in as keys to the options p
 
 ### Caching
 
-`faust[redis]` for using `Redis` as a simple caching backend (Memcached-style).
+`faust-streaming[redis]` for using `Redis` as a simple caching backend (Memcached-style).
 
 ### Codecs
 
-`faust[yaml]` for using YAML and the `PyYAML` library in streams.
+`faust-streaming[yaml]` for using YAML and the `PyYAML` library in streams.
 
 ### Optimization
 
-`faust[fast]` for installing all the available C speedup extensions to Faust core.
+`faust-streaming[fast]` for installing all the available C speedup extensions to Faust core.
 
 ### Sensors
 
-`faust[datadog]` for using the `Datadog` Faust monitor.
+`faust-streaming[datadog]` for using the `Datadog` Faust monitor.
 
-`faust[statsd]` for using the `Statsd` Faust monitor.
+`faust-streaming[statsd]` for using the `Statsd` Faust monitor.
 
-`faust[prometheus]` for using the `Prometheus` Faust monitor.
+`faust-streaming[prometheus]` for using the `Prometheus` Faust monitor.
 
 ### Event Loops
 
-`faust[uvloop]` for using Faust with `uvloop`.
+`faust-streaming[uvloop]` for using Faust with `uvloop`.
 
-`faust[eventlet]` for using Faust with `eventlet`
+`faust-streaming[eventlet]` for using Faust with `eventlet`
 
 ### Debugging
 
-`faust[debug]` for using `aiomonitor` to connect and debug a running Faust worker.
+`faust-streaming[debug]` for using `aiomonitor` to connect and debug a running Faust worker.
 
-`faust[setproctitle]`when the `setproctitle` module is installed the Faust worker will use it to set a nicer process name in `ps`/`top` listings.vAlso installed with the `fast` and `debug` bundles.
+`faust-streaming[setproctitle]`when the `setproctitle` module is installed the Faust worker will use it to set a nicer process name in `ps`/`top` listings.vAlso installed with the `fast` and `debug` bundles.
 
 ## Downloading and installing from source
 
