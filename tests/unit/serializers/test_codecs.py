@@ -33,7 +33,7 @@ def test_interface():
 
 
 @pytest.mark.parametrize("codec", ["json", "pickle", "yaml"])
-def test_subset(codec: str) -> None:
+def test_json_subset(codec: str) -> None:
     if codec == "json":
         # special exception for json since integers can be serialized
         assert loads(codec, dumps(codec, DATA)) == {"a": 1, "b": "string", "1": 2}
