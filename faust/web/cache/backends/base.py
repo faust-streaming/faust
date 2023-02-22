@@ -80,9 +80,9 @@ class CacheBackend(CacheBackendT, Service):
             self.log.warning(E_CACHE_INVALIDATING, key, exc, exc_info=1)  # noqa: G200
             try:
                 await self._delete(key)
-            except (
+            except (  # noqa: B030
                 self.operational_errors + self.invalidating_errors
-            ) as exc:  # noqa: B030
+            ) as exc:
                 self.log.exception(E_CANNOT_INVALIDATE, key, exc)
             raise self.Unavailable()
         except self.operational_errors as exc:
