@@ -377,7 +377,7 @@ Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
-pip install -U faust[eventlet]
+pip install -U faust-streaming[eventlet]
 ```
 
 Then to actually use eventlet as the event loop you have to either
