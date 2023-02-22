@@ -20,7 +20,7 @@ from faust.serializers.codecs import (
 )
 from faust.utils import json as _json
 
-DATA = {"a": 1, "b": "string"}
+DATA = {"a": 1, "b": "string", 1: 2}
 
 
 def test_interface():
