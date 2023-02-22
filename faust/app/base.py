@@ -1326,7 +1326,9 @@ class App(AppT, Service):
         def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
             _query_param = query_param
             if shard_param is not None:
-                warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
+                warnings.warn(
+                    DeprecationWarning(W_DEPRECATED_SHARD_PARAM), stacklevel=2
+                )
                 if query_param:
                     raise TypeError("Cannot specify shard_param and query_param")
                 _query_param = shard_param
@@ -1370,7 +1372,9 @@ class App(AppT, Service):
         def _decorator(fun: ViewHandlerFun) -> ViewHandlerFun:
             _query_param = query_param
             if shard_param is not None:
-                warnings.warn(DeprecationWarning(W_DEPRECATED_SHARD_PARAM))
+                warnings.warn(
+                    DeprecationWarning(W_DEPRECATED_SHARD_PARAM), stacklevel=2
+                )
                 if query_param:
                     raise TypeError("Cannot specify shard_param and query_param")
                 _query_param = shard_param
@@ -1899,7 +1903,8 @@ class App(AppT, Service):
                         f"Cannot use both compat option {old!r} and {new!r}"
                     )
                 warnings.warn(
-                    FutureWarning(W_OPTION_DEPRECATED.format(old=old, new=new))
+                    FutureWarning(W_OPTION_DEPRECATED.format(old=old, new=new)),
+                    stacklevel=2,
                 )
         return options
 

@@ -374,7 +374,7 @@ class Param(Generic[IT, OT], property):
         if self.version_deprecated:
             # we use UserWarning because DeprecationWarning is silenced
             # by default in Python.
-            warnings.warn(UserWarning(self.build_deprecation_warning()))
+            warnings.warn(UserWarning(self.build_deprecation_warning()), stacklevel=2)
         return self.on_get(obj)
 
     def __set__(self, obj: Any, value: IT) -> None:
