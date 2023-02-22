@@ -18,7 +18,7 @@ and you can install this as a bundle along with Faust:
 
 .. sourcecode:: console
 
-    $ pip install -U faust[eventlet]
+    $ pip install -U faust-streaming[eventlet]
 
 Then to actually use eventlet as the event loop you have to either
 use the :option:`-L <faust --loop>` argument to the :program:`faust` program:
