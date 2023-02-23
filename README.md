@@ -5,7 +5,7 @@
 ![python versions](https://img.shields.io/pypi/pyversions/faust-streaming.svg)
 ![version](https://img.shields.io/pypi/v/faust-streaming)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
-[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ)
+[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/slack-uxd4910/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-green)
 ![license](https://img.shields.io/pypi/l/faust-streaming)
