@@ -49,7 +49,7 @@ jobs:
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
 
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         name: 'Upload build artifacts'
         with:
           path: 'dist/*.tar.gz'
