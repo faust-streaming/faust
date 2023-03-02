@@ -202,18 +202,19 @@ class ConfluentConsumerThread(ConsumerThread):
             on_assign=self._on_assign,
             on_revoke=self._on_revoke,
         )
+
         while not self._assigned:
             self.log.info("Still waiting for assignment...")
             self._ensure_consumer().poll(timeout=1)
 
     def _on_assign(self, consumer: _Consumer, assigned: List[_TopicPartition]) -> None:
         self._assigned = True
-        self.thread_loop.run_until_complete(
+        self.thread_loop.create_task(
             self.on_partitions_assigned({TP(tp.topic, tp.partition) for tp in assigned})
         )
 
     def _on_revoke(self, consumer: _Consumer, revoked: List[_TopicPartition]) -> None:
-        self.thread_loop.run_until_complete(
+        self.thread_loop.create_task(
             self.on_partitions_revoked({TP(tp.topic, tp.partition) for tp in revoked})
         )
 
@@ -525,7 +526,6 @@ class Producer(base.Producer):
             value,
             key,
             partition,
-            timestamp=int(timestamp * 1000) if timestamp else timestamp,
             on_delivery=fut.set_from_on_delivery,
         )
         return cast(Awaitable[RecordMetadata], fut)
