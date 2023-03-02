@@ -27,7 +27,6 @@ HostToPartitionMap = MutableMapping[str, TopicToPartitionMap]
 
 
 class PartitionAssignorT(abc.ABC):
-
     replicas: int
     app: _AppT
 
@@ -69,7 +68,6 @@ class PartitionAssignorT(abc.ABC):
 
 
 class LeaderAssignorT(ServiceT):
-
     app: _AppT
 
     @abc.abstractmethod

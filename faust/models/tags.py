@@ -79,7 +79,6 @@ class TransparentTag(Tag[T]):
 
 
 class _FrameLocal(UserString, Generic[T]):
-
     _field_name: str
     _tag_type: str
     _frame: str

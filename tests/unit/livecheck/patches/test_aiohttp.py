@@ -9,7 +9,6 @@ from faust.livecheck.patches.aiohttp import LiveCheckMiddleware, patch_aiohttp_s
 
 @pytest.mark.asyncio
 async def test_patch_aiohttp_session(*, execution):
-
     patch_aiohttp_session()
     from aiohttp.client import ClientSession
 

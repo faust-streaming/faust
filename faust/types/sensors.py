@@ -147,7 +147,6 @@ class SensorT(SensorInterfaceT, ServiceT):
 
 
 class SensorDelegateT(SensorInterfaceT, Iterable):
-
     # Delegate calls to many sensors.
 
     @abc.abstractmethod

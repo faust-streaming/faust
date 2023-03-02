@@ -365,7 +365,6 @@ class Test_Store:
         return db
 
     def test_get_bucket_for_key__not_in_index(self, *, store):
-
         dbs = {
             1: self.new_db(name="db1"),
             2: self.new_db(name="db2"),

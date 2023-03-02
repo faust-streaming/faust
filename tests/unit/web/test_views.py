@@ -204,13 +204,13 @@ class Test_View:
         assert res is handler
 
     def test_error(self, *, view, web):
-        response = view.error(303, "foo", arg="bharg")
+        response = view.error(303, "foo", arg="bharg", headers={"k": "v"})
         web.json.assert_called_once_with(
             {"error": "foo", "arg": "bharg"},
             status=303,
             reason=None,
-            headers=None,
             content_type=None,
+            headers={"k": "v"},
         )
         assert response is web.json()
 

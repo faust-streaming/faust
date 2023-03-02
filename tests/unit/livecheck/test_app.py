@@ -113,7 +113,6 @@ class Test_LiveCheck:
 
         @livecheck.case()
         class Test_foo:
-
             signal1: livecheck.Signal
             signal2: SignalWithNoneOrigin
             signal3: livecheck.Signal = livecheck.Signal()

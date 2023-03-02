@@ -19,7 +19,6 @@ class Span(NamedTuple):
 
 
 class Chaos(Service):
-
     schedule = [
         # Signal -TERM/-INT between every 1 and 30 seconds.
         # This period lasts for at least half a minute, but never for more
