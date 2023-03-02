@@ -433,7 +433,7 @@ Faust supports kafka with version >= 0.10.
 For discussions about the usage, development, and future of Faust, please join the `fauststream` Slack.
 
 - https://fauststream.slack.com
-- Sign-up: https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ
+- Sign-up: https://join.slack.com/t/fauststreaming/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g
 
 ## Resources
 
