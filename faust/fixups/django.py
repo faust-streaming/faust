@@ -63,7 +63,7 @@ class Fixup(base.Fixup):
             try:
                 import django  # noqa
             except ImportError:
-                warnings.warn(WARN_NOT_INSTALLED)
+                warnings.warn(WARN_NOT_INSTALLED, stacklevel=2)
             else:
                 return True
         return False
@@ -73,7 +73,7 @@ class Fixup(base.Fixup):
 
         django.setup()
         if self.settings.DEBUG:
-            warnings.warn(WARN_DEBUG_ENABLED)
+            warnings.warn(WARN_DEBUG_ENABLED, stacklevel=2)
 
     def autodiscover_modules(self) -> Iterable[str]:
         """Return list of additional autodiscover modules.

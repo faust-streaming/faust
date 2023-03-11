@@ -5,7 +5,7 @@
 ![python versions](https://img.shields.io/pypi/pyversions/faust-streaming.svg)
 ![version](https://img.shields.io/pypi/v/faust-streaming)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
-[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ)
+[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/fauststreaming/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-green)
 ![license](https://img.shields.io/pypi/l/faust-streaming)
@@ -377,7 +377,7 @@ Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
-pip install -U faust[eventlet]
+pip install -U faust-streaming[eventlet]
 ```
 
 Then to actually use eventlet as the event loop you have to either
@@ -433,7 +433,7 @@ Faust supports kafka with version >= 0.10.
 For discussions about the usage, development, and future of Faust, please join the `fauststream` Slack.
 
 - https://fauststream.slack.com
-- Sign-up: https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ
+- Sign-up: https://join.slack.com/t/fauststreaming/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g
 
 ## Resources
 

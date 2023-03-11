@@ -20,7 +20,7 @@ from faust.serializers.codecs import (
 )
 from faust.utils import json as _json
 
-DATA = {"a": 1, "b": "string"}
+DATA = {"a": 1, "b": "string", 1: 2}
 
 
 def test_interface():
@@ -34,7 +34,11 @@ def test_interface():
 
 @pytest.mark.parametrize("codec", ["json", "pickle", "yaml"])
 def test_json_subset(codec: str) -> None:
-    assert loads(codec, dumps(codec, DATA)) == DATA
+    if codec == "json":
+        # special exception for json since integers can be serialized
+        assert loads(codec, dumps(codec, DATA)) == {"a": 1, "b": "string", "1": 2}
+    else:
+        assert loads(codec, dumps(codec, DATA)) == DATA
 
 
 def test_missing_yaml_library() -> None:
