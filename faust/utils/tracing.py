@@ -6,8 +6,8 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
 
-from opentelemetry.trace.span import Span
 from mode import shortlabel
+from opentelemetry.trace.span import Span
 
 __all__ = [
     "current_span",
@@ -42,9 +42,7 @@ def noop_span() -> Span:
     return Span
 
 
-def finish_span(
-    span: Optional[Span], *, error: BaseException = None
-) -> None:
+def finish_span(span: Optional[Span], *, error: BaseException = None) -> None:
     """Finish span, and optionally set error tag."""
     if span is not None:
         if error:
@@ -100,9 +98,7 @@ def traced_from_parent_span(
     return _wrapper
 
 
-def _restore_span(
-    span: Span, expected_current_span: Span
-) -> None:
+def _restore_span(span: Span, expected_current_span: Span) -> None:
     current = current_span()
     assert current is expected_current_span
     set_current_span(span)
