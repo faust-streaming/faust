@@ -12,7 +12,6 @@ pytest-aiofiles>=0.2.0
 pytest-aiohttp>=0.3.0
 pytest-asyncio
 pytest-forked
-pytest-openfiles>=0.2.0
 pytest-picked
 pytest-cov
 pytest-random-order>=0.5.4

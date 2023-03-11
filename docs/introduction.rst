@@ -174,53 +174,53 @@ Extensions
 +--------------+-------------+--------------------------------------------------+
 | **Name**     | **Version** | **Bundle**                                       |
 +--------------+-------------+--------------------------------------------------+
-| ``rocksdb``  | 5.0         | ``pip install faust[rocksdb]``                   |
+| ``rocksdb``  | 5.0         | ``pip install faust-streaming[rocksdb]``         |
 +--------------+-------------+--------------------------------------------------+
-| ``redis``    | aredis 1.1  | ``pip install faust[redis]``                     |
+| ``redis``    | aredis 1.1  | ``pip install faust-streaming[redis]``           |
 +--------------+-------------+--------------------------------------------------+
-| ``datadog``  | 0.20.0      | ``pip install faust[datadog]``                   |
+| ``datadog``  | 0.20.0      | ``pip install faust-streaming[datadog]``         |
 +--------------+-------------+--------------------------------------------------+
-| ``statsd``   | 3.2.1       | ``pip install faust[statsd]``                    |
+| ``statsd``   | 3.2.1       | ``pip install faust-streaming[statsd]``          |
 +--------------+-------------+--------------------------------------------------+
-| ``uvloop``   | 0.8.1       | ``pip install faust[uvloop]``                    |
+| ``uvloop``   | 0.8.1       | ``pip install faust-streaming[uvloop]``          |
 +--------------+-------------+--------------------------------------------------+
-| ``eventlet`` | 1.16.0      | ``pip install faust[eventlet]``                  |
+| ``eventlet`` | 1.16.0      | ``pip install faust-streaming[eventlet]``        |
 +--------------+-------------+--------------------------------------------------+
-| ``yaml``     | 5.1.0       | ``pip install faust[yaml]``                      |
+| ``yaml``     | 5.1.0       | ``pip install faust-streaming[yaml]``            |
 +--------------+-------------+--------------------------------------------------+
 
 Optimizations
 -------------
 
-These can be all installed using ``pip install faust[fast]``:
+These can be all installed using ``pip install faust-streaming[fast]``:
 
 +------------------+-------------+--------------------------------------------------+
 | **Name**         | **Version** | **Bundle**                                       |
 +------------------+-------------+--------------------------------------------------+
-| ``aiodns``       | 1.1.0       | ``pip install faust[aiodns]``                    |
+| ``aiodns``       | 1.1.0       | ``pip install faust-streaming[aiodns]``          |
 +------------------+-------------+--------------------------------------------------+
-| ``cchardet``     | 1.1.0       | ``pip install faust[cchardet]``                  |
+| ``cchardet``     | 1.1.0       | ``pip install faust-streaming[cchardet]``        |
 +------------------+-------------+--------------------------------------------------+
-| ``ciso8601``     | 2.1.0       | ``pip install faust[ciso8601]``                  |
+| ``ciso8601``     | 2.1.0       | ``pip install faust-streaming[ciso8601]``        |
 +------------------+-------------+--------------------------------------------------+
-| ``cython``       | 0.9.26      | ``pip install faust[cython]``                    |
+| ``cython``       | 0.9.26      | ``pip install faust-straming[cython]``           |
 +------------------+-------------+--------------------------------------------------+
-| ``orjson``       | 2.0.0       | ``pip install faust[orjson]``                    |
+| ``orjson``       | 2.0.0       | ``pip install faust-streaming[orjson]``          |
 +------------------+-------------+--------------------------------------------------+
-| ``setproctitle`` | 1.1.0       | ``pip install faust[setproctitle]``              |
+| ``setproctitle`` | 1.1.0       | ``pip install faust-streaming[setproctitle]``    |
 +------------------+-------------+--------------------------------------------------+
 
 Debugging extras
 ----------------
 
-These can be all installed using ``pip install faust[debug]``:
+These can be all installed using ``pip install faust-streaming[debug]``:
 
 +------------------+-------------+--------------------------------------------------+
 | **Name**         | **Version** | **Bundle**                                       |
 +------------------+-------------+--------------------------------------------------+
-| ``aiomonitor``   | 0.3         | ``pip install faust[aiomonitor]``                |
+| ``aiomonitor``   | 0.3         | ``pip install faust-streaming[aiomonitor]``      |
 +------------------+-------------+--------------------------------------------------+
-| ``setproctitle`` | 1.1.0       | ``pip install faust[setproctitle]``              |
+| ``setproctitle`` | 1.1.0       | ``pip install faust-streaming[setproctitle]``    |
 +------------------+-------------+--------------------------------------------------+
 
 .. note::
@@ -234,7 +234,7 @@ These can be all installed using ``pip install faust[debug]``:
 
     .. sourcecode:: console
 
-        $ pip install faust[uvloop,fast,rocksdb,datadog,redis]
+        $ pip install faust-streaming[uvloop,fast,rocksdb,datadog,redis]
 
 .. admonition:: RocksDB On MacOS Sierra
 
