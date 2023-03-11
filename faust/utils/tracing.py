@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
 
-import opentracing
+from opentelemetry.trace.span import Span
 from mode import shortlabel
 
 __all__ = [
@@ -20,27 +20,30 @@ __all__ = [
 ]
 
 if typing.TYPE_CHECKING:
-    _current_span: ContextVar[opentracing.Span]
+    _current_span: ContextVar[Span]
 _current_span = ContextVar("current_span")
 
 
-def current_span() -> Optional[opentracing.Span]:
+def current_span() -> Optional[Span]:
     """Get the current span for this context (if any)."""
     return _current_span.get(None)
 
 
-def set_current_span(span: opentracing.Span) -> None:
+def set_current_span(span: Span) -> None:
     """Set the current span for the current context."""
     _current_span.set(span)
 
 
-def noop_span() -> opentracing.Span:
-    """Return a span that does nothing when traced."""
-    return opentracing.Tracer()._noop_span
+def noop_span() -> Span:
+    """
+    Return a span that does nothing when traced.
+    OpenTelemetry Spans function as no-ops when not recording.
+    """
+    return Span
 
 
 def finish_span(
-    span: Optional[opentracing.Span], *, error: BaseException = None
+    span: Optional[Span], *, error: BaseException = None
 ) -> None:
     """Finish span, and optionally set error tag."""
     if span is not None:
@@ -65,7 +68,7 @@ def operation_name_from_fun(fun: Any) -> str:
 
 
 def traced_from_parent_span(
-    parent_span: opentracing.Span = None,
+    parent_span: Span = None,
     callback: Optional[Callable] = None,
     **extra_context: Any,
 ) -> Callable:
@@ -98,7 +101,7 @@ def traced_from_parent_span(
 
 
 def _restore_span(
-    span: opentracing.Span, expected_current_span: opentracing.Span
+    span: Span, expected_current_span: Span
 ) -> None:
     current = current_span()
     assert current is expected_current_span
@@ -106,7 +109,7 @@ def _restore_span(
 
 
 def call_with_trace(
-    span: opentracing.Span,
+    span: Span,
     fun: Callable,
     callback: Optional[Tuple[Callable, Tuple[Any, ...]]],
     *args: Any,
