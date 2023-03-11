@@ -8,7 +8,7 @@ To install using `pip`:
 
 .. sourcecode:: console
 
-    $ pip install -U faust
+    $ pip install -U faust-streaming
 
 .. _bundles:
 
@@ -23,9 +23,9 @@ command-line by using brackets. Separate multiple bundles using the comma:
 
 .. sourcecode:: console
 
-    $ pip install "faust[rocksdb]"
+    $ pip install "faust-streaming[rocksdb]"
 
-    $ pip install "faust[rocksdb,uvloop,fast,redis]"
+    $ pip install "faust-streaming[rocksdb,uvloop,fast,redis]"
 
 The following bundles are available:
 
