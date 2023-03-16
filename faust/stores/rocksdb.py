@@ -26,6 +26,7 @@ from typing import (
     cast,
 )
 
+import pkg_resources
 from mode.utils.collections import LRUCache
 from yarl import URL
 
@@ -53,7 +54,7 @@ except ImportError:  # pragma: no cover
     rocksdb = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from rocksdb import DB, Options
+    from rocksdb import DB, Options, WriteBatch
 else:
 
     class DB:  # noqa
@@ -61,6 +62,17 @@ else:
 
     class Options:  # noqa
         """Dummy Options."""
+
+
+try:  # pragma: no cover
+    # Check if rocksdict is installed before using python-rocksdb
+    pkg_resources.get_distribution("rocksdict")
+    ROCKSDICT_INSTALLED = True
+    import rocksdict
+    from rocksdict import Options, Rdict as DB, WriteBatch
+except pkg_resources.DistributionNotFound:  # pragma: no cover
+    ROCKSDICT_INSTALLED = False
+    rocksdict = None  # noqa
 
 
 class PartitionDB(NamedTuple):
@@ -116,25 +128,57 @@ class RocksDBOptions:
 
     def open(self, path: Path, *, read_only: bool = False) -> DB:
         """Open RocksDB database using this configuration."""
-        return rocksdb.DB(str(path), self.as_options(), read_only=read_only)
+        if ROCKSDICT_INSTALLED:
+            db_options = self.as_options()
+            db_options.set_db_paths(
+                [rocksdict.DBPath(str(path), self.target_file_size_base)]
+            )
+            db = DB(str(path), options=self.as_options())
+            db.set_read_options(rocksdict.ReadOptions(raw_mode=True))
+            return db
+        else:
+            return rocksdb.DB(str(path), self.as_options(), read_only=read_only)
 
     def as_options(self) -> Options:
         """Return :class:`rocksdb.Options` object using this configuration."""
-        return rocksdb.Options(
-            create_if_missing=True,
-            max_open_files=self.max_open_files,
-            write_buffer_size=self.write_buffer_size,
-            max_write_buffer_number=self.max_write_buffer_number,
-            target_file_size_base=self.target_file_size_base,
-            table_factory=rocksdb.BlockBasedTableFactory(
-                filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
-                block_cache=rocksdb.LRUCache(self.block_cache_size),
-                block_cache_compressed=rocksdb.LRUCache(
-                    self.block_cache_compressed_size
+        if ROCKSDICT_INSTALLED:
+            db_options = Options(raw_mode=True)
+            db_options.create_if_missing(True)
+            db_options.set_max_open_files(self.max_open_files)
+            db_options.set_write_buffer_size(self.write_buffer_size)
+            db_options.set_target_file_size_base(self.target_file_size_base)
+            db_options.set_max_write_buffer_number(self.max_write_buffer_number)
+            table_factory_options = rocksdict.BlockBasedOptions()
+            table_factory_options.set_bloom_filter(
+                self.bloom_filter_size, block_based=True
+            )
+            table_factory_options.set_block_cache(
+                rocksdict.Cache(self.block_cache_size)
+            )
+            table_factory_options.set_index_type(
+                rocksdict.BlockBasedIndexType.binary_search()
+            )
+            table_factory_options.set_block_cache_compressed(
+                rocksdict.Cache(self.block_cache_compressed_size)
+            )
+            db_options.set_block_based_table_factory(table_factory_options)
+            return db_options
+        else:
+            return rocksdb.Options(
+                create_if_missing=True,
+                max_open_files=self.max_open_files,
+                write_buffer_size=self.write_buffer_size,
+                max_write_buffer_number=self.max_write_buffer_number,
+                target_file_size_base=self.target_file_size_base,
+                table_factory=rocksdb.BlockBasedTableFactory(
+                    filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
+                    block_cache=rocksdb.LRUCache(self.block_cache_size),
+                    block_cache_compressed=rocksdb.LRUCache(
+                        self.block_cache_compressed_size
+                    ),
                 ),
-            ),
-            **self.extra_options,
-        )
+                **self.extra_options,
+            )
 
 
 class Store(base.SerializedStore):
@@ -290,7 +334,13 @@ class Store(base.SerializedStore):
 
         See :meth:`set_persisted_offset`.
         """
-        offset = self._db_for_partition(tp.partition).get(self.offset_key)
+        if ROCKSDICT_INSTALLED:
+            try:
+                offset = self._db_for_partition(tp.partition)[self.offset_key]
+            except:
+                offset = None
+        else:
+            offset = self._db_for_partition(tp.partition).get(self.offset_key)
         if offset is not None:
             return int(offset)
         return None
@@ -303,7 +353,12 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        self._db_for_partition(tp.partition).put(self.offset_key, str(offset).encode())
+        if ROCKSDICT_INSTALLED:
+            self._db_for_partition(tp.partition)[self.offset_key] = str(offset).encode()
+        else:
+            self._db_for_partition(tp.partition).put(
+                self.offset_key, str(offset).encode()
+            )
 
     async def need_active_standby_for(self, tp: TP) -> bool:
         """Decide if an active standby is needed for this topic partition.
@@ -312,7 +367,7 @@ class Store(base.SerializedStore):
         we can decide to not actively read standby messages, since
         that database file is already being populated.
 
-        Currently it is recommended that you use
+        Currently, it is recommended that you use
         separate data directories for multiple workers on the same machine.
 
         For example if you have a 4 CPU core machine, you can run
@@ -350,8 +405,11 @@ class Store(base.SerializedStore):
             to_value: A callable you can use to deserialize the value
                 of a changelog event.
         """
-        batches: DefaultDict[int, rocksdb.WriteBatch]
-        batches = defaultdict(rocksdb.WriteBatch)
+        batches: DefaultDict[int, WriteBatch]
+        if ROCKSDICT_INSTALLED:
+            batches = defaultdict(lambda: WriteBatch(raw_mode=True))
+        else:
+            batches = defaultdict(rocksdb.WriteBatch)
         tp_offsets: Dict[TP, int] = {}
         for event in batch:
             tp, offset = event.message.tp, event.message.offset
@@ -376,7 +434,10 @@ class Store(base.SerializedStore):
         partition = event.message.partition
         db = self._db_for_partition(partition)
         self._key_index[key] = partition
-        db.put(key, value)
+        if ROCKSDICT_INSTALLED:
+            db[key] = value
+        else:
+            db.put(key, value)
 
     def _db_for_partition(self, partition: int) -> DB:
         try:
@@ -401,7 +462,13 @@ class Store(base.SerializedStore):
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
-            value = db.get(key)
+            if ROCKSDICT_INSTALLED:
+                try:
+                    value = db[key]
+                except:
+                    value = None
+            else:
+                value = db.get(key)
             if value is not None:
                 self._key_index[key] = partition
             return value
@@ -545,7 +612,13 @@ class Store(base.SerializedStore):
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
-            value = db.get(key)
+            if ROCKSDICT_INSTALLED:
+                try:
+                    value = db[key]
+                except:
+                    value = None
+            else:
+                value = db.get(key)
             if value is not None:
                 return True
             else:
@@ -579,15 +652,23 @@ class Store(base.SerializedStore):
         return sum(self._size1(db) for db in self._dbs_for_actives())
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
-        it = db.iterkeys()  # noqa: B301
-        it.seek_to_first()
+        if ROCKSDICT_INSTALLED:
+            it = db.keys()
+            iter = db.iter()
+            iter.seek_to_first()
+        else:
+            it = db.iterkeys()  # noqa: B301
+            it.seek_to_first()
         for key in it:
             if key != self.offset_key:
                 yield key
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
-        it = db.iteritems()  # noqa: B301
-        it.seek_to_first()
+        if ROCKSDICT_INSTALLED:
+            it = db.items()
+        else:
+            it = db.iteritems()  # noqa: B301
+            it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
                 yield key, value
