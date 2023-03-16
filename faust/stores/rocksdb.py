@@ -69,7 +69,7 @@ try:  # pragma: no cover
     pkg_resources.get_distribution("rocksdict")
     ROCKSDICT_INSTALLED = True
     import rocksdict
-    from rocksdict import Options, Rdict as DB, WriteBatch
+    from rocksdict import Options, Rdict as DB, WriteBatch  # noqa F811
 except pkg_resources.DistributionNotFound:  # pragma: no cover
     ROCKSDICT_INSTALLED = False
     rocksdict = None  # noqa
@@ -219,7 +219,8 @@ class Store(base.SerializedStore):
     ) -> None:
         if rocksdict is None and rocksdb is None:
             error = ImproperlyConfigured(
-                "RocksDB bindings not installed? pip install faust-streaming-rocksdb or rocksdict"
+                "RocksDB bindings not installed? pip install faust-streaming-rocksdb"
+                " or rocksdict"
             )
             try:
                 try:
@@ -343,7 +344,7 @@ class Store(base.SerializedStore):
         if ROCKSDICT_INSTALLED:
             try:
                 offset = self._db_for_partition(tp.partition)[self.offset_key]
-            except:
+            except Exception:
                 offset = None
         else:
             offset = self._db_for_partition(tp.partition).get(self.offset_key)
@@ -471,7 +472,7 @@ class Store(base.SerializedStore):
             if ROCKSDICT_INSTALLED:
                 try:
                     value = db[key]
-                except:
+                except Exception:
                     value = None
             else:
                 value = db.get(key)
@@ -621,7 +622,7 @@ class Store(base.SerializedStore):
             if ROCKSDICT_INSTALLED:
                 try:
                     value = db[key]
-                except:
+                except Exception:
                     value = None
             else:
                 value = db.get(key)
