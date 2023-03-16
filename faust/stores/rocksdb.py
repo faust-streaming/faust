@@ -217,12 +217,15 @@ class Store(base.SerializedStore):
         read_only: Optional[bool] = False,
         **kwargs: Any,
     ) -> None:
-        if rocksdb is None:
+        if rocksdict is None and rocksdb is None:
             error = ImproperlyConfigured(
-                "RocksDB bindings not installed? pip install python-rocksdb"
+                "RocksDB bindings not installed? pip install faust-streaming-rocksdb or rocksdict"
             )
             try:
-                import rocksdb as _rocksdb  # noqa: F401
+                try:
+                    import rocksdb as _rocksdb  # noqa: F401
+                except ImportError:
+                    import rocksdict as _rocksdict  # noqa: F401
             except Exception as exc:  # pragma: no cover
                 raise error from exc
             else:  # pragma: no cover
@@ -257,7 +260,8 @@ class Store(base.SerializedStore):
                 f'Unable to create files in "{self._backup_path}",' f"disabling backups"
             )
         else:
-            self._backup_engine = rocksdb.BackupEngine(self._backup_path)
+            if rocksdb:
+                self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(
         self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
@@ -266,6 +270,8 @@ class Store(base.SerializedStore):
 
         This will be saved in a separate directory in the data directory called
         '{table-name}-backups'.
+
+        This is only available in python-rocksdb.
 
         Arguments:
             tp: Partition to backup
