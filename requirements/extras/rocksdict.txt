@@ -1,1 +1,1 @@
-rocksdict<=0.3.2
+rocksdict>=0.3.7
