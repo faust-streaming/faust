@@ -26,7 +26,6 @@ from typing import (
     cast,
 )
 
-import pkg_resources
 from mode.utils.collections import LRUCache
 from yarl import URL
 
@@ -65,12 +64,11 @@ else:
 
 
 try:  # pragma: no cover
-    # Check if rocksdict is installed before using python-rocksdb
-    pkg_resources.get_distribution("rocksdict")
-    ROCKSDICT_INSTALLED = True
     import rocksdict
     from rocksdict import Options, Rdict as DB, WriteBatch  # noqa F811
-except pkg_resources.DistributionNotFound:  # pragma: no cover
+
+    ROCKSDICT_INSTALLED = True
+except ImportError:  # pragma: no cover
     ROCKSDICT_INSTALLED = False
     rocksdict = None  # noqa
 
