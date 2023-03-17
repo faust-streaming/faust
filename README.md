@@ -280,7 +280,7 @@ The following bundles are available:
 
 ### Stores
 
-`pip install faust-streaming[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
+`pip install faust-streaming[rocksdb]` or `pip install faust-streaming[rocksdict]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
 
 `pip install faust-streaming[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
