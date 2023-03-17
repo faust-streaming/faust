@@ -67,9 +67,9 @@ try:  # pragma: no cover
     import rocksdict
     from rocksdict import Options, Rdict as DB, WriteBatch  # noqa F811
 
-    ROCKSDICT_INSTALLED = True
+    USE_ROCKSDICT = True
 except ImportError:  # pragma: no cover
-    ROCKSDICT_INSTALLED = False
+    USE_ROCKSDICT = False
     rocksdict = None  # noqa
 
 
@@ -126,7 +126,7 @@ class RocksDBOptions:
 
     def open(self, path: Path, *, read_only: bool = False) -> DB:
         """Open RocksDB database using this configuration."""
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             db_options = self.as_options()
             db_options.set_db_paths(
                 [rocksdict.DBPath(str(path), self.target_file_size_base)]
@@ -139,7 +139,7 @@ class RocksDBOptions:
 
     def as_options(self) -> Options:
         """Return :class:`rocksdb.Options` object using this configuration."""
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             db_options = Options(raw_mode=True)
             db_options.create_if_missing(True)
             db_options.set_max_open_files(self.max_open_files)
@@ -189,6 +189,11 @@ class Store(base.SerializedStore):
             app.App(..., store="rocksdb://")
             app.GlobalTable(..., options={'read_only': True})
 
+        You can also switch between RocksDB drivers this way::
+
+            app.GlobalTable(..., options={'driver': 'rocksdict'})
+            app.GlobalTable(..., options={'driver': 'python-rocksdb'})
+
     """
 
     offset_key = b"__faust\0offset__"
@@ -213,6 +218,7 @@ class Store(base.SerializedStore):
         key_index_size: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
         read_only: Optional[bool] = False,
+        driver: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
         if rocksdict is None and rocksdb is None:
@@ -234,6 +240,14 @@ class Store(base.SerializedStore):
             self.url /= self.table_name
         self.options = options or {}
         self.read_only = self.options.pop("read_only", read_only)
+
+        self.driver = self.options.pop("driver", driver)
+        global USE_ROCKSDICT
+        if self.driver == "rocksdict":
+            USE_ROCKSDICT = True
+        elif self.driver == "python-rocksdb":
+            USE_ROCKSDICT = False
+
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
@@ -339,7 +353,7 @@ class Store(base.SerializedStore):
 
         See :meth:`set_persisted_offset`.
         """
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             try:
                 offset = self._db_for_partition(tp.partition)[self.offset_key]
             except Exception:
@@ -358,7 +372,7 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             self._db_for_partition(tp.partition)[self.offset_key] = str(offset).encode()
         else:
             self._db_for_partition(tp.partition).put(
@@ -411,7 +425,7 @@ class Store(base.SerializedStore):
                 of a changelog event.
         """
         batches: DefaultDict[int, WriteBatch]
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             batches = defaultdict(lambda: WriteBatch(raw_mode=True))
         else:
             batches = defaultdict(rocksdb.WriteBatch)
@@ -439,7 +453,7 @@ class Store(base.SerializedStore):
         partition = event.message.partition
         db = self._db_for_partition(partition)
         self._key_index[key] = partition
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             db[key] = value
         else:
             db.put(key, value)
@@ -467,7 +481,7 @@ class Store(base.SerializedStore):
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
-            if ROCKSDICT_INSTALLED:
+            if USE_ROCKSDICT:
                 try:
                     value = db[key]
                 except Exception:
@@ -617,7 +631,7 @@ class Store(base.SerializedStore):
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
-            if ROCKSDICT_INSTALLED:
+            if USE_ROCKSDICT:
                 try:
                     value = db[key]
                 except Exception:
@@ -657,7 +671,7 @@ class Store(base.SerializedStore):
         return sum(self._size1(db) for db in self._dbs_for_actives())
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             it = db.keys()
             iter = db.iter()
             iter.seek_to_first()
@@ -669,7 +683,7 @@ class Store(base.SerializedStore):
                 yield key
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
-        if ROCKSDICT_INSTALLED:
+        if USE_ROCKSDICT:
             it = db.items()
         else:
             it = db.iteritems()  # noqa: B301
