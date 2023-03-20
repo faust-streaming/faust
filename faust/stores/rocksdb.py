@@ -358,7 +358,7 @@ class Store(base.SerializedStore):
         """
         if self.USE_ROCKSDICT:
             try:
-                offset = self._db_for_partition(tp.partition)[self.offset_key]
+                offset = self._db_for_partition(tp.partition).get(self.offset_key)
             except Exception:
                 offset = None
         else:
