@@ -514,7 +514,7 @@ class Store(base.SerializedStore):
             if USE_ROCKSDICT:
                 try:
                     value = db[key]
-                except:
+                except Exception:
                     value = None
                 if value is not None:
                     self._key_index[key] = partition
@@ -658,7 +658,7 @@ class Store(base.SerializedStore):
                     try:
                         _ = db[key]
                         return True
-                    except:
+                    except Exception:
                         return False
                 else:
                     if db.key_may_exist(key)[0] and db.get(key) is not None:
