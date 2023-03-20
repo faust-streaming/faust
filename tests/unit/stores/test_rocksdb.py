@@ -60,7 +60,7 @@ class TestRocksDBOptions:
 
     def test_open(self):
         with patch("faust.stores.rocksdb.rocksdb", Mock()) as rocks:
-            opts = RocksDBOptions()
+            opts = RocksDBOptions(use_rocksdict=False)
             db = opts.open(Path("foo.db"), read_only=True)
             rocks.DB.assert_called_once_with(
                 "foo.db", opts.as_options(), read_only=True
@@ -81,9 +81,19 @@ class Test_Store:
             yield rocks
 
     @pytest.fixture()
+    def rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
+            yield rocksdict
+
+    @pytest.fixture()
     def no_rocks(self):
         with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
             yield rocks
+
+    @pytest.fixture()
+    def no_rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
+            yield rocksdict
 
     @pytest.fixture()
     def store(self, *, app, rocks, table):
@@ -102,7 +112,7 @@ class Test_Store:
 
         assert s.key_index_size == 12341
 
-    def test_no_rocksdb(self, *, app, table, no_rocks):
+    def test_no_rocksdb(self, *, app, table, no_rocks, no_rocksdict):
         with pytest.raises(ImproperlyConfigured):
             Store("rocksdb://", app, table)
 
