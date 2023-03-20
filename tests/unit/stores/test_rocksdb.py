@@ -3,6 +3,7 @@ from typing import List, Mapping, Tuple
 from unittest.mock import Mock, call, patch
 
 import pytest
+import rocksdict
 from yarl import URL
 
 from faust.exceptions import ImproperlyConfigured
@@ -58,9 +59,18 @@ class TestRocksDBOptions:
         )
         assert opts.bloom_filter_size == rocksdb.DEFAULT_BLOOM_FILTER_SIZE
 
-    def test_open(self):
+    def test_open_rocksdb(self):
         with patch("faust.stores.rocksdb.rocksdb", Mock()) as rocks:
             opts = RocksDBOptions(use_rocksdict=False)
+            db = opts.open(Path("foo.db"), read_only=True)
+            rocks.DB.assert_called_once_with(
+                "foo.db", opts.as_options(), read_only=True
+            )
+            assert db is rocks.DB()
+
+    def test_open_rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict", Mock()) as rocks:
+            opts = RocksDBOptions(use_rocksdict=True)
             db = opts.open(Path("foo.db"), read_only=True)
             rocks.DB.assert_called_once_with(
                 "foo.db", opts.as_options(), read_only=True
@@ -702,6 +712,7 @@ class Test_Store_RocksDB:
     def _setup_items_db(self, name: str, values: List[Tuple[bytes, bytes]]):
         db = self.new_db(name)
         db.iteritems.return_value = MockIterator.from_values(values)
+        db.items.return_value = MockIterator.from_values(values)
         return db
 
     def test__iteritems(self, *, store):
@@ -742,29 +753,18 @@ class Test_Store_RocksDB:
 
 class Test_Store_Rocksdict(Test_Store_RocksDB):
 
-    # @pytest.fixture()
-    # def rocks(self):
-    #     with patch("faust.stores.rocksdb.rocksdb") as rocks:
-    #         yield rocks
-    #
-    # @pytest.fixture()
-    # def rocksdict(self):
-    #     with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
-    #         yield rocksdict
-    #
-    # @pytest.fixture()
-    # def no_rocks(self):
-    #     with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
-    #         yield rocks
-    #
-    # @pytest.fixture()
-    # def no_rocksdict(self):
-    #     with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
-    #         yield rocksdict
-
     @pytest.fixture()
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
+
+    def test_persisted_offset(self, *, store, db_for_partition):
+        db_for_partition.return_value.get.return_value = "300"
+        assert store.persisted_offset(TP1) == 300
+        db_for_partition.assert_called_once_with(TP1.partition)
+        db_for_partition.return_value.get.assert_called_once_with(store.offset_key)
+
+        db_for_partition.return_value.get.return_value = None
+        assert store.persisted_offset(TP1) is None
 
     def test__iteritems(self, *, store):
         dbs = self._setup_items(
@@ -779,6 +779,7 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
                 (b"k4", b"xuz"),
             ],
         )
+        print([db.items() for db in dbs])
         store._dbs_for_actives = Mock(return_value=dbs)
 
         assert list(store._iteritems()) == [

@@ -694,12 +694,10 @@ class Store(base.SerializedStore):
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
         if self.USE_ROCKSDICT:
-            it = db.keys()
-            iter = db.iter()
-            iter.seek_to_first()
+            it = db.iter(self.rocksdb_options.as_options())
         else:
             it = db.iterkeys()  # noqa: B301
-            it.seek_to_first()
+        it.seek_to_first()
         for key in it:
             if key != self.offset_key:
                 yield key
@@ -709,6 +707,7 @@ class Store(base.SerializedStore):
             it = db.iter(self.rocksdb_options.as_options())
         else:
             it = db.iteritems()  # noqa: B301
+        # it = db.iteritems()  # noqa: B301
         it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
