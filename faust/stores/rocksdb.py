@@ -706,10 +706,10 @@ class Store(base.SerializedStore):
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
         if self.USE_ROCKSDICT:
-            it = db.items()
+            it = db.iter(self.rocksdb_options.as_options())
         else:
             it = db.iteritems()  # noqa: B301
-            it.seek_to_first()
+        it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
                 yield key, value

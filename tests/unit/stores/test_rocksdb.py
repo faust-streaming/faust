@@ -741,32 +741,53 @@ class Test_Store_RocksDB:
 
 
 class Test_Store_Rocksdict(Test_Store_RocksDB):
-    @pytest.fixture()
-    def table(self):
-        table = Mock(name="table")
-        table.name = "table1"
-        return table
 
-    @pytest.fixture()
-    def rocks(self):
-        with patch("faust.stores.rocksdb.rocksdb") as rocks:
-            yield rocks
-
-    @pytest.fixture()
-    def rocksdict(self):
-        with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
-            yield rocksdict
-
-    @pytest.fixture()
-    def no_rocks(self):
-        with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
-            yield rocks
-
-    @pytest.fixture()
-    def no_rocksdict(self):
-        with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
-            yield rocksdict
+    # @pytest.fixture()
+    # def rocks(self):
+    #     with patch("faust.stores.rocksdb.rocksdb") as rocks:
+    #         yield rocks
+    #
+    # @pytest.fixture()
+    # def rocksdict(self):
+    #     with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
+    #         yield rocksdict
+    #
+    # @pytest.fixture()
+    # def no_rocks(self):
+    #     with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
+    #         yield rocks
+    #
+    # @pytest.fixture()
+    # def no_rocksdict(self):
+    #     with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
+    #         yield rocksdict
 
     @pytest.fixture()
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
+
+    def test__iteritems(self, *, store):
+        dbs = self._setup_items(
+            db1=[
+                (store.offset_key, b"1001"),
+                (b"k1", b"foo"),
+                (b"k2", b"bar"),
+            ],
+            db2=[
+                (b"k3", b"baz"),
+                (store.offset_key, b"2002"),
+                (b"k4", b"xuz"),
+            ],
+        )
+        store._dbs_for_actives = Mock(return_value=dbs)
+
+        assert list(store._iteritems()) == [
+            (b"k1", b"foo"),
+            (b"k2", b"bar"),
+            (b"k3", b"baz"),
+            (b"k4", b"xuz"),
+        ]
+
+        for db in dbs:
+            db.iteritems.assert_called_once_with()
+            db.iteritems().seek_to_first.assert_called_once_with()
