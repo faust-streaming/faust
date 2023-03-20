@@ -68,7 +68,7 @@ class TestRocksDBOptions:
             assert db is rocks.DB()
 
 
-class Test_Store:
+class Test_Store_RocksDB:
     @pytest.fixture()
     def table(self):
         table = Mock(name="table")
@@ -97,7 +97,7 @@ class Test_Store:
 
     @pytest.fixture()
     def store(self, *, app, rocks, table):
-        return Store("rocksdb://", app, table)
+        return Store("rocksdb://", app, table, driver="python-rocksdb")
 
     @pytest.fixture()
     def db_for_partition(self, *, store):
@@ -738,3 +738,35 @@ class Test_Store:
         with patch("shutil.rmtree") as rmtree:
             store.reset_state()
             rmtree.assert_called_once_with(store.path.absolute())
+
+
+class Test_Store_Rocksdict(Test_Store_RocksDB):
+    @pytest.fixture()
+    def table(self):
+        table = Mock(name="table")
+        table.name = "table1"
+        return table
+
+    @pytest.fixture()
+    def rocks(self):
+        with patch("faust.stores.rocksdb.rocksdb") as rocks:
+            yield rocks
+
+    @pytest.fixture()
+    def rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
+            yield rocksdict
+
+    @pytest.fixture()
+    def no_rocks(self):
+        with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
+            yield rocks
+
+    @pytest.fixture()
+    def no_rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
+            yield rocksdict
+
+    @pytest.fixture()
+    def store(self, *, app, rocks, table):
+        return Store("rocksdb://", app, table, driver="rocksdict")

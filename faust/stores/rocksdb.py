@@ -248,8 +248,8 @@ class Store(base.SerializedStore):
         elif self.driver == "python-rocksdb":
             self.USE_ROCKSDICT = False
         else:
-            # self.USE_ROCKSDICT = USE_ROCKSDICT
-            self.USE_ROCKSDICT = False
+            self.USE_ROCKSDICT = USE_ROCKSDICT
+            # self.USE_ROCKSDICT = False
 
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
