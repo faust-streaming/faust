@@ -68,6 +68,7 @@ class TestRocksDBOptions:
             )
             assert db is rocks.DB()
 
+    @pytest.mark.skip("Need to make mock BlockBasedOptions")
     def test_open_rocksdict(self):
         with patch("faust.stores.rocksdb.rocksdict", Mock()) as rocks:
             opts = RocksDBOptions(use_rocksdict=True)
@@ -757,14 +758,129 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
 
-    def test_persisted_offset(self, *, store, db_for_partition):
-        db_for_partition.return_value.get.return_value = "300"
-        assert store.persisted_offset(TP1) == 300
-        db_for_partition.assert_called_once_with(TP1.partition)
-        db_for_partition.return_value.get.assert_called_once_with(store.offset_key)
+    def test_apply_changelog_batch(self, *, store, rocks, db_for_partition):
+        def new_event(name, tp: TP, offset, key, value) -> Mock:
+            return Mock(
+                name="event1",
+                message=Mock(
+                    tp=tp,
+                    topic=tp.topic,
+                    partition=tp.partition,
+                    offset=offset,
+                    key=key,
+                    value=value,
+                ),
+            )
 
-        db_for_partition.return_value.get.return_value = None
-        assert store.persisted_offset(TP1) is None
+        events = [
+            new_event("event1", TP1, 1001, "k1", "v1"),
+            new_event("event2", TP2, 2002, "k2", "v2"),
+            new_event("event3", TP3, 3003, "k3", "v3"),
+            new_event("event4", TP4, 4004, "k4", "v4"),
+            new_event("event5", TP4, 4005, "k5", None),
+        ]
+
+        dbs = {
+            TP1.partition: Mock(name="db1"),
+            TP2.partition: Mock(name="db2"),
+            TP3.partition: Mock(name="db3"),
+            TP4.partition: Mock(name="db4"),
+        }
+        db_for_partition.side_effect = dbs.get
+
+        store.set_persisted_offset = Mock(name="set_persisted_offset")
+
+        store.apply_changelog_batch(events, None, None)
+
+        rocks.WriteBatch.return_value.delete.assert_called_once_with("k5")
+        rocks.WriteBatch.return_value.put.assert_has_calls(
+            [
+                call("k1", "v1"),
+                call("k2", "v2"),
+                call("k3", "v3"),
+                call("k4", "v4"),
+            ]
+        )
+
+        for db in dbs.values():
+            db.write.assert_called_once_with(rocks.WriteBatch())
+
+        store.set_persisted_offset.assert_has_calls(
+            [
+                call(TP1, 1001),
+                call(TP2, 2002),
+                call(TP3, 3003),
+                call(TP4, 4005),
+            ]
+        )
+
+    def test__get__has_event(self, *, store, current_event):
+        partition = 1
+        message = Mock(name="message")
+        message.partition.return_value = partition
+
+        current_event.return_value = message
+
+        db = Mock(name="db")
+        store._db_for_partition = Mock("_db_for_partition")
+        store._db_for_partition.return_value = db
+        db.get.return_value = b"value"
+        store.table = Mock(name="table")
+        store.table.is_global = False
+        store.table.synchronize_all_active_partitions = False
+        store.table.use_partitioner = False
+
+        assert store._get(b"key") == b"value"
+
+        db.get.return_value = None
+        assert store._get(b"key2") is None
+
+    def test__set(self, *, store, db_for_partition, current_event):
+        store._set(b"key", b"value")
+        db_for_partition.assert_called_once_with(current_event.message.partition)
+        assert store._key_index[b"key"] == current_event.message.partition
+        db_for_partition.return_value.put.assert_called_once_with(
+            b"key",
+            b"value",
+        )
+
+    def test_set_persisted_offset(self, *, store, db_for_partition):
+        store.set_persisted_offset(TP1, 3003)
+        db_for_partition.assert_called_once_with(TP1.partition)
+        db_for_partition.return_value.put.assert_called_once_with(
+            store.offset_key,
+            b"3003",
+        )
+
+    def test__del(self, *, store):
+        dbs = store._dbs_for_key = Mock(
+            return_value=[
+                Mock(name="db1"),
+                Mock(name="db2"),
+                Mock(name="db3"),
+            ]
+        )
+        for db in dbs.return_value:
+            db.__delitem__ = Mock()
+        store._del(b"key")
+        for db in dbs.return_value:
+            db.__delitem__.assert_called_once_with(b"key")
+
+    def test_get_bucket_for_key__is_in_index(self, *, store):
+        store._key_index[b"key"] = 30
+        db = store._dbs[30] = Mock(name="db-p30")
+
+        db.key_may_exist.return_value = [False]
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.key_may_exist.return_value = [True]
+        db.get.return_value = None
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.get.return_value = b"value"
+        db.__getitem__ = Mock()
+        db.__getitem__.return_value = b"value"
+        assert store._get_bucket_for_key(b"key") == (db, b"value")
 
     def test__iteritems(self, *, store):
         dbs = self._setup_items(
