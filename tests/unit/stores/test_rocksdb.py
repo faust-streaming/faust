@@ -753,7 +753,6 @@ class Test_Store_RocksDB:
 
 
 class Test_Store_Rocksdict(Test_Store_RocksDB):
-
     @pytest.fixture()
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
@@ -825,6 +824,8 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         store._db_for_partition = Mock("_db_for_partition")
         store._db_for_partition.return_value = db
         db.get.return_value = b"value"
+        db.__getitem__ = Mock()
+        db.__getitem__.return_value = b"value"
         store.table = Mock(name="table")
         store.table.is_global = False
         store.table.synchronize_all_active_partitions = False
@@ -833,6 +834,8 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         assert store._get(b"key") == b"value"
 
         db.get.return_value = None
+        db.__getitem__ = Mock()
+        db.__getitem__.return_value = None
         assert store._get(b"key2") is None
 
     def test__set(self, *, store, db_for_partition, current_event):
