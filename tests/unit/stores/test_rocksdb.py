@@ -834,8 +834,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         assert store._get_bucket_for_key(b"key") is None
 
         db.get.return_value = b"value"
-        db.__getitem__ = Mock()
-        db.__getitem__.return_value = b"value"
         assert store._get_bucket_for_key(b"key") == (db, b"value")
 
     def test__iteritems(self, *, store):
@@ -861,8 +859,8 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         ]
 
         for db in dbs:
-            db.iteritems.assert_called_once_with()
-            db.iteritems().seek_to_first.assert_called_once_with()
+            # iteritems not available in rocksdict yet
+            db.items.assert_called_once_with()
 
     def test_get_bucket_for_key__not_in_index(self, *, store):
         dbs = {
