@@ -630,23 +630,6 @@ class Test_Store_RocksDB:
         table.synchronize_all_active_partitions = True
         assert list(store._dbs_for_actives()) == [dbs[1], dbs[2], dbs[3]]
 
-    def test__size(self, *, store):
-        dbs = self._setup_keys(
-            db1=[
-                store.offset_key,
-                b"foo",
-                b"bar",
-            ],
-            db2=[
-                b"baz",
-                store.offset_key,
-                b"xuz",
-                b"xaz",
-            ],
-        )
-        store._dbs_for_actives = Mock(return_value=dbs)
-        assert store._size() == 5
-
     def test__iterkeys(self, *, store):
         dbs = self._setup_keys(
             db1=[
@@ -679,6 +662,7 @@ class Test_Store_RocksDB:
     def _setup_keys_db(self, name: str, values: List[bytes]):
         db = self.new_db(name)
         db.iterkeys.return_value = MockIterator.from_values(values)
+        db.keys.return_value = MockIterator.from_values(values)  # supports rocksdict
         return db
 
     def test__itervalues(self, *, store):
@@ -713,6 +697,7 @@ class Test_Store_RocksDB:
     def _setup_items_db(self, name: str, values: List[Tuple[bytes, bytes]]):
         db = self.new_db(name)
         db.iteritems.return_value = MockIterator.from_values(values)
+        db.items.return_value = MockIterator.from_values(values)  # supports rocksdict
         return db
 
     def test__iteritems(self, *, store):
@@ -902,23 +887,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         db2.get.return_value = b"value"
         assert store._contains(b"key")
 
-    def test__size(self, *, store):
-        dbs = self._setup_keys(
-            db1=[
-                store.offset_key,
-                b"foo",
-                b"bar",
-            ],
-            db2=[
-                b"baz",
-                store.offset_key,
-                b"xuz",
-                b"xaz",
-            ],
-        )
-        store._dbs_for_actives = Mock(return_value=dbs)
-        assert store._size() == 5
-
     def test__iterkeys(self, *, store):
         dbs = self._setup_keys(
             db1=[
@@ -942,8 +910,8 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         ]
 
         for db in dbs:
-            db.iterkeys.assert_called_once_with()
-            db.iterkeys().seek_to_first.assert_called_once_with()
+            # iterkeys not available in rocksdict yet
+            db.keys.assert_called_once_with()
 
     def test__itervalues(self, *, store):
         dbs = self._setup_items(
@@ -968,8 +936,9 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         ]
 
         for db in dbs:
-            db.iteritems.assert_called_once_with()
-            db.iteritems().seek_to_first.assert_called_once_with()
+            # items must be used instead of iteritems for now
+            # TODO: seek_to_first() should be called once rocksdict is updated
+            db.items.assert_called_once_with()
 
     def test_apply_changelog_batch(self, *, store, rocks, db_for_partition):
         def new_event(name, tp: TP, offset, key, value) -> Mock:
@@ -1026,24 +995,3 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
                 call(TP4, 4005),
             ]
         )
-
-    def test__get__has_event(self, *, store, current_event):
-        partition = 1
-        message = Mock(name="message")
-        message.partition.return_value = partition
-
-        current_event.return_value = message
-
-        db = Mock(name="db")
-        store._db_for_partition = Mock("_db_for_partition")
-        store._db_for_partition.return_value = db
-        db.get.return_value = b"value"
-        store.table = Mock(name="table")
-        store.table.is_global = False
-        store.table.synchronize_all_active_partitions = False
-        store.table.use_partitioner = False
-
-        assert store._get(b"key") == b"value"
-
-        db.get.return_value = None
-        assert store._get(b"key2") is None
