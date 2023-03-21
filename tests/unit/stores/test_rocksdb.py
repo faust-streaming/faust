@@ -713,7 +713,6 @@ class Test_Store_RocksDB:
     def _setup_items_db(self, name: str, values: List[Tuple[bytes, bytes]]):
         db = self.new_db(name)
         db.iteritems.return_value = MockIterator.from_values(values)
-        db.items.return_value = MockIterator.from_values(values)
         return db
 
     def test__iteritems(self, *, store):
