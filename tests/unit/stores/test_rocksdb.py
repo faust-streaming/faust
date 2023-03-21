@@ -837,20 +837,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         db.__getitem__.return_value = None
         assert store._get(b"key2") is None
 
-    def test__del(self, *, store):
-        dbs = store._dbs_for_key = Mock(
-            return_value=[
-                Mock(name="db1"),
-                Mock(name="db2"),
-                Mock(name="db3"),
-            ]
-        )
-        for db in dbs.return_value:
-            db.__delitem__ = Mock()
-        store._del(b"key")
-        for db in dbs.return_value:
-            db.__delitem__.assert_called_once_with(b"key")
-
     def test_get_bucket_for_key__is_in_index(self, *, store):
         store._key_index[b"key"] = 30
         db = store._dbs[30] = Mock(name="db-p30")

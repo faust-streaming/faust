@@ -471,13 +471,7 @@ class Store(base.SerializedStore):
         if partition_from_message:
             partition = event.message.partition
             db = self._db_for_partition(partition)
-            if self.USE_ROCKSDICT:
-                try:
-                    value = db[key]
-                except Exception:
-                    value = None
-            else:
-                value = db.get(key)
+            value = db.get(key)
             if value is not None:
                 self._key_index[key] = partition
             return value
@@ -502,10 +496,7 @@ class Store(base.SerializedStore):
 
         for partition, db in dbs:
             if self.USE_ROCKSDICT:
-                try:
-                    value = db[key]
-                except Exception:
-                    value = None
+                value = db.get(key)
                 if value is not None:
                     self._key_index[key] = partition
                     return _DBValueTuple(db, value)
@@ -519,10 +510,7 @@ class Store(base.SerializedStore):
 
     def _del(self, key: bytes) -> None:
         for db in self._dbs_for_key(key):
-            if self.USE_ROCKSDICT:
-                del db[key]
-            else:
-                db.delete(key)
+            db.delete(key)
 
     async def on_rebalance(
         self,
