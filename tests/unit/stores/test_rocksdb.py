@@ -629,6 +629,23 @@ class Test_Store_RocksDB:
         table.synchronize_all_active_partitions = True
         assert list(store._dbs_for_actives()) == [dbs[1], dbs[2], dbs[3]]
 
+    def test__size(self, *, store):
+        dbs = self._setup_keys(
+            db1=[
+                store.offset_key,
+                b"foo",
+                b"bar",
+            ],
+            db2=[
+                b"baz",
+                store.offset_key,
+                b"xuz",
+                b"xaz",
+            ],
+        )
+        store._dbs_for_actives = Mock(return_value=dbs)
+        assert store._size() == 5
+
     def test__iterkeys(self, *, store):
         dbs = self._setup_keys(
             db1=[
