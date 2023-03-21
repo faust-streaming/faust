@@ -249,7 +249,6 @@ class Store(base.SerializedStore):
             self.USE_ROCKSDICT = False
         else:
             self.USE_ROCKSDICT = USE_ROCKSDICT
-            # self.USE_ROCKSDICT = False
 
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
@@ -356,13 +355,7 @@ class Store(base.SerializedStore):
 
         See :meth:`set_persisted_offset`.
         """
-        if self.USE_ROCKSDICT:
-            try:
-                offset = self._db_for_partition(tp.partition).get(self.offset_key)
-            except Exception:
-                offset = None
-        else:
-            offset = self._db_for_partition(tp.partition).get(self.offset_key)
+        offset = self._db_for_partition(tp.partition).get(self.offset_key)
         if offset is not None:
             return int(offset)
         return None
@@ -375,12 +368,9 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        if self.USE_ROCKSDICT:
-            self._db_for_partition(tp.partition)[self.offset_key] = str(offset).encode()
-        else:
-            self._db_for_partition(tp.partition).put(
-                self.offset_key, str(offset).encode()
-            )
+        self._db_for_partition(tp.partition).put(
+            self.offset_key, str(offset).encode()
+        )
 
     async def need_active_standby_for(self, tp: TP) -> bool:
         """Decide if an active standby is needed for this topic partition.
@@ -456,10 +446,7 @@ class Store(base.SerializedStore):
         partition = event.message.partition
         db = self._db_for_partition(partition)
         self._key_index[key] = partition
-        if self.USE_ROCKSDICT:
-            db[key] = value
-        else:
-            db.put(key, value)
+        db.put(key, value)
 
     def _db_for_partition(self, partition: int) -> DB:
         try:
@@ -662,7 +649,7 @@ class Store(base.SerializedStore):
                 # bloom filter: false positives possible, but not false negatives
                 if self.USE_ROCKSDICT:
                     try:
-                        _ = db[key]
+                        _ = db.get(key)
                         return True
                     except Exception:
                         return False
@@ -707,7 +694,6 @@ class Store(base.SerializedStore):
             it = db.iter(self.rocksdb_options.as_options())
         else:
             it = db.iteritems()  # noqa: B301
-        # it = db.iteritems()  # noqa: B301
         it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
