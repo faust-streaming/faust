@@ -838,23 +838,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         db.__getitem__.return_value = None
         assert store._get(b"key2") is None
 
-    def test__set(self, *, store, db_for_partition, current_event):
-        store._set(b"key", b"value")
-        db_for_partition.assert_called_once_with(current_event.message.partition)
-        assert store._key_index[b"key"] == current_event.message.partition
-        db_for_partition.return_value.put.assert_called_once_with(
-            b"key",
-            b"value",
-        )
-
-    def test_set_persisted_offset(self, *, store, db_for_partition):
-        store.set_persisted_offset(TP1, 3003)
-        db_for_partition.assert_called_once_with(TP1.partition)
-        db_for_partition.return_value.put.assert_called_once_with(
-            store.offset_key,
-            b"3003",
-        )
-
     def test__del(self, *, store):
         dbs = store._dbs_for_key = Mock(
             return_value=[
