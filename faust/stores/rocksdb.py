@@ -160,9 +160,6 @@ class RocksDBOptions:
             table_factory_options.set_index_type(
                 rocksdict.BlockBasedIndexType.binary_search()
             )
-            table_factory_options.set_block_cache_compressed(
-                rocksdict.Cache(self.block_cache_compressed_size)
-            )
             db_options.set_block_based_table_factory(table_factory_options)
             return db_options
         else:
@@ -663,20 +660,22 @@ class Store(base.SerializedStore):
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
         if self.USE_ROCKSDICT:
-            it = db.iter(self.rocksdb_options.as_options())
+            it = db.keys()
+            iter = db.iter()
+            iter.seek_to_first()
         else:
             it = db.iterkeys()  # noqa: B301
-        it.seek_to_first()
+            it.seek_to_first()
         for key in it:
             if key != self.offset_key:
                 yield key
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
         if self.USE_ROCKSDICT:
-            it = db.iter(self.rocksdb_options.as_options())
+            it = db.items()
         else:
             it = db.iteritems()  # noqa: B301
-        it.seek_to_first()
+            it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
                 yield key, value
