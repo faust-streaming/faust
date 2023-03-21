@@ -365,9 +365,7 @@ class Store(base.SerializedStore):
         to only read the events that occurred recently while
         we were not an active replica.
         """
-        self._db_for_partition(tp.partition).put(
-            self.offset_key, str(offset).encode()
-        )
+        self._db_for_partition(tp.partition).put(self.offset_key, str(offset).encode())
 
     async def need_active_standby_for(self, tp: TP) -> bool:
         """Decide if an active standby is needed for this topic partition.
@@ -426,9 +424,13 @@ class Store(base.SerializedStore):
                 offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
             msg = event.message
+            if self.USE_ROCKSDICT:
+                msg.key = msg.key.encode()
             if msg.value is None:
                 batches[msg.partition].delete(msg.key)
             else:
+                if self.USE_ROCKSDICT:
+                    msg.value = msg.value.encode()
                 batches[msg.partition].put(msg.key, msg.value)
 
         for partition, batch in batches.items():
@@ -493,6 +495,7 @@ class Store(base.SerializedStore):
 
         for partition, db in dbs:
             if self.USE_ROCKSDICT:
+                # TODO: Remove this once key_may_exist is added
                 value = db.get(key)
                 if value is not None:
                     self._key_index[key] = partition
@@ -627,10 +630,10 @@ class Store(base.SerializedStore):
             for db in self._dbs_for_key(key):
                 # bloom filter: false positives possible, but not false negatives
                 if self.USE_ROCKSDICT:
-                    try:
-                        _ = db.get(key)
+                    # TODO: Remove once key_may_exist is added
+                    if db.get(key) is not None:
                         return True
-                    except Exception:
+                    else:
                         return False
                 else:
                     if db.key_may_exist(key)[0] and db.get(key) is not None:

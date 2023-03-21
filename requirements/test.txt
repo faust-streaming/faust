@@ -30,4 +30,3 @@ intervaltree
 -r extras/yaml.txt
 -r extras/prometheus.txt
 -r extras/orjson.txt
--r extras/rocksdict.txt
