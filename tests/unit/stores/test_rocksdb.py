@@ -881,7 +881,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
                 (b"k4", b"xuz"),
             ],
         )
-        print([db.items() for db in dbs])
         store._dbs_for_actives = Mock(return_value=dbs)
 
         assert list(store._iteritems()) == [
@@ -916,89 +915,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         assert not store._contains(b"key")
 
         db2.get.return_value = b"value"
-        assert store._contains(b"key")
-
-    def test__contains__has_event(self, *, store, current_event):
-        # Test "happy-path", call comes in from stream on same partition as key
-        partition = 1
-        message = Mock(name="message")
-        message.partition.return_value = partition
-
-        current_event.return_value = message
-
-        store.table = Mock(name="table")
-        store.table.is_global = False
-        store.table.use_partitioner = False
-
-        dbs = {}
-        event_partition = current_event.message.partition
-        next_partition = event_partition + 1
-        dbs[event_partition] = Mock(name="db")
-        dbs[next_partition] = Mock(name="db")
-
-        dbs[event_partition].get.return_value = b"value"
-        dbs[event_partition].key_may_exist.return_value = (True,)
-        dbs[next_partition].get.return_value = False
-        dbs[next_partition].key_may_exist.return_value = (False,)
-
-        store._db_for_partition = Mock("_db_for_partition")
-        store._db_for_partition.return_value = dbs[current_event.message.partition]
-
-        # A _get call from a stream, to a non-global, non-partitioner, table
-        # uses partition of event
-        # Which in this intentional case, is the wrong partition
-        assert store._contains(b"key")
-
-    def test__contains__has_event_value_diff_partition(self, *, store, current_event):
-        partition = 1
-        message = Mock(name="message")
-        message.partition.return_value = partition
-
-        current_event.return_value = message
-
-        dbs = {}
-        event_partition = current_event.message.partition
-        next_partition = event_partition + 1
-        dbs[event_partition] = Mock(name="db")
-        dbs[next_partition] = Mock(name="db")
-
-        dbs[event_partition].get.return_value = None
-        dbs[event_partition].key_may_exist.return_value = False
-        dbs[next_partition].get.return_value = b"value"
-        dbs[next_partition].key_may_exist.return_value = (True,)
-
-        store._db_for_partition = Mock("_db_for_partition")
-        store._db_for_partition.return_value = dbs[current_event.message.partition]
-
-        store._dbs.update(dbs)
-        store._dbs_for_key = Mock(name="_dbs_for_key")
-        store._dbs_for_key.return_value = [dbs[next_partition]]
-
-        store.table = Mock(name="table")
-        store.table.is_global = False
-        store.table.use_partitioner = False
-
-        # A _get call from a stream, to a non-global, non-partitioner, table
-        # uses partition of event
-        # Which in this intentional case, is the wrong partition
-        assert not store._contains(b"key")
-
-        store.table.is_global = True
-        store.table.use_partitioner = False
-
-        # A global table ignores the event partition and pulls from the proper db
-        assert store._contains(b"key")
-
-        store.table.is_global = False
-        store.table.use_partitioner = True
-
-        # A custom-partitioned table also ignores the event partition
-        assert store._contains(b"key")
-
-        store.table.is_global = True
-        store.table.use_partitioner = True
-
-        # A global, custom-partitioned table will also ignore the event partition
         assert store._contains(b"key")
 
     def test__size(self, *, store):
@@ -1146,20 +1062,3 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
 
         db.get.return_value = None
         assert store._get(b"key2") is None
-
-    def test__set(self, *, store, db_for_partition, current_event):
-        store._set(b"key", b"value")
-        db_for_partition.assert_called_once_with(current_event.message.partition)
-        assert store._key_index[b"key"] == current_event.message.partition
-        db_for_partition.return_value.put.assert_called_once_with(
-            b"key",
-            b"value",
-        )
-
-    def test_set_persisted_offset(self, *, store, db_for_partition):
-        store.set_persisted_offset(TP1, 3003)
-        db_for_partition.assert_called_once_with(TP1.partition)
-        db_for_partition.return_value.put.assert_called_once_with(
-            store.offset_key,
-            b"3003",
-        )
