@@ -241,11 +241,11 @@ class Store(base.SerializedStore):
 
         self.driver = self.options.pop("driver", driver)
         if self.driver == "rocksdict":
-            self.USE_ROCKSDICT = True
+            self.use_rocksdict = True
         elif self.driver == "python-rocksdb":
-            self.USE_ROCKSDICT = False
+            self.use_rocksdict = False
         else:
-            self.USE_ROCKSDICT = USE_ROCKSDICT
+            self.use_rocksdict = USE_ROCKSDICT
 
         self.rocksdb_options = RocksDBOptions(**self.options)
         if key_index_size is None:
@@ -413,7 +413,7 @@ class Store(base.SerializedStore):
                 of a changelog event.
         """
         batches: DefaultDict[int, WriteBatch]
-        if self.USE_ROCKSDICT:
+        if self.use_rocksdict:
             batches = defaultdict(lambda: WriteBatch(raw_mode=True))
         else:
             batches = defaultdict(rocksdb.WriteBatch)
@@ -424,12 +424,12 @@ class Store(base.SerializedStore):
                 offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
             msg = event.message
-            if self.USE_ROCKSDICT:
+            if self.use_rocksdict:
                 msg.key = msg.key.encode()
             if msg.value is None:
                 batches[msg.partition].delete(msg.key)
             else:
-                if self.USE_ROCKSDICT:
+                if self.use_rocksdict:
                     msg.value = msg.value.encode()
                 batches[msg.partition].put(msg.key, msg.value)
 
@@ -648,7 +648,7 @@ class Store(base.SerializedStore):
         return sum(self._size1(db) for db in self._dbs_for_actives())
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
-        if self.USE_ROCKSDICT:
+        if self.use_rocksdict:
             it = db.keys()
             iter = db.iter()
             iter.seek_to_first()
@@ -660,7 +660,7 @@ class Store(base.SerializedStore):
                 yield key
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
-        if self.USE_ROCKSDICT:
+        if self.use_rocksdict:
             it = db.items()
         else:
             it = db.iteritems()  # noqa: B301
