@@ -414,7 +414,7 @@ class Store(base.SerializedStore):
         """
         batches: DefaultDict[int, WriteBatch]
         if self.use_rocksdict:
-            batches = defaultdict(lambda: WriteBatch(raw_mode=True))
+            batches = defaultdict(lambda: rocksdict.WriteBatch(raw_mode=True))
         else:
             batches = defaultdict(rocksdb.WriteBatch)
         tp_offsets: Dict[TP, int] = {}
@@ -424,13 +424,9 @@ class Store(base.SerializedStore):
                 offset if tp not in tp_offsets else max(offset, tp_offsets[tp])
             )
             msg = event.message
-            if self.use_rocksdict:
-                msg.key = msg.key.encode()
             if msg.value is None:
                 batches[msg.partition].delete(msg.key)
             else:
-                if self.use_rocksdict:
-                    msg.value = msg.value.encode()
                 batches[msg.partition].put(msg.key, msg.value)
 
         for partition, batch in batches.items():

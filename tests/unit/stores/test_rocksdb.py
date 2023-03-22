@@ -836,7 +836,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
             # TODO: seek_to_first() should be called once rocksdict is updated
             db.items.assert_called_once_with()
 
-    @pytest.mark.skip("Needs fixing")
     def test_apply_changelog_batch(self, *, store, rocksdict, db_for_partition):
         def new_event(name, tp: TP, offset, key, value) -> Mock:
             return Mock(
