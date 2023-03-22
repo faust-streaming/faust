@@ -757,20 +757,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
 
-    def test_get_bucket_for_key__is_in_index(self, *, store):
-        store._key_index[b"key"] = 30
-        db = store._dbs[30] = Mock(name="db-p30")
-
-        db.key_may_exist.return_value = [False]
-        assert store._get_bucket_for_key(b"key") is None
-
-        db.key_may_exist.return_value = [True]
-        db.get.return_value = None
-        assert store._get_bucket_for_key(b"key") is None
-
-        db.get.return_value = b"value"
-        assert store._get_bucket_for_key(b"key") == (db, b"value")
-
     def test__iteritems(self, *, store):
         dbs = self._setup_items(
             db1=[
@@ -796,35 +782,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         for db in dbs:
             # iteritems not available in rocksdict yet
             db.items.assert_called_once_with()
-
-    def new_db(self, name, exists=False):
-        db = Mock(name=name)
-        db.key_may_exist.return_value = [exists]
-        db.get.return_value = name
-        return db
-
-    def test_get_bucket_for_key__not_in_index(self, *, store):
-        dbs = {
-            1: self.new_db(name="db1"),
-            2: self.new_db(name="db2"),
-            3: self.new_db(name="db3", exists=True),
-            4: self.new_db(name="db4", exists=True),
-        }
-        store._dbs.update(dbs)
-
-        assert store._get_bucket_for_key(b"key") == (dbs[3], "db3")
-
-    def test__contains(self, *, store):
-        db1 = self.new_db("db1", exists=False)
-        db2 = self.new_db("db2", exists=True)
-        dbs = {b"key": [db1, db2]}
-        store._dbs_for_key = Mock(side_effect=dbs.get)
-
-        db2.get.return_value = None
-        assert not store._contains(b"key")
-
-        db2.get.return_value = b"value"
-        assert store._contains(b"key")
 
     def test__iterkeys(self, *, store):
         dbs = self._setup_keys(
