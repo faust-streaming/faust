@@ -136,7 +136,7 @@ class RocksDBOptions:
                 [rocksdict.DBPath(str(path), self.target_file_size_base)]
             )
             db = DB(str(path), options=self.as_options())
-            db.set_read_options(rocksdict.ReadOptions(raw_mode=True))
+            db.set_read_options(rocksdict.ReadOptions())
             return db
         else:
             return rocksdb.DB(str(path), self.as_options(), read_only=read_only)
