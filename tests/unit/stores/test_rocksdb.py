@@ -757,6 +757,24 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
 
+    def new_db(self, name, exists=False):
+        db = Mock(name=name)
+        db.key_may_exist.return_value = exists
+        db.get.return_value = name
+        return db
+
+    def test__contains(self, *, store):
+        db1 = self.new_db("db1", exists=False)
+        db2 = self.new_db("db2", exists=True)
+        dbs = {b"key": [db1, db2]}
+        store._dbs_for_key = Mock(side_effect=dbs.get)
+
+        db2.get.return_value = None
+        assert not store._contains(b"key")
+
+        db2.get.return_value = b"value"
+        assert store._contains(b"key")
+
     def test__iteritems(self, *, store):
         dbs = self._setup_items(
             db1=[
@@ -835,6 +853,35 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
             # items must be used instead of iteritems for now
             # TODO: seek_to_first() should be called once rocksdict is updated
             db.items.assert_called_once_with()
+
+    def test__get__dbvalue_is_None(self, *, store):
+        db = Mock(name="db")
+        store._get_bucket_for_key = Mock(name="get_bucket_for_key")
+        store._get_bucket_for_key.return_value = (db, None)
+
+        db.key_may_exist.return_value = False
+        assert store._get(b"key") is None
+
+        db.key_may_exist.return_value = True
+        db.get.return_value = None
+        assert store._get(b"key") is None
+
+        db.get.return_value = b"bar"
+        assert store._get(b"key") == b"bar"
+
+    def test_get_bucket_for_key__is_in_index(self, *, store):
+        store._key_index[b"key"] = 30
+        db = store._dbs[30] = Mock(name="db-p30")
+
+        db.key_may_exist.return_value = False
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.key_may_exist.return_value = True
+        db.get.return_value = None
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.get.return_value = b"value"
+        assert store._get_bucket_for_key(b"key") == (db, b"value")
 
     def test_apply_changelog_batch(self, *, store, rocksdict, db_for_partition):
         def new_event(name, tp: TP, offset, key, value) -> Mock:
