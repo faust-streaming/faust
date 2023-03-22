@@ -247,7 +247,9 @@ class Store(base.SerializedStore):
         else:
             self.use_rocksdict = USE_ROCKSDICT
 
-        self.rocksdb_options = RocksDBOptions(**self.options, use_rocksdict=self.use_rocksdict)
+        self.rocksdb_options = RocksDBOptions(
+            **self.options, use_rocksdict=self.use_rocksdict
+        )
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
         self.key_index_size = key_index_size
