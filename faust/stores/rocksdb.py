@@ -477,7 +477,11 @@ class Store(base.SerializedStore):
             db, value = dbvalue
 
             if value is None:
-                if db.key_may_exist(key)[0]:
+                if self.use_rocksdict:
+                    key_may_exist = db.key_may_exist(key)
+                else:
+                    key_may_exist = db.key_may_exist(key)[0]
+                if key_may_exist:
                     return db.get(key)
             return value
 
@@ -490,7 +494,11 @@ class Store(base.SerializedStore):
             dbs = cast(Iterable[PartitionDB], self._dbs.items())
 
         for partition, db in dbs:
-            if db.key_may_exist(key)[0]:
+            if self.use_rocksdict:
+                key_may_exist = db.key_may_exist(key)
+            else:
+                key_may_exist = db.key_may_exist(key)[0]
+            if key_may_exist:
                 value = db.get(key)
                 if value is not None:
                     self._key_index[key] = partition
@@ -618,7 +626,11 @@ class Store(base.SerializedStore):
         else:
             for db in self._dbs_for_key(key):
                 # bloom filter: false positives possible, but not false negatives
-                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                if self.use_rocksdict:
+                    key_may_exist = db.key_may_exist(key)
+                else:
+                    key_may_exist = db.key_may_exist(key)[0]
+                if key_may_exist and db.get(key) is not None:
                     return True
             return False
 
