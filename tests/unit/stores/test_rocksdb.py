@@ -757,32 +757,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
     def store(self, *, app, rocks, table):
         return Store("rocksdb://", app, table, driver="rocksdict")
 
-    def test__get__has_event(self, *, store, current_event):
-        partition = 1
-        message = Mock(name="message")
-        message.partition.return_value = partition
-
-        current_event.return_value = message
-
-        db = Mock(name="db")
-        store._db_for_partition = Mock("_db_for_partition")
-        store._db_for_partition.return_value = db
-        db.get.return_value = b"value"
-        db.__getitem__ = Mock()
-        db.__getitem__.return_value = b"value"
-        store.table = Mock(name="table")
-        store.table.is_global = False
-        store.table.synchronize_all_active_partitions = False
-        store.table.use_partitioner = False
-
-        assert store._get(b"key") == b"value"
-
-        db.get.return_value = None
-        db.__getitem__ = Mock()
-        db.__getitem__.return_value = None
-        assert store._get(b"key2") is None
-
-    @pytest.mark.skip("key_may_exist not available in rocksdict yet")
     def test_get_bucket_for_key__is_in_index(self, *, store):
         store._key_index[b"key"] = 30
         db = store._dbs[30] = Mock(name="db-p30")
@@ -829,7 +803,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
         db.get.return_value = name
         return db
 
-    @pytest.mark.skip("key_may_exist not available in rocksdict yet")
     def test_get_bucket_for_key__not_in_index(self, *, store):
         dbs = {
             1: self.new_db(name="db1"),
@@ -841,7 +814,6 @@ class Test_Store_Rocksdict(Test_Store_RocksDB):
 
         assert store._get_bucket_for_key(b"key") == (dbs[3], "db3")
 
-    @pytest.mark.skip("key_may_exist not available in rocksdict yet")
     def test__contains(self, *, store):
         db1 = self.new_db("db1", exists=False)
         db2 = self.new_db("db2", exists=True)

@@ -494,18 +494,11 @@ class Store(base.SerializedStore):
             dbs = cast(Iterable[PartitionDB], self._dbs.items())
 
         for partition, db in dbs:
-            if self.USE_ROCKSDICT:
-                # TODO: Remove this once key_may_exist is added
+            if db.key_may_exist(key)[0]:
                 value = db.get(key)
                 if value is not None:
                     self._key_index[key] = partition
                     return _DBValueTuple(db, value)
-            else:
-                if db.key_may_exist(key)[0]:
-                    value = db.get(key)
-                    if value is not None:
-                        self._key_index[key] = partition
-                        return _DBValueTuple(db, value)
         return None
 
     def _del(self, key: bytes) -> None:
@@ -629,15 +622,8 @@ class Store(base.SerializedStore):
         else:
             for db in self._dbs_for_key(key):
                 # bloom filter: false positives possible, but not false negatives
-                if self.USE_ROCKSDICT:
-                    # TODO: Remove once key_may_exist is added
-                    if db.get(key) is not None:
-                        return True
-                    else:
-                        return False
-                else:
-                    if db.key_may_exist(key)[0] and db.get(key) is not None:
-                        return True
+                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                    return True
             return False
 
     def _dbs_for_key(self, key: bytes) -> Iterable[DB]:
