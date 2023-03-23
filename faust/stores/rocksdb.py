@@ -243,9 +243,9 @@ class Store(base.SerializedStore):
         self.read_only = self.options.pop("read_only", read_only)
 
         self.driver = self.options.pop("driver", driver)
-        if self.driver == "rocksdict" and rocksdict:
+        if self.driver == "rocksdict":
             self.use_rocksdict = True
-        elif self.driver == "python-rocksdb" and rocksdb:
+        elif self.driver == "python-rocksdb":
             self.use_rocksdict = False
         else:
             self.use_rocksdict = USE_ROCKSDICT
@@ -277,7 +277,7 @@ class Store(base.SerializedStore):
                 f'Unable to create files in "{self._backup_path}",' f"disabling backups"
             )
         else:
-            if not self.use_rocksdict and rocksdb:
+            if rocksdb:
                 self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(
