@@ -195,6 +195,9 @@ class Store(base.SerializedStore):
             app.GlobalTable(..., options={'driver': 'rocksdict'})
             app.GlobalTable(..., options={'driver': 'python-rocksdb'})
 
+    .. warning::
+        Note that rocksdict uses RocksDB 7. You won't be able to
+        return to using python-rocksdb, which uses RocksDB 6.
     """
 
     offset_key = b"__faust\0offset__"
@@ -303,7 +306,7 @@ class Store(base.SerializedStore):
             table.data.backup_partition(0, flush=True, purge=True, keep=1)
 
         """
-        if self._backup_engine:
+        if not self.use_rocksdict and self._backup_engine:
             partition = tp
             if isinstance(tp, TP):
                 partition = tp.partition
@@ -319,6 +322,8 @@ class Store(base.SerializedStore):
                     self._backup_engine.purge_old_backups(keep)
             except Exception:
                 self.log.info(f"Unable to backup partition {partition}.")
+        else:
+            raise NotImplementedError("Backups not supported in rocksdict yet")
 
     def restore_backup(
         self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
@@ -336,7 +341,7 @@ class Store(base.SerializedStore):
             table.data.restore_backup(0)
 
         """
-        if self._backup_engine:
+        if not self.use_rocksdict and self._backup_engine:
             partition = tp
             if isinstance(tp, TP):
                 partition = tp.partition
@@ -348,6 +353,10 @@ class Store(base.SerializedStore):
                 self._backup_engine.restore_backup(
                     backup_id, str(self.partition_path(partition)), self._backup_path
                 )
+        else:
+            raise NotImplementedError(
+                "Backup restoration not supported in rocksdict yet"
+            )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
