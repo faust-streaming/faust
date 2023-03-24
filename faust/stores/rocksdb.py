@@ -53,7 +53,7 @@ except ImportError:  # pragma: no cover
     rocksdb = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from rocksdb import DB, Options
+    from rocksdb import DB, Options, WriteBatch
 else:
 
     class DB:  # noqa
@@ -61,6 +61,16 @@ else:
 
     class Options:  # noqa
         """Dummy Options."""
+
+
+try:  # pragma: no cover
+    import rocksdict
+    from rocksdict import Options, Rdict as DB, WriteBatch  # noqa F811
+
+    USE_ROCKSDICT = True
+except ImportError:  # pragma: no cover
+    USE_ROCKSDICT = False
+    rocksdict = None  # noqa
 
 
 class PartitionDB(NamedTuple):
@@ -85,6 +95,7 @@ class RocksDBOptions:
     block_cache_size: int = DEFAULT_BLOCK_CACHE_SIZE
     block_cache_compressed_size: int = DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE
     bloom_filter_size: int = DEFAULT_BLOOM_FILTER_SIZE
+    use_rocksdict: bool = USE_ROCKSDICT
     extra_options: Mapping
 
     def __init__(
@@ -96,6 +107,7 @@ class RocksDBOptions:
         block_cache_size: Optional[int] = None,
         block_cache_compressed_size: Optional[int] = None,
         bloom_filter_size: Optional[int] = None,
+        use_rocksdict: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:
         if max_open_files is not None:
@@ -112,29 +124,60 @@ class RocksDBOptions:
             self.block_cache_compressed_size = block_cache_compressed_size
         if bloom_filter_size is not None:
             self.bloom_filter_size = bloom_filter_size
+        if use_rocksdict is not None:
+            self.use_rocksdict = use_rocksdict
         self.extra_options = kwargs
 
     def open(self, path: Path, *, read_only: bool = False) -> DB:
         """Open RocksDB database using this configuration."""
-        return rocksdb.DB(str(path), self.as_options(), read_only=read_only)
+        if self.use_rocksdict:
+            db_options = self.as_options()
+            db_options.set_db_paths(
+                [rocksdict.DBPath(str(path), self.target_file_size_base)]
+            )
+            db = DB(str(path), options=self.as_options())
+            db.set_read_options(rocksdict.ReadOptions())
+            return db
+        else:
+            return rocksdb.DB(str(path), self.as_options(), read_only=read_only)
 
     def as_options(self) -> Options:
         """Return :class:`rocksdb.Options` object using this configuration."""
-        return rocksdb.Options(
-            create_if_missing=True,
-            max_open_files=self.max_open_files,
-            write_buffer_size=self.write_buffer_size,
-            max_write_buffer_number=self.max_write_buffer_number,
-            target_file_size_base=self.target_file_size_base,
-            table_factory=rocksdb.BlockBasedTableFactory(
-                filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
-                block_cache=rocksdb.LRUCache(self.block_cache_size),
-                block_cache_compressed=rocksdb.LRUCache(
-                    self.block_cache_compressed_size
+        if self.use_rocksdict:
+            db_options = Options(raw_mode=True)
+            db_options.create_if_missing(True)
+            db_options.set_max_open_files(self.max_open_files)
+            db_options.set_write_buffer_size(self.write_buffer_size)
+            db_options.set_target_file_size_base(self.target_file_size_base)
+            db_options.set_max_write_buffer_number(self.max_write_buffer_number)
+            table_factory_options = rocksdict.BlockBasedOptions()
+            table_factory_options.set_bloom_filter(
+                self.bloom_filter_size, block_based=True
+            )
+            table_factory_options.set_block_cache(
+                rocksdict.Cache(self.block_cache_size)
+            )
+            table_factory_options.set_index_type(
+                rocksdict.BlockBasedIndexType.binary_search()
+            )
+            db_options.set_block_based_table_factory(table_factory_options)
+            return db_options
+        else:
+            return rocksdb.Options(
+                create_if_missing=True,
+                max_open_files=self.max_open_files,
+                write_buffer_size=self.write_buffer_size,
+                max_write_buffer_number=self.max_write_buffer_number,
+                target_file_size_base=self.target_file_size_base,
+                table_factory=rocksdb.BlockBasedTableFactory(
+                    filter_policy=rocksdb.BloomFilterPolicy(self.bloom_filter_size),
+                    block_cache=rocksdb.LRUCache(self.block_cache_size),
+                    block_cache_compressed=rocksdb.LRUCache(
+                        self.block_cache_compressed_size
+                    ),
                 ),
-            ),
-            **self.extra_options,
-        )
+                **self.extra_options,
+            )
 
 
 class Store(base.SerializedStore):
@@ -147,6 +190,14 @@ class Store(base.SerializedStore):
             app.App(..., store="rocksdb://")
             app.GlobalTable(..., options={'read_only': True})
 
+        You can also switch between RocksDB drivers this way::
+
+            app.GlobalTable(..., options={'driver': 'rocksdict'})
+            app.GlobalTable(..., options={'driver': 'python-rocksdb'})
+
+    .. warning::
+        Note that rocksdict uses RocksDB 7. You won't be able to
+        return to using python-rocksdb, which uses RocksDB 6.
     """
 
     offset_key = b"__faust\0offset__"
@@ -171,11 +222,13 @@ class Store(base.SerializedStore):
         key_index_size: Optional[int] = None,
         options: Optional[Mapping[str, Any]] = None,
         read_only: Optional[bool] = False,
+        driver: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        if rocksdb is None:
+        if rocksdb is None and rocksdict is None:
             error = ImproperlyConfigured(
-                "RocksDB bindings not installed? pip install python-rocksdb"
+                "RocksDB bindings not installed? pip install faust-streaming-rocksdb"
+                " or rocksdict"
             )
             try:
                 import rocksdb as _rocksdb  # noqa: F401
@@ -188,7 +241,18 @@ class Store(base.SerializedStore):
             self.url /= self.table_name
         self.options = options or {}
         self.read_only = self.options.pop("read_only", read_only)
-        self.rocksdb_options = RocksDBOptions(**self.options)
+
+        self.driver = self.options.pop("driver", driver)
+        if self.driver == "rocksdict":
+            self.use_rocksdict = True
+        elif self.driver == "python-rocksdb":
+            self.use_rocksdict = False
+        else:
+            self.use_rocksdict = USE_ROCKSDICT
+
+        self.rocksdb_options = RocksDBOptions(
+            **self.options, use_rocksdict=self.use_rocksdict
+        )
         if key_index_size is None:
             key_index_size = app.conf.table_key_index_size
         self.key_index_size = key_index_size
@@ -213,7 +277,8 @@ class Store(base.SerializedStore):
                 f'Unable to create files in "{self._backup_path}",' f"disabling backups"
             )
         else:
-            self._backup_engine = rocksdb.BackupEngine(self._backup_path)
+            if rocksdb:
+                self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(
         self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
@@ -222,6 +287,8 @@ class Store(base.SerializedStore):
 
         This will be saved in a separate directory in the data directory called
         '{table-name}-backups'.
+
+        This is only available in python-rocksdb.
 
         Arguments:
             tp: Partition to backup
@@ -239,7 +306,7 @@ class Store(base.SerializedStore):
             table.data.backup_partition(0, flush=True, purge=True, keep=1)
 
         """
-        if self._backup_engine:
+        if not self.use_rocksdict and self._backup_engine:
             partition = tp
             if isinstance(tp, TP):
                 partition = tp.partition
@@ -255,6 +322,8 @@ class Store(base.SerializedStore):
                     self._backup_engine.purge_old_backups(keep)
             except Exception:
                 self.log.info(f"Unable to backup partition {partition}.")
+        else:
+            raise NotImplementedError("Backups not supported in rocksdict yet")
 
     def restore_backup(
         self, tp: Union[TP, int], latest: bool = True, backup_id: int = 0
@@ -272,7 +341,7 @@ class Store(base.SerializedStore):
             table.data.restore_backup(0)
 
         """
-        if self._backup_engine:
+        if not self.use_rocksdict and self._backup_engine:
             partition = tp
             if isinstance(tp, TP):
                 partition = tp.partition
@@ -284,6 +353,10 @@ class Store(base.SerializedStore):
                 self._backup_engine.restore_backup(
                     backup_id, str(self.partition_path(partition)), self._backup_path
                 )
+        else:
+            raise NotImplementedError(
+                "Backup restoration not supported in rocksdict yet"
+            )
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Return the last persisted offset.
@@ -312,7 +385,7 @@ class Store(base.SerializedStore):
         we can decide to not actively read standby messages, since
         that database file is already being populated.
 
-        Currently it is recommended that you use
+        Currently, it is recommended that you use
         separate data directories for multiple workers on the same machine.
 
         For example if you have a 4 CPU core machine, you can run
@@ -350,8 +423,11 @@ class Store(base.SerializedStore):
             to_value: A callable you can use to deserialize the value
                 of a changelog event.
         """
-        batches: DefaultDict[int, rocksdb.WriteBatch]
-        batches = defaultdict(rocksdb.WriteBatch)
+        batches: DefaultDict[int, WriteBatch]
+        if self.use_rocksdict:
+            batches = defaultdict(lambda: rocksdict.WriteBatch(raw_mode=True))
+        else:
+            batches = defaultdict(rocksdb.WriteBatch)
         tp_offsets: Dict[TP, int] = {}
         for event in batch:
             tp, offset = event.message.tp, event.message.offset
@@ -412,7 +488,11 @@ class Store(base.SerializedStore):
             db, value = dbvalue
 
             if value is None:
-                if db.key_may_exist(key)[0]:
+                if self.use_rocksdict:
+                    key_may_exist = db.key_may_exist(key)
+                else:
+                    key_may_exist = db.key_may_exist(key)[0]
+                if key_may_exist:
                     return db.get(key)
             return value
 
@@ -425,7 +505,11 @@ class Store(base.SerializedStore):
             dbs = cast(Iterable[PartitionDB], self._dbs.items())
 
         for partition, db in dbs:
-            if db.key_may_exist(key)[0]:
+            if self.use_rocksdict:
+                key_may_exist = db.key_may_exist(key)
+            else:
+                key_may_exist = db.key_may_exist(key)[0]
+            if key_may_exist:
                 value = db.get(key)
                 if value is not None:
                     self._key_index[key] = partition
@@ -553,7 +637,11 @@ class Store(base.SerializedStore):
         else:
             for db in self._dbs_for_key(key):
                 # bloom filter: false positives possible, but not false negatives
-                if db.key_may_exist(key)[0] and db.get(key) is not None:
+                if self.use_rocksdict:
+                    key_may_exist = db.key_may_exist(key)
+                else:
+                    key_may_exist = db.key_may_exist(key)[0]
+                if key_may_exist and db.get(key) is not None:
                     return True
             return False
 
@@ -579,15 +667,23 @@ class Store(base.SerializedStore):
         return sum(self._size1(db) for db in self._dbs_for_actives())
 
     def _visible_keys(self, db: DB) -> Iterator[bytes]:
-        it = db.iterkeys()  # noqa: B301
-        it.seek_to_first()
+        if self.use_rocksdict:
+            it = db.keys()
+            iter = db.iter()
+            iter.seek_to_first()
+        else:
+            it = db.iterkeys()  # noqa: B301
+            it.seek_to_first()
         for key in it:
             if key != self.offset_key:
                 yield key
 
     def _visible_items(self, db: DB) -> Iterator[Tuple[bytes, bytes]]:
-        it = db.iteritems()  # noqa: B301
-        it.seek_to_first()
+        if self.use_rocksdict:
+            it = db.items()
+        else:
+            it = db.iteritems()  # noqa: B301
+            it.seek_to_first()
         for key, value in it:
             if key != self.offset_key:
                 yield key, value
