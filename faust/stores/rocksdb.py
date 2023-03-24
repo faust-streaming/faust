@@ -196,7 +196,7 @@ class Store(base.SerializedStore):
             app.GlobalTable(..., options={'driver': 'python-rocksdb'})
 
     .. warning::
-        Note that rocksdict uses RocksDB 7. You won't be able to
+        Note that rocksdict uses RocksDB 8. You won't be able to
         return to using python-rocksdb, which uses RocksDB 6.
     """
 
