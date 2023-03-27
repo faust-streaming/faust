@@ -19,6 +19,7 @@ from typing import (
 
 import confluent_kafka
 from confluent_kafka import KafkaException, TopicPartition as _TopicPartition
+from confluent_kafka.admin import AdminClient
 from mode import Service, get_logger
 from mode.threads import QueueServiceThread
 from mode.utils.futures import notify
@@ -196,7 +197,7 @@ class ConfluentConsumerThread(ConsumerThread):
 
     async def subscribe(self, topics: Iterable[str]) -> None:
         # XXX pattern does not work :/
-        await self.call_thread(
+        await self.cast_thread(
             self._ensure_consumer().subscribe,
             topics=list(topics),
             on_assign=self._on_assign,
@@ -262,7 +263,7 @@ class ConfluentConsumerThread(ConsumerThread):
     ) -> None:
         for tp, offset in partitions.items():
             self.log.dev("SEEK %r -> %r", tp, offset)
-            consumer.seek(tp, offset)
+            await consumer.seek(tp, offset)
         await asyncio.gather(*[consumer.position(tp) for tp in partitions])
 
     def seek(self, partition: TP, offset: int) -> None:
@@ -344,7 +345,12 @@ class ConfluentConsumerThread(ConsumerThread):
     def key_partition(
         self, topic: str, key: Optional[bytes], partition: int = None
     ) -> Optional[int]:
-        raise NotImplementedError("TODO")  # TODO XXX
+        metadata = self._consumer.list_topics(topic)
+        partition_count = len(metadata.topics[topic]['partitions'])
+
+        # Calculate the partition number based on the key hash
+        key_bytes = str(key).encode('utf-8')
+        return abs(hash(key_bytes)) % partition_count
 
 
 class ProducerProduceFuture(asyncio.Future):
@@ -453,6 +459,7 @@ class Producer(base.Producer):
     logger = logger
 
     _producer_thread: ProducerThread
+    _admin: AdminClient
     _quick_produce: Any = None
 
     def __post_init__(self) -> None:
@@ -569,7 +576,15 @@ class Producer(base.Producer):
 
     def key_partition(self, topic: str, key: bytes) -> TP:
         """Return topic and partition destination for key."""
-        raise NotImplementedError()
+        # Get the partition count for the topic
+        metadata = self._producer_thread.producer.list_topics(topic)
+        partition_count = len(metadata.topics[topic].partitions)
+
+        # Calculate the partition number based on the key hash
+        key_bytes = str(key).encode('utf-8')
+        partition = abs(hash(key_bytes)) % partition_count
+
+        return TP(topic, partition)
 
 
 class Transport(base.Transport):
