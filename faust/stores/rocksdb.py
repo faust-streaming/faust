@@ -46,9 +46,14 @@ DEFAULT_TARGET_FILE_SIZE_BASE = 67108864
 DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024**3
 DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024**2
 DEFAULT_BLOOM_FILTER_SIZE = 3
+ERRORS_ROCKS_IO_ERROR = (
+    Exception  # use general exception to avoid missing exception issues
+)
 
 try:  # pragma: no cover
     import rocksdb
+
+    ERRORS_ROCKS_IO_ERROR = rocksdb.errors.RocksIOError
 except ImportError:  # pragma: no cover
     rocksdb = None  # noqa
 
@@ -401,7 +406,7 @@ class Store(base.SerializedStore):
         """
         try:
             self._db_for_partition(tp.partition)
-        except rocksdb.errors.RocksIOError as exc:
+        except ERRORS_ROCKS_IO_ERROR as exc:
             if "lock" not in repr(exc):
                 raise
             return False
@@ -598,7 +603,7 @@ class Store(base.SerializedStore):
                     f"{generation_id} app id {self.app.consumer_generation_id}"
                 )
                 return self._db_for_partition(partition)
-            except rocksdb.errors.RocksIOError as exc:
+            except ERRORS_ROCKS_IO_ERROR as exc:
                 if i == max_retries - 1 or "lock" not in repr(exc):
                     # release all the locks and crash
                     self.log.warning(
