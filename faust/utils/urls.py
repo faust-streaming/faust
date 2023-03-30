@@ -19,8 +19,8 @@ def urllist(arg: URIListArg, *, default_scheme: Optional[str] = None) -> List[UR
         # handle scalar URL argument.
         arg = [arg]
     elif isinstance(arg, str):
-        # Handle scalar str, including semi-colon separated lists of URLs.
-        urls = arg.split(";")
+        # Handle scalar str, including comma and semi-colon separated lists of URLs.
+        urls = arg.replace(",", ";").split(";")
 
         # When some of the URLs do not have a scheme, we use
         # the first scheme we find as the default scheme.
