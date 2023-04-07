@@ -72,7 +72,7 @@ class ChangeloggedObjectManager(Store):
         self.table_name = self.table.name
         self.data = {}
         self._dirty = set()
-        Service.__init__(self, **kwargs)
+        Service.__init__(self, loop=table.loop, **kwargs)
 
     def send_changelog_event(self, key: Any, operation: int, value: Any) -> None:
         """Send changelog event to the tables changelog topic."""

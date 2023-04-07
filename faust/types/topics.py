@@ -30,7 +30,6 @@ __all__ = ["TopicT"]
 
 
 class TopicT(ChannelT):
-
     #: Iterable/Sequence of topic names to subscribe to.
     topics: Sequence[str]
 

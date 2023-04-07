@@ -1146,7 +1146,6 @@ class Producer(base.Producer):
         """Commit transaction by id."""
         try:
             async with self._trn_locks[transactional_id]:
-
                 transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     await transaction_producer.commit_transaction()
@@ -1170,7 +1169,6 @@ class Producer(base.Producer):
         """Abort and rollback transaction by id."""
         try:
             async with self._trn_locks[transactional_id]:
-
                 transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     await transaction_producer.abort_transaction()
@@ -1210,7 +1208,6 @@ class Producer(base.Producer):
         for transactional_id, offsets in tid_to_offset_map.items():
             # get the producer
             async with self._trn_locks[transactional_id]:
-
                 transaction_producer = self._transaction_producers.get(transactional_id)
                 if transaction_producer:
                     logger.debug(
@@ -1346,7 +1343,6 @@ class Producer(base.Producer):
         try:
             if transactional_id:
                 async with self._trn_locks[transactional_id]:
-
                     return cast(
                         Awaitable[RecordMetadata],
                         await transaction_producer.send(
@@ -1482,7 +1478,7 @@ class Transport(base.Transport):
                 topic,
                 partitions,
                 replication,
-                loop=asyncio.get_event_loop_policy().get_event_loop(),
+                loop=self.loop,
                 **kwargs,
             )
         try:

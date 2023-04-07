@@ -18,7 +18,6 @@ class FakeActor(Actor):
 
 
 class Test_Actor:
-
     ActorType = FakeActor
 
     @pytest.fixture()
@@ -94,7 +93,6 @@ class Test_Actor:
 
 
 class Test_AsyncIterableActor(Test_Actor):
-
     ActorType = AsyncIterableActor
 
     def test_aiter(self, *, actor, it):
@@ -104,7 +102,6 @@ class Test_AsyncIterableActor(Test_Actor):
 
 
 class Test_AwaitableActor(Test_Actor):
-
     ActorType = AwaitableActor
 
     def test_await(self, *, actor, it):

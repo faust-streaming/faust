@@ -188,7 +188,6 @@ class Test_Collection:
 
     @pytest.mark.asyncio
     async def test_last_closed_window(self, *, table):
-
         assert table.last_closed_window == 0.0
 
         table.window = Mock(name="window")

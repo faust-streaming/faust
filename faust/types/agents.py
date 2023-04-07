@@ -72,7 +72,6 @@ ReplyToArg = Union["AgentT", ChannelT, str]
 
 
 class ActorT(ServiceT, Generic[_T]):
-
     agent: "AgentT"
     stream: StreamT
     it: _T
@@ -122,7 +121,6 @@ ActorRefT = ActorT[Union[AsyncIterable, Awaitable]]
 
 
 class AgentT(ServiceT, Generic[_T]):
-
     name: str
     app: _AppT
     concurrency: int
@@ -325,7 +323,6 @@ class AgentManagerT(ServiceT, ManagedUserDict[str, AgentT]):
 
 
 class AgentTestWrapperT(AgentT, AsyncIterable):
-
     new_value_processed: asyncio.Condition
     original_channel: ChannelT
     results: MutableMapping[int, Any]

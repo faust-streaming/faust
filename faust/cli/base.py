@@ -527,6 +527,7 @@ class Command(abc.ABC):  # noqa: B024
     @classmethod
     def as_click_command(cls) -> Callable:  # pragma: no cover
         """Convert command into :pypi:`click` command."""
+
         # This is what actually registers the commands into the
         # :pypi:`click` command-line interface (the ``def cli`` main above).
         # __init_subclass__ calls this for the side effect of being

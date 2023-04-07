@@ -33,6 +33,7 @@ BUNDLES = {
     "prometheus",
     "redis",
     "rocksdb",
+    "rocksdict",
     "sentry",
     "setproctitle",
     "statsd",

@@ -331,7 +331,6 @@ class BooleanField(FieldDescriptor[bool]):
 
 
 class NumberField(FieldDescriptor[T]):
-
     max_value: Optional[int]
     min_value: Optional[int]
 
@@ -439,7 +438,6 @@ class DecimalField(NumberField[Decimal]):
 
 
 class CharField(FieldDescriptor[CharacterType]):
-
     max_length: Optional[int]
     min_length: Optional[int]
     trim_whitespace: bool

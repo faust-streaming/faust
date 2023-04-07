@@ -5,7 +5,7 @@
 ![python versions](https://img.shields.io/pypi/pyversions/faust-streaming.svg)
 ![version](https://img.shields.io/pypi/v/faust-streaming)
 [![codecov](https://codecov.io/gh/faust-streaming/faust/branch/master/graph/badge.svg?token=QJFBYNN0JJ)](https://codecov.io/gh/faust-streaming/faust)
-[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ)
+[![slack](https://img.shields.io/badge/slack-Faust-brightgreen.svg?logo=slack)](https://join.slack.com/t/fauststreaming/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![pre-commit](https://img.shields.io/badge/pre--commit-enabled-green)
 ![license](https://img.shields.io/pypi/l/faust-streaming)
@@ -258,7 +258,7 @@ increase once we can support a more optimized Kafka client.
 Faust is just Python, and a stream is an infinite asynchronous iterator.
 If you know how to use Python, you already know how to use Faust,
 and it works with your favorite Python libraries like Django, Flask,
-SQLAlchemy, NTLK, NumPy, SciPy, TensorFlow, etc.
+SQLAlchemy, NLTK, NumPy, SciPy, TensorFlow, etc.
 
 ## Bundles
 
@@ -269,9 +269,9 @@ You can specify these in your requirements or on the ``pip``
 command-line by using brackets. Separate multiple bundles using the comma:
 
 ```sh
-pip install "faust[rocksdb]"
+pip install "faust-streaming[rocksdb]"
 
-pip install "faust[rocksdb,uvloop,fast,redis, aerospike]"
+pip install "faust-streaming[rocksdb,uvloop,fast,redis, aerospike]"
 ```
 
 The following bundles are available:
@@ -280,9 +280,18 @@ The following bundles are available:
 
 ### Stores
 
-`pip install faust[rocksdb]` for using `RocksDB` for storing Faust table state. **Recommended in production.**
+#### RocksDB
 
-`pip install faust[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
+For using `RocksDB` for storing Faust table state. **Recommended in production.**
+
+`pip install faust-streaming[rocksdb]` (uses RocksDB 6)
+
+`pip install faust-streaming[rocksdict]` (uses RocksDB 8, not backwards compatible with 6)
+
+
+#### Aerospike
+
+`pip install faust-streaming[aerospike]` for using `Aerospike` for storing Faust table state. **Recommended if supported**
 
 ### Aerospike Configuration
 Aerospike can be enabled as the state store by specifying
@@ -307,35 +316,35 @@ The following configuration options should be passed in as keys to the options p
 
 ### Caching
 
-`faust[redis]` for using `Redis` as a simple caching backend (Memcached-style).
+`faust-streaming[redis]` for using `Redis` as a simple caching backend (Memcached-style).
 
 ### Codecs
 
-`faust[yaml]` for using YAML and the `PyYAML` library in streams.
+`faust-streaming[yaml]` for using YAML and the `PyYAML` library in streams.
 
 ### Optimization
 
-`faust[fast]` for installing all the available C speedup extensions to Faust core.
+`faust-streaming[fast]` for installing all the available C speedup extensions to Faust core.
 
 ### Sensors
 
-`faust[datadog]` for using the `Datadog` Faust monitor.
+`faust-streaming[datadog]` for using the `Datadog` Faust monitor.
 
-`faust[statsd]` for using the `Statsd` Faust monitor.
+`faust-streaming[statsd]` for using the `Statsd` Faust monitor.
 
-`faust[prometheus]` for using the `Prometheus` Faust monitor.
+`faust-streaming[prometheus]` for using the `Prometheus` Faust monitor.
 
 ### Event Loops
 
-`faust[uvloop]` for using Faust with `uvloop`.
+`faust-streaming[uvloop]` for using Faust with `uvloop`.
 
-`faust[eventlet]` for using Faust with `eventlet`
+`faust-streaming[eventlet]` for using Faust with `eventlet`
 
 ### Debugging
 
-`faust[debug]` for using `aiomonitor` to connect and debug a running Faust worker.
+`faust-streaming[debug]` for using `aiomonitor` to connect and debug a running Faust worker.
 
-`faust[setproctitle]`when the `setproctitle` module is installed the Faust worker will use it to set a nicer process name in `ps`/`top` listings.vAlso installed with the `fast` and `debug` bundles.
+`faust-streaming[setproctitle]`when the `setproctitle` module is installed the Faust worker will use it to set a nicer process name in `ps`/`top` listings.vAlso installed with the `fast` and `debug` bundles.
 
 ## Downloading and installing from source
 
@@ -377,7 +386,7 @@ Using `eventlet` requires you to install the `faust-aioeventlet` module,
 and you can install this as a bundle along with Faust:
 
 ```sh
-pip install -U faust[eventlet]
+pip install -U faust-streaming[eventlet]
 ```
 
 Then to actually use eventlet as the event loop you have to either
@@ -433,7 +442,7 @@ Faust supports kafka with version >= 0.10.
 For discussions about the usage, development, and future of Faust, please join the `fauststream` Slack.
 
 - https://fauststream.slack.com
-- Sign-up: https://join.slack.com/t/fauststream/shared_invite/zt-1lwkumad3-4FQvrp8MdAbXcFjk0xf8fQ
+- Sign-up: https://join.slack.com/t/fauststreaming/shared_invite/zt-1q1jhq4kh-Q1t~rJgpyuMQ6N38cByE9g
 
 ## Resources
 

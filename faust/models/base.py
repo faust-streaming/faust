@@ -242,7 +242,8 @@ class Model(ModelT):
         """
         if default_serializer is not None:
             warnings.warn(
-                DeprecationWarning("default_serializer deprecated, use: serializer")
+                DeprecationWarning("default_serializer deprecated, use: serializer"),
+                stacklevel=2,
             )
         ser = cls._options.serializer or serializer or default_serializer
         data = loads(ser, s)

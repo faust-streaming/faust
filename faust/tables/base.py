@@ -125,7 +125,7 @@ class Collection(Service, CollectionT):
         synchronize_all_active_partitions: bool = False,
         **kwargs: Any,
     ) -> None:
-        Service.__init__(self, **kwargs)
+        Service.__init__(self, loop=app.loop, **kwargs)
         self.app = app
         self.name = cast(str, name)  # set lazily so CAN BE NONE!
         self.default = default

@@ -6,7 +6,6 @@ __all__ = ["Error", "Status"]
 
 
 class Error(faust.Record):
-
     #: Message (the actual formatted log message).
     message: str
 
@@ -39,7 +38,6 @@ class Error(faust.Record):
 
 
 class Status(faust.Record):
-
     #: The id of the app that is sending this.
     app_id: str
 

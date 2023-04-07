@@ -119,7 +119,7 @@ class Test_App:
             autospec=Transport,
         )
         assert app._new_producer() is transport.create_producer.return_value
-        transport.create_producer.assert_called_with(beacon=ANY)
+        transport.create_producer.assert_called_with(loop=app.loop, beacon=ANY)
         assert app.producer is transport.create_producer.return_value
 
     @pytest.mark.parametrize(
@@ -828,7 +828,6 @@ class Test_App:
         assert isinstance(app.tables.data["name"], GlobalTableT)
 
     def test_page(self, *, app):
-
         with patch("faust.app.base.venusian") as venusian:
 
             @app.page("/foo")
@@ -840,7 +839,6 @@ class Test_App:
             venusian.attach.assert_called_once_with(view, category=SCAN_PAGE)
 
     def test_page__with_cors_options(self, *, app):
-
         with patch("faust.app.base.venusian") as venusian:
 
             @app.page(
