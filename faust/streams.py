@@ -1065,7 +1065,7 @@ class Stream(StreamT[T_co], Service):
                         yield value
                 finally:
                     event, self.current_event = self.current_event, None
-                    it.after(event, do_ack, sensor_state)
+                    it.after(event, do_ack or value is skipped_value, sensor_state)
         except StopAsyncIteration:
             # We are not allowed to propagate StopAsyncIteration in __aiter__
             # (if we do, it'll be converted to RuntimeError by CPython).
