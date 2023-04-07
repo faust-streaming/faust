@@ -143,7 +143,7 @@ class Record(Model, abstract=True):  # type: ignore
         )
         options.fields = cast(Mapping, fields)
         options.fieldset = frozenset(fields)
-        options.fieldpos = {i: k for i, k in enumerate(fields.keys())}
+        options.fieldpos = {i: k for i, k in enumerate(fields.keys())}  # noqa: C416
 
         # extract all default values, but only for actual fields.
         options.defaults = {
@@ -592,7 +592,7 @@ class Record(Model, abstract=True):  # type: ignore
         payload = self.asdict()
         options = self._options
         if options.include_metadata:
-            payload["__faust"] = {"ns": options.namespace}
+            payload[self._blessed_key] = {"ns": options.namespace}
         return payload
 
     def asdict(self) -> Dict[str, Any]:  # pragma: no cover

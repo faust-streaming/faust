@@ -33,7 +33,6 @@ VT = TypeVar("VT")
 
 
 class StoreT(ServiceT, FastUserDict[KT, VT]):
-
     url: URL
     app: _AppT
     table: _CollectionT

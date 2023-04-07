@@ -14,7 +14,6 @@ __all__ = ["FixupT"]
 
 
 class FixupT(abc.ABC):
-
     app: _AppT
 
     @abc.abstractmethod

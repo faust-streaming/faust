@@ -121,7 +121,6 @@ class TestProducerBuffer:
 
     @pytest.mark.asyncio
     async def test_flush_atmost(self, *, buf):
-
         sent_messages = 0
 
         def create_send_pending_mock(max_messages):

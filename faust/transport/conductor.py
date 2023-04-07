@@ -168,7 +168,7 @@ class ConductorCompiler:  # pragma: no cover
                             on_topic_buffer_full(dest_chan)
                         await asyncio.wait(
                             [
-                                dest_chan.put(dest_event)
+                                asyncio.ensure_future(dest_chan.put(dest_event))
                                 for dest_event, dest_chan in full
                             ],
                             return_when=asyncio.ALL_COMPLETED,

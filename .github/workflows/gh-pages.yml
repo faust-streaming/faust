@@ -5,6 +5,10 @@ on:
     branches: ["master"]
   pull_request:
     branches: ["master"]
+  release:
+    types: [created]
+    branches:
+      - 'master'
 
 jobs:
   build:
@@ -26,7 +30,7 @@ jobs:
         path: "./Documentation"
   deploy:
     name: "Deploy docs"
-    if: github.event_name == 'release' && github.event.action == 'published'
+    if: github.event_name == 'release' && github.event.action == 'created'
     needs: build
     runs-on: ubuntu-latest
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
@@ -38,6 +42,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - uses: actions/deploy-pages@v1
+    - uses: actions/deploy-pages@v2
       id: deployment
       name: "Deploy to GitHub Pages"

@@ -176,7 +176,7 @@ class Case(Service):
         # signal attributes have the correct signal instance.
         self.__dict__.update(self.signals)
 
-        Service.__init__(self, **kwargs)
+        Service.__init__(self, loop=app.loop, **kwargs)
 
     @Service.timer(10.0)
     async def _sampler(self) -> None:

@@ -58,9 +58,19 @@ class TestRocksDBOptions:
         )
         assert opts.bloom_filter_size == rocksdb.DEFAULT_BLOOM_FILTER_SIZE
 
-    def test_open(self):
+    def test_open_rocksdb(self):
         with patch("faust.stores.rocksdb.rocksdb", Mock()) as rocks:
-            opts = RocksDBOptions()
+            opts = RocksDBOptions(use_rocksdict=False)
+            db = opts.open(Path("foo.db"), read_only=True)
+            rocks.DB.assert_called_once_with(
+                "foo.db", opts.as_options(), read_only=True
+            )
+            assert db is rocks.DB()
+
+    @pytest.mark.skip("Need to make mock BlockBasedOptions")
+    def test_open_rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict", Mock()) as rocks:
+            opts = RocksDBOptions(use_rocksdict=True)
             db = opts.open(Path("foo.db"), read_only=True)
             rocks.DB.assert_called_once_with(
                 "foo.db", opts.as_options(), read_only=True
@@ -68,7 +78,7 @@ class TestRocksDBOptions:
             assert db is rocks.DB()
 
 
-class Test_Store:
+class Test_Store_RocksDB:
     @pytest.fixture()
     def table(self):
         table = Mock(name="table")
@@ -81,13 +91,23 @@ class Test_Store:
             yield rocks
 
     @pytest.fixture()
+    def rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict") as rocksdict:
+            yield rocksdict
+
+    @pytest.fixture()
     def no_rocks(self):
         with patch("faust.stores.rocksdb.rocksdb", None) as rocks:
             yield rocks
 
     @pytest.fixture()
+    def no_rocksdict(self):
+        with patch("faust.stores.rocksdb.rocksdict", None) as rocksdict:
+            yield rocksdict
+
+    @pytest.fixture()
     def store(self, *, app, rocks, table):
-        return Store("rocksdb://", app, table)
+        return Store("rocksdb://", app, table, driver="python-rocksdb")
 
     @pytest.fixture()
     def db_for_partition(self, *, store):
@@ -102,7 +122,7 @@ class Test_Store:
 
         assert s.key_index_size == 12341
 
-    def test_no_rocksdb(self, *, app, table, no_rocks):
+    def test_no_rocksdb(self, *, app, table, no_rocks, no_rocksdict):
         with pytest.raises(ImproperlyConfigured):
             Store("rocksdb://", app, table)
 
@@ -281,6 +301,7 @@ class Test_Store:
         db.get.return_value = b"value"
         store.table = Mock(name="table")
         store.table.is_global = False
+        store.table.synchronize_all_active_partitions = False
         store.table.use_partitioner = False
 
         assert store._get(b"key") == b"value"
@@ -313,6 +334,7 @@ class Test_Store:
 
         store.table = Mock(name="table")
         store.table.is_global = False
+        store.table.synchronize_all_active_partitions = False
         store.table.use_partitioner = False
 
         # A _get call from a stream, to a non-global, non-partitioner, table
@@ -321,6 +343,7 @@ class Test_Store:
         assert store._get(b"key") is None
 
         store.table.is_global = True
+        store.table.synchronize_all_active_partitions = True
         store.table.use_partitioner = False
 
         # A global table ignores the event partition and pulls from the proper db
@@ -362,7 +385,6 @@ class Test_Store:
         return db
 
     def test_get_bucket_for_key__not_in_index(self, *, store):
-
         dbs = {
             1: self.new_db(name="db1"),
             2: self.new_db(name="db2"),
@@ -602,6 +624,11 @@ class Test_Store:
         table.is_global = True
         assert list(store._dbs_for_actives()) == [dbs[1], dbs[2], dbs[3]]
 
+        # Global Global Table
+        table.is_global = True
+        table.synchronize_all_active_partitions = True
+        assert list(store._dbs_for_actives()) == [dbs[1], dbs[2], dbs[3]]
+
     def test__size(self, *, store):
         dbs = self._setup_keys(
             db1=[
@@ -651,6 +678,7 @@ class Test_Store:
     def _setup_keys_db(self, name: str, values: List[bytes]):
         db = self.new_db(name)
         db.iterkeys.return_value = MockIterator.from_values(values)
+        db.keys.return_value = MockIterator.from_values(values)  # supports rocksdict
         return db
 
     def test__itervalues(self, *, store):
@@ -685,6 +713,7 @@ class Test_Store:
     def _setup_items_db(self, name: str, values: List[Tuple[bytes, bytes]]):
         db = self.new_db(name)
         db.iteritems.return_value = MockIterator.from_values(values)
+        db.items.return_value = MockIterator.from_values(values)  # supports rocksdict
         return db
 
     def test__iteritems(self, *, store):
@@ -721,3 +750,191 @@ class Test_Store:
         with patch("shutil.rmtree") as rmtree:
             store.reset_state()
             rmtree.assert_called_once_with(store.path.absolute())
+
+
+class Test_Store_Rocksdict(Test_Store_RocksDB):
+    @pytest.fixture()
+    def store(self, *, app, rocks, table):
+        return Store("rocksdb://", app, table, driver="rocksdict")
+
+    def new_db(self, name, exists=False):
+        db = Mock(name=name)
+        db.key_may_exist.return_value = exists
+        db.get.return_value = name
+        return db
+
+    def test__contains(self, *, store):
+        db1 = self.new_db("db1", exists=False)
+        db2 = self.new_db("db2", exists=True)
+        dbs = {b"key": [db1, db2]}
+        store._dbs_for_key = Mock(side_effect=dbs.get)
+
+        db2.get.return_value = None
+        assert not store._contains(b"key")
+
+        db2.get.return_value = b"value"
+        assert store._contains(b"key")
+
+    def test__iteritems(self, *, store):
+        dbs = self._setup_items(
+            db1=[
+                (store.offset_key, b"1001"),
+                (b"k1", b"foo"),
+                (b"k2", b"bar"),
+            ],
+            db2=[
+                (b"k3", b"baz"),
+                (store.offset_key, b"2002"),
+                (b"k4", b"xuz"),
+            ],
+        )
+        store._dbs_for_actives = Mock(return_value=dbs)
+
+        assert list(store._iteritems()) == [
+            (b"k1", b"foo"),
+            (b"k2", b"bar"),
+            (b"k3", b"baz"),
+            (b"k4", b"xuz"),
+        ]
+
+        for db in dbs:
+            # iteritems not available in rocksdict yet
+            db.items.assert_called_once_with()
+
+    def test__iterkeys(self, *, store):
+        dbs = self._setup_keys(
+            db1=[
+                store.offset_key,
+                b"foo",
+                b"bar",
+            ],
+            db2=[
+                b"baz",
+                store.offset_key,
+                b"xuz",
+            ],
+        )
+        store._dbs_for_actives = Mock(return_value=dbs)
+
+        assert list(store._iterkeys()) == [
+            b"foo",
+            b"bar",
+            b"baz",
+            b"xuz",
+        ]
+
+        for db in dbs:
+            # iterkeys not available in rocksdict yet
+            db.keys.assert_called_once_with()
+
+    def test__itervalues(self, *, store):
+        dbs = self._setup_items(
+            db1=[
+                (store.offset_key, b"1001"),
+                (b"k1", b"foo"),
+                (b"k2", b"bar"),
+            ],
+            db2=[
+                (b"k3", b"baz"),
+                (store.offset_key, b"2002"),
+                (b"k4", b"xuz"),
+            ],
+        )
+        store._dbs_for_actives = Mock(return_value=dbs)
+
+        assert list(store._itervalues()) == [
+            b"foo",
+            b"bar",
+            b"baz",
+            b"xuz",
+        ]
+
+        for db in dbs:
+            # items must be used instead of iteritems for now
+            # TODO: seek_to_first() should be called once rocksdict is updated
+            db.items.assert_called_once_with()
+
+    def test__get__dbvalue_is_None(self, *, store):
+        db = Mock(name="db")
+        store._get_bucket_for_key = Mock(name="get_bucket_for_key")
+        store._get_bucket_for_key.return_value = (db, None)
+
+        db.key_may_exist.return_value = False
+        assert store._get(b"key") is None
+
+        db.key_may_exist.return_value = True
+        db.get.return_value = None
+        assert store._get(b"key") is None
+
+        db.get.return_value = b"bar"
+        assert store._get(b"key") == b"bar"
+
+    def test_get_bucket_for_key__is_in_index(self, *, store):
+        store._key_index[b"key"] = 30
+        db = store._dbs[30] = Mock(name="db-p30")
+
+        db.key_may_exist.return_value = False
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.key_may_exist.return_value = True
+        db.get.return_value = None
+        assert store._get_bucket_for_key(b"key") is None
+
+        db.get.return_value = b"value"
+        assert store._get_bucket_for_key(b"key") == (db, b"value")
+
+    def test_apply_changelog_batch(self, *, store, rocksdict, db_for_partition):
+        def new_event(name, tp: TP, offset, key, value) -> Mock:
+            return Mock(
+                name="event1",
+                message=Mock(
+                    tp=tp,
+                    topic=tp.topic,
+                    partition=tp.partition,
+                    offset=offset,
+                    key=key,
+                    value=value,
+                ),
+            )
+
+        events = [
+            new_event("event1", TP1, 1001, "k1", "v1"),
+            new_event("event2", TP2, 2002, "k2", "v2"),
+            new_event("event3", TP3, 3003, "k3", "v3"),
+            new_event("event4", TP4, 4004, "k4", "v4"),
+            new_event("event5", TP4, 4005, "k5", None),
+        ]
+
+        dbs = {
+            TP1.partition: Mock(name="db1"),
+            TP2.partition: Mock(name="db2"),
+            TP3.partition: Mock(name="db3"),
+            TP4.partition: Mock(name="db4"),
+        }
+        db_for_partition.side_effect = dbs.get
+
+        store.set_persisted_offset = Mock(name="set_persisted_offset")
+
+        store.apply_changelog_batch(events, None, None)
+
+        rocksdict.WriteBatch.return_value.delete.assert_called_once_with("k5")
+        rocksdict.WriteBatch.return_value.put.assert_has_calls(
+            [
+                call("k1", "v1"),
+                call("k2", "v2"),
+                call("k3", "v3"),
+                call("k4", "v4"),
+            ]
+        )
+
+        for db in dbs.values():
+            db.write.assert_called_once_with(rocksdict.WriteBatch(raw_mode=True))
+
+        store.set_persisted_offset.assert_has_calls(
+            [
+                call(TP1, 1001),
+                call(TP2, 2002),
+                call(TP3, 3003),
+                call(TP4, 4005),
+            ]
+        )

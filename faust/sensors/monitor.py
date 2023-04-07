@@ -417,7 +417,7 @@ class Monitor(Sensor, KeywordReduce):
         return {label(topic): count for topic, count in self.topic_buffer_full.items()}
 
     def _metric_counts_dict(self) -> MutableMapping[str, int]:
-        return {key: count for key, count in self.metric_counts.items()}
+        return {key: count for key, count in self.metric_counts.items()}  # noqa: C416
 
     def _http_response_codes_dict(self) -> MutableMapping[int, int]:
         return {int(code): count for code, count in self.http_response_codes.items()}

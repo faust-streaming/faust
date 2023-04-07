@@ -194,7 +194,6 @@ class ModelT(base):  # type: ignore
 
 
 class FieldDescriptorT(Generic[T]):
-
     field: str
     input_name: str
     output_name: str

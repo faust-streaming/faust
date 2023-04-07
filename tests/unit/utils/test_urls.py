@@ -49,6 +49,14 @@ def test_urllist_strsep():
     ]
 
 
+def test_urllist_strsep_comma():
+    assert urllist("foo://localhost,bar.com,example.com") == [
+        URL("foo://localhost"),
+        URL("foo://bar.com"),
+        URL("foo://example.com"),
+    ]
+
+
 def test_urllist_strsep_no_scheme():
     assert urllist("localhost;bar.com;example.com", default_scheme="bar") == [
         URL("bar://localhost"),

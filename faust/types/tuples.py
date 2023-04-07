@@ -113,7 +113,6 @@ def _get_len(s: Optional[bytes]) -> int:
 
 
 class Message:
-
     __slots__ = (
         "topic",
         "partition",
