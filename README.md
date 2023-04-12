@@ -271,7 +271,7 @@ command-line by using brackets. Separate multiple bundles using the comma:
 ```sh
 pip install "faust-streaming[rocksdb]"
 
-pip install "faust-streaming[rocksdb,uvloop,fast,redis, aerospike]"
+pip install "faust-streaming[rocksdb,uvloop,fast,redis,aerospike]"
 ```
 
 The following bundles are available:
