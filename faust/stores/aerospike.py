@@ -77,7 +77,7 @@ class AeroSpikeStore(base.SerializedStore):
             return aerospike_client
         else:
             client_config: Dict[Any, Any] = aerospike_config.get(
-                AeroSpikeStore.CLIENT_OPTIONS_KEY, dict()
+                AeroSpikeStore.CLIENT_OPTIONS_KEY, {}
             )
             client_config[AeroSpikeStore.USERNAME_KEY] = aerospike_config.get(
                 AeroSpikeStore.USERNAME_KEY
