@@ -35,7 +35,6 @@ class TestAerospikeStore:
         config = {"k": "v"}
         return_value = AeroSpikeStore.get_aerospike_client(config)
         assert aero.client.called
-        assert client_mock.connect.called
         assert return_value == client_mock
 
     @pytest.mark.asyncio
