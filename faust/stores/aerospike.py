@@ -80,10 +80,10 @@ class AeroSpikeStore(base.SerializedStore):
                 AeroSpikeStore.CLIENT_OPTIONS_KEY, {}
             )
             client_config[AeroSpikeStore.USERNAME_KEY] = aerospike_config.get(
-                AeroSpikeStore.USERNAME_KEY
+                AeroSpikeStore.USERNAME_KEY, None
             )
             client_config[AeroSpikeStore.PASSWORD_KEY] = aerospike_config.get(
-                AeroSpikeStore.PASSWORD_KEY
+                AeroSpikeStore.PASSWORD_KEY, None
             )
 
             try:
