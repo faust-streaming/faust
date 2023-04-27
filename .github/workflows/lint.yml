@@ -33,3 +33,4 @@ jobs:
           auto_fix: true
           black: true
           black_auto_fix: true
+          git_no_verify: true
