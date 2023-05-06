@@ -1211,7 +1211,10 @@ class Stream(StreamT[T_co], Service):
                         # We want to ack the filtered message
                         # otherwise the lag would increase
                         value = skipped_value
-
+                    except StopAsyncIteration:
+                        raise
+                    except Exception as exc:
+                        value = skipped_value
                 try:
                     if value is not skipped_value:
                         self.events_total += 1
