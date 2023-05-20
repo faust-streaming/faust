@@ -266,11 +266,17 @@ class Conductor(ConductorT, Service):
 
             async def on_message(message: Message) -> None:
                 tp = TP(topic=message.topic, partition=0)
+                if tp not in get_callback_for_tp:
+                    self.logger.warning("client: get_callback_for_tp No callback for %r", tp)
+                    return
                 return await get_callback_for_tp(tp)(message)
 
         else:
 
             async def on_message(message: Message) -> None:
+                if message.tp not in get_callback_for_tp:
+                    self.logger.warning("both: get_callback_for_tp No callback for %r", message.tp)
+                    return
                 return await get_callback_for_tp(message.tp)(message)
 
         return on_message
