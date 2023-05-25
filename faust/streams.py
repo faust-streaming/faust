@@ -1213,7 +1213,7 @@ class Stream(StreamT[T_co], Service):
                         value = skipped_value
                     except StopAsyncIteration:
                         raise
-                    except Exception as exc:
+                    except Exception:
                         value = skipped_value
                         self.log.exception(
                             "Error in processor %r: %r", _shortlabel(processor), exc
