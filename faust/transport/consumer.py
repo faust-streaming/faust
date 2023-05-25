@@ -1125,9 +1125,7 @@ class Consumer(Service, ConsumerT):
             # the return value will be None (the same as 31)
             if self._committed_offset[tp]:
                 if min(acked) - self._committed_offset[tp] > 1:
-                    new_acked = list(range(self._committed_offset[tp] + 1, min(acked)))
-                    self.log.dev(f"insert new ack {new_acked=}")
-                    acked = new_acked + acked
+                    return None
 
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
