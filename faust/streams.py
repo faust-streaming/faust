@@ -1213,7 +1213,7 @@ class Stream(StreamT[T_co], Service):
                         value = skipped_value
                     except StopAsyncIteration:
                         raise
-                    except Exception as exc:
+                    except Exception:
                         value = skipped_value
                 try:
                     if value is not skipped_value:
