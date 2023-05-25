@@ -1202,6 +1202,7 @@ class Stream(StreamT[T_co], Service):
                         sensor_state = None
 
                     # reduce using processors
+                    processor = None
                     try:
                         for processor in processors:
                             with trace(f"processor-{_shortlabel(processor)}"):
@@ -1216,7 +1217,7 @@ class Stream(StreamT[T_co], Service):
                     except Exception as exc:
                         value = skipped_value
                         self.log.exception(
-                            "Error in processor %r: %r", _shortlabel(processor), exc
+                            f"Error in processor {_shortlabel(processor)}: {exc}"
                         )
 
                 try:
