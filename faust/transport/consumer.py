@@ -749,10 +749,17 @@ class Consumer(Service, ConsumerT):
                     or tp in active_partitions
                     or tp in self._buffered_partitions
                 ):
-                    highwater_mark = self.highwater(tp)
-                    self.app.monitor.track_tp_end_offset(tp, highwater_mark)
-                    # convert timestamp to seconds from int milliseconds.
-                    yield tp, to_message(tp, record)
+                    try:
+                        highwater_mark = self.highwater(tp)
+                        self.app.monitor.track_tp_end_offset(tp, highwater_mark)
+                        # convert timestamp to seconds from int milliseconds.
+                        yield tp, to_message(tp, record)
+                    except StopAsyncIteration:
+                        raise
+                    except Exception as exc:
+                        self.log.exception(
+                            "Error while processing message", exc_info=exc
+                        )
         else:
             self.log.dev(
                 "getmany called while flow not active. Seek back to committed offsets."
