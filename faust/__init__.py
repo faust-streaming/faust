@@ -51,7 +51,7 @@ version_info_t = VersionInfo  # XXX compat
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
-_match = re.match(r"(\d+)\.(\d+).(\d+)(.+)?", __version__)
+_match = re.match(r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$", __version__)
 if _match is None:  # pragma: no cover
     raise RuntimeError("THIS IS A BROKEN RELEASE!")
 _temp = _match.groups()
