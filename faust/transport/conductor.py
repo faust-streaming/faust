@@ -266,12 +266,26 @@ class Conductor(ConductorT, Service):
 
             async def on_message(message: Message) -> None:
                 tp = TP(topic=message.topic, partition=0)
-                return await get_callback_for_tp(tp)(message)
+                try:
+                    return await get_callback_for_tp(tp)(message)
+                except KeyError:
+                    self.logger.warning(
+                        "client: get_callback_for_tp No callback for %r", tp
+                    )
+                except Exception as exc:
+                    self.logger.exception(f"client: get_callback_for_tp {exc}")
 
         else:
 
             async def on_message(message: Message) -> None:
-                return await get_callback_for_tp(message.tp)(message)
+                try:
+                    return await get_callback_for_tp(message.tp)(message)
+                except KeyError:
+                    self.logger.warning(
+                        "both: get_callback_for_tp No callback for %r", message.tp
+                    )
+                except Exception as exc:
+                    self.logger.exception(f"client: get_callback_for_tp {exc}")
 
         return on_message
 
