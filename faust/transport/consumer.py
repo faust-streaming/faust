@@ -1119,7 +1119,7 @@ class Consumer(Service, ConsumerT):
             if self._committed_offset[tp]:
                 if min(acked) - self._committed_offset[tp] > 1:
                     new_acked = list(range(self._committed_offset[tp] + 1, min(acked)))
-                    self.log.dev(f'insert {new_acked=}')
+                    self.log.dev(f"insert {new_acked=}")
                     # return None
                     acked = new_acked + acked
 

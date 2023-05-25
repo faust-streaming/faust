@@ -269,7 +269,9 @@ class Conductor(ConductorT, Service):
                 try:
                     return await get_callback_for_tp(tp)(message)
                 except KeyError:
-                    self.logger.warning("client: get_callback_for_tp No callback for %r", tp)
+                    self.logger.warning(
+                        "client: get_callback_for_tp No callback for %r", tp
+                    )
                 except Exception as exc:
                     self.logger.exception(f"client: get_callback_for_tp {exc}")
 
@@ -279,7 +281,9 @@ class Conductor(ConductorT, Service):
                 try:
                     return await get_callback_for_tp(message.tp)(message)
                 except KeyError:
-                    self.logger.warning("both: get_callback_for_tp No callback for %r", message.tp)
+                    self.logger.warning(
+                        "both: get_callback_for_tp No callback for %r", message.tp
+                    )
                 except Exception as exc:
                     self.logger.exception(f"client: get_callback_for_tp {exc}")
 
