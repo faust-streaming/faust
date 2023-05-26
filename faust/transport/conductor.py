@@ -338,8 +338,10 @@ class Conductor(ConductorT, Service):
                     self._acking_topics.add(topic)
                 self._topic_name_index[topic].add(channel)
 
-        self._init_tp_index()
-        self._update_callback_map()
+        if self.app.client_only:
+            self._init_tp_index()
+            self._update_callback_map()
+
         return self._topic_name_index
 
     async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
