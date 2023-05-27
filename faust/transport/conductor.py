@@ -338,10 +338,6 @@ class Conductor(ConductorT, Service):
                     self._acking_topics.add(topic)
                 self._topic_name_index[topic].add(channel)
 
-        if self.app.client_only:
-            self._init_tp_index()
-            self._update_callback_map()
-
         return self._topic_name_index
 
     async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
@@ -352,6 +348,7 @@ class Conductor(ConductorT, Service):
         T(self._update_callback_map)()
 
     async def on_client_only_start(self) -> None:
+        self.log.info("Starting client only mode with %s topics...", self._topics)
         self._init_tp_index()
         self._update_callback_map()
 
@@ -420,7 +417,7 @@ class Conductor(ConductorT, Service):
 
     def _topic_contain_unsubscribed_topics(self, topic: TopicT) -> bool:
         index = self._topic_name_index
-        return bool(index and any(t not in index for t in topic.topics))
+        return bool(any(t not in index for t in topic.topics))
 
     def discard(self, topic: Any) -> None:
         """Unregister topic from conductor."""
