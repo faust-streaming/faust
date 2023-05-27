@@ -348,7 +348,6 @@ class Conductor(ConductorT, Service):
         T(self._update_callback_map)()
 
     async def on_client_only_start(self) -> None:
-        self.log.info("Starting client only mode with %s topics...", self._topics)
         self._init_tp_index()
         self._update_callback_map()
 
