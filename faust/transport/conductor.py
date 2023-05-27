@@ -348,15 +348,12 @@ class Conductor(ConductorT, Service):
         T(self._update_callback_map)()
 
     async def on_client_only_start(self) -> None:
-        self._init_tp_index()
-        self._update_callback_map()
-
-    def _init_tp_index(self) -> None:
         tp_index = self._tp_index
         for topic in self._topics:
             for subtopic in topic.topics:
                 tp = TP(topic=subtopic, partition=0)
                 tp_index[tp].add(topic)
+        self._update_callback_map()
 
     def _update_tp_index(self, assigned: Set[TP]) -> None:
         assignmap = tp_set_to_map(assigned)
