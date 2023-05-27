@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
