@@ -136,6 +136,7 @@ class Topic(SerializedChannel, TopicT):
         )
         self.topics = topics or []
         self.pattern = cast(Pattern, pattern)
+        self.topics.pattern = self.pattern
         self.partitions = partitions
         self.retention = retention
         self.compacting = compacting
@@ -276,6 +277,7 @@ class Topic(SerializedChannel, TopicT):
         if pattern and self.topics:
             raise TypeError("Cannot specify both topics and pattern")
         self._pattern = re.compile(pattern) if pattern else None
+        self.topics.pattern = self._pattern
 
     @property
     def partitions(self) -> Optional[int]:

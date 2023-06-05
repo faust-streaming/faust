@@ -11,6 +11,7 @@ from typing import (
     MutableMapping,
     MutableSet,
     Optional,
+    Pattern,
     Set,
     Tuple,
     cast,
@@ -202,6 +203,8 @@ class Conductor(ConductorT, Service):
     #: Fast index to see if Topic is registered.
     _topics: MutableSet[TopicT]
 
+    _pattern: Optional[Pattern]
+
     #: Map of (topic,partition) to set of channels that subscribe to that TP.
     _tp_index: MutableMapping[TP, MutableSet[TopicT]]
 
@@ -232,6 +235,7 @@ class Conductor(ConductorT, Service):
         Service.__init__(self, **kwargs)
         self.app = app
         self._topics = set()
+        self._pattern = None
         self._topic_name_index = defaultdict(set)
         self._tp_index = defaultdict(set)
         self._tp_to_callback = {}
@@ -289,8 +293,11 @@ class Conductor(ConductorT, Service):
             self.log.info("Waiting for tables to be registered...")
             await self.app.tables.wait_until_tables_registered()
         if not self.should_stop:
-            # tell the consumer to subscribe to the topics.
-            await self.app.consumer.subscribe(await self._update_indices())
+            if self._pattern:
+                await self.app.consumer.subscribe(pattern=self._pattern)
+            else:
+                # tell the consumer to subscribe to the topics.
+                await self.app.consumer.subscribe(await self._update_indices())
             notify(self._subscription_done)
 
             # Now we wait for changes
@@ -309,8 +316,11 @@ class Conductor(ConductorT, Service):
                 # further subscription requests will happen during the same
                 # rebalance.
                 await self.sleep(self._resubscribe_sleep_lock_seconds)
-                subscribed_topics = await self._update_indices()
-                await self.app.consumer.subscribe(subscribed_topics)
+                if self._pattern:
+                    await self.app.consumer.subscribe(pattern=self._pattern)
+                else:
+                    subscribed_topics = await self._update_indices()
+                    await self.app.consumer.subscribe(subscribed_topics)
 
             # clear the subscription_changed flag, so we can wait on it again.
             ev.clear()

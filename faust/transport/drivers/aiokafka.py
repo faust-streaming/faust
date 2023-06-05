@@ -45,6 +45,7 @@ from kafka.errors import (
 from kafka.partitioner import murmur2
 from kafka.partitioner.default import DefaultPartitioner
 from kafka.protocol.metadata import MetadataRequest_v1
+from kafka.admin import KafkaAdminClient
 from mode import Service, get_logger
 from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text
