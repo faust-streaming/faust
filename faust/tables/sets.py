@@ -245,7 +245,7 @@ class SetTableManager(Service, Generic[KT, VT]):
             except ValueError:
                 self.log.exception("Unknown set operation: %r", set_operation.action)
             else:
-                members = [_maybe_model(m) for m in set_operation.members]
+                members = {_maybe_model(m) for m in set_operation.members}
                 handler = actions[action]
                 handler(set_key, members)
 
