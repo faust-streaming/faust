@@ -453,11 +453,19 @@ class Store(base.SerializedStore):
 
     def _set(self, key: bytes, value: Optional[bytes]) -> None:
         event = current_event()
-        assert event is not None
-        partition = event.message.partition
-        db = self._db_for_partition(partition)
-        self._key_index[key] = partition
-        db.put(key, value)
+        if event is not None:
+            partition = event.message.partition
+            db = self._db_for_partition(partition)
+            self._key_index[key] = partition
+            db.put(key, value)
+        else:
+            dbvalue = self._get_bucket_for_key(key)
+            if dbvalue is None:
+                db = self._db_for_partition(0)
+                db.put(key, value)
+            else:
+                db, _ = dbvalue
+                db.put(key, value)
 
     def _db_for_partition(self, partition: int) -> DB:
         try:
