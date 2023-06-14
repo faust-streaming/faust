@@ -4,6 +4,7 @@ This is also used to store data structures such as sets/lists.
 
 """
 import abc
+import typing
 from typing import (
     Any,
     Callable,
@@ -16,6 +17,7 @@ from typing import (
     Type,
 )
 
+from contextvars import ContextVar
 from mode import Service
 
 from faust.stores.base import Store
@@ -25,6 +27,23 @@ from faust.types.stores import StoreT
 from faust.types.tables import CollectionT
 
 from .table import Table
+
+if typing.TYPE_CHECKING:  # pragma: no cover
+    _current_partition: ContextVar[Optional[int]]
+
+_current_partition = ContextVar("current_partition")
+
+
+def current_partition() -> Optional[int]:
+    """Return the partition currently being processed, or None."""
+    event = current_event()
+    if event is not None:
+        return event.message.partition
+    return _current_partition.get(None)
+
+def set_current_partition(partition: int) -> None:
+    """Set the current partition being processed."""
+    _current_partition.set(partition)
 
 
 class ChangeloggedObject:
@@ -77,7 +96,7 @@ class ChangeloggedObjectManager(Store):
     def send_changelog_event(self, key: Any, operation: int, value: Any) -> None:
         """Send changelog event to the tables changelog topic."""
         event = current_event()
-        self._dirty.add(key)
+        self._dirty.add((key, event.message.partition))
         self.table._send_changelog(event, (operation, key), value)
 
     def __getitem__(self, key: Any) -> ChangeloggedObject:
@@ -135,7 +154,8 @@ class ChangeloggedObjectManager(Store):
 
     def flush_to_storage(self) -> None:
         """Flush set contents to storage."""
-        for key in self._dirty:
+        for key, partition in self._dirty:
+            set_current_partition(partition)
             self.storage[key] = self.data[key].as_stored_value()
         self._dirty.clear()
 
