@@ -248,12 +248,12 @@ class Test_SetTableManager:
     def test__update(self, *, man):
         man.set_table = {"a": Mock(name="a"), "b": Mock(name="b")}
         man._update("a", ["v1"])
-        man.set_table["a"].update.assert_called_once_with(["v1"])
+        man.set_table["a"].update.assert_called_once_with({"v1"})
 
     def test__difference_update(self, *, man):
         man.set_table = {"a": Mock(name="a"), "b": Mock(name="b")}
         man._difference_update("a", ["v1"])
-        man.set_table["a"].difference_update.assert_called_once_with(["v1"])
+        man.set_table["a"].difference_update.assert_called_once_with({"v1"})
 
     def test__clear(self, *, man):
         man.set_table = {"a": Mock(name="a"), "b": Mock(name="b")}
@@ -264,14 +264,14 @@ class Test_SetTableManager:
         man.set_table = {"a": Mock(name="a"), "b": Mock(name="b")}
         man._intersection_update("a", ["v1", "v2", "v3"])
         man.set_table["a"].intersection_update.assert_called_once_with(
-            ["v1", "v2", "v3"],
+            {"v1", "v2", "v3"},
         )
 
     def test__symmetric_difference_update(self, *, man):
         man.set_table = {"a": Mock(name="a"), "b": Mock(name="b")}
         man._symmetric_difference_update("a", ["v1", "v2", "v3"])
         man.set_table["a"].symmetric_difference_update.assert_called_once_with(
-            ["v1", "v2", "v3"],
+            {"v1", "v2", "v3"},
         )
 
     @pytest.mark.asyncio
@@ -396,29 +396,29 @@ class Test_SetTableManager:
 
         await man._modify_set(stream)
 
-        man.set_table["k1"].update.assert_called_with(["v"])
-        man.set_table["k2"].difference_update.assert_called_with(["v2"])
-        man.set_table["k3"].difference_update.assert_called_with([X(10, 30)])
+        man.set_table["k1"].update.assert_called_with({"v"})
+        man.set_table["k2"].difference_update.assert_called_with({"v2"})
+        man.set_table["k3"].difference_update.assert_called_with({X(10, 30)})
         man.set_table["k5"].update.assert_called_with(
-            [
+            {
                 X(10, 30),
                 X(20, 40),
                 "v3",
-            ]
+            }
         )
         man.set_table["k6"].intersection_update.assert_called_with(
-            [
+            {
                 X(10, 30),
                 X(20, 40),
                 "v3",
-            ]
+            }
         )
         man.set_table["k7"].symmetric_difference_update.assert_called_with(
-            [
+            {
                 X(10, 30),
                 X(20, 40),
                 "v3",
-            ]
+            }
         )
         man.set_table["k8"].clear.assert_called_once_with()
 
