@@ -84,7 +84,7 @@ class ChangeloggedSet(ChangeloggedObject, ManagedUserSet[VT]):
         self.manager.send_changelog_event(self.key, OPERATION_UPDATE, [added, removed])
 
     def sync_from_storage(self, value: Any) -> None:
-        self.data = cast(Set, value)
+        self.data = set(value)
 
     def as_stored_value(self) -> Any:
         return self.data
@@ -204,19 +204,19 @@ class SetTableManager(Service, Generic[KT, VT]):
         await self._send_operation(SetAction.SYMDIFF, key, members)
 
     def _update(self, key: KT, members: List[VT]) -> None:
-        self.set_table[key].update(members)
+        self.set_table[key].update(set(members))
 
     def _difference_update(self, key: KT, members: List[VT]) -> None:
-        self.set_table[key].difference_update(members)
+        self.set_table[key].difference_update(set(members))
 
     def _clear(self, key: KT, members: List[VT]) -> None:
         self.set_table[key].clear()
 
     def _intersection_update(self, key: KT, members: List[VT]) -> None:
-        self.set_table[key].intersection_update(members)
+        self.set_table[key].intersection_update(set(members))
 
     def _symmetric_difference_update(self, key: KT, members: List[VT]) -> None:
-        self.set_table[key].symmetric_difference_update(members)
+        self.set_table[key].symmetric_difference_update(set(members))
 
     async def _send_operation(
         self, action: SetAction, key: KT, members: Iterable[VT]
@@ -245,7 +245,7 @@ class SetTableManager(Service, Generic[KT, VT]):
             except ValueError:
                 self.log.exception("Unknown set operation: %r", set_operation.action)
             else:
-                members = {_maybe_model(m) for m in set_operation.members}
+                members = [_maybe_model(m) for m in set_operation.members]
                 handler = actions[action]
                 handler(set_key, members)
 
