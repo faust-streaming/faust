@@ -413,7 +413,7 @@ class Conductor(ConductorT, Service):
 
     def _topic_contain_unsubscribed_topics(self, topic: TopicT) -> bool:
         index = self._topic_name_index
-        return bool(index and any(t not in index for t in topic.topics))
+        return bool(any(t not in index for t in topic.topics))
 
     def discard(self, topic: Any) -> None:
         """Unregister topic from conductor."""
