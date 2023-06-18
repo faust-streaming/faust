@@ -46,7 +46,7 @@ LDFLAGS = []
 LIBRARIES = []
 E_UNSUPPORTED_PYTHON = NAME + " 1.0 requires Python %%s or later!"
 
-if sys.version_info < (3, 7):
+if sys.version_info < (3, 8):
     raise Exception(E_UNSUPPORTED_PYTHON % ("3.8",))  # NOQA
 
 from pathlib import Path  # noqa
