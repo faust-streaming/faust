@@ -6,6 +6,10 @@ on:
   release:
     types: [created]
     branches: [master]
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
 jobs:
   build_wheels:
     name: Build wheels on ${{ matrix.os }}
@@ -20,7 +24,7 @@ jobs:
         env:
           CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
           CIBW_ARCHS: auto64
-          CIBW_BUILD: cp3*
+          CIBW_BUILD: 'cp3* pp39*'
           CIBW_PROJECT_REQUIRES_PYTHON: '>=3.8'
           CIBW_BEFORE_BUILD: pip3 install Cython
       - uses: actions/upload-artifact@v3
