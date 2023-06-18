@@ -12,7 +12,7 @@ jobs:
     name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}'
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.experimental }}
-    timeout-minutes: 30  # Maybe we should remove this someday but the PyPy tests are acting strange
+    timeout-minutes: 10  # Maybe we should remove this someday but the PyPy tests are acting strange
     strategy:
       # Complete all jobs even if one fails, allows us to see
       # for example if a test fails only when Cython is enabled
