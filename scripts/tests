@@ -12,7 +12,7 @@ if [ -z $GITHUB_ACTIONS ]; then
 fi
 
 #${PREFIX}pytest tests/unit tests/functional tests/integration tests/meticulous/ tests/regression $@
-${PREFIX}pytest tests/unit tests/functional tests/meticulous/ tests/regression $@
+${PREFIX}pytest tests/unit tests/functional tests/integration tests/regression $@
 ${PREFIX}bandit -b extra/bandit/baseline.json -c extra/bandit/config.yaml -r faust
 
 #if [ -z $GITHUB_ACTIONS ]; then
