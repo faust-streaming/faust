@@ -30,7 +30,7 @@ def table(
     title: str,
     target: IO = None,
     tty: Optional[bool] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Table:
     """Create suitable :pypi:`terminaltables` table for target.
 
@@ -59,7 +59,7 @@ def logtable(
     target: IO = None,
     tty: Optional[bool] = None,
     headers: Optional[Sequence[str]] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> str:
     """Prepare table for logging.
 
@@ -87,7 +87,7 @@ def dict_as_ansitable(
     sort: bool = False,
     sortkey: Callable[[Any], Any] = DEFAULT_SORT_KEY,
     target: IO = sys.stdout,
-    title: Optional[str] = None
+    title: Optional[str] = None,
 ) -> str:
     header = [text.title(key), text.title(value)]
     data = cast(Iterable[List[str]], d.items())

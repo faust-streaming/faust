@@ -241,7 +241,7 @@ def do_setup(**kwargs):
             "Topic :: System :: Networking",
             "Topic :: System :: Distributed Computing",
         ],
-        **kwargs
+        **kwargs,
     )
 
 
