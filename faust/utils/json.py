@@ -175,7 +175,7 @@ if orjson is not None:  # pragma: no cover
         return json_dumps(
             obj,
             default=on_default,
-            option=orjson.OPT_NON_STR_KEYS,
+            option=orjson.OPT_NON_STR_KEYS | orjson.OPT_UTC_Z,
         )
 
     def loads(s: str, json_loads: Callable = orjson.loads, **kwargs: Any) -> Any:

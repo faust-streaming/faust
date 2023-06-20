@@ -175,6 +175,7 @@ class ReplyConsumer(Service):
             # declare the topic
             topic = self._reply_topic(topic_name)
             await topic.maybe_declare()
+            self.app.topics.add(topic)
             await self.sleep(3.0)
             # then create the future
             self._fetchers[topic_name] = self.add_future(self._drain_replies(topic))

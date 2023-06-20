@@ -18,7 +18,6 @@ pytest-random-order>=0.5.4
 pytest>=5.4.0
 python-dateutil>=2.8
 pytz>=2018.7
-codecov
 bandit
 twine
 wheel
