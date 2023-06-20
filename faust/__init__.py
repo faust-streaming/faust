@@ -42,8 +42,8 @@ class VersionInfo(NamedTuple):
     major: int
     minor: int
     micro: int
-    releaselevel: str
-    serial: str
+    releaselevel: Optional[str] = None
+    serial: Optional[str] = None
 
 
 version_info_t = VersionInfo  # XXX compat
@@ -51,13 +51,11 @@ version_info_t = VersionInfo  # XXX compat
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
-_match = re.match(r"(\d+)\.(\d+).(\d+)(.+)?", __version__)
+_match = re.match(r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$", __version__)
 if _match is None:  # pragma: no cover
     raise RuntimeError("THIS IS A BROKEN RELEASE!")
 _temp = _match.groups()
-VERSION = version_info = VersionInfo(
-    int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or "", ""
-)
+VERSION = version_info = VersionInfo(*_temp)
 del _match
 del _temp
 del re

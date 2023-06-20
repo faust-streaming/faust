@@ -271,7 +271,7 @@ command-line by using brackets. Separate multiple bundles using the comma:
 ```sh
 pip install "faust-streaming[rocksdb]"
 
-pip install "faust-streaming[rocksdb,uvloop,fast,redis, aerospike]"
+pip install "faust-streaming[rocksdb,uvloop,fast,redis,aerospike]"
 ```
 
 The following bundles are available:
@@ -416,7 +416,7 @@ Yes! Use the `asyncio` reactor implementation: https://twistedmatrix.com/documen
 
 ### Will you support Python 2.7 or Python 3.5
 
-No. Faust requires Python 3.7 or later, since it heavily uses features that were
+No. Faust requires Python 3.8 or later, since it heavily uses features that were
 introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 ### I get a maximum number of open files exceeded error by RocksDB when running a Faust app locally. How can I fix this

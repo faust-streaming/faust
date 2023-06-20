@@ -55,7 +55,7 @@ https://twistedmatrix.com/documents/17.1.0/api/twisted.internet.asyncioreactor.h
 Will you support Python 2.7 or Python 3.5?
 ------------------------------------------
 
-No. Faust requires Python 3.7 or later, since it heavily uses features that were
+No. Faust requires Python 3.8 or later, since it heavily uses features that were
 introduced in Python 3.6 (`async`, `await`, variable type annotations).
 
 
