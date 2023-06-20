@@ -166,7 +166,9 @@ def compat_option(
     **kwargs: Any,
 ) -> Callable[[Any], click.Parameter]:
     def _callback(
-        ctx: click.Context, param: click.Parameter, value: Any  # pragma: no cover
+        ctx: click.Context,
+        param: click.Parameter,
+        value: Any,  # pragma: no cover
     ) -> Any:
         state = ctx.ensure_object(State)
         prev_value = getattr(state, state_key, None)
@@ -213,7 +215,9 @@ now_builtin_worker_options: OptionSequence = [
 core_options: OptionSequence = [
     click.version_option(version=f"Faust {faust_version}"),
     option(
-        "--app", "-A", help="Path of Faust application to use, or the name of a module."
+        "--app",
+        "-A",
+        help="Path of Faust application to use, or the name of a module.",
     ),
     option(
         "--quiet/--no-quiet",
@@ -645,7 +649,9 @@ class Command(abc.ABC):  # noqa: B024
         )
 
     def worker_for_service(
-        self, service: ServiceT, loop: Optional[asyncio.AbstractEventLoop] = None
+        self,
+        service: ServiceT,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> Worker:
         """Create :class:`faust.Worker` instance for this command."""
         return self._Worker(

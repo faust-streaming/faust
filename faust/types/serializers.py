@@ -33,7 +33,9 @@ class RegistryT(abc.ABC):
 
     @abc.abstractmethod
     def __init__(
-        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+        self,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = "json",
     ) -> None:
         ...
 

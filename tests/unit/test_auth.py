@@ -29,14 +29,18 @@ class Test_SASLCredentials:
             pytest.param(
                 "mechanism from enum",
                 SASLCredentials(
-                    username="george", password="pw1", mechanism=SASLMechanism.GSSAPI
+                    username="george",
+                    password="pw1",
+                    mechanism=SASLMechanism.GSSAPI,
                 ),
                 {"mechanism": SASLMechanism.GSSAPI},
             ),
             pytest.param(
                 "ssl context gives SASL_SSL",
                 SASLCredentials(
-                    username="george", password="pw1", ssl_context={"xxx": "yyy"}
+                    username="george",
+                    password="pw1",
+                    ssl_context={"xxx": "yyy"},
                 ),
                 {
                     "username": "george",
@@ -69,7 +73,8 @@ class Test_GSSAPICredentials:
             pytest.param(
                 "retains arguments",
                 GSSAPICredentials(
-                    kerberos_service_name="george", kerberos_domain_name="domain"
+                    kerberos_service_name="george",
+                    kerberos_domain_name="domain",
                 ),
                 {
                     "kerberos_service_name": "george",

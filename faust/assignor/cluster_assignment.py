@@ -11,7 +11,10 @@ CopartMapping = MutableMapping[str, CopartitionedAssignment]
 
 
 class ClusterAssignment(
-    Record, serializer="json", include_metadata=False, namespace="@ClusterAssignment"
+    Record,
+    serializer="json",
+    include_metadata=False,
+    namespace="@ClusterAssignment",
 ):
     """Cluster assignment state."""
 

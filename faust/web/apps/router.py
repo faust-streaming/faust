@@ -2,7 +2,13 @@
 from faust import web
 from faust.web.exceptions import ServiceUnavailable
 
-__all__ = ["TableList", "TopicList", "TableDetail", "TableKeyDetail", "blueprint"]
+__all__ = [
+    "TableList",
+    "TopicList",
+    "TableDetail",
+    "TableKeyDetail",
+    "blueprint",
+]
 
 blueprint = web.Blueprint("router")
 

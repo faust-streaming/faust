@@ -26,7 +26,9 @@ class Registry(RegistryT):
     """
 
     def __init__(
-        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+        self,
+        key_serializer: CodecArg = None,
+        value_serializer: CodecArg = "json",
     ) -> None:
         self.key_serializer = key_serializer
         self.value_serializer = value_serializer

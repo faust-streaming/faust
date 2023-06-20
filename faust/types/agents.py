@@ -331,7 +331,10 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
 
     @abc.abstractmethod
     def __init__(
-        self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
+        self,
+        *args: Any,
+        original_channel: Optional[ChannelT] = None,
+        **kwargs: Any,
     ) -> None:
         ...
 

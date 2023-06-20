@@ -150,7 +150,9 @@ class TestPrometheusMonitor:
         monitor.on_stream_event_out(TP1, 401, stream, event, state=None)
 
         self.assert_doesnt_have_sample_values(
-            metrics.events_runtime_latency, "test_events_runtime_latency_total", {}
+            metrics.events_runtime_latency,
+            "test_events_runtime_latency_total",
+            {},
         )
 
     def test_on_table_get(
@@ -310,7 +312,10 @@ class TestPrometheusMonitor:
         monitor.on_rebalance_return(app, state)
 
         self.assert_has_sample_value(
-            metrics.total_rebalances, "test_total_rebalances", {}, n_rebalances - 1
+            metrics.total_rebalances,
+            "test_total_rebalances",
+            {},
+            n_rebalances - 1,
         )
         self.assert_has_sample_value(
             metrics.total_rebalances_recovering,

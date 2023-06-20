@@ -427,7 +427,10 @@ class Case(Service):
                         raise ServiceDown(f"Cannot send fake test request: {exc!r}")
                     retry_in = humanize_seconds(error_delay, microseconds=True)
                     self.log.warning(
-                        "URL %r raised: %r (Will retry in %s)", url, exc, retry_in
+                        "URL %r raised: %r (Will retry in %s)",
+                        url,
+                        exc,
+                        retry_in,
                     )
                     error_delay = min(
                         error_delay * self.url_error_delay_backoff,

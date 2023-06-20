@@ -138,7 +138,11 @@ class Cache(CacheT):
         return self.build_key(request, actual_method, prefix, headers)
 
     def build_key(
-        self, request: Request, method: str, prefix: str, headers: Mapping[str, str]
+        self,
+        request: Request,
+        method: str,
+        prefix: str,
+        headers: Mapping[str, str],
     ) -> str:
         """Build cache key from web request and environment."""
         context = hashlib.md5(  # nosec

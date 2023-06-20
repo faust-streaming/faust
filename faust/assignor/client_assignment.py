@@ -81,7 +81,10 @@ class CopartitionedAssignment:
 
 
 class ClientAssignment(
-    Record, serializer="json", include_metadata=False, namespace="@ClientAssignment"
+    Record,
+    serializer="json",
+    include_metadata=False,
+    namespace="@ClientAssignment",
 ):
     """Client Assignment data model."""
 
@@ -142,7 +145,10 @@ class ClientAssignment(
 
 
 class ClientMetadata(
-    Record, serializer="json", include_metadata=False, namespace="@ClientMetadata"
+    Record,
+    serializer="json",
+    include_metadata=False,
+    namespace="@ClientMetadata",
 ):
     """Client Metadata data model."""
 

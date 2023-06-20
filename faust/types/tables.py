@@ -227,7 +227,10 @@ class CollectionT(ServiceT, JoinableT):
 
     @abc.abstractmethod
     def tumbling(
-        self, size: Seconds, expires: Optional[Seconds] = None, key_index: bool = False
+        self,
+        size: Seconds,
+        expires: Optional[Seconds] = None,
+        key_index: bool = False,
     ) -> "WindowWrapperT":
         ...
 
@@ -335,7 +338,10 @@ class WindowSetT(FastUserDict[KT, VT]):
 
     @abc.abstractmethod
     def apply(
-        self, op: Callable[[VT, VT], VT], value: VT, event: Optional[EventT] = None
+        self,
+        op: Callable[[VT, VT], VT],
+        value: VT,
+        event: Optional[EventT] = None,
     ) -> "WindowSetT":
         ...
 

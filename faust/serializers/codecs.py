@@ -245,7 +245,8 @@ class Codec(CodecT):
     def __repr__(self) -> str:
         return " | ".join(
             "{0}({1})".format(
-                type(n).__name__, ", ".join(map(repr, cast(Codec, n).kwargs.values()))
+                type(n).__name__,
+                ", ".join(map(repr, cast(Codec, n).kwargs.values())),
             )
             for n in self.nodes
         )

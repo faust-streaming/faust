@@ -482,7 +482,12 @@ class Monitor(Sensor, KeywordReduce):
         }
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Dict = None,
     ) -> None:
         """Call when stream is done processing an event."""
         if state is not None:

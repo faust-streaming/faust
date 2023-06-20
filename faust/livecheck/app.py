@@ -55,7 +55,12 @@ class LiveCheckSensor(Sensor):
         return None
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Dict = None,
     ) -> None:
         """Call when stream is finished handling event."""
         has_active_test = getattr(stream, "current_test", None)

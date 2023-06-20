@@ -293,7 +293,11 @@ class Collection(Service, CollectionT):
         if event is None:
             raise RuntimeError("Cannot modify table outside of agent/stream.")
         self.send_changelog(
-            event.message.partition, key, value, key_serializer, value_serializer
+            event.message.partition,
+            key,
+            value,
+            key_serializer,
+            value_serializer,
         )
 
     def partition_for_key(self, key: Any) -> Optional[int]:
@@ -505,7 +509,11 @@ class Collection(Service, CollectionT):
         return self.combine(self, other)
 
     def _apply_window_op(
-        self, op: Callable[[Any, Any], Any], key: Any, value: Any, timestamp: float
+        self,
+        op: Callable[[Any, Any], Any],
+        key: Any,
+        value: Any,
+        timestamp: float,
     ) -> None:
         get_ = self._get_key
         set_ = self._set_key

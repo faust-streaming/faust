@@ -657,7 +657,10 @@ class AIOKafkaConsumerThread(ConsumerThread):
             span._real_finish()
 
     def traced_from_parent_span(
-        self, parent_span: opentracing.Span, lazy: bool = False, **extra_context: Any
+        self,
+        parent_span: opentracing.Span,
+        lazy: bool = False,
+        **extra_context: Any,
     ) -> Callable:
         return traced_from_parent_span(
             parent_span,
@@ -722,13 +725,17 @@ class AIOKafkaConsumerThread(ConsumerThread):
             return False
         except IllegalStateError as exc:
             self.log.exception(
-                "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
+                "Got exception: %r\nCurrent assignment: %r",
+                exc,
+                self.assignment(),
             )
             await self.crash(exc)
             return False
         except Exception as exc:
             self.log.exception(
-                "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
+                "Got exception: %r\nCurrent assignment: %r",
+                exc,
+                self.assignment(),
             )
             await self.crash(exc)
             return False
@@ -882,7 +889,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def _make_slow_processing_error(
-        self, msg: str, causes: Iterable[str], setting: str, current_value: float
+        self,
+        msg: str,
+        causes: Iterable[str],
+        setting: str,
+        current_value: float,
     ) -> str:
         return " ".join(
             [
@@ -1488,7 +1499,10 @@ class Transport(base.Transport):
             raise
 
     async def _get_controller_node(
-        self, owner: Service, client: aiokafka.AIOKafkaClient, timeout: int = 30000
+        self,
+        owner: Service,
+        client: aiokafka.AIOKafkaClient,
+        timeout: int = 30000,
     ) -> Optional[int]:  # pragma: no cover
         nodes = [broker.nodeId for broker in client.cluster.brokers()]
         for node_id in nodes:

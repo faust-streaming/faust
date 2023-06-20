@@ -538,7 +538,10 @@ class Agent(AgentT, Service):
         # an AsyncIterable that you can reuse (but only if the agent
         # function is an `async def` function that yields)
         return self.actor_from_stream(
-            stream, index=index, active_partitions=active_partitions, channel=channel
+            stream,
+            index=index,
+            active_partitions=active_partitions,
+            channel=channel,
         )
 
     def actor_from_stream(
@@ -1018,7 +1021,10 @@ class Agent(AgentT, Service):
         async for key, value in aiter(items):  # type: ignore
             correlation_id = str(uuid4())
             p = await self.ask_nowait(
-                key=key, value=value, reply_to=reply_to, correlation_id=correlation_id
+                key=key,
+                value=value,
+                reply_to=reply_to,
+                correlation_id=correlation_id,
             )
             # add reply promise to the barrier
             barrier.add(p)
@@ -1093,7 +1099,10 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
     _stream: StreamT
 
     def __init__(
-        self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
+        self,
+        *args: Any,
+        original_channel: Optional[ChannelT] = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)
         self.results = {}

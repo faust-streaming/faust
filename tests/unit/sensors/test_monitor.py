@@ -266,7 +266,11 @@ class TestMonitor:
     def test_on_send_initiated(self, *, mon, time):
         for i in range(1, 11):
             state = mon.on_send_initiated(
-                Mock(name="producer", autospec=Producer), "topic", "message", 2, 4
+                Mock(name="producer", autospec=Producer),
+                "topic",
+                "message",
+                2,
+                4,
             )
             assert mon.messages_sent == i
             assert mon.messages_sent_by_topic["topic"] == i

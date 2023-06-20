@@ -198,7 +198,10 @@ class WindowSet(WindowSetT[KT, VT]):
         self.data = table  # provides underlying mapping in FastUserDict
 
     def apply(
-        self, op: Callable[[VT, VT], VT], value: VT, event: Optional[EventT] = None
+        self,
+        op: Callable[[VT, VT], VT],
+        value: VT,
+        event: Optional[EventT] = None,
     ) -> WindowSetT[KT, VT]:
         """Apply operation to all affected windows."""
         table = cast(_Table, self.table)

@@ -309,7 +309,11 @@ class Record(Model, abstract=True):  # type: ignore
         return (self_cls or cls)(**data, __strict__=False)
 
     def __init__(
-        self, *args: Any, __strict__: bool = True, __faust: Any = None, **kwargs: Any
+        self,
+        *args: Any,
+        __strict__: bool = True,
+        __faust: Any = None,
+        **kwargs: Any,
     ) -> None:  # pragma: no cover
         ...  # overridden by _BUILD_init
 

@@ -36,7 +36,12 @@ class SensorInterfaceT(abc.ABC):
 
     @abc.abstractmethod
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Dict = None,
     ) -> None:
         ...
 

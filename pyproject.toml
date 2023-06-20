@@ -16,9 +16,6 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 # enables setuptools_scm to provide the dynamic version
 
-[tool.black]
-line-length = 88
-
 [tool.flake8]
 ignore = [
     "W503",
@@ -29,7 +26,6 @@ max-line-length = 88
 
 [tool.isort]
 profile = "black"
-line_length = 88
 combine_as_imports = true
 
 [tool.mypy]
