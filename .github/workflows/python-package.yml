@@ -28,8 +28,8 @@ jobs:
           python-version: ${{ env.PYTHON_LATEST }}
           cache: pip
       - run: |
-            python -m pip install build
-            python -m pip install -r requirements/test.txt
+          python -m pip install build
+          python -m pip install -r requirements/test.txt
         name: Install core libraries for build and install
       - name: Run linting checks
         run: scripts/check
@@ -77,7 +77,9 @@ jobs:
           cache: pip
           cache-dependency-path: requirements/test.txt
       - name: Install dependencies
-        run: pip install -r requirements/test.txt
+        run: |
+          pip install -r requirements/test.txt
+          pip install .
       - name: Run tests
         run: scripts/tests
       - name: Enforce coverage
