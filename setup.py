@@ -233,7 +233,6 @@ def do_setup(**kwargs):
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: Implementation :: CPython",
-            "Programming Language :: Python :: Implementation :: PyPy",
             "Operating System :: POSIX",
             "Operating System :: POSIX :: Linux",
             "Operating System :: MacOS :: MacOS X",
