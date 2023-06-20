@@ -1,17 +1,54 @@
 ---
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-name: Python package
+name: Test Python library
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
+env:
+  FORCE_COLOR: '1'  # Make tools pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PIP_NO_PYTHON_VERSION_WARNING: '1'
+  PYTHON_LATEST: '3.11'
+
+  # For re-actors/checkout-python-sdist
+  sdist-artifact: python-package-distributions
 jobs:
-  tests:
-    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}'
+  build-sdist:
+    name: 📦 Build the source distribution
     runs-on: ubuntu-latest
-    timeout-minutes: 20  # Maybe we should remove this someday but the PyPy tests are acting strange
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_LATEST }}
+          cache: pip
+      - run: python -m pip install build
+        name: Install core libraries for build and install
+      - name: Run linting checks
+        run: scripts/check
+      - name: Build artifacts
+        run: python -m build
+      - name: Upload built artifacts for testing
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.sdist-artifact }}
+          # NOTE: Exact expected file names are specified here
+          # NOTE: as a safety measure — if anything weird ends
+          # NOTE: up being in this dir or not all dists will be
+          # NOTE: produced, this will fail the workflow.
+          path: dist/${{ env.sdist-name }}
+          retention-days: 7
+  test-pytest:
+    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}'
+    needs: build-sdist
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 5  # Maybe we should remove this someday but the PyPy tests are acting strange
     strategy:
       # Complete all jobs even if one fails, allows us to see
       # for example if a test fails only when Cython is enabled
@@ -20,29 +57,38 @@ jobs:
         python-version: ['3.8', '3.9', '3.10', '3.11']
         use-cython: ['true', 'false']
         include:
-          - python-version: '~3.12.0-0'
+          - python-version: ~3.12.0-0
             continue-on-error: true
             use-cython: 'false'
-#          - python-version: 'pypy3.9'
-#            continue-on-error: true
-#            use-cython: 'false'
+          - python-version: pypy3.9
+            continue-on-error: true
+            use-cython: 'false'
     env:
       USE_CYTHON: ${{ matrix.use-cython }}
     steps:
       - uses: actions/checkout@v3
         with:
-            # You need to include this or setuptools_scm in GitHub runners won't detect the version
           fetch-depth: 0
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements/test.txt
       - name: Install dependencies
         run: scripts/install
-      - name: Run linting checks
-        run: scripts/check
       - name: Run tests
         run: scripts/tests
       - name: Enforce coverage
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+  check:  # This job does nothing and is only used for the branch protection
+    name: ✅ Ensure the required checks passing
+    if: always()
+    needs: [build-sdist, test-pytest]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
