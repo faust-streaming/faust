@@ -55,7 +55,7 @@ from mode.utils.typing import Deque
 from opentracing.ext import tags
 from yarl import URL
 
-from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
+from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials, OAuthCredentials
 from faust.exceptions import (
     ConsumerNotStarted,
     ImproperlyConfigured,
@@ -1583,6 +1583,13 @@ def credentials_to_aiokafka_auth(
             return {
                 "security_protocol": credentials.protocol.value,
                 "ssl_context": credentials.context,
+            }
+        elif isinstance(credentials, OAuthCredentials):
+            return {
+                "security_protocol": credentials.protocol.value,
+                "sasl_mechanism": credentials.mechanism.value,
+                "sasl_oauth_token_provider": credentials.oauth_cb,
+                "ssl_context": credentials.ssl_context,
             }
         elif isinstance(credentials, SASLCredentials):
             return {

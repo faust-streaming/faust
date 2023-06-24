@@ -1,6 +1,6 @@
 """Authentication Credentials."""
 import ssl
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, Tuple, Callable
 
 from faust.types.auth import AuthProtocol, CredentialsT, SASLMechanism
 
@@ -47,6 +47,31 @@ class SASLCredentials(Credentials):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: username={self.username}>"
+
+
+class OAuthCredentials(Credentials):
+    """Describe OAuth Bearer credentials over SASL"""
+
+    protocol = AuthProtocol.SASL_PLAINTEXT
+    mechanism: SASLMechanism = SASLMechanism.OAUTHBEARER
+
+    ssl_context: Optional[ssl.SSLContext]
+
+    def __init__(
+        self,
+        *,
+        client_id: str,
+        oauth_cb: Callable[[str], Tuple[str, ...]],
+        ssl_context: Optional[ssl.SSLContext] = None,
+    ):
+        self.client_id = client_id
+        self.oauth_cb = oauth_cb
+
+        if ssl_context is not None:
+            self.ssl_context = ssl_context
+
+    def __repr__(self) -> str:
+        return f"<{type(self).__name__}: client.id={self.client_id}"
 
 
 class GSSAPICredentials(Credentials):
