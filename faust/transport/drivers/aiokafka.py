@@ -55,7 +55,12 @@ from mode.utils.typing import Deque
 from opentracing.ext import tags
 from yarl import URL
 
-from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials, OAuthCredentials
+from faust.auth import (
+    GSSAPICredentials,
+    OAuthCredentials,
+    SASLCredentials,
+    SSLCredentials,
+)
 from faust.exceptions import (
     ConsumerNotStarted,
     ImproperlyConfigured,
