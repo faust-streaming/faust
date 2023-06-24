@@ -2,6 +2,8 @@
 import ssl
 from typing import Any, Callable, Optional, Tuple, Union
 
+from aiokafka.conn import AbstractTokenProvider
+
 from faust.types.auth import AuthProtocol, CredentialsT, SASLMechanism
 
 __all__ = [
@@ -50,7 +52,11 @@ class SASLCredentials(Credentials):
 
 
 class OAuthCredentials(Credentials):
-    """Describe OAuth Bearer credentials over SASL"""
+    """Describe OAuth Bearer credentials over SASL
+
+    The `oauth_cb` callback must implement an asynchronous method called
+    `token()`. See the AbstractTokenProvider metaclass for more details.
+    """
 
     protocol = AuthProtocol.SASL_PLAINTEXT
     mechanism: SASLMechanism = SASLMechanism.OAUTHBEARER
@@ -61,7 +67,7 @@ class OAuthCredentials(Credentials):
         self,
         *,
         client_id: str,
-        oauth_cb: Callable[[str], Tuple[str, ...]],
+        oauth_cb: AbstractTokenProvider,
         ssl_context: Optional[ssl.SSLContext] = None,
     ):
         self.client_id = client_id
