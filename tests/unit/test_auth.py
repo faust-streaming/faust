@@ -1,9 +1,16 @@
 import ssl
+import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
 
-from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
+from aiokafka.conn import AbstractTokenProvider
+from faust.auth import (
+    GSSAPICredentials,
+    SASLCredentials,
+    SSLCredentials,
+    OAuthCredentials,
+)
 from faust.types.auth import AuthProtocol, SASLMechanism
 
 
@@ -140,3 +147,30 @@ class Test_SSLCredentials:
         context = Mock(name="context")
         c = SSLCredentials(context)
         assert c.context is context
+
+
+class Test_OAuthCredentials:
+    class TokenProvider(AbstractTokenProvider):
+        async def token(self):
+            return await asyncio.get_running_loop().run_in_executor(None, self._token)
+
+        def _token(self):
+            return "token"
+
+    @pytest.mark.parametrize(
+        "reason,credentials,expected_fields",
+        [
+            pytest.param(
+                "retains arguments",
+                OAuthCredentials(client_id="test", oauth_cb=TokenProvider()),
+                {
+                    "mechanism": SASLMechanism.OAUTHBEARER,
+                    "protocol": AuthProtocol.SASL_PLAINTEXT,
+                },
+            ),
+        ],
+    )
+    def test_constructor(self, credentials, expected_fields, reason):
+        assert repr(credentials)
+        for field, value in expected_fields.items():
+            assert getattr(credentials, field) == value, reason
