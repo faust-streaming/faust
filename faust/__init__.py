@@ -133,7 +133,12 @@ if typing.TYPE_CHECKING:  # pragma: no cover
 
     from .agents import Agent  # noqa: E402
     from .app import App  # noqa: E402
-    from .auth import GSSAPICredentials, SASLCredentials, SSLCredentials  # noqa: E402
+    from .auth import (
+        GSSAPICredentials,
+        SASLCredentials,
+        SSLCredentials,
+        OAuthCredentials,
+    )  # noqa: E402
     from .channels import Channel, ChannelT  # noqa: E402
     from .events import Event, EventT  # noqa: E402
     from .models import Model, ModelOptions, Record  # noqa: E402
@@ -184,6 +189,7 @@ __all__ = [
     "TopicT",
     "GSSAPICredentials",
     "SASLCredentials",
+    "OAuthCredentials",
     "SSLCredentials",
     "Settings",
     "HoppingWindow",
@@ -219,6 +225,7 @@ all_by_module: Mapping[str, Sequence[str]] = {
         "GSSAPICredentials",
         "SASLCredentials",
         "SSLCredentials",
+        "OAuthCredentials",
     ],
     "faust.types.settings": ["Settings"],
     "faust.windows": [

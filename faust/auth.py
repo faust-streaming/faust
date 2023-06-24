@@ -9,6 +9,7 @@ from faust.types.auth import AuthProtocol, CredentialsT, SASLMechanism
 __all__ = [
     "Credentials",
     "SASLCredentials",
+    "OAuthCredentials",
     "GSSAPICredentials",
     "SSLCredentials",
 ]
