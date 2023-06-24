@@ -1,6 +1,6 @@
 """Authentication Credentials."""
 import ssl
-from typing import Any, Callable, Optional, Tuple, Union
+from typing import Any, Optional, Union
 
 from aiokafka.conn import AbstractTokenProvider
 
