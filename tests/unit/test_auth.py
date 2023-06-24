@@ -168,6 +168,18 @@ class Test_OAuthCredentials:
                     "protocol": AuthProtocol.SASL_PLAINTEXT,
                 },
             ),
+            pytest.param(
+                "retains arguments",
+                OAuthCredentials(
+                    client_id="test",
+                    oauth_cb=TokenProvider(),
+                    ssl_context={"xxx": "yyy"},
+                ),
+                {
+                    "mechanism": SASLMechanism.OAUTHBEARER,
+                    "protocol": AuthProtocol.SASL_SSL,
+                },
+            ),
         ],
     )
     def test_constructor(self, credentials, expected_fields, reason):

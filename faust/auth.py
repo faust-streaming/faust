@@ -69,9 +69,10 @@ class OAuthCredentials(Credentials):
     ):
         self.client_id = client_id
         self.oauth_cb = oauth_cb
+        self.ssl_context = ssl_context
 
         if ssl_context is not None:
-            self.ssl_context = ssl_context
+            self.protocol = AuthProtocol.SASL_SSL
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: client.id={self.client_id}"
