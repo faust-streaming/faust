@@ -53,11 +53,7 @@ class SASLCredentials(Credentials):
 
 
 class OAuthCredentials(Credentials):
-    """Describe OAuth Bearer credentials over SASL
-
-    The `oauth_cb` callback must implement an asynchronous method called
-    `token()`. See the AbstractTokenProvider metaclass for more details.
-    """
+    """Describe OAuth Bearer credentials over SASL"""
 
     protocol = AuthProtocol.SASL_PLAINTEXT
     mechanism: SASLMechanism = SASLMechanism.OAUTHBEARER
