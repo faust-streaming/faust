@@ -162,7 +162,7 @@ class Test_OAuthCredentials:
         [
             pytest.param(
                 "retains arguments",
-                OAuthCredentials(client_id="test", oauth_cb=TokenProvider()),
+                OAuthCredentials(oauth_cb=TokenProvider()),
                 {
                     "mechanism": SASLMechanism.OAUTHBEARER,
                     "protocol": AuthProtocol.SASL_PLAINTEXT,
@@ -171,7 +171,6 @@ class Test_OAuthCredentials:
             pytest.param(
                 "retains arguments",
                 OAuthCredentials(
-                    client_id="test",
                     oauth_cb=TokenProvider(),
                     ssl_context={"xxx": "yyy"},
                 ),
