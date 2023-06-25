@@ -1,15 +1,15 @@
-import ssl
 import asyncio
+import ssl
 from unittest.mock import Mock, patch
 
 import pytest
-
 from aiokafka.conn import AbstractTokenProvider
+
 from faust.auth import (
     GSSAPICredentials,
+    OAuthCredentials,
     SASLCredentials,
     SSLCredentials,
-    OAuthCredentials,
 )
 from faust.types.auth import AuthProtocol, SASLMechanism
 
