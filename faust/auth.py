@@ -63,11 +63,9 @@ class OAuthCredentials(Credentials):
     def __init__(
         self,
         *,
-        client_id: str,
         oauth_cb: AbstractTokenProvider,
         ssl_context: Optional[ssl.SSLContext] = None,
     ):
-        self.client_id = client_id
         self.oauth_cb = oauth_cb
         self.ssl_context = ssl_context
 
@@ -75,7 +73,10 @@ class OAuthCredentials(Credentials):
             self.protocol = AuthProtocol.SASL_SSL
 
     def __repr__(self) -> str:
-        return f"<{type(self).__name__}: client.id={self.client_id}"
+        return "<{0}: oauth credentials {1} SSL support".format(
+            type(self).__name__,
+            "with" if self.protocol == AuthProtocol.SASL_SSL else "without",
+        )
 
 
 class GSSAPICredentials(Credentials):
