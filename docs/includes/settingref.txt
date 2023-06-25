@@ -439,6 +439,41 @@ SASL Authentication
                    password=BROKER_PASSWORD,
                ))
 
+OAuth2 Authentication
+   You can enable SASL authentication via OAuth2 Bearer tokens:
+
+   .. sourcecode:: python
+
+       import faust
+       from asyncio import get_running_loop
+       from aiokafka.helpers import create_ssl_context
+       from aiokafka.conn import AbstractTokenProvider
+
+       class TokenProvider(AbstractTokenProvider):
+           async def token(self):
+               return await get_running_loop().run_in_executor(
+                   None, self.get_token)
+
+           def get_token(self):
+               return 'token'
+
+        app = faust.App(
+            broker_credentials=faust.OAuthCredentials(
+                oauth_cb=TokenProvider()
+                ssl_context=create_ssl_context()
+            )
+        )
+
+    .. info::
+
+        The implementation should ensure token reuse so that multiple
+        calls at connect time do not create multiple tokens.
+        The implementation should also periodically refresh the token in order to
+        guarantee that each call returns an unexpired token.
+
+        Token Providers MUST implement the :meth:`token` method
+
+
 GSSAPI Authentication
    GSSAPI authentication over plain text:
 
