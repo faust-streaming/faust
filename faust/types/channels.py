@@ -150,19 +150,13 @@ class ChannelT(AsyncIterator[_EventT[_T]]):
 
     @abc.abstractmethod
     def prepare_key(
-        self,
-        key: K,
-        key_serializer: CodecArg,
-        schema: Optional[_SchemaT] = None,
+        self, key: K, key_serializer: CodecArg, schema: Optional[_SchemaT] = None
     ) -> Any:
         ...
 
     @abc.abstractmethod
     def prepare_value(
-        self,
-        value: V,
-        value_serializer: CodecArg,
-        schema: Optional[_SchemaT] = None,
+        self, value: V, value_serializer: CodecArg, schema: Optional[_SchemaT] = None
     ) -> Any:
         ...
 

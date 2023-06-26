@@ -144,11 +144,7 @@ class Signal(BaseSignal[VT]):
         assert ev.case_name == case, f"{ev.case_name!r} == {case!r}"
 
     async def _wait_for_message_by_key(
-        self,
-        key: Any,
-        *,
-        timeout: Optional[float] = None,
-        max_interval: float = 2.0,
+        self, key: Any, *, timeout: Optional[float] = None, max_interval: float = 2.0
     ) -> SignalEvent:
         app = self.case.app
         time_start = monotonic()

@@ -99,12 +99,7 @@ class StatsdMonitor(Monitor):
         )
 
     def on_stream_event_out(
-        self,
-        tp: TP,
-        offset: int,
-        stream: StreamT,
-        event: EventT,
-        state: Dict = None,
+        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
     ) -> None:
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
@@ -172,9 +167,7 @@ class StatsdMonitor(Monitor):
         super().on_send_error(producer, exc, state)
         self.client.incr("messages_sent_error", rate=self.rate)
         self.client.timing(
-            "send_latency_for_error",
-            self.ms_since(cast(float, state)),
-            rate=self.rate,
+            "send_latency_for_error", self.ms_since(cast(float, state)), rate=self.rate
         )
 
     def on_assignment_error(
@@ -184,9 +177,7 @@ class StatsdMonitor(Monitor):
         super().on_assignment_error(assignor, state, exc)
         self.client.incr("assignments_error", rate=self.rate)
         self.client.timing(
-            "assignment_latency",
-            self.ms_since(state["time_start"]),
-            rate=self.rate,
+            "assignment_latency", self.ms_since(state["time_start"]), rate=self.rate
         )
 
     def on_assignment_completed(
@@ -196,9 +187,7 @@ class StatsdMonitor(Monitor):
         super().on_assignment_completed(assignor, state)
         self.client.incr("assignments_complete", rate=self.rate)
         self.client.timing(
-            "assignment_latency",
-            self.ms_since(state["time_start"]),
-            rate=self.rate,
+            "assignment_latency", self.ms_since(state["time_start"]), rate=self.rate
         )
 
     def on_rebalance_start(self, app: AppT) -> Dict:
@@ -223,9 +212,7 @@ class StatsdMonitor(Monitor):
         super().on_rebalance_end(app, state)
         self.client.decr("rebalances_recovering", rate=self.rate)
         self.client.timing(
-            "rebalance_end_latency",
-            self.ms_since(state["time_end"]),
-            rate=self.rate,
+            "rebalance_end_latency", self.ms_since(state["time_end"]), rate=self.rate
         )
 
     def count(self, metric_name: str, count: int = 1) -> None:
@@ -260,9 +247,7 @@ class StatsdMonitor(Monitor):
         status_code = int(state["status_code"])
         self.client.incr(f"http_status_code.{status_code}", rate=self.rate)
         self.client.timing(
-            "http_response_latency",
-            self.ms_since(state["time_end"]),
-            rate=self.rate,
+            "http_response_latency", self.ms_since(state["time_end"]), rate=self.rate
         )
 
     @cached_property

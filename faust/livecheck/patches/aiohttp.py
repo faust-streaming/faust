@@ -42,9 +42,7 @@ def patch_aiohttp_session() -> None:
 
     class ClientSession(client.ClientSession):
         def __init__(
-            self,
-            trace_configs: Optional[List[TraceConfig]] = None,
-            **kwargs: Any,
+            self, trace_configs: Optional[List[TraceConfig]] = None, **kwargs: Any
         ) -> None:
             super().__init__(
                 trace_configs=self._faust_trace_configs(trace_configs), **kwargs

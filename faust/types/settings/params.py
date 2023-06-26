@@ -432,9 +432,7 @@ class Param(Generic[IT, OT], property):
             if default_value is None and self.default_template:
                 default_value = self.default_template.format(conf=conf)
             setattr(
-                conf,
-                self.storage_name,
-                self.prepare_init_default(conf, default_value),
+                conf, self.storage_name, self.prepare_init_default(conf, default_value)
             )
 
     def build_deprecation_warning(self) -> str:

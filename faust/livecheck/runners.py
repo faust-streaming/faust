@@ -126,9 +126,7 @@ class TestRunner:
         """Call when a test execution was skipped."""
         self.state = State.SKIP
         self.log.info(
-            "Skipped expired test: %s expires=%s",
-            self.test.ident,
-            self.test.expires,
+            "Skipped expired test: %s expires=%s", self.test.ident, self.test.expires
         )
         await self.case.on_test_skipped(self)
 

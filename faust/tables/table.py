@@ -43,10 +43,7 @@ class Table(TableT[KT, VT], Collection):
         )
 
     def tumbling(
-        self,
-        size: Seconds,
-        expires: Optional[Seconds] = None,
-        key_index: bool = False,
+        self, size: Seconds, expires: Optional[Seconds] = None, key_index: bool = False
     ) -> WindowWrapperT:
         """Wrap table in a tumbling window."""
         return self.using_window(

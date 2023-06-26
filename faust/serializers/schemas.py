@@ -109,12 +109,7 @@ class Schema(SchemaT):
         )
 
     def dumps_key(
-        self,
-        app: AppT,
-        key: K,
-        *,
-        serializer: CodecArg = None,
-        headers: OpenHeadersArg,
+        self, app: AppT, key: K, *, serializer: CodecArg = None, headers: OpenHeadersArg
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_key(
             self.key_type,

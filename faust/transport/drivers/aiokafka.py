@@ -55,12 +55,7 @@ from mode.utils.typing import Deque
 from opentracing.ext import tags
 from yarl import URL
 
-from faust.auth import (
-    GSSAPICredentials,
-    OAuthCredentials,
-    SASLCredentials,
-    SSLCredentials,
-)
+from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
 from faust.exceptions import (
     ConsumerNotStarted,
     ImproperlyConfigured,
@@ -662,10 +657,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             span._real_finish()
 
     def traced_from_parent_span(
-        self,
-        parent_span: opentracing.Span,
-        lazy: bool = False,
-        **extra_context: Any,
+        self, parent_span: opentracing.Span, lazy: bool = False, **extra_context: Any
     ) -> Callable:
         return traced_from_parent_span(
             parent_span,
@@ -730,17 +722,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
             return False
         except IllegalStateError as exc:
             self.log.exception(
-                "Got exception: %r\nCurrent assignment: %r",
-                exc,
-                self.assignment(),
+                "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
             return False
         except Exception as exc:
             self.log.exception(
-                "Got exception: %r\nCurrent assignment: %r",
-                exc,
-                self.assignment(),
+                "Got exception: %r\nCurrent assignment: %r", exc, self.assignment()
             )
             await self.crash(exc)
             return False
@@ -894,11 +882,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         )
 
     def _make_slow_processing_error(
-        self,
-        msg: str,
-        causes: Iterable[str],
-        setting: str,
-        current_value: float,
+        self, msg: str, causes: Iterable[str], setting: str, current_value: float
     ) -> str:
         return " ".join(
             [
@@ -1504,10 +1488,7 @@ class Transport(base.Transport):
             raise
 
     async def _get_controller_node(
-        self,
-        owner: Service,
-        client: aiokafka.AIOKafkaClient,
-        timeout: int = 30000,
+        self, owner: Service, client: aiokafka.AIOKafkaClient, timeout: int = 30000
     ) -> Optional[int]:  # pragma: no cover
         nodes = [broker.nodeId for broker in client.cluster.brokers()]
         for node_id in nodes:
@@ -1602,13 +1583,6 @@ def credentials_to_aiokafka_auth(
             return {
                 "security_protocol": credentials.protocol.value,
                 "ssl_context": credentials.context,
-            }
-        elif isinstance(credentials, OAuthCredentials):
-            return {
-                "security_protocol": credentials.protocol.value,
-                "sasl_mechanism": credentials.mechanism.value,
-                "sasl_oauth_token_provider": credentials.oauth_cb,
-                "ssl_context": credentials.ssl_context,
             }
         elif isinstance(credentials, SASLCredentials):
             return {

@@ -39,10 +39,7 @@ class CaseInsensitiveChoice(click.Choice):
         self.case_sensitive = False  # required by click 7.x
 
     def convert(
-        self,
-        value: str,
-        param: Optional[click.Parameter],
-        ctx: Optional[click.Context],
+        self, value: str, param: Optional[click.Parameter], ctx: Optional[click.Context]
     ) -> Any:
         """Convert string to case-insensitive choice."""
         if value.lower() in self.choices:
@@ -73,10 +70,7 @@ class URLParam(ParamType):
         self._string_param = StringParamType()
 
     def convert(
-        self,
-        value: str,
-        param: Optional[click.Parameter],
-        ctx: Optional[click.Context],
+        self, value: str, param: Optional[click.Parameter], ctx: Optional[click.Context]
     ) -> URL:
         """Convert :class:`str` argument to :class:`yarl.URL`."""
         text_value = self._string_param.convert(value, param, ctx)

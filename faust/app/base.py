@@ -919,11 +919,7 @@ class App(AppT, Service):
 
     @no_type_check
     def task(
-        self,
-        fun: TaskArg = None,
-        *,
-        on_leader: bool = False,
-        traced: bool = True,
+        self, fun: TaskArg = None, *, on_leader: bool = False, traced: bool = True
     ) -> TaskDecoratorRet:
         """Define an async def function to be started with the app.
 
@@ -1409,10 +1405,7 @@ class App(AppT, Service):
         return _decorator
 
     def command(
-        self,
-        *options: Any,
-        base: Optional[Type[_AppCommand]] = None,
-        **kwargs: Any,
+        self, *options: Any, base: Optional[Type[_AppCommand]] = None, **kwargs: Any
     ) -> Callable[[Callable], Type[_AppCommand]]:
         """Decorate ``async def`` function to be used as CLI command."""
         _base: Type[_AppCommand]
@@ -1666,8 +1659,7 @@ class App(AppT, Service):
         try:
             if not sensor_state:
                 self.log.warning(
-                    "Missing sensor state for rebalance end #%s",
-                    self.rebalancing_count,
+                    "Missing sensor state for rebalance end #%s", self.rebalancing_count
                 )
             else:
                 self.sensors.on_rebalance_end(self, sensor_state)

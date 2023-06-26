@@ -569,9 +569,7 @@ TYPE_TO_FIELD = {
 
 
 @lru_cache(maxsize=2048)
-def field_for_type(
-    typ: Type,
-) -> Tuple[Type[FieldDescriptorT], Optional[Type[Tag]]]:
+def field_for_type(typ: Type) -> Tuple[Type[FieldDescriptorT], Optional[Type[Tag]]]:
     try:
         # 1) Check if type is in fast index.
         return TYPE_TO_FIELD[typ], None

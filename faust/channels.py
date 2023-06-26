@@ -612,11 +612,7 @@ class SerializedChannel(Channel[T]):
             )
         else:
             schema = self._get_default_schema(
-                key_type,
-                value_type,
-                key_serializer,
-                value_serializer,
-                allow_empty,
+                key_type, value_type, key_serializer, value_serializer, allow_empty
             )
 
         super().__init__(

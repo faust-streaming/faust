@@ -128,9 +128,7 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         active_messages = Gauge(
-            f"{app_name}_active_messages",
-            "Total active messages",
-            registry=registry,
+            f"{app_name}_active_messages", "Total active messages", registry=registry
         )
         messages_received_per_topics = Counter(
             f"{app_name}_messages_received_per_topic",
@@ -145,19 +143,13 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         events_runtime_latency = Histogram(
-            f"{app_name}_events_runtime_ms",
-            "Events runtime in ms",
-            registry=registry,
+            f"{app_name}_events_runtime_ms", "Events runtime in ms", registry=registry
         )
         total_events = Counter(
-            f"{app_name}_total_events",
-            "Total events received",
-            registry=registry,
+            f"{app_name}_total_events", "Total events received", registry=registry
         )
         total_active_events = Gauge(
-            f"{app_name}_total_active_events",
-            "Total active events",
-            registry=registry,
+            f"{app_name}_total_active_events", "Total active events", registry=registry
         )
         total_events_per_stream = Counter(
             f"{app_name}_total_events_per_stream",
@@ -178,9 +170,7 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         total_sent_messages = Counter(
-            f"{app_name}_total_sent_messages",
-            "Total messages sent",
-            registry=registry,
+            f"{app_name}_total_sent_messages", "Total messages sent", registry=registry
         )
         producer_send_latency = Histogram(
             f"{app_name}_producer_send_latency",
@@ -204,14 +194,10 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         assign_latency = Histogram(
-            f"{app_name}_assign_latency",
-            "Assignment latency in ms",
-            registry=registry,
+            f"{app_name}_assign_latency", "Assignment latency in ms", registry=registry
         )
         total_rebalances = Gauge(
-            f"{app_name}_total_rebalances",
-            "Total rebalances",
-            registry=registry,
+            f"{app_name}_total_rebalances", "Total rebalances", registry=registry
         )
         total_rebalances_recovering = Gauge(
             f"{app_name}_total_rebalances_recovering",
@@ -241,9 +227,7 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         http_latency = Histogram(
-            f"{app_name}_http_latency",
-            "Http response latency in ms",
-            registry=registry,
+            f"{app_name}_http_latency", "Http response latency in ms", registry=registry
         )
         topic_partition_end_offset = Gauge(
             f"{app_name}_topic_partition_end_offset",
@@ -467,10 +451,7 @@ class PrometheusMonitor(Monitor):
         )
 
     def on_assignment_error(
-        self,
-        assignor: PartitionAssignorT,
-        state: typing.Dict,
-        exc: BaseException,
+        self, assignor: PartitionAssignorT, state: typing.Dict, exc: BaseException
     ) -> None:
         """Partition assignor did not complete assignor due to error."""
         super().on_assignment_error(assignor, state, exc)

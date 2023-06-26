@@ -300,11 +300,7 @@ class View:
         return self.error(404, reason, **kwargs)
 
     def error(
-        self,
-        status: int,
-        reason: str,
-        headers: MutableMapping = None,
-        **kwargs: Any,
+        self, status: int, reason: str, headers: MutableMapping = None, **kwargs: Any
     ) -> Response:
         """Create error JSON response."""
         return self.json({"error": reason, **kwargs}, status=status, headers=headers)

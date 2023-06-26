@@ -315,8 +315,7 @@ class Recovery(Service):
             )
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
-                consumer.perform_seek(),
-                timeout=self.app.conf.broker_request_timeout,
+                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
             )
         else:
             self.log.info("Resuming streams with empty assignment")
@@ -388,10 +387,7 @@ class Recovery(Service):
                 self.log.dev("Build highwaters for active partitions")
                 await self._wait(
                     T(self._build_highwaters)(
-                        consumer,
-                        assigned_active_tps,
-                        active_highwaters,
-                        "active",
+                        consumer, assigned_active_tps, active_highwaters, "active"
                     ),
                     timeout=self.app.conf.broker_request_timeout,
                 )
@@ -421,10 +417,7 @@ class Recovery(Service):
                 self.log.dev("Build offsets for standby partitions")
                 await self._wait(
                     T(self._build_offsets)(
-                        consumer,
-                        assigned_standby_tps,
-                        standby_offsets,
-                        "standby",
+                        consumer, assigned_standby_tps, standby_offsets, "standby"
                     ),
                     timeout=self.app.conf.broker_request_timeout,
                 )
@@ -645,8 +638,7 @@ class Recovery(Service):
         if assignment:
             self.log.info("Seek stream partitions to committed offsets.")
             await self._wait(
-                consumer.perform_seek(),
-                timeout=self.app.conf.broker_request_timeout,
+                consumer.perform_seek(), timeout=self.app.conf.broker_request_timeout
             )
         self.completed.set()
         self.log.dev("Resume stream partitions")
@@ -661,11 +653,7 @@ class Recovery(Service):
         self.log.info("Worker ready")
 
     async def _build_highwaters(
-        self,
-        consumer: ConsumerT,
-        tps: Set[TP],
-        destination: Counter[TP],
-        title: str,
+        self, consumer: ConsumerT, tps: Set[TP], destination: Counter[TP], title: str
     ) -> None:
         # -- Build highwater
         highwaters = await consumer.highwaters(*tps)
@@ -713,11 +701,7 @@ class Recovery(Service):
             prev_key = key
 
     async def _build_offsets(
-        self,
-        consumer: ConsumerT,
-        tps: Set[TP],
-        destination: Counter[TP],
-        title: str,
+        self, consumer: ConsumerT, tps: Set[TP], destination: Counter[TP], title: str
     ) -> None:
         # -- Update offsets
         # Offsets may have been compacted, need to get to the recent ones
@@ -759,11 +743,7 @@ class Recovery(Service):
         )
 
     async def _seek_offsets(
-        self,
-        consumer: ConsumerT,
-        tps: Set[TP],
-        offsets: Counter[TP],
-        title: str,
+        self, consumer: ConsumerT, tps: Set[TP], offsets: Counter[TP], title: str
     ) -> None:
         # Seek to new offsets
         new_offsets = {}

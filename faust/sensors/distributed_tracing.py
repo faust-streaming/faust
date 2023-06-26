@@ -79,12 +79,7 @@ class TracingSensor(Sensor):
 
     # Event was acknowledged by stream.
     def on_stream_event_out(
-        self,
-        tp: TP,
-        offset: int,
-        stream: StreamT,
-        event: EventT,
-        state: Dict = None,
+        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
     ) -> None:
         stream_meta = getattr(event.message, "stream_meta", None)
         if stream_meta is None:

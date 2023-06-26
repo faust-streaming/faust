@@ -286,11 +286,7 @@ class Store(base.SerializedStore):
                 self._backup_engine = rocksdb.BackupEngine(self._backup_path)
 
     async def backup_partition(
-        self,
-        tp: Union[TP, int],
-        flush: bool = True,
-        purge: bool = False,
-        keep: int = 1,
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
     ) -> None:
         """Backup partition from this store.
 
@@ -360,9 +356,7 @@ class Store(base.SerializedStore):
                 )
             else:
                 self._backup_engine.restore_backup(
-                    backup_id,
-                    str(self.partition_path(partition)),
-                    self._backup_path,
+                    backup_id, str(self.partition_path(partition)), self._backup_path
                 )
         else:
             raise NotImplementedError(

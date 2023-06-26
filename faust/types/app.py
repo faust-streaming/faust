@@ -108,10 +108,7 @@ class TracerT(abc.ABC):
 
     @abc.abstractmethod
     def trace(
-        self,
-        name: str,
-        sample_rate: Optional[float] = None,
-        **extra_context: Any,
+        self, name: str, sample_rate: Optional[float] = None, **extra_context: Any
     ) -> ContextManager:
         ...
 
@@ -220,12 +217,7 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def __init__(
-        self,
-        id: str,
-        *,
-        monitor: _Monitor,
-        config_source: Any = None,
-        **options: Any,
+        self, id: str, *, monitor: _Monitor, config_source: Any = None, **options: Any
     ) -> None:
         self.on_startup_finished: Optional[Callable] = None
 
@@ -347,10 +339,7 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def stream(
-        self,
-        channel: AsyncIterable,
-        beacon: Optional[NodeT] = None,
-        **kwargs: Any,
+        self, channel: AsyncIterable, beacon: Optional[NodeT] = None, **kwargs: Any
     ) -> StreamT:
         ...
 

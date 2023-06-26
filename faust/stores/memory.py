@@ -84,11 +84,7 @@ class Store(base.Store, base.StoreT[KT, VT]):
         ...
 
     async def backup_partition(
-        self,
-        tp: Union[TP, int],
-        flush: bool = True,
-        purge: bool = False,
-        keep: int = 1,
+        self, tp: Union[TP, int], flush: bool = True, purge: bool = False, keep: int = 1
     ) -> None:
         """Backup partition from this store.
 

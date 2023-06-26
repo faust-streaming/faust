@@ -129,8 +129,7 @@ class PartitionAssignor(AbstractPartitionAssignor, PartitionAssignorT):  # type:
 
     def on_assignment(self, assignment: ConsumerProtocolMemberMetadata) -> None:
         metadata = cast(
-            ClientMetadata,
-            ClientMetadata.loads(self._decompress(assignment.user_data)),
+            ClientMetadata, ClientMetadata.loads(self._decompress(assignment.user_data))
         )
         self._assignment = metadata.assignment
         self._topic_groups = dict(metadata.topic_groups)
