@@ -2019,6 +2019,16 @@ class TestTransport:
                 "ssl_context": None,
             },
         ),
+        (
+            auth.OAuthCredentials(oauth_cb="token"),
+            None,
+            {
+                "security_protocol": "SASL_PLAINTEXT",
+                "sasl_oauth_token_provider": "token",
+                "sasl_mechanism": "OAUTHBEARER",
+                "ssl_context": None,
+            },
+        ),
     ],
 )
 def test_credentials_to_aiokafka(credentials, ssl_context, expected):
