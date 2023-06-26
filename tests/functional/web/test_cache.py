@@ -471,4 +471,7 @@ class Test_RedisScheme:
         client = backend._new_client()
         assert isinstance(client, aredis.StrictRedisCluster)
         pool = client.connection_pool
-        assert {"host": backend.url.host, "port": 3636} in pool.nodes.startup_nodes
+        assert {
+            "host": backend.url.host,
+            "port": 3636,
+        } in pool.nodes.startup_nodes

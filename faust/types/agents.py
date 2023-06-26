@@ -88,7 +88,7 @@ class ActorT(ServiceT, Generic[_T]):
         stream: StreamT,
         it: _T,
         active_partitions: Optional[Set[TP]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         ...
 
@@ -145,7 +145,7 @@ class AgentT(ServiceT, Generic[_T]):
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         isolated_partitions: bool = False,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self.fun: AgentFun = fun
 
@@ -160,7 +160,7 @@ class AgentT(ServiceT, Generic[_T]):
         index: Optional[int] = None,
         active_partitions: Optional[Set[TP]] = None,
         stream: Optional[StreamT] = None,
-        channel: Optional[ChannelT] = None
+        channel: Optional[ChannelT] = None,
     ) -> ActorRefT:
         ...
 
@@ -169,7 +169,7 @@ class AgentT(ServiceT, Generic[_T]):
         self,
         channel: Optional[ChannelT] = None,
         supervisor_strategy: SupervisorStrategyT = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "AgentTestWrapperT":
         ...
 
@@ -197,7 +197,7 @@ class AgentT(ServiceT, Generic[_T]):
         key: K = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None
+        headers: HeadersArg = None,
     ) -> None:
         ...
 
@@ -211,7 +211,7 @@ class AgentT(ServiceT, Generic[_T]):
         timestamp: Optional[float] = None,
         headers: HeadersArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> Any:
         ...
 
@@ -227,7 +227,7 @@ class AgentT(ServiceT, Generic[_T]):
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
         reply_to: ReplyToArg = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -348,7 +348,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         *,
         reply_to: ReplyToArg = None,
         correlation_id: Optional[str] = None,
-        wait: bool = True
+        wait: bool = True,
     ) -> EventT:
         ...
 
@@ -362,7 +362,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         offset: int = 0,
         timestamp: Optional[float] = None,
         timestamp_type: int = 0,
-        headers: HeadersArg = None
+        headers: HeadersArg = None,
     ) -> Message:
         ...
 

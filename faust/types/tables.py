@@ -125,7 +125,7 @@ class CollectionT(ServiceT, JoinableT):
         options: Optional[Mapping[str, Any]] = None,
         use_partitioner: bool = False,
         on_window_close: Optional[WindowCloseCallback] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         ...
 
@@ -464,7 +464,7 @@ class WindowWrapperT(MutableMapping):
         *,
         relative_to: RelativeArg = None,
         key_index: bool = False,
-        key_index_table: Optional[TableT] = None
+        key_index_table: Optional[TableT] = None,
     ) -> None:
         ...
 

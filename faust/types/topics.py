@@ -88,7 +88,7 @@ class TopicT(ChannelT):
         active_partitions: Optional[Set[TP]] = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         ...
 
@@ -130,6 +130,6 @@ class TopicT(ChannelT):
         config: Optional[Mapping[str, Any]] = None,
         prefix: str = "",
         suffix: str = "",
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "TopicT":
         ...

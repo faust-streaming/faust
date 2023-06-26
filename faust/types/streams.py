@@ -145,7 +145,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         active_partitions: Optional[Set[TP]] = None,
         enable_acks: bool = True,
         prefix: str = "",
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         ...
 
@@ -198,7 +198,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         key: GroupByKeyArg,
         *,
         name: Optional[str] = None,
-        topic: Optional[TopicT] = None
+        topic: Optional[TopicT] = None,
     ) -> "StreamT":
         ...
 
@@ -211,7 +211,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         key_type: ModelArg = None,
         value_type: ModelArg = None,
         prefix: str = "",
-        suffix: str = ""
+        suffix: str = "",
     ) -> TopicT:
         ...
 

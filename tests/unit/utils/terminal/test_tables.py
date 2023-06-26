@@ -59,9 +59,21 @@ def test_table(target, contexts, kwargs, expected_tty):
     "tty,contexts,headers,expected_tty,expected_data",
     [
         (None, [mock_logging(isatty=True)], None, True, TABLE_DATA),
-        (None, [mock_logging(isatty=True)], ["foo"], True, [["foo"]] + TABLE_DATA),
+        (
+            None,
+            [mock_logging(isatty=True)],
+            ["foo"],
+            True,
+            [["foo"]] + TABLE_DATA,
+        ),
         (None, [mock_logging(isatty=False)], None, False, TABLE_DATA),
-        (None, [mock_logging(isatty=False)], ["f"], False, [["f"]] + TABLE_DATA),
+        (
+            None,
+            [mock_logging(isatty=False)],
+            ["f"],
+            False,
+            [["f"]] + TABLE_DATA,
+        ),
         (True, [], None, True, TABLE_DATA),
         (True, [], ["foo"], True, [["foo"]] + TABLE_DATA),
         (False, [], None, False, TABLE_DATA),

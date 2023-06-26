@@ -60,7 +60,7 @@ class ChannelT(AsyncIterator[_EventT[_T]]):
         maxsize: Optional[int] = None,
         root: "ChannelT" = None,
         active_partitions: Optional[Set[TP]] = None,
-        loop: Optional[asyncio.AbstractEventLoop] = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         ...
 
@@ -95,7 +95,7 @@ class ChannelT(AsyncIterator[_EventT[_T]]):
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
         callback: Optional[MessageSentCallback] = None,
-        force: bool = False
+        force: bool = False,
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -113,7 +113,7 @@ class ChannelT(AsyncIterator[_EventT[_T]]):
         value_serializer: CodecArg = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
-        eager_partitioning: bool = False
+        eager_partitioning: bool = False,
     ) -> FutureMessage:
         ...
 

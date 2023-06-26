@@ -137,7 +137,13 @@ class TestConsumer:
 
     @pytest.fixture()
     def consumer(
-        self, *, thread, app, callback, on_partitions_revoked, on_partitions_assigned
+        self,
+        *,
+        thread,
+        app,
+        callback,
+        on_partitions_revoked,
+        on_partitions_assigned,
     ):
         consumer = Consumer(
             app.transport,
@@ -1420,7 +1426,10 @@ class TestProducer(ProducerBaseTest):
 
     def test__settings_extra(self, *, producer, app):
         app.in_transaction = True
-        assert producer._settings_extra() == {"acks": "all", "enable_idempotence": True}
+        assert producer._settings_extra() == {
+            "acks": "all",
+            "enable_idempotence": True,
+        }
         app.in_transaction = False
         assert producer._settings_extra() == {}
 
@@ -1442,14 +1451,16 @@ class TestProducer(ProducerBaseTest):
                 marks=pytest.mark.conf(broker="kafka://a:9092;b:9092"),
             ),
             pytest.param(
-                {"client_id": "foo"}, marks=pytest.mark.conf(broker_client_id="foo")
+                {"client_id": "foo"},
+                marks=pytest.mark.conf(broker_client_id="foo"),
             ),
             pytest.param(
                 {"compression_type": "snappy"},
                 marks=pytest.mark.conf(producer_compression_type="snappy"),
             ),
             pytest.param(
-                {"linger_ms": 9345}, marks=pytest.mark.conf(producer_linger=9.345)
+                {"linger_ms": 9345},
+                marks=pytest.mark.conf(producer_linger=9.345),
             ),
             pytest.param(
                 {"max_batch_size": 41223},
@@ -1776,7 +1787,11 @@ class TestThreadedProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_on_start(
-        self, *, threaded_producer: ThreadedProducer, mocked_producer: Mock, loop
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+        mocked_producer: Mock,
+        loop,
     ):
         await threaded_producer.on_start()
         try:
@@ -1790,7 +1805,11 @@ class TestThreadedProducer(ProducerBaseTest):
     @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test_on_thread_stop(
-        self, *, threaded_producer: ThreadedProducer, mocked_producer: Mock, loop
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+        mocked_producer: Mock,
+        loop,
     ):
         await threaded_producer.start()
         await threaded_producer.on_thread_stop()
@@ -1803,7 +1822,11 @@ class TestThreadedProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_publish_message(
-        self, *, threaded_producer: ThreadedProducer, mocked_producer: Mock, loop
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+        mocked_producer: Mock,
+        loop,
     ):
         await threaded_producer.start()
         try:
@@ -1828,7 +1851,11 @@ class TestThreadedProducer(ProducerBaseTest):
 
     @pytest.mark.asyncio
     async def test_publish_message_with_wait(
-        self, *, threaded_producer: ThreadedProducer, mocked_producer: Mock, loop
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+        mocked_producer: Mock,
+        loop,
     ):
         await threaded_producer.start()
         try:
