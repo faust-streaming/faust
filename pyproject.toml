@@ -56,12 +56,6 @@ testpaths = [
 build = "cp3*"
 
 archs = ["auto64"]
-build-frontend = "default"
-config-settings = {}
-dependency-versions = "pinned"
-environment = {}
-environment-pass = []
-build-verbosity = ""
 
 before-build = "pip install Cython"
 
