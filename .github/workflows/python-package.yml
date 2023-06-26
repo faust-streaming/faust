@@ -90,8 +90,8 @@ jobs:
   build_wheels:
     name: 📦 Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-#    needs: check
-#    if: github.event_name == 'release' && github.event.action == 'created'
+    needs: check
+    if: github.event_name == 'release' && github.event.action == 'created'
     strategy:
       matrix:
         os: [ubuntu-20.04, macos-11]
@@ -107,8 +107,8 @@ jobs:
   build_sdist:
     name: 📦 Build the source distribution
     runs-on: ubuntu-latest
-#    needs: check
-#    if: github.event_name == 'release' && github.event.action == 'created'
+    needs: check
+    if: github.event_name == 'release' && github.event.action == 'created'
     steps:
       - uses: actions/checkout@v3
         name: Checkout source repository
