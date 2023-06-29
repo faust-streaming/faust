@@ -1,5 +1,4 @@
 import asyncio
-import platform
 from collections import defaultdict
 from unittest.mock import Mock, patch
 
@@ -123,9 +122,6 @@ class Test_Stream:
         await echoing("val")
         channel.send.assert_called_once_with(value="val")
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-    )
     @pytest.mark.asyncio
     @pytest.mark.allow_lingering_tasks(count=1)
     async def test_aiter_tracked(self, *, stream, app):
@@ -141,9 +137,6 @@ class Test_Stream:
         else:
             event.ack.assert_called_once_with()
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-    )
     @pytest.mark.asyncio
     @pytest.mark.allow_lingering_tasks(count=1)
     async def test_aiter_tracked__CancelledError(self, *, stream, app):
