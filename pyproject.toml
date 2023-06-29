@@ -33,6 +33,7 @@ ignore_missing_imports = true
 disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
+asyncio_mode = "auto"
 minversion = "6.0"
 addopts = [
   "--cov-report=term-missing:skip-covered",
