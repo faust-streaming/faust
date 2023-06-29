@@ -1,6 +1,5 @@
 import asyncio
 import platform
-import pytest
 from copy import copy
 from unittest.mock import Mock, patch
 
@@ -281,6 +280,7 @@ async def test_acks_filtered_out_messages_when_using_take(app, event_loop):
     messages = [call[0][3] for call in create_event_mock.call_args_list]
     acked = [m.acked for m in messages if m.acked]
     assert len(acked) == len(initial_values)
+
 
 @pytest.mark.skipif(
     platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
