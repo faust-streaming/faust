@@ -1,4 +1,6 @@
 import asyncio
+import platform
+import pytest
 from copy import copy
 from unittest.mock import Mock, patch
 
@@ -39,6 +41,9 @@ def _prepare_app(app):
     return app
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 @pytest.mark.allow_lingering_tasks(count=1)
 async def test_simple(app, loop):
@@ -50,6 +55,9 @@ async def test_simple(app, loop):
         assert await channel_empty(stream.channel)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_async_iterator(app):
     async with new_stream(app) as stream:
@@ -64,6 +72,9 @@ async def test_async_iterator(app):
         assert await channel_empty(stream.channel)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_throw(app):
     async with new_stream(app) as stream:
@@ -75,6 +86,9 @@ async def test_throw(app):
             await anext(streamit)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_enumerate(app):
     async with new_stream(app) as stream:
@@ -89,6 +103,9 @@ async def test_enumerate(app):
         assert await channel_empty(stream.channel)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_items(app):
     async with new_stream(app) as stream:
@@ -104,6 +121,9 @@ async def test_items(app):
         assert await channel_empty(stream.channel)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_through(app):
     app._attachments.enabled = False
@@ -236,6 +256,9 @@ async def test_stream_filter_acks_filtered_out_messages(app, event_loop):
     assert len(app.consumer.unacked) == 0
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_acks_filtered_out_messages_when_using_take(app, event_loop):
     """
@@ -259,7 +282,9 @@ async def test_acks_filtered_out_messages_when_using_take(app, event_loop):
     acked = [m.acked for m in messages if m.acked]
     assert len(acked) == len(initial_values)
 
-
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_events(app):
     async with new_stream(app) as stream:
@@ -414,6 +439,9 @@ async def _start_stop_stream(stream):
     await stream.stop()
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_ack(app):
     async with new_stream(app) as s:
@@ -439,6 +467,9 @@ async def test_ack(app):
             assert not event.message.refcount
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_noack(app):
     async with new_stream(app) as s:
@@ -459,6 +490,9 @@ async def test_noack(app):
         event.ack.assert_not_called()
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_acked_when_raising(app):
     async with new_stream(app) as s:
@@ -496,6 +530,9 @@ async def test_acked_when_raising(app):
             assert not event2.message.refcount
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 @pytest.mark.allow_lingering_tasks(count=1)
 async def test_maybe_forward__when_event(app):
@@ -508,6 +545,9 @@ async def test_maybe_forward__when_event(app):
         s.channel.send.assert_not_called()
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_maybe_forward__when_concrete_value(app):
     s = new_stream(app)
