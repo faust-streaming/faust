@@ -47,8 +47,8 @@ LDFLAGS = []
 LIBRARIES = []
 E_UNSUPPORTED_PYTHON = NAME + " 1.0 requires Python %%s or later!"
 
-if sys.version_info < (3, 7):
-    raise Exception(E_UNSUPPORTED_PYTHON % ("3.7",))  # NOQA
+if sys.version_info < (3, 8):
+    raise Exception(E_UNSUPPORTED_PYTHON % ("3.8",))  # NOQA
 
 from pathlib import Path  # noqa
 
@@ -111,7 +111,12 @@ class ve_build_ext(build_ext):
     def build_extension(self, ext):
         try:
             build_ext.build_extension(self, ext)
-        except (CCompilerError, DistutilsExecError, DistutilsPlatformError, ValueError):
+        except (
+            CCompilerError,
+            DistutilsExecError,
+            DistutilsPlatformError,
+            ValueError,
+        ):
             raise BuildFailed()
 
 
@@ -198,7 +203,7 @@ def do_setup(**kwargs):
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
         package_data={"faust": ["py.typed"]},
         include_package_data=True,
-        python_requires=">=3.7.0",
+        python_requires=">=3.8.0",
         zip_safe=False,
         install_requires=reqs("requirements.txt"),
         tests_require=reqs("test.txt"),
@@ -229,13 +234,11 @@ def do_setup(**kwargs):
             "License :: OSI Approved :: BSD License",
             "Programming Language :: Python",
             "Programming Language :: Python :: 3 :: Only",
-            "Programming Language :: Python :: 3.7",
             "Programming Language :: Python :: 3.8",
             "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: Implementation :: CPython",
-            "Programming Language :: Python :: Implementation :: PyPy",
             "Operating System :: POSIX",
             "Operating System :: POSIX :: Linux",
             "Operating System :: MacOS :: MacOS X",
@@ -244,7 +247,7 @@ def do_setup(**kwargs):
             "Topic :: System :: Networking",
             "Topic :: System :: Distributed Computing",
         ],
-        **kwargs
+        **kwargs,
     )
 
 

@@ -96,7 +96,9 @@ async def check(forwarded_numbers: Stream[int]) -> None:
                     # number should be larger than the previous number.
                     # if that's not true it means we have a duplicate.
                     app.log.error(
-                        "Found duplicate number in %r: %r", event.message.tp, number
+                        "Found duplicate number in %r: %r",
+                        event.message.tp,
+                        number,
                     )
                     found_duplicates += 1
                 else:

@@ -8,7 +8,11 @@ def test_json(faust_json):
         "help": "Foo agent help.",
     } in agents
     assert {"name": "@app.add", "topic": "add-topic", "help": "<N/A>"} in agents
-    assert {"name": "@app.internal", "topic": "<LOCAL>", "help": "<N/A>"} in agents
+    assert {
+        "name": "@app.internal",
+        "topic": "<LOCAL>",
+        "help": "<N/A>",
+    } in agents
 
     names = [agent["name"] for agent in agents]
     assert (

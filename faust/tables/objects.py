@@ -65,20 +65,18 @@ class ChangeloggedObjectManager(Store):
     data: MutableMapping
 
     _storage: Optional[StoreT] = None
-    _dirty: Set
 
     def __init__(self, table: Table, **kwargs: Any) -> None:
         self.table = table
         self.table_name = self.table.name
         self.data = {}
-        self._dirty = set()
         Service.__init__(self, loop=table.loop, **kwargs)
 
     def send_changelog_event(self, key: Any, operation: int, value: Any) -> None:
         """Send changelog event to the tables changelog topic."""
         event = current_event()
-        self._dirty.add(key)
         self.table._send_changelog(event, (operation, key), value)
+        self.storage[key] = self[key].as_stored_value()
 
     def __getitem__(self, key: Any) -> ChangeloggedObject:
         if key in self.data:
@@ -99,10 +97,6 @@ class ChangeloggedObjectManager(Store):
     async def on_start(self) -> None:
         """Call when the changelogged object manager starts."""
         await self.add_runtime_dependency(self.storage)
-
-    async def on_stop(self) -> None:
-        """Call when the changelogged object manager stops."""
-        self.flush_to_storage()
 
     def persisted_offset(self, tp: TP) -> Optional[int]:
         """Get the last persisted offset for changelog topic partition."""
@@ -132,18 +126,6 @@ class ChangeloggedObjectManager(Store):
         """Sync set contents from storage."""
         for key, value in self.storage.items():
             self[key].sync_from_storage(value)
-
-    def flush_to_storage(self) -> None:
-        """Flush set contents to storage."""
-        for key in self._dirty:
-            self.storage[key] = self.data[key].as_stored_value()
-        self._dirty.clear()
-
-    @Service.task
-    async def _periodic_flush(self) -> None:  # pragma: no cover
-        async for sleep_time in self.itertimer(2.0, name="SetManager.flush"):
-            await self.sleep(sleep_time)
-            self.flush_to_storage()
 
     def reset_state(self) -> None:
         """Reset table local state."""

@@ -155,14 +155,14 @@ What do I need?
 
     **Core**
 
-    - Python 3.7 or later.
+    - Python 3.8 or later.
     - Kafka 0.10.1 or later.
 
     **Extensions**
 
     - RocksDB 5.0 or later, :pypi:`python-rocksdb`
 
-Faust requires Python 3.7 or later, and a running Kafka broker.
+Faust requires Python 3.8 or later, and a running Kafka broker.
 
 There's no plan to support earlier Python versions.
 Please get in touch if this is something you want to work on.

@@ -155,7 +155,7 @@ class ModelT(base):  # type: ignore
         s: bytes,
         *,
         default_serializer: CodecArg = None,  # XXX use serializer
-        serializer: CodecArg = None
+        serializer: CodecArg = None,
     ) -> "ModelT":
         ...
 
@@ -218,7 +218,7 @@ class FieldDescriptorT(Generic[T]):
         parent: "FieldDescriptorT" = None,
         exclude: Optional[bool] = None,
         date_parser: Callable[[Any], datetime] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         # we have to do this in __init__ or mypy will think
         # this is a method

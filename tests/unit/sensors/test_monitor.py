@@ -67,7 +67,7 @@ class TestMonitor:
         commit_latency=[1.03, 2.33, 16.33],  # noqa
         send_latency=[0.01, 0.04, 0.06, 0.010],  # noqa
         topic_buffer_full={"topic": 808},  # noqa
-        **kwargs
+        **kwargs,
     ):
         return self.create_monitor(
             messages_active=messages_active,
@@ -84,7 +84,7 @@ class TestMonitor:
             commit_latency=commit_latency,
             send_latency=send_latency,
             topic_buffer_full=topic_buffer_full,
-            **kwargs
+            **kwargs,
         )
 
     def test_init_max_avg_history(self):
@@ -266,7 +266,11 @@ class TestMonitor:
     def test_on_send_initiated(self, *, mon, time):
         for i in range(1, 11):
             state = mon.on_send_initiated(
-                Mock(name="producer", autospec=Producer), "topic", "message", 2, 4
+                Mock(name="producer", autospec=Producer),
+                "topic",
+                "message",
+                2,
+                4,
             )
             assert mon.messages_sent == i
             assert mon.messages_sent_by_topic["topic"] == i

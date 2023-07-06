@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -192,7 +192,7 @@ class Test_ReplyConsumer:
     async def test_start_fetcher(self, *, c):
         c._drain_replies = Mock()
         c._reply_topic = Mock(
-            return_value=Mock(
+            return_value=MagicMock(
                 maybe_declare=AsyncMock(),
             ),
         )

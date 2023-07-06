@@ -125,7 +125,7 @@ class ProducerT(ServiceT):
         self,
         transport: "TransportT",
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         ...
 
@@ -139,7 +139,7 @@ class ProducerT(ServiceT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: Optional[str] = None
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         ...
 
@@ -157,7 +157,7 @@ class ProducerT(ServiceT):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: Optional[str] = None
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         ...
 
@@ -173,7 +173,7 @@ class ProducerT(ServiceT):
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
         deleting: Optional[bool] = None,
-        ensure_created: bool = False
+        ensure_created: bool = False,
     ) -> None:
         ...
 
@@ -232,7 +232,7 @@ class TransactionManagerT(ProducerT):
         *,
         consumer: "ConsumerT",
         producer: "ProducerT",
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         ...
 
@@ -315,7 +315,7 @@ class ConsumerT(ServiceT):
         *,
         commit_interval: Optional[float] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         self._on_partitions_revoked: PartitionsRevokedCallback
         self._on_partitions_assigned: PartitionsAssignedCallback
@@ -332,7 +332,7 @@ class ConsumerT(ServiceT):
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
         deleting: Optional[bool] = None,
-        ensure_created: bool = False
+        ensure_created: bool = False,
     ) -> None:
         ...
 

@@ -28,4 +28,3 @@ intervaltree
 -r extras/statsd.txt
 -r extras/yaml.txt
 -r extras/prometheus.txt
--r extras/orjson.txt
