@@ -1095,7 +1095,12 @@ class TestConsumer:
         [
             (TP1, [], [], None),
             (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], IntervalTree(), 11),
-            (TP1, [1, 2, 3, 4, 5, 6, 7, 8, 10], IntervalTree([Interval(9, 10)]), 11),
+            (
+                TP1,
+                [1, 2, 3, 4, 5, 6, 7, 8, 10],
+                IntervalTree([Interval(9, 10)]),
+                11,
+            ),
             (TP1, [1, 2, 3, 4, 6, 7, 8, 10], IntervalTree([Interval(5, 6)]), 9),
             (
                 TP1,
