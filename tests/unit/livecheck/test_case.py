@@ -224,7 +224,16 @@ class TestCase:
         ],
     )
     async def test_on_suite_pass(
-        self, initial_state, ts, now, failed, expected_state, *, case, runner, execution
+        self,
+        initial_state,
+        ts,
+        now,
+        failed,
+        expected_state,
+        *,
+        case,
+        runner,
+        execution,
     ):
         assert runner.test is execution
         runner.test.timestamp = Mock()

@@ -137,7 +137,9 @@ async def process(numbers: Stream[int]) -> None:
                     # WITH THE OFFSET after all!)
                     # if the number is less than we have a problem.
                     app.log.error(
-                        "Found duplicate number in %r: %r", event.message.tp, number
+                        "Found duplicate number in %r: %r",
+                        event.message.tp,
+                        number,
                     )
                     found_duplicates += 1
                 else:

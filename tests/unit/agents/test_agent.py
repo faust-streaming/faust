@@ -740,7 +740,10 @@ class Test_Agent:
         with patch("faust.agents.agent.uuid4") as uuid4:
             uuid4.return_value = "vvv"
             reqrep = agent._create_req(
-                key=b"key", value=b"value", reply_to="reply_to", headers={"k": "v"}
+                key=b"key",
+                value=b"value",
+                reply_to="reply_to",
+                headers={"k": "v"},
             )[0]
 
             agent._get_strtopic.assert_called_once_with("reply_to")
@@ -755,7 +758,10 @@ class Test_Agent:
         with patch("faust.agents.agent.uuid4") as uuid4:
             uuid4.return_value = "vvv"
             value, h = agent._create_req(
-                key=b"key", value=b"value", reply_to="reply_to", headers={"k": "v"}
+                key=b"key",
+                value=b"value",
+                reply_to="reply_to",
+                headers={"k": "v"},
             )
 
             agent._get_strtopic.assert_called_once_with("reply_to")
@@ -771,7 +777,10 @@ class Test_Agent:
             uuid4.return_value = "vvv"
             value = Word("foo")
             reqrep = agent._create_req(
-                key=b"key", value=value, reply_to="reply_to", headers={"h1": "h2"}
+                key=b"key",
+                value=value,
+                reply_to="reply_to",
+                headers={"h1": "h2"},
             )[0]
             assert isinstance(reqrep, ReqRepRequest)
 

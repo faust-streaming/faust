@@ -170,7 +170,11 @@ class TestAerospikeStore:
             scan = MagicMock()
             store.client.scan = MagicMock(return_value=scan)
             scan_result = [
-                (MagicMock(), {"ttl": 4294967295, "gen": 4}, {"value_key": "value1"}),
+                (
+                    MagicMock(),
+                    {"ttl": 4294967295, "gen": 4},
+                    {"value_key": "value1"},
+                ),
                 (MagicMock(), {"ttl": 4294967295, "gen": 4}, None),
             ]
             scan.results = MagicMock(return_value=scan_result)
