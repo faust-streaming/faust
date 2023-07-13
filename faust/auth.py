@@ -2,11 +2,14 @@
 import ssl
 from typing import Any, Optional, Union
 
+from aiokafka.conn import AbstractTokenProvider
+
 from faust.types.auth import AuthProtocol, CredentialsT, SASLMechanism
 
 __all__ = [
     "Credentials",
     "SASLCredentials",
+    "OAuthCredentials",
     "GSSAPICredentials",
     "SSLCredentials",
 ]
@@ -47,6 +50,33 @@ class SASLCredentials(Credentials):
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: username={self.username}>"
+
+
+class OAuthCredentials(Credentials):
+    """Describe OAuth Bearer credentials over SASL"""
+
+    protocol = AuthProtocol.SASL_PLAINTEXT
+    mechanism: SASLMechanism = SASLMechanism.OAUTHBEARER
+
+    ssl_context: Optional[ssl.SSLContext]
+
+    def __init__(
+        self,
+        *,
+        oauth_cb: AbstractTokenProvider,
+        ssl_context: Optional[ssl.SSLContext] = None,
+    ):
+        self.oauth_cb = oauth_cb
+        self.ssl_context = ssl_context
+
+        if ssl_context is not None:
+            self.protocol = AuthProtocol.SASL_SSL
+
+    def __repr__(self) -> str:
+        return "<{0}: oauth credentials {1} SSL support".format(
+            type(self).__name__,
+            "with" if self.protocol == AuthProtocol.SASL_SSL else "without",
+        )
 
 
 class GSSAPICredentials(Credentials):

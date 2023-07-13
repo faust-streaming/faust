@@ -4,7 +4,10 @@ def test_json(faust_json):
 
     assert {"name": "app.Arena", "help": "<N/A>"} in models
     assert {"name": "app.Point", "help": "<N/A>"} in models
-    assert {"name": "@ReqRepResponse", "help": "Request-Reply response."} in models
+    assert {
+        "name": "@ReqRepResponse",
+        "help": "Request-Reply response.",
+    } in models
 
     names = [model["name"] for model in models]
     assert (

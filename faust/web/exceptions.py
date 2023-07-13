@@ -38,7 +38,7 @@ class WebError(FaustError):
         detail: Optional[str] = None,
         *,
         code: Optional[int] = None,
-        **extra_context: Any
+        **extra_context: Any,
     ) -> None:
         if detail:
             self.detail = detail

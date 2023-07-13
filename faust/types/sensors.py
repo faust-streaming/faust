@@ -133,7 +133,7 @@ class SensorInterfaceT(abc.ABC):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None
+        view: web.View = None,
     ) -> None:
         ...
 

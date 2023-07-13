@@ -25,6 +25,7 @@ class SASLMechanism(Enum):
     GSSAPI = "GSSAPI"
     SCRAM_SHA_256 = "SCRAM-SHA-256"
     SCRAM_SHA_512 = "SCRAM-SHA-512"
+    OAUTHBEARER = "OAUTHBEARER"
 
 
 AUTH_PROTOCOLS_SSL = {AuthProtocol.SSL, AuthProtocol.SASL_SSL}

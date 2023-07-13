@@ -16,7 +16,7 @@ def attach(
     category: str,
     *,
     callback: Callable[[Scanner, str, Any], None] = None,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> None:
     """Shortcut for :func:`venusian.attach`.
 
