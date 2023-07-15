@@ -1,1 +1,2 @@
-confluent-kafka
+#confluent-kafka  # waiting for https://github.com/faust-streaming/faust/pull/418 to be merged and released
+confluent-kafka @ git+https://github.com/stephan-hof/confluent-kafka-python.git@features/io_event_enable
