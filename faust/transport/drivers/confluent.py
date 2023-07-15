@@ -151,12 +151,16 @@ class Consumer(ThreadDelegateConsumer):
 
 
 class AsyncConsumer:
-    def __init__(self,
-                 config, logger=None, callback=None, loop=None,
-                 on_partitions_revoked=None,
-                 on_partitions_assigned=None,
-                 beacon=None,
-                 ):
+    def __init__(
+        self,
+        config,
+        logger=None,
+        callback=None,
+        loop=None,
+        on_partitions_revoked=None,
+        on_partitions_assigned=None,
+        beacon=None,
+    ):
         """Construct a Consumer usable within asyncio.
 
         :param config: A configuration dict for this Consumer
@@ -260,7 +264,6 @@ class AsyncConsumer:
         return self.consumer.assignment()
 
 
-
 class ConfluentConsumerThread(ConsumerThread):
     """Thread managing underlying :pypi:`confluent_kafka` consumer."""
 
@@ -342,11 +345,8 @@ class ConfluentConsumerThread(ConsumerThread):
             topics=list(topics),
             on_assign=self._on_assign,
             on_revoke=self._on_revoke,
+            # listener=self._rebalance_listener,
         )
-
-        while not self._assigned:
-            self.log.info("Still waiting for assignment...")
-            self._ensure_consumer().poll(timeout=1)
 
     def _on_assign(self, consumer: _Consumer, assigned: List[_TopicPartition]) -> None:
         self._assigned = True
@@ -365,21 +365,21 @@ class ConfluentConsumerThread(ConsumerThread):
     async def _seek_to_committed(self) -> Mapping[TP, int]:
         consumer = self._ensure_consumer()
         assignment = consumer.assignment()
-        committed = consumer.committed(assignment)
+        committed = consumer.consumer.committed(assignment)
         for tp in committed:
-            consumer.seek(tp)
+            await consumer.consumer.seek(tp)
         return {ensure_TP(tp): tp.offset for tp in committed}
 
     async def _committed_offsets(self, partitions: List[TP]) -> MutableMapping[TP, int]:
         consumer = self._ensure_consumer()
-        committed = consumer.committed(
+        committed = consumer.consumer.committed(
             [_TopicPartition(tp[0], tp[1]) for tp in partitions]
         )
         return {TP(tp.topic, tp.partition): tp.offset for tp in committed}
 
     async def commit(self, tps: Mapping[TP, int]) -> bool:
         await self.call_thread(
-            self._ensure_consumer().commit,
+            self._ensure_consumer().consumer.commit,
             offsets=[
                 _TopicPartition(tp.topic, tp.partition, offset=offset)
                 for tp, offset in tps.items()
@@ -389,10 +389,12 @@ class ConfluentConsumerThread(ConsumerThread):
         return True
 
     async def position(self, tp: TP) -> Optional[int]:
-        return await self.call_thread(self._ensure_consumer().position, tp)
+        return await self.call_thread(self._ensure_consumer().consumer.position, tp)
 
     async def seek_to_beginning(self, *partitions: _TopicPartition) -> None:
-        await self.call_thread(self._ensure_consumer().seek_to_beginning, *partitions)
+        await self.call_thread(
+            self._ensure_consumer().consumer.seek_to_beginning, *partitions
+        )
 
     async def seek_wait(self, partitions: Mapping[TP, int]) -> None:
         consumer = self._ensure_consumer()
@@ -407,13 +409,13 @@ class ConfluentConsumerThread(ConsumerThread):
         await asyncio.gather(*[consumer.position(tp) for tp in partitions])
 
     def seek(self, partition: TP, offset: int) -> None:
-        self._ensure_consumer().seek(partition, offset)
+        self._ensure_consumer().consumer.seek(partition, offset)
 
     def assignment(self) -> Set[TP]:
         return ensure_TPset(self._ensure_consumer().assignment())
 
     def highwater(self, tp: TP) -> int:
-        _, hw = self._ensure_consumer().get_watermark_offsets(
+        _, hw = self._ensure_consumer().consumer.get_watermark_offsets(
             _TopicPartition(tp.topic, tp.partition), cached=True
         )
         return hw
@@ -430,7 +432,9 @@ class ConfluentConsumerThread(ConsumerThread):
     async def _earliest_offsets(self, partitions: List[TP]) -> MutableMapping[TP, int]:
         consumer = self._ensure_consumer()
         return {
-            tp: consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[0]
+            tp: consumer.consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[
+                0
+            ]
             for tp in partitions
         }
 
@@ -442,7 +446,9 @@ class ConfluentConsumerThread(ConsumerThread):
     async def _highwaters(self, partitions: List[TP]) -> MutableMapping[TP, int]:
         consumer = self._ensure_consumer()
         return {
-            tp: consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[1]
+            tp: consumer.consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[
+                1
+            ]
             for tp in partitions
         }
 
@@ -457,7 +463,7 @@ class ConfluentConsumerThread(ConsumerThread):
         # Implementation for the Fetcher service.
         _consumer = self._ensure_consumer()
         messages = await self.call_thread(
-            _consumer.consume,
+            _consumer.consumer.consume,
             num_messages=10000,
             timeout=timeout,
         )
@@ -485,7 +491,7 @@ class ConfluentConsumerThread(ConsumerThread):
     def key_partition(
         self, topic: str, key: Optional[bytes], partition: int = None
     ) -> Optional[int]:
-        metadata = self._consumer.list_topics(topic)
+        metadata = self._consumer.consumer.list_topics(topic)
         partition_count = len(metadata.topics[topic]["partitions"])
 
         # Calculate the partition number based on the key hash
