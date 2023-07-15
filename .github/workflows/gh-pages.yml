@@ -24,7 +24,7 @@ jobs:
       - name: Install doc build deps and build with Sphinx
         run: make docs
       - name: Upload artifacts
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
         with:
         # Upload built docs
           path: ./Documentation
