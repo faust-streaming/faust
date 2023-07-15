@@ -5,6 +5,7 @@ import struct
 import typing
 import weakref
 from collections import defaultdict
+from time import monotonic
 from typing import (
     Any,
     Awaitable,
@@ -70,101 +71,6 @@ def server_list(urls: List[URL], default_port: int) -> str:
     return ",".join(
         [f"{u.host or default_host}:{u.port or default_port}" for u in urls]
     )
-
-
-class AsyncConsumer:
-    def __init__(self, config, logger):
-        """Construct a Consumer usable within asyncio.
-
-        :param config: A configuration dict for this Consumer
-        :param logger: A python logger instance.
-
-        # Taken from https://github.com/stephan-hof/confluent-kafka-python/blob/69b79ad1b53d5e9058710ced63c42ebb1da2d9ec/examples/linux_asyncio_consumer.py
-        """
-
-        self.consumer = Consumer(config, logger=logger)
-
-        self.eventfd = os.eventfd(0, os.EFD_CLOEXEC | os.EFD_NONBLOCK)
-
-        # This is the channel how the consumer notifies asyncio.
-        self.loop = asyncio.get_running_loop()
-        self.loop.add_reader(self.eventfd, self.__eventfd_ready)
-        self.consumer.io_event_enable(self.eventfd, struct.pack("@q", 1))
-
-        self.waiters = set()
-
-        # Close eventfd and remove it from reader if
-        # self is not referenced anymore.
-        self.__close_eventfd = weakref.finalize(
-            self, AsyncConsumer.close_eventd, self.loop, self.eventfd
-        )
-
-    @staticmethod
-    def close_eventd(loop, eventfd):
-        """Internal helper method. Not part of the public API."""
-        loop.remove_reader(eventfd)
-        os.close(eventfd)
-
-    def close(self):
-        self.consumer.close()
-
-    def __eventfd_ready(self):
-        os.eventfd_read(self.eventfd)
-
-        for future in self.waiters:
-            if not future.done():
-                future.set_result(True)
-
-    def subscribe(self, *args, **kwargs):
-        self.consumer.subscribe(*args, **kwargs)
-
-    def assign(self, *args, **kwargs):
-        self.consumer.assign(*args, **kwargs)
-
-    async def poll(self, timeout=0):
-        """Consumes a single message, calls callbacks and returns events.
-
-        It is defined a 'async def' and returns an awaitable object a
-        caller needs to deal with to get the result.
-        See https://docs.python.org/3/library/asyncio-task.html#awaitables
-
-        Which makes it safe (and mandatory) to call it directly in an asyncio
-        coroutine like this: `msg = await consumer.poll()`
-
-        If timeout > 0: Wait at most X seconds for a message.
-                        Returns `None` if no message arrives in time.
-        If timeout <= 0: Endless wait for a message.
-        """
-        if timeout > 0:
-            try:
-                return await asyncio.wait_for(self._poll_no_timeout(), timeout)
-            except asyncio.TimeoutError:
-                return None
-        else:
-            return self._poll_no_timeout()
-
-    async def _poll_no_timeout(self):
-        while not (msg := await self._single_poll()):
-            pass
-        return msg
-
-    async def _single_poll(self):
-        if (msg := self.consumer.poll(timeout=0)) is not None:
-            return msg
-
-        awaitable = self.loop.create_future()
-        self.waiters.add(awaitable)
-        try:
-            # timeout=2 is there for two reasons:
-            # 1) self.consumer.poll needs to be called reguraly for other
-            #    activities like: log callbacks.
-            # 2) Ensures progress even if something with eventfd
-            #    notification goes wrong.
-            await asyncio.wait_for(awaitable, timeout=2)
-        except asyncio.TimeoutError:
-            return None
-        finally:
-            self.waiters.discard(awaitable)
 
 
 class Consumer(ThreadDelegateConsumer):
@@ -234,17 +140,149 @@ class Consumer(ThreadDelegateConsumer):
     def _new_topicpartition(self, topic: str, partition: int) -> TP:
         return cast(TP, _TopicPartition(topic, partition))
 
+    async def on_stop(self) -> None:
+        """Call when consumer is stopping."""
+        await super().on_stop()
+        transport = cast(Transport, self.transport)
+        # transport._topic_waiters.clear()
+
+    def verify_event_path(self, now: float, tp: TP) -> None:
+        return self._thread.verify_event_path(now, tp)
+
+
+class AsyncConsumer:
+    def __init__(self,
+                 config, logger=None, callback=None, loop=None,
+                 on_partitions_revoked=None,
+                 on_partitions_assigned=None,
+                 beacon=None,
+                 ):
+        """Construct a Consumer usable within asyncio.
+
+        :param config: A configuration dict for this Consumer
+        :param logger: A python logger instance.
+
+        # Taken from https://github.com/stephan-hof/confluent-kafka-python/blob/69b79ad1b53d5e9058710ced63c42ebb1da2d9ec/examples/linux_asyncio_consumer.py
+        """
+        self.consumer = confluent_kafka.Consumer(**config)
+        self.callback = callback
+        self.on_partitions_revoked = on_partitions_revoked
+        self.on_partitions_assigned = on_partitions_assigned
+        self.beacon = beacon
+
+        self.eventfd = os.eventfd(0, os.EFD_CLOEXEC | os.EFD_NONBLOCK)
+
+        # This is the channel how the consumer notifies asyncio.
+        self.loop = loop
+        if loop is None:
+            self.loop = asyncio.get_running_loop()
+            self.loop.add_reader(self.eventfd, self.__eventfd_ready)
+        self.consumer.io_event_enable(self.eventfd, struct.pack("@q", 1))
+
+        self.waiters = set()
+
+        # Close eventfd and remove it from reader if
+        # self is not referenced anymore.
+        self.__close_eventfd = weakref.finalize(
+            self, AsyncConsumer.close_eventd, self.loop, self.eventfd
+        )
+
+    @staticmethod
+    def close_eventd(loop, eventfd):
+        """Internal helper method. Not part of the public API."""
+        loop.remove_reader(eventfd)
+        os.close(eventfd)
+
+    def close(self):
+        self.consumer.close()
+
+    def __eventfd_ready(self):
+        os.eventfd_read(self.eventfd)
+
+        for future in self.waiters:
+            if not future.done():
+                future.set_result(True)
+
+    def subscribe(self, *args, **kwargs):
+        self.consumer.subscribe(*args, **kwargs)
+
+    def assign(self, *args, **kwargs):
+        self.consumer.assign(*args, **kwargs)
+
+    async def poll(self, timeout=0):
+        """Consumes a single message, calls callbacks and returns events.
+
+        It is defined a 'async def' and returns an awaitable object a
+        caller needs to deal with to get the result.
+        See https://docs.python.org/3/library/asyncio-task.html#awaitables
+
+        Which makes it safe (and mandatory) to call it directly in an asyncio
+        coroutine like this: `msg = await consumer.poll()`
+
+        If timeout > 0: Wait at most X seconds for a message.
+                        Returns `None` if no message arrives in time.
+        If timeout <= 0: Endless wait for a message.
+        """
+        if timeout > 0:
+            try:
+                t = await asyncio.wait_for(self._poll_no_timeout(), timeout)
+                if self.callback:
+                    await self.callback(t)
+            except asyncio.TimeoutError:
+                return None
+        else:
+            return self._poll_no_timeout()
+
+    async def _poll_no_timeout(self):
+        while not (msg := await self._single_poll()):
+            pass
+        return msg
+
+    async def _single_poll(self):
+        if (msg := self.consumer.poll(timeout=0)) is not None:
+            return msg
+
+        awaitable = self.loop.create_future()
+        self.waiters.add(awaitable)
+        try:
+            # timeout=2 is there for two reasons:
+            # 1) self.consumer.poll needs to be called reguraly for other
+            #    activities like: log callbacks.
+            # 2) Ensures progress even if something with eventfd
+            #    notification goes wrong.
+            await asyncio.wait_for(awaitable, timeout=2)
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            self.waiters.discard(awaitable)
+
+    def assignment(self) -> Set[TP]:
+        return self.consumer.assignment()
+
+
 
 class ConfluentConsumerThread(ConsumerThread):
     """Thread managing underlying :pypi:`confluent_kafka` consumer."""
 
-    _consumer: Optional[_Consumer] = None
+    _consumer: Optional[AsyncConsumer] = None
     _assigned: bool = False
+
+    # _pending_rebalancing_spans: Deque[opentracing.Span]
+
+    tp_last_committed_at: MutableMapping[TP, float]
+    time_started: float
+
+    tp_fetch_request_timeout_secs: float
+    tp_fetch_response_timeout_secs: float
+    tp_stream_timeout_secs: float
+    tp_commit_timeout_secs: float
 
     async def on_start(self) -> None:
         self._consumer = self._create_consumer(loop=self.thread_loop)
+        self.time_started = monotonic()
+        # await self._consumer.start()
 
-    def _create_consumer(self, loop: asyncio.AbstractEventLoop) -> _Consumer:
+    def _create_consumer(self, loop: asyncio.AbstractEventLoop) -> AsyncConsumer:
         transport = cast(Transport, self.transport)
         if self.app.client_only:
             return self._create_client_consumer(transport, loop=loop)
@@ -253,14 +291,14 @@ class ConfluentConsumerThread(ConsumerThread):
 
     def _create_worker_consumer(
         self, transport: "Transport", loop: asyncio.AbstractEventLoop
-    ) -> _Consumer:
+    ) -> AsyncConsumer:
         conf = self.app.conf
         self._assignor = self.app.assignor
 
         # XXX parition.assignment.strategy is string
         # need to write C wrapper for this
         # 'partition.assignment.strategy': [self._assignor]
-        return confluent_kafka.Consumer(
+        return AsyncConsumer(
             {
                 "bootstrap.servers": server_list(transport.url, transport.default_port),
                 "group.id": conf.id,
@@ -274,14 +312,15 @@ class ConfluentConsumerThread(ConsumerThread):
                 "check.crcs": conf.broker_check_crcs,
                 "session.timeout.ms": int(conf.broker_session_timeout * 1000.0),
                 "heartbeat.interval.ms": int(conf.broker_heartbeat_interval * 1000.0),
-            }
+            },
+            self.logger,
         )
 
     def _create_client_consumer(
         self, transport: "Transport", loop: asyncio.AbstractEventLoop
-    ) -> _Consumer:
+    ) -> AsyncConsumer:
         conf = self.app.conf
-        return confluent_kafka.Consumer(
+        return AsyncConsumer(
             {
                 "bootstrap.servers": server_list(transport.url, transport.default_port),
                 "client.id": conf.broker_client_id,
@@ -289,7 +328,8 @@ class ConfluentConsumerThread(ConsumerThread):
                 "default.topic.config": {
                     "auto.offset.reset": "earliest",
                 },
-            }
+            },
+            self.logger,
         )
 
     def close(self) -> None:
@@ -338,7 +378,7 @@ class ConfluentConsumerThread(ConsumerThread):
         return {TP(tp.topic, tp.partition): tp.offset for tp in committed}
 
     async def commit(self, tps: Mapping[TP, int]) -> bool:
-        self.call_thread(
+        await self.call_thread(
             self._ensure_consumer().commit,
             offsets=[
                 _TopicPartition(tp.topic, tp.partition, offset=offset)
@@ -406,7 +446,7 @@ class ConfluentConsumerThread(ConsumerThread):
             for tp in partitions
         }
 
-    def _ensure_consumer(self) -> _Consumer:
+    def _ensure_consumer(self) -> AsyncConsumer:
         if self._consumer is None:
             raise ConsumerNotStarted("Consumer thread not yet started")
         return self._consumer
