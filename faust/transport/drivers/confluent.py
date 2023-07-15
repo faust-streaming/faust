@@ -1,6 +1,9 @@
 """Message transport using :pypi:`confluent_kafka`."""
 import asyncio
+import os
+import struct
 import typing
+import weakref
 from collections import defaultdict
 from typing import (
     Any,
@@ -69,6 +72,101 @@ def server_list(urls: List[URL], default_port: int) -> str:
     )
 
 
+class AsyncConsumer:
+    def __init__(self, config, logger):
+        """Construct a Consumer usable within asyncio.
+
+        :param config: A configuration dict for this Consumer
+        :param logger: A python logger instance.
+
+        # Taken from https://github.com/stephan-hof/confluent-kafka-python/blob/69b79ad1b53d5e9058710ced63c42ebb1da2d9ec/examples/linux_asyncio_consumer.py
+        """
+
+        self.consumer = Consumer(config, logger=logger)
+
+        self.eventfd = os.eventfd(0, os.EFD_CLOEXEC | os.EFD_NONBLOCK)
+
+        # This is the channel how the consumer notifies asyncio.
+        self.loop = asyncio.get_running_loop()
+        self.loop.add_reader(self.eventfd, self.__eventfd_ready)
+        self.consumer.io_event_enable(self.eventfd, struct.pack("@q", 1))
+
+        self.waiters = set()
+
+        # Close eventfd and remove it from reader if
+        # self is not referenced anymore.
+        self.__close_eventfd = weakref.finalize(
+            self, AsyncConsumer.close_eventd, self.loop, self.eventfd
+        )
+
+    @staticmethod
+    def close_eventd(loop, eventfd):
+        """Internal helper method. Not part of the public API."""
+        loop.remove_reader(eventfd)
+        os.close(eventfd)
+
+    def close(self):
+        self.consumer.close()
+
+    def __eventfd_ready(self):
+        os.eventfd_read(self.eventfd)
+
+        for future in self.waiters:
+            if not future.done():
+                future.set_result(True)
+
+    def subscribe(self, *args, **kwargs):
+        self.consumer.subscribe(*args, **kwargs)
+
+    def assign(self, *args, **kwargs):
+        self.consumer.assign(*args, **kwargs)
+
+    async def poll(self, timeout=0):
+        """Consumes a single message, calls callbacks and returns events.
+
+        It is defined a 'async def' and returns an awaitable object a
+        caller needs to deal with to get the result.
+        See https://docs.python.org/3/library/asyncio-task.html#awaitables
+
+        Which makes it safe (and mandatory) to call it directly in an asyncio
+        coroutine like this: `msg = await consumer.poll()`
+
+        If timeout > 0: Wait at most X seconds for a message.
+                        Returns `None` if no message arrives in time.
+        If timeout <= 0: Endless wait for a message.
+        """
+        if timeout > 0:
+            try:
+                return await asyncio.wait_for(self._poll_no_timeout(), timeout)
+            except asyncio.TimeoutError:
+                return None
+        else:
+            return self._poll_no_timeout()
+
+    async def _poll_no_timeout(self):
+        while not (msg := await self._single_poll()):
+            pass
+        return msg
+
+    async def _single_poll(self):
+        if (msg := self.consumer.poll(timeout=0)) is not None:
+            return msg
+
+        awaitable = self.loop.create_future()
+        self.waiters.add(awaitable)
+        try:
+            # timeout=2 is there for two reasons:
+            # 1) self.consumer.poll needs to be called reguraly for other
+            #    activities like: log callbacks.
+            # 2) Ensures progress even if something with eventfd
+            #    notification goes wrong.
+            await asyncio.wait_for(awaitable, timeout=2)
+        except asyncio.TimeoutError:
+            return None
+        finally:
+            self.waiters.discard(awaitable)
+
+
 class Consumer(ThreadDelegateConsumer):
     """Kafka consumer using :pypi:`confluent_kafka`."""
 
@@ -91,18 +189,20 @@ class Consumer(ThreadDelegateConsumer):
         ensure_created: bool = False,
     ) -> None:
         """Create topic on broker."""
-        return  # XXX
-        await self._thread.create_topic(
-            topic,
-            partitions,
-            replication,
-            config=config,
-            timeout=int(want_seconds(timeout) * 1000.0),
-            retention=int(want_seconds(retention) * 1000.0),
-            compacting=compacting,
-            deleting=deleting,
-            ensure_created=ensure_created,
-        )
+        if self.app.conf.topic_allow_declare:
+            await self._thread.create_topic(
+                topic,
+                partitions,
+                replication,
+                config=config,
+                timeout=int(want_seconds(timeout) * 1000.0),
+                retention=int(want_seconds(retention) * 1000.0),
+                compacting=compacting,
+                deleting=deleting,
+                ensure_created=ensure_created,
+            )
+        else:
+            logger.warning(f"Topic creation disabled! Can't create topic {topic}")
 
     def _to_message(self, tp: TP, record: Any) -> ConsumerMessage:
         # convert timestamp to seconds from int milliseconds.
@@ -346,10 +446,10 @@ class ConfluentConsumerThread(ConsumerThread):
         self, topic: str, key: Optional[bytes], partition: int = None
     ) -> Optional[int]:
         metadata = self._consumer.list_topics(topic)
-        partition_count = len(metadata.topics[topic]['partitions'])
+        partition_count = len(metadata.topics[topic]["partitions"])
 
         # Calculate the partition number based on the key hash
-        key_bytes = str(key).encode('utf-8')
+        key_bytes = str(key).encode("utf-8")
         return abs(hash(key_bytes)) % partition_count
 
 
@@ -581,7 +681,7 @@ class Producer(base.Producer):
         partition_count = len(metadata.topics[topic].partitions)
 
         # Calculate the partition number based on the key hash
-        key_bytes = str(key).encode('utf-8')
+        key_bytes = str(key).encode("utf-8")
         partition = abs(hash(key_bytes)) % partition_count
 
         return TP(topic, partition)

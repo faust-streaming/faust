@@ -1,14 +1,12 @@
-import random
-import string
 from contextlib import contextmanager
 from typing import Optional
-from unittest.mock import ANY, MagicMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import confluent_kafka
 import opentracing
 import pytest
-from confluent_kafka.error import KafkaError, KafkaException
 from confluent_kafka import TopicPartition
+from confluent_kafka.error import KafkaError, KafkaException
 from mode.utils import text
 from mode.utils.futures import done_future
 from opentracing.ext import tags
@@ -474,7 +472,9 @@ class Test_ConfluentConsumerThread(ConfluentConsumerThreadFixtures):
         with patch(TESTED_MODULE + ".set_current_span") as s:
             app.tracer = Mock(name="tracer")
             span = cthread._start_span("test")
-            app.tracer.get_tracer.assert_called_once_with(f"{app.conf.name}-_confluent_kafka")
+            app.tracer.get_tracer.assert_called_once_with(
+                f"{app.conf.name}-_confluent_kafka"
+            )
             tracer = app.tracer.get_tracer.return_value
             tracer.start_span.assert_called_once_with(operation_name="test")
             span.set_tag.assert_has_calls(
