@@ -34,6 +34,7 @@ from faust.transport.drivers.aiokafka import (
     ThreadedProducer,
     Transport,
     credentials_to_aiokafka_auth,
+    ensure_aiokafka_TPset,
     server_list,
 )
 from faust.types import TP
@@ -2038,3 +2039,9 @@ def test_credentials_to_aiokafka(credentials, ssl_context, expected):
 def test_credentials_to_aiokafka__invalid():
     with pytest.raises(ImproperlyConfigured):
         credentials_to_aiokafka_auth(object())
+
+
+def test_ensure_aiokafka_TPset():
+    actual = ensure_aiokafka_TPset({TP(topic="foo", partition=0)})
+    assert actual == {TopicPartition("foo", 0)}
+    assert all(isinstance(tp, TopicPartition) for tp in actual)
