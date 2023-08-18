@@ -711,13 +711,15 @@ class AIOKafkaConsumerThread(ConsumerThread):
     async def _commit(self, offsets: Mapping[TP, int]) -> bool:
         consumer = self._ensure_consumer()
         now = monotonic()
+        commitable_offsets = {
+            tp: offset for tp, offset in offsets.items() if tp in self.assignment()
+        }
         try:
             aiokafka_offsets = {
-                tp: OffsetAndMetadata(offset, "")
-                for tp, offset in offsets.items()
-                if tp in self.assignment()
+                ensure_aiokafka_TP(tp): OffsetAndMetadata(offset, "")
+                for tp, offset in commitable_offsets.items()
             }
-            self.tp_last_committed_at.update({tp: now for tp in aiokafka_offsets})
+            self.tp_last_committed_at.update({tp: now for tp in commitable_offsets})
             await consumer.commit(aiokafka_offsets)
         except CommitFailedError as exc:
             if "already rebalanced" in str(exc):
@@ -1621,3 +1623,17 @@ def credentials_to_aiokafka_auth(
         }
     else:
         return {"security_protocol": "PLAINTEXT"}
+
+
+def ensure_aiokafka_TP(tp: TP) -> _TopicPartition:
+    """Convert Faust ``TP`` to aiokafka ``TopicPartition``."""
+    return (
+        tp
+        if isinstance(tp, _TopicPartition)
+        else _TopicPartition(tp.topic, tp.partition)
+    )
+
+
+def ensure_aiokafka_TPset(tps: Iterable[TP]) -> Set[_TopicPartition]:
+    """Convert set of Faust ``TP`` to aiokafka ``TopicPartition``."""
+    return {ensure_aiokafka_TP(tp) for tp in tps}
