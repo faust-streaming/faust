@@ -1,7 +1,41 @@
 [project]
 name = "faust-streaming"
 requires-python = ">=3.8"
-dynamic = ["version"]
+license = {file = "LICENSE"}
+classifiers=[
+    "Framework :: AsyncIO",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: BSD",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+]
+keywords=[
+    "stream",
+    "processing",
+    "asyncio",
+    "distributed",
+    "queue",
+    "kafka",
+]
+dynamic = [
+    "version",
+    "dependencies",
+]
 
 [build-system]
 requires = [
@@ -13,8 +47,17 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
 [tool.setuptools_scm]
 # enables setuptools_scm to provide the dynamic version
+
+#[tool.setuptools]
+#include-package-data = true
+#license-files = ["LICENSES"]
+#zip-safe = false
+
 
 [tool.flake8]
 ignore = [

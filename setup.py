@@ -187,9 +187,6 @@ with open("README.md") as readme_file:
 
 def do_setup(**kwargs):
     setup(
-        name="faust-streaming",
-        use_scm_version=True,
-        setup_requires=["setuptools_scm"],
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
@@ -197,14 +194,9 @@ def do_setup(**kwargs):
         author_email=meta["contact"],
         url=meta["homepage"],
         platforms=["any"],
-        license="BSD 3-Clause",
         packages=find_packages(exclude=["examples", "ez_setup", "tests", "tests.*"]),
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
         package_data={"faust": ["py.typed"]},
-        include_package_data=True,
-        python_requires=">=3.8.0",
-        zip_safe=False,
-        install_requires=reqs("requirements.txt"),
         tests_require=reqs("test.txt"),
         extras_require=extras_require(),
         entry_points={
@@ -217,35 +209,6 @@ def do_setup(**kwargs):
             "Source": "https://github.com/faust-streaming/faust",
             "Documentation": "https://faust-streaming.github.io/faust",
         },
-        keywords=[
-            "stream",
-            "processing",
-            "asyncio",
-            "distributed",
-            "queue",
-            "kafka",
-        ],
-        classifiers=[
-            "Framework :: AsyncIO",
-            "Development Status :: 5 - Production/Stable",
-            "Intended Audience :: Developers",
-            "Natural Language :: English",
-            "License :: OSI Approved :: BSD License",
-            "Programming Language :: Python",
-            "Programming Language :: Python :: 3 :: Only",
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
-            "Programming Language :: Python :: 3.10",
-            "Programming Language :: Python :: 3.11",
-            "Programming Language :: Python :: Implementation :: CPython",
-            "Operating System :: POSIX",
-            "Operating System :: POSIX :: Linux",
-            "Operating System :: MacOS :: MacOS X",
-            "Operating System :: POSIX :: BSD",
-            "Operating System :: Microsoft :: Windows",
-            "Topic :: System :: Networking",
-            "Topic :: System :: Distributed Computing",
-        ],
         **kwargs,
     )
 
