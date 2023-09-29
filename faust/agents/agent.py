@@ -661,7 +661,7 @@ class Agent(AgentT, Service):
         else:
             # agent yields and is an AsyncIterator so we have to consume it.
             coro = self._slurp(aref, aiter(aref))
-        task = asyncio.Task(self._execute_actor(coro, aref), loop=self.loop)
+        task = self.loop.create_task(self._execute_actor(coro, aref))
         task._beacon = beacon  # type: ignore
         aref.actor_task = task
         self._actors.add(aref)
