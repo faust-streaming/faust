@@ -8,6 +8,6 @@ terminaltables>=3.1,<4.0
 yarl>=1.0,<2.0
 croniter>=0.3.16
 mypy_extensions
-venusian==3.0.0
+venusian==3.1.0
 intervaltree
 six
