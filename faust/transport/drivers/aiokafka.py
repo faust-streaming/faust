@@ -836,7 +836,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
         aiotp = TopicPartition(tp.topic, tp.partition)
         assignment = consumer._fetcher._subscriptions.subscription.assignment
-        if not assignment and not assignment.active:
+        if not assignment or not assignment.active:
             self.log.error(f"No active partitions for {tp}")
             return True
         poll_at = None
