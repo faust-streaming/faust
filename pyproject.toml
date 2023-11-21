@@ -5,7 +5,7 @@ dynamic = ["version"]
 
 [build-system]
 requires = [
-    "setuptools",
+    "setuptools>=30.3.0,<69.0.0",
     "setuptools_scm[toml]",
     "wheel",
     "cython>=0.29; implementation_name == 'cpython'",
