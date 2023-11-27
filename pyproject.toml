@@ -40,13 +40,15 @@ classifiers = [
 ]
 
 authors = [
-#    "Ask Solem Hoel",
+    { name = "Ask Solem Hoel", email= "ask@robinhood.com" },
+    { name = "Vineet Goel", email= "vineet@robinhood.com" },
 ]
 
 maintainers = [
-#    "William Barnhart <williambbarnhart@gmail.com>",
-#    "Vikram Patki",
+    { name = "Vikram Patki", email = "vpatki@wayfair.com" },
+    { name = "William Barnhart", email = "williambbarnhart@gmail.com" },
 ]
+
 
 [project.urls]
 Documentation = "https://faust-streaming.github.io/faust/"
