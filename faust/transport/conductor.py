@@ -230,8 +230,21 @@ class Conductor(ConductorT, Service):
 
     _compiler: ConductorCompiler
 
-    #: We wait for 45 seconds after a resubscription request, to make
-    #: sure any later requests are handled at the same time.
+    # `_resubscribe_sleep_lock_seconds` trades off between the latency of
+    # receiving messages for newly added topics and the cost of resubscribing
+    # to topics. Note that this resubscription flow only occurs when the topic
+    # list has changed (see the `_subscription_changed` event). This mechanism
+    # attempts to coalesce topic list changes that happen in quick succession
+    # and prevents the framework from constantly resubscribing to topics after
+    # every change.
+    #
+    # If the value is set too low and an agent is adding topics very
+    # frequently, then resubscription will happen very often and will issue
+    # unnecessary work on the async loop.
+    # If the value is set too high, it will take a long time for a newly added
+    # agent to start receiving messages; this time is bounded by the value of
+    # `_resubscribe_sleep_lock_seconds`, barring something hogging the async
+    # loop.
     _resubscribe_sleep_lock_seconds: float = 45.0
 
     def __init__(self, app: AppT, **kwargs: Any) -> None:
