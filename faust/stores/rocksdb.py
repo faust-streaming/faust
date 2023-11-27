@@ -143,7 +143,7 @@ class RocksDBOptions:
                 [rocksdict.DBPath(str(path), self.target_file_size_base)]
             )
             db_access_type = (
-                rocksdict.AccessType.ReadWrite
+                rocksdict.AccessType.read_write()
                 if self.ttl is None
                 else rocksdict.AccessType.with_ttl(self.ttl)
             )
