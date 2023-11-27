@@ -181,10 +181,15 @@ def extras_require():
     return {x: extras(x + ".txt") for x in BUNDLES}
 
 
+with open("README.md") as readme_file:
+    long_description = readme_file.read()
+
+
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
         description=meta["doc"],
+        long_description=long_description,
         long_description_content_type="text/markdown",
         packages=find_packages(exclude=["examples", "ez_setup", "tests", "tests.*"]),
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
