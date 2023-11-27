@@ -40,12 +40,12 @@ classifiers = [
 ]
 
 authors = [
-    "Ask Solem Hoel",
+#    "Ask Solem Hoel",
 ]
 
 maintainers = [
-    "William Barnhart <williambbarnhart@gmail.com>",
-    "Vikram Patki",
+#    "William Barnhart <williambbarnhart@gmail.com>",
+#    "Vikram Patki",
 ]
 
 [project.urls]
@@ -65,9 +65,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
 # enables setuptools_scm to provide the dynamic version
-
-[tool.setuptools.dynamic]
-version = { attr = "faust.__version__" }
 
 [tool.flake8]
 ignore = [
