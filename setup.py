@@ -181,7 +181,6 @@ def extras_require():
     return {x: extras(x + ".txt") for x in BUNDLES}
 
 
-
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
