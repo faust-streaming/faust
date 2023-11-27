@@ -183,6 +183,7 @@ def extras_require():
 
 def do_setup(**kwargs):
     setup(
+        name="faust-streaming",
         description=meta["doc"],
         long_description_content_type="text/markdown",
         packages=find_packages(exclude=["examples", "ez_setup", "tests", "tests.*"]),
