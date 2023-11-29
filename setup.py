@@ -188,6 +188,7 @@ with open("README.md") as readme_file:
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
+        use_setuptools_scm=True,
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
