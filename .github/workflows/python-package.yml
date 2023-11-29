@@ -111,7 +111,6 @@ jobs:
     name: 📦 Build the source distribution
     runs-on: ubuntu-latest
     needs: check
-    if: github.event_name == 'release' && github.event.action == 'created'
     steps:
       - uses: actions/checkout@v4
         name: Checkout source repository
