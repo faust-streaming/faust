@@ -110,7 +110,6 @@ jobs:
   build_sdist:
     name: 📦 Build the source distribution
     runs-on: ubuntu-latest
-    needs: check
     steps:
       - uses: actions/checkout@v4
         name: Checkout source repository
