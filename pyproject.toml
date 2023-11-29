@@ -1,5 +1,6 @@
 [project]
 name = "faust-streaming"
+description = "Python Stream Processing. A Faust fork"
 requires-python = ">=3.8"
 dynamic = [
     "version",
