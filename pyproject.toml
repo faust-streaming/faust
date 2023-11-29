@@ -49,6 +49,8 @@ maintainers = [
     { name = "William Barnhart", email = "williambbarnhart@gmail.com" },
 ]
 
+[project.scripts]
+faust = "faust.cli.faust:cli"
 
 [project.urls]
 Documentation = "https://faust-streaming.github.io/faust/"
