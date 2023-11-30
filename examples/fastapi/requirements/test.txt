@@ -1,2 +1,0 @@
-pytest~=3.0
-pytest-asyncio>=0.8

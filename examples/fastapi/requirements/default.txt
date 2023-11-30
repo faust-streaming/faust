@@ -1,4 +1,0 @@
-faust[rocksdict]
-fastapi
-eventlet
-faust-aioeventlet
