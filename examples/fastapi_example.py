@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 app = fastapi_app = FastAPI(
-    # lifespan=lifespan,  # TODO
+    lifespan=lifespan,
 )
 # For now, run via "uvicorn fastapi_example:app"
 # then checkout http://127.0.0.1:8000/docs
@@ -69,12 +69,3 @@ def read_root():
 def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    asyncio.create_task(faust_app.start())
-
-
-@app.on_event("shutdown")
-async def shutdown_event() -> None:
-    await faust_app.stop()
