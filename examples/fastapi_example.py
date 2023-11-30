@@ -64,8 +64,8 @@ async def print_greetings(greetings):
         print(greeting)
 
 
+@faust_app.timer(5)  # make sure you *always* add the timer above if you're using one
 @fastapi_app.get("/produce")
-@faust_app.timer(5)
 async def produce():
     for i in range(100):
         await greetings_topic.send(value=f'hello {i}')
