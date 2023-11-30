@@ -30,18 +30,6 @@ faust_app = faust.App(
 greetings_topic = faust_app.topic('greetings', value_type=str)
 
 
-@faust_app.agent(greetings_topic)
-async def print_greetings(greetings):
-    async for greeting in greetings:
-        print(greeting)
-
-
-@faust_app.timer(5)
-async def produce():
-    for i in range(100):
-        await greetings_topic.send(value=f'hello {i}')
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load the ML model
@@ -57,15 +45,28 @@ app = fastapi_app = FastAPI(
     lifespan=lifespan,
 )
 # For now, run via "uvicorn fastapi_example:app"
-# then checkout http://127.0.0.1:8000/docs
+# then visit http://127.0.0.1:8000/docs
 
 
-@app.get("/")
+@fastapi_app.get("/")
 def read_root():
     return {"Hello": "World"}
 
 
-@app.get("/items/{item_id}")
+@fastapi_app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
+
+@faust_app.agent(greetings_topic)
+async def print_greetings(greetings):
+    async for greeting in greetings:
+        print(greeting)
+
+
+@fastapi_app.get("/produce")
+@faust_app.timer(5)
+async def produce():
+    for i in range(100):
+        await greetings_topic.send(value=f'hello {i}')
+    return {"success": True}
