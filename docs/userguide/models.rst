@@ -186,13 +186,13 @@ a schema that reads message key and value type from Kafka headers:
                         serializer=None):
             if loads is None:
                 loads = app.serializers.loads_value
-            # try to get key_type and serializer from Kafka headers
+            # try to get value_type and serializer from Kafka headers
             headers = dict(message.headers)
             value_type_name = headers.get('ValueType')
             serializer = serializer or headers.get('ValueSerializer')
             if value_type_name:
-                value_type = registry[value_type]
-                return loads(value_type, message.key,
+                value_type = registry[value_type_name]
+                return loads(value_type, message.value,
                        serializer=serializer)
             else:
                 return super().loads_value(

@@ -1,15 +1,70 @@
 [project]
 name = "faust-streaming"
+description = "Python Stream Processing. A Faust fork"
 requires-python = ">=3.8"
-dynamic = ["version"]
+dynamic = [
+    "version",
+    "optional-dependencies",
+    "dependencies",
+
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+    "stream",
+    "processing",
+    "asyncio",
+    "distributed",
+    "queue",
+    "kafka",
+]
+classifiers = [
+    "Framework :: AsyncIO",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: BSD",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+]
+
+authors = [
+    { name = "Ask Solem Hoel", email= "ask@robinhood.com" },
+    { name = "Vineet Goel", email= "vineet@robinhood.com" },
+]
+
+maintainers = [
+    { name = "Vikram Patki", email = "vpatki@wayfair.com" },
+    { name = "William Barnhart", email = "williambbarnhart@gmail.com" },
+]
+
+[project.scripts]
+faust = "faust.cli.faust:cli"
+
+[project.urls]
+Documentation = "https://faust-streaming.github.io/faust/"
+Source = "https://github.com/faust-streaming/faust"
+Changes = "https://github.com/faust-streaming/faust/releases"
 
 [build-system]
 requires = [
-    "setuptools",
+    "setuptools>=30.3.0",
     "setuptools_scm[toml]",
     "wheel",
     "cython>=0.29; implementation_name == 'cpython'",
-    "cython>=3.0.0b3; implementation_name == 'cpython' and python_version >= '3.12'",
+    "cython>=3.0.0; implementation_name == 'cpython' and python_version >= '3.12'",
 ]
 build-backend = "setuptools.build_meta"
 
