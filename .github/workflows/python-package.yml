@@ -12,7 +12,7 @@ env:
   FORCE_COLOR: '1'  # Make tools pretty.
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
   PIP_NO_PYTHON_VERSION_WARNING: '1'
-  PYTHON_LATEST: '3.11'
+  PYTHON_LATEST: '3.12'
 
   # For re-actors/checkout-python-sdist
   sdist-artifact: python-package-distributions
@@ -45,16 +45,13 @@ jobs:
       # for example if a test fails only when Cython is enabled
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         use-cython: ['true', 'false']
         experimental: [false]
         include:
           - python-version: 'pypy3.9'
             use-cython: false
             experimental: true
-          - python-version: ~3.12.0-0
-            experimental: true
-            use-cython: false
           - python-version: ~3.13.0-0
             experimental: true
             use-cython: false
