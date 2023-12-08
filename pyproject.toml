@@ -76,6 +76,8 @@ build-backend = "setuptools.build_meta"
 ignore = [
     "W503",
     "E203",
+    "E231",
+    "E225",
     "B305",
 ]
 max-line-length = 88

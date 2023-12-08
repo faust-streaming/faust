@@ -58,7 +58,7 @@ class model(AppCommand):
         alt = text.didyoumean(
             registry,
             lookup,
-            fmt_none=f"Please run `{self.prog_name} models` for a list.",
+            fmt_none=f'Please run "{self.prog_name} models" for a list.',
         )
         return click.UsageError(f"No model {name!r}. {alt}")
 
