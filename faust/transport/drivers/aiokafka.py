@@ -25,26 +25,23 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
+from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
+from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from aiokafka.errors import (
     CommitFailedError,
     ConsumerStoppedError,
     IllegalStateError,
     KafkaError,
-    ProducerFenced,
-)
-from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
-from aiokafka.util import parse_kafka_version
-from kafka import TopicPartition
-from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
-from kafka.errors import (
     NotControllerError,
+    ProducerFenced,
     TopicAlreadyExistsError as TopicExistsError,
     for_code,
 )
-from kafka.partitioner import murmur2
-from kafka.partitioner.default import DefaultPartitioner
-from kafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.partitioner import DefaultPartitioner, murmur2
+from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
+from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
 from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text

@@ -3,8 +3,8 @@
 import abc
 from typing import Type
 
-from kafka.protocol.struct import Struct
-from kafka.protocol.types import Schema
+from aiokafka.protocol.struct import Struct
+from aiokafka.protocol.types import Schema
 
 
 class Response(Struct, metaclass=abc.ABCMeta):  # type: ignore
