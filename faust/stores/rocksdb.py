@@ -113,6 +113,7 @@ class RocksDBOptions:
         block_cache_compressed_size: Optional[int] = None,
         bloom_filter_size: Optional[int] = None,
         use_rocksdict: Optional[bool] = None,
+        ttl: Optional[int] = None,
         **kwargs: Any,
     ) -> None:
         if max_open_files is not None:
@@ -131,6 +132,7 @@ class RocksDBOptions:
             self.bloom_filter_size = bloom_filter_size
         if use_rocksdict is not None:
             self.use_rocksdict = use_rocksdict
+        self.ttl = ttl
         self.extra_options = kwargs
 
     def open(self, path: Path, *, read_only: bool = False) -> DB:
@@ -140,7 +142,12 @@ class RocksDBOptions:
             db_options.set_db_paths(
                 [rocksdict.DBPath(str(path), self.target_file_size_base)]
             )
-            db = DB(str(path), options=self.as_options())
+            db_access_type = (
+                rocksdict.AccessType.read_write()
+                if self.ttl is None
+                else rocksdict.AccessType.with_ttl(self.ttl)
+            )
+            db = DB(str(path), options=self.as_options(), access_type=db_access_type)
             db.set_read_options(rocksdict.ReadOptions())
             return db
         else:
@@ -181,6 +188,7 @@ class RocksDBOptions:
                         self.block_cache_compressed_size
                     ),
                 ),
+                wal_ttl_seconds=self.ttl if self.ttl is not None else 0,
                 **self.extra_options,
             )
 
@@ -199,6 +207,13 @@ class Store(base.SerializedStore):
 
             app.GlobalTable(..., options={'driver': 'rocksdict'})
             app.GlobalTable(..., options={'driver': 'python-rocksdb'})
+
+        If you wish to remove the WAL files after a certain amount of
+        time, you can set a TTL this way::
+
+            app.GlobalTable(..., options={'ttl': 60 * 60 * 24})  # 1 day
+
+        Note that the TTL is in seconds.
 
     .. warning::
         Note that rocksdict uses RocksDB 8. You won't be able to

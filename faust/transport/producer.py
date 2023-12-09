@@ -91,7 +91,7 @@ class ProducerBuffer(Service, ProducerBufferT):
             start_time = time.time()
             await self.flush_atmost(self.max_messages)
             end_time = time.time()
-            logger.info(f"producer flush took {end_time-start_time}")
+            logger.info(f"producer flush took {end_time - start_time}")
 
     @Service.task
     async def _handle_pending(self) -> None:
