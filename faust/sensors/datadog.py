@@ -146,7 +146,7 @@ class DatadogMonitor(Monitor):
         self.rate = rate
         if datadog is None:
             raise ImproperlyConfigured(
-                f"{type(self).__name__} requires `pip install datadog`."
+                f'{type(self).__name__} requires "pip install datadog".'
             )
         super().__init__(**kwargs)
 
