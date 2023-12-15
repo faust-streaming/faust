@@ -509,7 +509,7 @@ class Agent(AgentT, Service):
                 has_prefix=has_prefix,
                 **kwargs,
             )
-        raise TypeError(f"Channel must be channel, topic, or str; not {type(channel)}")
+        raise TypeError(f"Channel must be channel, topic, or str, not {type(channel)}")
 
     def __call__(
         self,
