@@ -1,7 +1,7 @@
 black
 isort
 autoflake
-flake8==6.1.0  # 5.0.4 can be upgraded to 6.0.0+ when we EOL Python 3.7
+flake8==6.1.0
 flake8-bugbear
 flake8-comprehensions
 hypothesis>=3.31
