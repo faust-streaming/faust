@@ -101,7 +101,7 @@ jobs:
           fetch-depth: 0
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
   build_sdist:
@@ -119,7 +119,7 @@ jobs:
         run: >
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:
           path: dist/*.tar.gz
@@ -133,7 +133,7 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
       - name: Download the sdist artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: artifact
           path: dist
