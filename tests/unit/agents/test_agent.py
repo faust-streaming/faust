@@ -395,10 +395,11 @@ class Test_Agent:
     async def test_prepare_actor__AsyncIterable(self, *, agent, monkeypatch):
         async def mock_execute_actor(coro, aref):
             await coro
+
         mock_beacon = Mock(name="beacon", autospec=Node)
-        mock_slurp = AsyncMock(name='slurp')
-        monkeypatch.setattr(agent, '_slurp', mock_slurp)    
-        monkeypatch.setattr(agent, '_execute_actor', mock_execute_actor)
+        mock_slurp = AsyncMock(name="slurp")
+        monkeypatch.setattr(agent, "_slurp", mock_slurp)
+        monkeypatch.setattr(agent, "_execute_actor", mock_execute_actor)
         aref = agent(index=0, active_partitions=None)
         ret = await agent._prepare_actor(aref, mock_beacon)
         task = aref.actor_task
@@ -428,14 +429,16 @@ class Test_Agent:
             assert ret is aref
 
     @pytest.mark.asyncio
-    async def test_prepare_actor__Awaitable_with_multiple_topics(self, *, agent2, monkeypatch):
+    async def test_prepare_actor__Awaitable_with_multiple_topics(
+        self, *, agent2, monkeypatch
+    ):
         aref = agent2(index=0, active_partitions=None)
         agent2.channel.topics = ["foo", "bar"]
         mock_beacon = Mock(name="beacon", autospec=Node)
-        mock_slurp = AsyncMock(name='slurp')
-        mock_execute_actor = AsyncMock(name='execute_actor')
-        monkeypatch.setattr(agent2, '_slurp', mock_slurp)
-        monkeypatch.setattr(agent2, '_execute_actor', mock_execute_actor)
+        mock_slurp = AsyncMock(name="slurp")
+        mock_execute_actor = AsyncMock(name="execute_actor")
+        monkeypatch.setattr(agent2, "_slurp", mock_slurp)
+        monkeypatch.setattr(agent2, "_execute_actor", mock_execute_actor)
         ret = await agent2._prepare_actor(aref, mock_beacon)
         task = aref.actor_task
         mock_slurp.assert_not_called()
