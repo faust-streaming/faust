@@ -24,7 +24,7 @@ jobs:
       - name: Install doc build deps and build with Sphinx
         run: make docs
       - name: Upload artifacts
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
         # Upload built docs
           path: ./Documentation
@@ -42,6 +42,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/deploy-pages@v3
+      - uses: actions/deploy-pages@v4
         id: deployment
         name: Deploy to GitHub Pages
