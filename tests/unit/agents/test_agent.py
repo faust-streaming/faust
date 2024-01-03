@@ -392,22 +392,23 @@ class Test_Agent:
         assert ret is agent._prepare_actor.return_value
 
     @pytest.mark.asyncio
-    async def test_prepare_actor__AsyncIterable(self, *, agent):
+    async def test_prepare_actor__AsyncIterable(self, *, agent, monkeypatch):
+        async def mock_execute_actor(coro, aref):
+            await coro
+
+        mock_beacon = Mock(name="beacon", autospec=Node)
+        mock_slurp = AsyncMock(name="slurp")
+        monkeypatch.setattr(agent, "_slurp", mock_slurp)
+        monkeypatch.setattr(agent, "_execute_actor", mock_execute_actor)
         aref = agent(index=0, active_partitions=None)
-        with patch("asyncio.Task") as Task:
-            agent._slurp = Mock(name="_slurp")
-            agent._execute_actor = Mock(name="_execute_actor")
-            beacon = Mock(name="beacon", autospec=Node)
-            ret = await agent._prepare_actor(aref, beacon)
-            agent._slurp.assert_called()
-            coro = agent._slurp()
-            agent._execute_actor.assert_called_once_with(coro, aref)
-            Task.assert_called_once_with(agent._execute_actor(), loop=agent.loop)
-            task = Task()
-            assert task._beacon is beacon
-            assert aref.actor_task is task
-            assert aref in agent._actors
-            assert ret is aref
+        ret = await agent._prepare_actor(aref, mock_beacon)
+        task = aref.actor_task
+        await task
+        mock_slurp.assert_awaited()
+        assert mock_slurp.await_args.args[0] is aref
+        assert task._beacon is mock_beacon
+        assert aref in agent._actors
+        assert ret is aref
 
     @pytest.mark.asyncio
     async def test_prepare_actor__Awaitable(self, *, agent2):
@@ -428,22 +429,24 @@ class Test_Agent:
             assert ret is aref
 
     @pytest.mark.asyncio
-    async def test_prepare_actor__Awaitable_with_multiple_topics(self, *, agent2):
+    async def test_prepare_actor__Awaitable_with_multiple_topics(
+        self, *, agent2, monkeypatch
+    ):
         aref = agent2(index=0, active_partitions=None)
-        asyncio.ensure_future(aref.it).cancel()  # silence warning
         agent2.channel.topics = ["foo", "bar"]
-        with patch("asyncio.Task") as Task:
-            agent2._execute_actor = Mock(name="_execute_actor")
-            beacon = Mock(name="beacon", autospec=Node)
-            ret = await agent2._prepare_actor(aref, beacon)
-            coro = aref
-            agent2._execute_actor.assert_called_once_with(coro, aref)
-            Task.assert_called_once_with(agent2._execute_actor(), loop=agent2.loop)
-            task = Task()
-            assert task._beacon is beacon
-            assert aref.actor_task is task
-            assert aref in agent2._actors
-            assert ret is aref
+        mock_beacon = Mock(name="beacon", autospec=Node)
+        mock_slurp = AsyncMock(name="slurp")
+        mock_execute_actor = AsyncMock(name="execute_actor")
+        monkeypatch.setattr(agent2, "_slurp", mock_slurp)
+        monkeypatch.setattr(agent2, "_execute_actor", mock_execute_actor)
+        ret = await agent2._prepare_actor(aref, mock_beacon)
+        task = aref.actor_task
+        mock_slurp.assert_not_called()
+        mock_slurp.assert_not_awaited()
+        mock_execute_actor.assert_called_with(aref, aref)
+        assert task._beacon is mock_beacon
+        assert aref in agent2._actors
+        assert ret is aref
 
     @pytest.mark.asyncio
     async def test_prepare_actor__Awaitable_cannot_have_sinks(self, *, agent2):
