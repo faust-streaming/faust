@@ -705,6 +705,15 @@ class Settings(base.SettingsRegistry):
             The recommended transport using the :pypi:`aiokafka` client.
 
             Limitations: None
+
+
+        - ``confluent://``
+
+            Experimental transport using the :pypi:`confluent-kafka` client.
+
+            Limitations: Does not do sticky partition assignment (not
+                suitable for tables), and do not create any necessary internal
+                topics (you have to create them manually).
         """
 
     @broker.on_set_default  # type: ignore

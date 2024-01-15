@@ -25,6 +25,7 @@ BUNDLES = {
     "aiomonitor",
     "cchardet",
     "ciso8601",
+    "ckafka",
     "cython",
     "datadog",
     "debug",
