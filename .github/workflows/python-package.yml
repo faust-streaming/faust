@@ -12,7 +12,7 @@ env:
   FORCE_COLOR: '1'  # Make tools pretty.
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
   PIP_NO_PYTHON_VERSION_WARNING: '1'
-  PYTHON_LATEST: '3.11'
+  PYTHON_LATEST: '3.12'
 
   # For re-actors/checkout-python-sdist
   sdist-artifact: python-package-distributions
@@ -26,7 +26,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_LATEST }}
           cache: pip
@@ -45,16 +45,13 @@ jobs:
       # for example if a test fails only when Cython is enabled
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11']
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
         use-cython: ['true', 'false']
         experimental: [false]
         include:
           - python-version: 'pypy3.9'
             use-cython: false
             experimental: true
-          - python-version: ~3.12.0-0
-            experimental: true
-            use-cython: false
           - python-version: ~3.13.0-0
             experimental: true
             use-cython: false
@@ -65,7 +62,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -117,12 +114,12 @@ jobs:
         name: Checkout source repository
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
       - name: Build sdist
         run: >
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:
           path: dist/*.tar.gz
@@ -136,7 +133,7 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
       - name: Download the sdist artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: artifact
           path: dist

@@ -30,6 +30,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -75,6 +76,8 @@ build-backend = "setuptools.build_meta"
 ignore = [
     "W503",
     "E203",
+    "E231",
+    "E225",
     "B305",
 ]
 max-line-length = 88

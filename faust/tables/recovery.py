@@ -18,7 +18,7 @@ from typing import (
 )
 
 import opentracing
-from kafka.errors import IllegalStateError
+from aiokafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
