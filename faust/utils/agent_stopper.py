@@ -1,4 +1,5 @@
 """agent_stopper for Faust when app fails"""
+
 import logging
 import traceback
 

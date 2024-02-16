@@ -38,8 +38,7 @@ if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
 
 __all__ = [
@@ -89,24 +88,19 @@ class ActorT(ServiceT, Generic[_T]):
         it: _T,
         active_partitions: Optional[Set[TP]] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    def cancel(self) -> None:
-        ...
+    def cancel(self) -> None: ...
 
     @abc.abstractmethod
-    async def on_isolated_partition_revoked(self, tp: TP) -> None:
-        ...
+    async def on_isolated_partition_revoked(self, tp: TP) -> None: ...
 
     @abc.abstractmethod
-    async def on_isolated_partition_assigned(self, tp: TP) -> None:
-        ...
+    async def on_isolated_partition_assigned(self, tp: TP) -> None: ...
 
     @abc.abstractmethod
-    def traceback(self) -> str:
-        ...
+    def traceback(self) -> str: ...
 
 
 class AsyncIterableActorT(ActorT[AsyncIterable], AsyncIterable):
@@ -150,8 +144,7 @@ class AgentT(ServiceT, Generic[_T]):
         self.fun: AgentFun = fun
 
     @abc.abstractmethod
-    def actor_tracebacks(self) -> List[str]:
-        ...
+    def actor_tracebacks(self) -> List[str]: ...
 
     @abc.abstractmethod
     def __call__(
@@ -161,8 +154,7 @@ class AgentT(ServiceT, Generic[_T]):
         active_partitions: Optional[Set[TP]] = None,
         stream: Optional[StreamT] = None,
         channel: Optional[ChannelT] = None,
-    ) -> ActorRefT:
-        ...
+    ) -> ActorRefT: ...
 
     @abc.abstractmethod
     def test_context(
@@ -170,24 +162,19 @@ class AgentT(ServiceT, Generic[_T]):
         channel: Optional[ChannelT] = None,
         supervisor_strategy: SupervisorStrategyT = None,
         **kwargs: Any,
-    ) -> "AgentTestWrapperT":
-        ...
+    ) -> "AgentTestWrapperT": ...
 
     @abc.abstractmethod
-    def add_sink(self, sink: SinkT) -> None:
-        ...
+    def add_sink(self, sink: SinkT) -> None: ...
 
     @abc.abstractmethod
-    def stream(self, **kwargs: Any) -> StreamT:
-        ...
+    def stream(self, **kwargs: Any) -> StreamT: ...
 
     @abc.abstractmethod
-    async def on_partitions_assigned(self, assigned: Set[TP]) -> None:
-        ...
+    async def on_partitions_assigned(self, assigned: Set[TP]) -> None: ...
 
     @abc.abstractmethod
-    async def on_partitions_revoked(self, revoked: Set[TP]) -> None:
-        ...
+    async def on_partitions_revoked(self, revoked: Set[TP]) -> None: ...
 
     @abc.abstractmethod
     async def cast(
@@ -198,8 +185,7 @@ class AgentT(ServiceT, Generic[_T]):
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
         headers: HeadersArg = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     async def ask(
@@ -212,8 +198,7 @@ class AgentT(ServiceT, Generic[_T]):
         headers: HeadersArg = None,
         reply_to: ReplyToArg = None,
         correlation_id: Optional[str] = None,
-    ) -> Any:
-        ...
+    ) -> Any: ...
 
     @abc.abstractmethod
     async def send(
@@ -228,8 +213,7 @@ class AgentT(ServiceT, Generic[_T]):
         value_serializer: CodecArg = None,
         reply_to: ReplyToArg = None,
         correlation_id: Optional[str] = None,
-    ) -> Awaitable[RecordMetadata]:
-        ...
+    ) -> Awaitable[RecordMetadata]: ...
 
     @abc.abstractmethod
     @no_type_check  # XXX mypy bugs out on this
@@ -238,8 +222,7 @@ class AgentT(ServiceT, Generic[_T]):
         values: Union[AsyncIterable, Iterable],
         key: K = None,
         reply_to: ReplyToArg = None,
-    ) -> AsyncIterator:
-        ...
+    ) -> AsyncIterator: ...
 
     @abc.abstractmethod
     @no_type_check  # XXX mypy bugs out on this
@@ -247,8 +230,7 @@ class AgentT(ServiceT, Generic[_T]):
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
         reply_to: ReplyToArg = None,
-    ) -> AsyncIterator[str]:
-        ...
+    ) -> AsyncIterator[str]: ...
 
     @abc.abstractmethod
     async def join(
@@ -256,70 +238,56 @@ class AgentT(ServiceT, Generic[_T]):
         values: Union[AsyncIterable[V], Iterable[V]],
         key: K = None,
         reply_to: ReplyToArg = None,
-    ) -> List[Any]:
-        ...
+    ) -> List[Any]: ...
 
     @abc.abstractmethod
     async def kvjoin(
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
         reply_to: ReplyToArg = None,
-    ) -> List[Any]:
-        ...
+    ) -> List[Any]: ...
 
     @abc.abstractmethod
-    def info(self) -> Mapping:
-        ...
+    def info(self) -> Mapping: ...
 
     @abc.abstractmethod
-    def clone(self, *, cls: Type["AgentT"] = None, **kwargs: Any) -> "AgentT":
-        ...
+    def clone(self, *, cls: Type["AgentT"] = None, **kwargs: Any) -> "AgentT": ...
 
     @abc.abstractmethod
-    def get_topic_names(self) -> Iterable[str]:
-        ...
+    def get_topic_names(self) -> Iterable[str]: ...
 
     @property
     @abc.abstractmethod
-    def channel(self) -> ChannelT:
-        ...
+    def channel(self) -> ChannelT: ...
 
     @channel.setter
-    def channel(self, channel: ChannelT) -> None:
-        ...
+    def channel(self, channel: ChannelT) -> None: ...
 
     @property
     @abc.abstractmethod
-    def channel_iterator(self) -> AsyncIterator:
-        ...
+    def channel_iterator(self) -> AsyncIterator: ...
 
     @channel_iterator.setter
-    def channel_iterator(self, channel: AsyncIterator) -> None:
-        ...
+    def channel_iterator(self, channel: AsyncIterator) -> None: ...
 
     @abc.abstractmethod
-    def _agent_label(self, name_suffix: str = "") -> str:
-        ...
+    def _agent_label(self, name_suffix: str = "") -> str: ...
 
 
 class AgentManagerT(ServiceT, ManagedUserDict[str, AgentT]):
     app: _AppT
 
     @abc.abstractmethod
-    async def wait_until_agents_started(self) -> None:
-        ...
+    async def wait_until_agents_started(self) -> None: ...
 
     @abc.abstractmethod
-    async def on_rebalance(self, revoked: Set[TP], newly_assigned: Set[TP]) -> None:
-        ...
+    async def on_rebalance(self, revoked: Set[TP], newly_assigned: Set[TP]) -> None: ...
 
     @abc.abstractmethod
-    def actor_tracebacks(self) -> Mapping[str, List[str]]:
-        ...
+    def actor_tracebacks(self) -> Mapping[str, List[str]]: ...
 
     @abc.abstractmethod
-    def human_tracebacks(self) -> str:
-        ...
+    def human_tracebacks(self) -> str: ...
 
 
 class AgentTestWrapperT(AgentT, AsyncIterable):
@@ -332,8 +300,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
     @abc.abstractmethod
     def __init__(
         self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     async def put(
@@ -349,8 +316,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         reply_to: ReplyToArg = None,
         correlation_id: Optional[str] = None,
         wait: bool = True,
-    ) -> EventT:
-        ...
+    ) -> EventT: ...
 
     @abc.abstractmethod
     def to_message(
@@ -363,9 +329,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         timestamp: Optional[float] = None,
         timestamp_type: int = 0,
         headers: HeadersArg = None,
-    ) -> Message:
-        ...
+    ) -> Message: ...
 
     @abc.abstractmethod
-    async def throw(self, exc: BaseException) -> None:
-        ...
+    async def throw(self, exc: BaseException) -> None: ...

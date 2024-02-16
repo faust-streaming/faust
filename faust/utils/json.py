@@ -1,4 +1,5 @@
 """JSON utilities."""
+
 import datetime
 import enum
 import typing

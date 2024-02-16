@@ -13,11 +13,9 @@ if typing.TYPE_CHECKING:
     from .settings import Settings as _Settings
 else:
 
-    class _Section:
-        ...  # noqa: E701
+    class _Section: ...  # noqa: E701
 
-    class _Settings:
-        ...  # noqa: E701
+    class _Settings: ...  # noqa: E701
 
 
 W_ALREADY_CONFIGURED = """\
@@ -132,12 +130,10 @@ class SettingsRegistry(abc.ABC):
         self._init_subclass_settings()
 
     @abc.abstractmethod
-    def on_init(self, id: str, **kwargs: Any) -> None:
-        ...
+    def on_init(self, id: str, **kwargs: Any) -> None: ...
 
     @abc.abstractmethod
-    def getenv(self, env_name: str) -> Any:
-        ...
+    def getenv(self, env_name: str) -> Any: ...
 
     def _init_entrypoint(self, *args: Any, **kwargs: Any) -> None:
         self._on_before_init()

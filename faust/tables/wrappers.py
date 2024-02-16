@@ -1,4 +1,5 @@
 """Wrappers for windowed tables."""
+
 import operator
 import typing
 from datetime import datetime
@@ -40,8 +41,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from .table import Table as _Table
 else:
 
-    class _Table:
-        ...  # noqa
+    class _Table: ...  # noqa
 
 
 __all__ = [

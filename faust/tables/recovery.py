@@ -1,4 +1,5 @@
 """Table recovery after rebalancing."""
+
 import asyncio
 import statistics
 import typing
@@ -39,11 +40,9 @@ if typing.TYPE_CHECKING:
     from .manager import TableManager as _TableManager
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
-    class _TableManager:
-        ...  # noqa
+    class _TableManager: ...  # noqa
 
 
 E_PERSISTED_OFFSET = """\

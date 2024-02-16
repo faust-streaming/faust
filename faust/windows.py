@@ -1,4 +1,5 @@
 """Window Types."""
+
 import os
 import typing
 from math import floor

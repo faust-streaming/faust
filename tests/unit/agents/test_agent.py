@@ -203,29 +203,25 @@ class Test_Agent:
         with pytest.raises(AssertionError):
 
             @app.agent(app.topic("foo"), schema=faust.Schema(key_type=bytes))
-            async def foo():
-                ...
+            async def foo(): ...
 
     def test_init_key_type_and_channel(self, *, app):
         with pytest.raises(AssertionError):
 
             @app.agent(app.topic("foo"), key_type=bytes)
-            async def foo():
-                ...
+            async def foo(): ...
 
     def test_init_value_type_and_channel(self, *, app):
         with pytest.raises(AssertionError):
 
             @app.agent(app.topic("foo"), value_type=bytes)
-            async def foo():
-                ...
+            async def foo(): ...
 
     def test_isolated_partitions_cannot_have_concurrency(self, *, app):
         with pytest.raises(ImproperlyConfigured):
 
             @app.agent(isolated_partitions=True, concurrency=100)
-            async def foo():
-                ...
+            async def foo(): ...
 
     def test_agent_call_reuse_stream(self, *, agent, app):
         stream = app.stream("foo")

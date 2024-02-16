@@ -1288,8 +1288,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             cthread.call_thread.assert_called_once_with(method, *args, **kwargs)
 
 
-class MyPartitioner:
-    ...
+class MyPartitioner: ...
 
 
 my_partitioner = MyPartitioner()

@@ -4,6 +4,7 @@ An app is an instance of the Faust library.
 Everything starts here.
 
 """
+
 import asyncio
 import importlib
 import inspect
@@ -113,17 +114,13 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.worker import Worker as _Worker
 else:
 
-    class _AppCommand:
-        ...  # noqa
+    class _AppCommand: ...  # noqa
 
-    class _LiveCheck:
-        ...  # noqa
+    class _LiveCheck: ...  # noqa
 
-    class _Fetcher:
-        ...  # noqa
+    class _Fetcher: ...  # noqa
 
-    class _Worker:
-        ...  # noqa
+    class _Worker: ...  # noqa
 
 
 __all__ = ["App", "BootStrategy"]

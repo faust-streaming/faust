@@ -159,6 +159,7 @@ That's it! To install and use our new extension we do:
 At this point may want to publish this on PyPI to share
 the extension with other Faust users.
 """
+
 import pickle as _pickle  # nosec B403
 from base64 import b64decode, b64encode
 from types import ModuleType

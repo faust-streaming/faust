@@ -49,8 +49,7 @@ class BCachedView(ACachedView):
 
 
 @blueprint.route("/C", name="c")
-class CCachedView(ACachedView):
-    ...
+class CCachedView(ACachedView): ...
 
 
 @blueprint.route("/D/", name="d")

@@ -6,6 +6,7 @@ The Producer is responsible for:
    - ... and the app via ``self.transport.app``.
    - Sending messages.
 """
+
 import asyncio
 import time
 from typing import Any, Awaitable, Mapping, Optional, cast
