@@ -1,4 +1,5 @@
 """Record - Dictionary Model."""
+
 from datetime import datetime
 from decimal import Decimal
 from itertools import chain

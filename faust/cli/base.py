@@ -1,4 +1,5 @@
 """Command-line programs using :pypi:`click`."""
+
 import abc
 import asyncio
 import inspect
@@ -49,8 +50,7 @@ if typing.TYPE_CHECKING:
     from faust.app import App as _App
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
 
 try:

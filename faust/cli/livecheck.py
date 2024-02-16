@@ -1,4 +1,5 @@
 """Program ``faust worker`` used to start application from console."""
+
 from typing import Any
 
 from .worker import worker

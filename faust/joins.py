@@ -1,4 +1,5 @@
 """Join strategies."""
+
 from typing import Any, Optional, Tuple
 
 from .types import EventT, FieldDescriptorT, JoinableT, JoinT

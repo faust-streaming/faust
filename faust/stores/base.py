@@ -1,4 +1,5 @@
 """Base class for table storage drivers."""
+
 import abc
 from collections.abc import ItemsView, KeysView, ValuesView
 from typing import (

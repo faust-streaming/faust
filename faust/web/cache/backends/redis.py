@@ -1,4 +1,5 @@
 """Redis cache backend."""
+
 import socket
 import typing
 from enum import Enum
@@ -23,8 +24,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from aredis import StrictRedis as _RedisClientT
 else:
 
-    class _RedisClientT:
-        ...  # noqa
+    class _RedisClientT: ...  # noqa
 
 
 class RedisScheme(Enum):

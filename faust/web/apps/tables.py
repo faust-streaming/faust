@@ -1,4 +1,5 @@
 """HTTP endpoint showing partition routing destinations."""
+
 from typing import Any, Mapping, cast
 
 from faust import web

@@ -1,4 +1,5 @@
 """Monitor using datadog."""
+
 import re
 from typing import Any, Dict, List, Optional, cast
 
@@ -26,8 +27,7 @@ try:
 except ImportError:  # pragma: no cover
     datadog = None  # type: ignore
 
-    class DogStatsD:
-        ...  # noqa
+    class DogStatsD: ...  # noqa
 
 
 __all__ = ["DatadogMonitor"]
