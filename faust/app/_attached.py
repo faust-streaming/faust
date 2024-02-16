@@ -2,6 +2,7 @@
 
 Attachments were used before transactions support.
 """
+
 import asyncio
 import typing
 from collections import defaultdict
@@ -29,8 +30,7 @@ if typing.TYPE_CHECKING:
     from faust.events import Event as _Event
 else:
 
-    class _Event:
-        ...  # noqa
+    class _Event: ...  # noqa
 
 
 __all__ = ["Attachment", "Attachments"]

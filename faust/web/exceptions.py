@@ -1,4 +1,5 @@
 """HTTP and related errors."""
+
 import http
 from typing import Any, Dict, Optional, cast
 

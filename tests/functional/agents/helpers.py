@@ -97,8 +97,7 @@ class AgentCase(Service):
     async def assert_success(self) -> None:
         assert self.processed_total == self.num_messages
 
-    async def on_agent_event(self, stream: StreamT, event: EventT) -> None:
-        ...
+    async def on_agent_event(self, stream: StreamT, event: EventT) -> None: ...
 
     async def process(self, stream: StreamT[bytes]) -> None:
         self.agent_started.set()

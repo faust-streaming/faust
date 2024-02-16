@@ -1,4 +1,5 @@
 """Program ``faust reset`` used to delete local table state."""
+
 from shutil import rmtree
 
 from .base import AppCommand

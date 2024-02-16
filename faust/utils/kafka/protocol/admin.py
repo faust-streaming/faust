@@ -1,4 +1,5 @@
 """Admin related Kafka protocol extensions."""
+
 from aiokafka.protocol import types
 
 from .api import Request, Response

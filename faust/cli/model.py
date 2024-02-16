@@ -1,4 +1,5 @@
 """Program ``faust model`` used to list details about a model."""
+
 from datetime import datetime
 from typing import Any, Optional, Sequence, Type
 

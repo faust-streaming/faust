@@ -1,4 +1,5 @@
 """Monitor using Statsd."""
+
 import typing
 from typing import Any, Dict, Optional, cast
 
@@ -30,8 +31,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from statsd import StatsClient
 else:
 
-    class StatsClient:
-        ...  # noqa
+    class StatsClient: ...  # noqa
 
 
 __all__ = ["StatsdMonitor"]

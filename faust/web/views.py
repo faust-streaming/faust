@@ -1,4 +1,5 @@
 """Class-based views."""
+
 from functools import wraps
 from typing import (
     Any,

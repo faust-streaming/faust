@@ -1,4 +1,5 @@
 """Message transport using :pypi:`aiokafka`."""
+
 import asyncio
 import typing
 from asyncio import Lock, QueueEmpty

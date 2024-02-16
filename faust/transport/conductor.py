@@ -1,4 +1,5 @@
 """The conductor delegates messages from the consumer to the streams."""
+
 import asyncio
 import os
 import typing
@@ -30,8 +31,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.topics import Topic as _Topic
 else:
 
-    class _Topic:
-        ...  # noqa
+    class _Topic: ...  # noqa
 
 
 NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
