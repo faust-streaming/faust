@@ -1,4 +1,5 @@
 """Agent implementation."""
+
 import asyncio
 import typing
 from contextlib import suppress
@@ -79,8 +80,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.app.base import App as _App
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
 
 __all__ = ["Agent"]

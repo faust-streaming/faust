@@ -1,4 +1,5 @@
 """Partition assignor."""
+
 import socket
 import zlib
 from collections import defaultdict

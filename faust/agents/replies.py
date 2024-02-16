@@ -1,4 +1,5 @@
 """Agent replies: waiting for replies, sending them, etc."""
+
 import asyncio
 from collections import defaultdict
 from typing import Any, AsyncIterator, MutableMapping, MutableSet, NamedTuple, Optional
@@ -33,8 +34,7 @@ class ReplyPromise(asyncio.Future):
         self.__post_init__()
         super().__init__(**kwargs)
 
-    def __post_init__(self) -> None:
-        ...
+    def __post_init__(self) -> None: ...
 
     def _verify_correlation_id(self, correlation_id: str) -> None:
         if not correlation_id:

@@ -6,6 +6,7 @@ then converting that to a generator expression that can be used
 to deserialize such a structure.
 
 """
+
 import abc
 import os
 import random
@@ -280,8 +281,7 @@ class Node(abc.ABC):
         )
 
     @abc.abstractmethod
-    def build(self, var: Variable, *args: Type) -> str:
-        ...
+    def build(self, var: Variable, *args: Type) -> str: ...
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.expr!r}>"
@@ -604,8 +604,7 @@ class RootNode(Node):
     found_types: Dict[NodeType, Set[Type]]
 
     @classmethod
-    def _register(cls) -> None:
-        ...  # we do not register root nodes.
+    def _register(cls) -> None: ...  # we do not register root nodes.
 
     def add_closure(self, local_name: str, global_name: str, obj: Any) -> None:
         self.globals[global_name] = obj

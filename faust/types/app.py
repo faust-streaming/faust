@@ -66,29 +66,21 @@ if typing.TYPE_CHECKING:
     from .settings import Settings as _Settings
 else:
 
-    class _AppCommand:
-        ...  # noqa
+    class _AppCommand: ...  # noqa
 
-    class _SchemaT:
-        ...  # noqa
+    class _SchemaT: ...  # noqa
 
-    class _LiveCheck:
-        ...  # noqa
+    class _LiveCheck: ...  # noqa
 
-    class _Monitor:
-        ...  # noqa
+    class _Monitor: ...  # noqa
 
-    class _Worker:
-        ...  # noqa
+    class _Worker: ...  # noqa
 
-    class _EventT:
-        ...  # noqa
+    class _EventT: ...  # noqa
 
-    class _ModelArg:
-        ...  # noqa
+    class _ModelArg: ...  # noqa
 
-    class _Settings:
-        ...  # noqa
+    class _Settings: ...  # noqa
 
 
 __all__ = [
@@ -103,18 +95,15 @@ _T = TypeVar("_T")
 class TracerT(abc.ABC):
     @property
     @abc.abstractmethod
-    def default_tracer(self) -> opentracing.Tracer:
-        ...
+    def default_tracer(self) -> opentracing.Tracer: ...
 
     @abc.abstractmethod
     def trace(
         self, name: str, sample_rate: Optional[float] = None, **extra_context: Any
-    ) -> ContextManager:
-        ...
+    ) -> ContextManager: ...
 
     @abc.abstractmethod
-    def get_tracer(self, service_name: str) -> opentracing.Tracer:
-        ...
+    def get_tracer(self, service_name: str) -> opentracing.Tracer: ...
 
 
 class BootStrategyT:
@@ -142,20 +131,16 @@ class BootStrategyT:
         enable_kafka_producer: Optional[bool] = None,
         enable_kafka_consumer: Optional[bool] = None,
         enable_sensors: bool = True,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    def server(self) -> Iterable[ServiceT]:
-        ...
+    def server(self) -> Iterable[ServiceT]: ...
 
     @abc.abstractmethod
-    def client_only(self) -> Iterable[ServiceT]:
-        ...
+    def client_only(self) -> Iterable[ServiceT]: ...
 
     @abc.abstractmethod
-    def producer_only(self) -> Iterable[ServiceT]:
-        ...
+    def producer_only(self) -> Iterable[ServiceT]: ...
 
 
 class AppT(ServiceT):
@@ -224,24 +209,19 @@ class AppT(ServiceT):
     @abc.abstractmethod
     def config_from_object(
         self, obj: Any, *, silent: bool = False, force: bool = False
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    def finalize(self) -> None:
-        ...
+    def finalize(self) -> None: ...
 
     @abc.abstractmethod
-    def main(self) -> NoReturn:
-        ...
+    def main(self) -> NoReturn: ...
 
     @abc.abstractmethod
-    def worker_init(self) -> None:
-        ...
+    def worker_init(self) -> None: ...
 
     @abc.abstractmethod
-    def worker_init_post_autodiscover(self) -> None:
-        ...
+    def worker_init_post_autodiscover(self) -> None: ...
 
     @abc.abstractmethod
     def discover(
@@ -249,8 +229,7 @@ class AppT(ServiceT):
         *extra_modules: str,
         categories: Iterable[str] = ("a", "b", "c"),
         ignore: Iterable[Any] = ("foo", "bar"),
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     def topic(
@@ -274,8 +253,7 @@ class AppT(ServiceT):
         allow_empty: bool = False,
         has_prefix: bool = False,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> TopicT:
-        ...
+    ) -> TopicT: ...
 
     @abc.abstractmethod
     def channel(
@@ -286,8 +264,7 @@ class AppT(ServiceT):
         value_type: _ModelArg = None,
         maxsize: Optional[int] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> ChannelT:
-        ...
+    ) -> ChannelT: ...
 
     @abc.abstractmethod
     def agent(
@@ -301,15 +278,13 @@ class AppT(ServiceT):
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
         **kwargs: Any,
-    ) -> Callable[[AgentFun[_T]], AgentT[_T]]:
-        ...
+    ) -> Callable[[AgentFun[_T]], AgentT[_T]]: ...
 
     @abc.abstractmethod
     @no_type_check
     def task(
         self, fun: TaskArg, *, on_leader: bool = False, traced: bool = True
-    ) -> Callable:
-        ...
+    ) -> Callable: ...
 
     @abc.abstractmethod
     def timer(
@@ -319,8 +294,7 @@ class AppT(ServiceT):
         traced: bool = True,
         name: Optional[str] = None,
         max_drift_correction: float = 0.1,
-    ) -> Callable:
-        ...
+    ) -> Callable: ...
 
     @abc.abstractmethod
     def crontab(
@@ -330,18 +304,15 @@ class AppT(ServiceT):
         timezone: tzinfo = None,
         on_leader: bool = False,
         traced: bool = True,
-    ) -> Callable:
-        ...
+    ) -> Callable: ...
 
     @abc.abstractmethod
-    def service(self, cls: Type[ServiceT]) -> Type[ServiceT]:
-        ...
+    def service(self, cls: Type[ServiceT]) -> Type[ServiceT]: ...
 
     @abc.abstractmethod
     def stream(
         self, channel: AsyncIterable, beacon: Optional[NodeT] = None, **kwargs: Any
-    ) -> StreamT:
-        ...
+    ) -> StreamT: ...
 
     @abc.abstractmethod
     def Table(
@@ -353,8 +324,7 @@ class AppT(ServiceT):
         partitions: Optional[int] = None,
         help: Optional[str] = None,
         **kwargs: Any,
-    ) -> TableT:
-        ...
+    ) -> TableT: ...
 
     @abc.abstractmethod
     def GlobalTable(
@@ -366,8 +336,7 @@ class AppT(ServiceT):
         partitions: Optional[int] = None,
         help: Optional[str] = None,
         **kwargs: Any,
-    ) -> TableT:
-        ...
+    ) -> TableT: ...
 
     @abc.abstractmethod
     def SetTable(
@@ -379,8 +348,7 @@ class AppT(ServiceT):
         start_manager: bool = False,
         help: Optional[str] = None,
         **kwargs: Any,
-    ) -> TableT:
-        ...
+    ) -> TableT: ...
 
     @abc.abstractmethod
     def SetGlobalTable(
@@ -392,8 +360,7 @@ class AppT(ServiceT):
         start_manager: bool = False,
         help: Optional[str] = None,
         **kwargs: Any,
-    ) -> TableT:
-        ...
+    ) -> TableT: ...
 
     @abc.abstractmethod
     def page(
@@ -403,8 +370,7 @@ class AppT(ServiceT):
         base: Type[View] = View,
         cors_options: Mapping[str, ResourceOptions] = None,
         name: Optional[str] = None,
-    ) -> Callable[[PageArg], Type[View]]:
-        ...
+    ) -> Callable[[PageArg], Type[View]]: ...
 
     @abc.abstractmethod
     def table_route(
@@ -415,34 +381,28 @@ class AppT(ServiceT):
         query_param: Optional[str] = None,
         match_info: Optional[str] = None,
         exact_key: Optional[str] = None,
-    ) -> ViewDecorator:
-        ...
+    ) -> ViewDecorator: ...
 
     @abc.abstractmethod
     def command(
         self, *options: Any, base: Type[_AppCommand] = None, **kwargs: Any
-    ) -> Callable[[Callable], Type[_AppCommand]]:
-        ...
+    ) -> Callable[[Callable], Type[_AppCommand]]: ...
 
     @abc.abstractmethod
     def create_event(
         self, key: K, value: V, headers: HeadersArg, message: Message
-    ) -> _EventT:
-        ...
+    ) -> _EventT: ...
 
     @abc.abstractmethod
-    async def start_client(self) -> None:
-        ...
+    async def start_client(self) -> None: ...
 
     @abc.abstractmethod
-    async def maybe_start_client(self) -> None:
-        ...
+    async def maybe_start_client(self) -> None: ...
 
     @abc.abstractmethod
     def trace(
         self, name: str, trace_enabled: bool = True, **extra_context: Any
-    ) -> ContextManager:
-        ...
+    ) -> ContextManager: ...
 
     @abc.abstractmethod
     async def send(
@@ -457,21 +417,17 @@ class AppT(ServiceT):
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
         callback: Optional[MessageSentCallback] = None,
-    ) -> Awaitable[RecordMetadata]:
-        ...
+    ) -> Awaitable[RecordMetadata]: ...
 
     @abc.abstractmethod
-    def LiveCheck(self, **kwargs: Any) -> _LiveCheck:
-        ...
+    def LiveCheck(self, **kwargs: Any) -> _LiveCheck: ...
 
     @stampede
     @abc.abstractmethod
-    async def maybe_start_producer(self) -> ProducerT:
-        ...
+    async def maybe_start_producer(self) -> ProducerT: ...
 
     @abc.abstractmethod
-    def is_leader(self) -> bool:
-        ...
+    def is_leader(self) -> bool: ...
 
     @abc.abstractmethod
     def FlowControlQueue(
@@ -479,92 +435,72 @@ class AppT(ServiceT):
         maxsize: Optional[int] = None,
         *,
         clear_on_resume: bool = False,
-    ) -> ThrowableQueue:
-        ...
+    ) -> ThrowableQueue: ...
 
     @abc.abstractmethod
-    def Worker(self, **kwargs: Any) -> _Worker:
-        ...
+    def Worker(self, **kwargs: Any) -> _Worker: ...
 
     @abc.abstractmethod
-    def on_webserver_init(self, web: Web) -> None:
-        ...
+    def on_webserver_init(self, web: Web) -> None: ...
 
     @abc.abstractmethod
-    def on_rebalance_start(self) -> None:
-        ...
+    def on_rebalance_start(self) -> None: ...
 
     @abc.abstractmethod
-    def on_rebalance_return(self) -> None:
-        ...
+    def on_rebalance_return(self) -> None: ...
 
     @abc.abstractmethod
-    def on_rebalance_end(self) -> None:
-        ...
+    def on_rebalance_end(self) -> None: ...
 
     @property
-    def conf(self) -> _Settings:
-        ...
+    def conf(self) -> _Settings: ...
 
     @conf.setter
-    def conf(self, settings: _Settings) -> None:
-        ...
+    def conf(self, settings: _Settings) -> None: ...
 
     @property
     @abc.abstractmethod
-    def transport(self) -> TransportT:
-        ...
+    def transport(self) -> TransportT: ...
 
     @transport.setter
-    def transport(self, transport: TransportT) -> None:
-        ...
+    def transport(self, transport: TransportT) -> None: ...
 
     @property
     @abc.abstractmethod
-    def producer_transport(self) -> TransportT:
-        ...
+    def producer_transport(self) -> TransportT: ...
 
     @producer_transport.setter
-    def producer_transport(self, transport: TransportT) -> None:
-        ...
+    def producer_transport(self, transport: TransportT) -> None: ...
 
     @property
     @abc.abstractmethod
-    def cache(self) -> CacheBackendT:
-        ...
+    def cache(self) -> CacheBackendT: ...
 
     @cache.setter
-    def cache(self, cache: CacheBackendT) -> None:
-        ...
+    def cache(self, cache: CacheBackendT) -> None: ...
 
     @property
     @abc.abstractmethod
-    def producer(self) -> ProducerT:
-        ...
+    def producer(self) -> ProducerT: ...
 
     @property
     @abc.abstractmethod
-    def consumer(self) -> ConsumerT:
-        ...
+    def consumer(self) -> ConsumerT: ...
 
     @cached_property
     @abc.abstractmethod
-    def tables(self) -> TableManagerT:
-        ...
+    def tables(self) -> TableManagerT: ...
 
     @cached_property
     @abc.abstractmethod
-    def topics(self) -> ConductorT:
-        ...
+    def topics(self) -> ConductorT: ...
 
     @property
     @abc.abstractmethod
-    def monitor(self) -> _Monitor:
-        ...
+    def monitor(self) -> _Monitor: ...
 
     @monitor.setter
-    def monitor(self, value: _Monitor) -> None:
-        ...
+    def monitor(self, value: _Monitor) -> None: ...
 
     @cached_property
     @abc.abstractmethod
@@ -573,42 +509,33 @@ class AppT(ServiceT):
 
     @property
     @abc.abstractmethod
-    def http_client(self) -> HttpClientT:
-        ...
+    def http_client(self) -> HttpClientT: ...
 
     @http_client.setter
-    def http_client(self, client: HttpClientT) -> None:
-        ...
+    def http_client(self, client: HttpClientT) -> None: ...
 
     @cached_property
     @abc.abstractmethod
-    def assignor(self) -> PartitionAssignorT:
-        ...
+    def assignor(self) -> PartitionAssignorT: ...
 
     @cached_property
     @abc.abstractmethod
-    def router(self) -> RouterT:
-        ...
+    def router(self) -> RouterT: ...
 
     @cached_property
     @abc.abstractmethod
-    def serializers(self) -> RegistryT:
-        ...
+    def serializers(self) -> RegistryT: ...
 
     @cached_property
     @abc.abstractmethod
-    def web(self) -> Web:
-        ...
+    def web(self) -> Web: ...
 
     @cached_property
     @abc.abstractmethod
-    def in_transaction(self) -> bool:
-        ...
+    def in_transaction(self) -> bool: ...
 
     @abc.abstractmethod
-    def _span_add_default_tags(self, span: opentracing.Span) -> None:
-        ...
+    def _span_add_default_tags(self, span: opentracing.Span) -> None: ...
 
     @abc.abstractmethod
-    def _start_span_from_rebalancing(self, name: str) -> opentracing.Span:
-        ...
+    def _start_span_from_rebalancing(self, name: str) -> opentracing.Span: ...

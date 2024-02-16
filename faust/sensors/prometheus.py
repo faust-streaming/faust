@@ -1,4 +1,5 @@
 """Monitor using Prometheus."""
+
 import typing
 from typing import Any, NamedTuple, Optional, cast
 

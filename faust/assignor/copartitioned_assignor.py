@@ -1,4 +1,5 @@
 """Copartitioned Assignor."""
+
 from itertools import cycle
 from math import ceil, floor
 from typing import Iterable, Iterator, MutableMapping, Optional, Sequence, Set

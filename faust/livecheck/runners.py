@@ -1,4 +1,5 @@
 """LiveCheck - Test runner."""
+
 import asyncio
 import logging
 import traceback
@@ -27,8 +28,7 @@ if typing.TYPE_CHECKING:
     from .case import Case as _Case
 else:
 
-    class _Case:
-        ...  # noqa
+    class _Case: ...  # noqa
 
 
 __all__ = ["TestRunner"]

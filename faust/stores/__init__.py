@@ -1,4 +1,5 @@
 """Storage registry."""
+
 from typing import Type
 
 from mode.utils.imports import FactoryMapping
