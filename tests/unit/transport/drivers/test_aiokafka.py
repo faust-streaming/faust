@@ -10,8 +10,8 @@ import pytest
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
 from mode.utils import text
-from mode.utils.times import humanize_seconds_ago
 from mode.utils.futures import done_future
+from mode.utils.times import humanize_seconds_ago
 from opentracing.ext import tags
 
 import faust
@@ -303,7 +303,6 @@ class AIOKafkaConsumerThreadFixtures:
             position=0,
         )
         return _consumer
-
 
     @pytest.fixture()
     def now(self):
