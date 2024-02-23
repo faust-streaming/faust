@@ -296,7 +296,9 @@ class AIOKafkaConsumerThreadFixtures:
         )
         _consumer.assignment.return_value = {tp}
 
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
+        (
+            _consumer._fetcher._subscriptions.subscription.assignment.state_value
+        ).return_value = MagicMock(
             assignment={tp},
             timestamp=now,
             highwater=1,
@@ -539,16 +541,19 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         assignment = cthread.assignment()
 
         assert assignment == {tp}
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
-            assignment=assignment,
-            timestamp=now,
-            highwater=None,
-            tp_stream_timeout_secs=cthread.tp_stream_timeout_secs,
-            tp_fetch_request_timeout_secs=cthread.tp_fetch_request_timeout_secs,
+        fetcher = _consumer._fetcher
+        (fetcher._subscriptions.subscription.assignment.state_value).return_value = (
+            MagicMock(
+                assignment=assignment,
+                timestamp=now,
+                highwater=None,
+                tp_stream_timeout_secs=cthread.tp_stream_timeout_secs,
+                tp_fetch_request_timeout_secs=cthread.tp_fetch_request_timeout_secs,
+            )
         )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
-            now
-        )
+        (
+            fetcher._subscriptions.subscription.assignment.state_value.timestamp
+        ).return_value = now
 
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
