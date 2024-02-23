@@ -7,10 +7,10 @@ from unittest.mock import ANY, MagicMock, Mock, call, patch
 import aiokafka
 import opentracing
 import pytest
-from aiokafka.consumer.subscription_state import TopicPartitionState
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
 from mode.utils import text
+from mode.utils.times import humanize_seconds_ago
 from mode.utils.futures import done_future
 from opentracing.ext import tags
 
@@ -299,8 +299,9 @@ class AIOKafkaConsumerThreadFixtures:
         _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
             assignment={tp},
             timestamp=now,
+            highwater=1,
+            position=0,
         )
-        # _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
         return _consumer
 
 
@@ -658,7 +659,6 @@ class Test_VEP_stream_idle_highwater_no_inbound(Test_verify_event_path_base):
         )
 
 
-# @pytest.mark.skip("Needs fixing")
 class Test_VEP_no_commit(Test_verify_event_path_base):
     highwater = 20
     committed_offset = 10
@@ -686,13 +686,13 @@ class Test_VEP_no_commit(Test_verify_event_path_base):
         expected_message = cthread._make_slow_processing_error(
             mod.SLOW_PROCESSING_NO_COMMIT_SINCE_START,
             [mod.SLOW_PROCESSING_CAUSE_COMMIT],
+            setting="broker_commit_livelock_soft_timeout",
+            current_value=app.conf.broker_commit_livelock_soft_timeout,
         )
         logger.error.assert_called_once_with(
             expected_message,
             tp,
-            ANY,
-            setting="broker_commit_livelock_soft_timeout",
-            current_value=app.conf.broker_commit_livelock_soft_timeout,
+            humanize_seconds_ago(cthread.tp_commit_timeout_secs * 2),
         )
 
     def test_timed_out_since_last(self, *, app, cthread, now, tp, logger):
@@ -703,13 +703,13 @@ class Test_VEP_no_commit(Test_verify_event_path_base):
         expected_message = cthread._make_slow_processing_error(
             mod.SLOW_PROCESSING_NO_RECENT_COMMIT,
             [mod.SLOW_PROCESSING_CAUSE_COMMIT],
+            setting="broker_commit_livelock_soft_timeout",
+            current_value=app.conf.broker_commit_livelock_soft_timeout,
         )
         logger.error.assert_called_once_with(
             expected_message,
             tp,
-            ANY,
-            setting="broker_commit_livelock_soft_timeout",
-            current_value=app.conf.broker_commit_livelock_soft_timeout,
+            humanize_seconds_ago(now - cthread.tp_commit_timeout_secs * 4),
         )
 
     def test_committing_fine(self, *, app, cthread, now, tp, logger):
