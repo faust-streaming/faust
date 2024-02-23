@@ -477,7 +477,6 @@ class Test_VEP_no_response_since_start(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_no_recent_fetch(Test_verify_event_path_base):
     def test_recent_fetch(self, *, cthread, now, tp, logger):
         self._set_last_response(now - 30.0)
@@ -485,10 +484,15 @@ class Test_VEP_no_recent_fetch(Test_verify_event_path_base):
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
-    def test_timed_out(self, *, cthread, now, tp, logger):
+    def test_timed_out(self, *, cthread, now, tp, logger, _consumer):
         self._set_last_response(now - 30.0)
         self._set_last_request(now - cthread.tp_fetch_request_timeout_secs * 2)
-        assert cthread.verify_event_path(now, tp) is None
+        assert (
+            cthread.verify_event_path(
+                now + cthread.tp_fetch_request_timeout_secs * 2, tp
+            )
+            is None
+        )
         logger.error.assert_called_with(
             mod.SLOW_PROCESSING_NO_RECENT_FETCH,
             ANY,
