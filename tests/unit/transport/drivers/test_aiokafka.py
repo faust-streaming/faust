@@ -7,9 +7,9 @@ from unittest.mock import ANY, MagicMock, Mock, call, patch
 import aiokafka
 import opentracing
 import pytest
+from aiokafka.consumer.subscription_state import TopicPartitionState
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
-from aiokafka.consumer.subscription_state import TopicPartitionState
 from mode.utils import text
 from mode.utils.futures import done_future
 from opentracing.ext import tags
@@ -521,7 +521,9 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
             timestamp=now,
             tp_fetch_request_timeout_secs=10.0,
         )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
+            now
+        )
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
@@ -538,7 +540,9 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
             timestamp=now,
             tp_fetch_request_timeout_secs=10.0,
         )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
+            now
+        )
 
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
@@ -558,7 +562,9 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
             tp_stream_timeout_secs=cthread.tp_stream_timeout_secs,
             tp_fetch_request_timeout_secs=cthread.tp_fetch_request_timeout_secs,
         )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
+            now
+        )
 
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
@@ -1322,7 +1328,8 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             cthread.call_thread.assert_called_once_with(method, *args, **kwargs)
 
 
-class MyPartitioner: ...
+class MyPartitioner:
+    ...
 
 
 my_partitioner = MyPartitioner()

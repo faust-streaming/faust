@@ -26,7 +26,7 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
-from aiokafka import TopicPartition, AIOKafkaConsumer
+from aiokafka import AIOKafkaConsumer, TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from aiokafka.errors import (
@@ -840,7 +840,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         poll_at = None
         aiotp_state = assignment.state_value(aiotp)
         if aiotp_state and aiotp_state.timestamp:
-            poll_at = aiotp_state.timestamp / 1000
+            poll_at = aiotp_state.timestamp
         if poll_at is None:
             if secs_since_started >= self.tp_fetch_request_timeout_secs:
                 # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
