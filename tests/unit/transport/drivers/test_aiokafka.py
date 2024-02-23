@@ -1365,6 +1365,8 @@ class ProducerBaseTest:
         max_batch_size=16384,
         max_request_size=1000000,
         request_timeout_ms=1200000,
+        metadata_max_age_ms=300000,
+        connections_max_idle_ms=540000,
         security_protocol="PLAINTEXT",
         **kwargs,
     ):
@@ -1372,19 +1374,21 @@ class ProducerBaseTest:
             p = producer._new_producer()
             assert p is AIOKafkaProducer.return_value
             AIOKafkaProducer.assert_called_once_with(
-                acks=acks,
-                api_version=api_version,
                 bootstrap_servers=bootstrap_servers,
                 client_id=client_id,
-                compression_type=compression_type,
+                acks=acks,
                 linger_ms=linger_ms,
                 max_batch_size=max_batch_size,
                 max_request_size=max_request_size,
-                request_timeout_ms=request_timeout_ms,
+                compression_type=compression_type,
                 security_protocol=security_protocol,
                 loop=producer.loop,
                 partitioner=producer.partitioner,
                 transactional_id=None,
+                api_version=api_version,
+                metadata_max_age_ms=metadata_max_age_ms,
+                connections_max_idle_ms=connections_max_idle_ms,
+                request_timeout_ms=request_timeout_ms,
                 **kwargs,
             )
 
@@ -1454,7 +1458,6 @@ class TestProducer(ProducerBaseTest):
         app.in_transaction = False
         assert producer._settings_extra() == {}
 
-    @pytest.mark.skip("fix me")
     def test__new_producer(self, *, app):
         producer = Producer(app.transport)
         self.assert_new_producer(producer)
@@ -1463,7 +1466,7 @@ class TestProducer(ProducerBaseTest):
         "expected_args",
         [
             pytest.param(
-                {"api_version": "0.10"},
+                {"api_version": ""},
                 marks=pytest.mark.conf(producer_api_version="0.10"),
             ),
             pytest.param({"acks": -1}, marks=pytest.mark.conf(producer_acks="all")),
@@ -1494,6 +1497,14 @@ class TestProducer(ProducerBaseTest):
             pytest.param(
                 {"request_timeout_ms": 1234134000},
                 marks=pytest.mark.conf(producer_request_timeout=1234134),
+            ),
+            pytest.param(
+                {"metadata_max_age_ms": 300000},
+                marks=pytest.mark.conf(metadata_max_age_ms=300000),
+            ),
+            pytest.param(
+                {"connections_max_idle_ms": 540000},
+                marks=pytest.mark.conf(connections_max_idle_ms=540000),
             ),
             pytest.param(
                 {
