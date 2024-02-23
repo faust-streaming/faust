@@ -1466,8 +1466,8 @@ class TestProducer(ProducerBaseTest):
         "expected_args",
         [
             pytest.param(
-                {"api_version": ""},
-                marks=pytest.mark.conf(producer_api_version="0.10"),
+                {"api_version": "auto"},
+                marks=pytest.mark.conf(producer_api_version="auto"),
             ),
             pytest.param({"acks": -1}, marks=pytest.mark.conf(producer_acks="all")),
             pytest.param(
@@ -1522,7 +1522,6 @@ class TestProducer(ProducerBaseTest):
             ),
         ],
     )
-    @pytest.mark.skip("fix me")
     def test__new_producer__using_settings(self, expected_args, *, app):
         producer = Producer(app.transport)
         self.assert_new_producer(producer, **expected_args)
