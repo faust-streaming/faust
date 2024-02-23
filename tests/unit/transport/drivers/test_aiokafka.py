@@ -9,6 +9,7 @@ import opentracing
 import pytest
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
+from aiokafka.consumer.subscription_state import TopicPartitionState
 from mode.utils import text
 from mode.utils.futures import done_future
 from opentracing.ext import tags
@@ -234,7 +235,7 @@ class TestConsumer:
         serialized_value_size=40,
         **kwargs,
     ):
-        return Mock(
+        return MagicMock(
             name="record",
             topic=topic,
             partition=partition,
@@ -503,29 +504,62 @@ class Test_VEP_no_recent_response(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
     highwater = None
 
-    def test_no_monitor(self, *, app, cthread, now, tp, logger):
+    def test_no_monitor(self, *, app, cthread, now, tp, logger, _consumer):
         self._set_last_request(now - 10.0)
         self._set_last_response(now - 5.0)
         self._set_started(now)
         app.monitor = None
+        _consumer.assignment.return_value = {tp}
+        assignment = cthread.assignment()
+
+        assert assignment == {tp}
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
+            assignment=assignment,
+            timestamp=now,
+            tp_fetch_request_timeout_secs=10.0,
+        )
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
-    def test_just_started(self, *, cthread, now, tp, logger):
+    def test_just_started(self, *, cthread, now, tp, logger, _consumer):
         self._set_last_request(now - 10.0)
         self._set_last_response(now - 5.0)
         self._set_started(now)
+        _consumer.assignment.return_value = {tp}
+        assignment = cthread.assignment()
+
+        assert assignment == {tp}
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
+            assignment=assignment,
+            timestamp=now,
+            tp_fetch_request_timeout_secs=10.0,
+        )
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
-    def test_timed_out(self, *, cthread, now, tp, logger):
+    def test_timed_out(self, *, cthread, now, tp, logger, _consumer):
         self._set_last_request(now - 10.0)
         self._set_last_response(now - 5.0)
         self._set_started(now - cthread.tp_stream_timeout_secs * 2)
+        _consumer.assignment.return_value = {tp}
+        assignment = cthread.assignment()
+
+        assert assignment == {tp}
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
+            assignment=assignment,
+            timestamp=now,
+            highwater=None,
+            tp_stream_timeout_secs=cthread.tp_stream_timeout_secs,
+            tp_fetch_request_timeout_secs=cthread.tp_fetch_request_timeout_secs,
+        )
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
             mod.SLOW_PROCESSING_NO_HIGHWATER_SINCE_START,
@@ -636,7 +670,7 @@ class Test_VEP_stream_idle_highwater_no_inbound(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
+# @pytest.mark.skip("Needs fixing")
 class Test_VEP_no_commit(Test_verify_event_path_base):
     highwater = 20
     committed_offset = 10

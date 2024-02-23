@@ -26,7 +26,7 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
-from aiokafka import TopicPartition
+from aiokafka import TopicPartition, AIOKafkaConsumer
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from aiokafka.errors import (
@@ -830,7 +830,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
 
         Returns :const:`True` if any error was logged.
         """
-        consumer = self._ensure_consumer()
+        consumer: AIOKafkaConsumer = self._ensure_consumer()
         secs_since_started = now - self.time_started
         aiotp = TopicPartition(tp.topic, tp.partition)
         assignment = consumer._fetcher._subscriptions.subscription.assignment
