@@ -282,8 +282,8 @@ class AIOKafkaConsumerThreadFixtures:
         return tracer
 
     @pytest.fixture()
-    def _consumer(self):
-        return Mock(
+    def _consumer(self, now, cthread, tp):
+        _consumer = Mock(
             name="AIOKafkaConsumer",
             autospec=aiokafka.AIOKafkaConsumer,
             start=AsyncMock(),
@@ -294,6 +294,15 @@ class AIOKafkaConsumerThreadFixtures:
             _client=Mock(name="Client", close=AsyncMock()),
             _coordinator=Mock(name="Coordinator", close=AsyncMock()),
         )
+        _consumer.assignment.return_value = {tp}
+
+        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
+            assignment={tp},
+            timestamp=now,
+        )
+        # _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = now
+        return _consumer
+
 
     @pytest.fixture()
     def now(self):
@@ -512,18 +521,6 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         self._set_last_response(now - 5.0)
         self._set_started(now)
         app.monitor = None
-        _consumer.assignment.return_value = {tp}
-        assignment = cthread.assignment()
-
-        assert assignment == {tp}
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
-            assignment=assignment,
-            timestamp=now,
-            tp_fetch_request_timeout_secs=10.0,
-        )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
-            now
-        )
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
@@ -531,19 +528,6 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         self._set_last_request(now - 10.0)
         self._set_last_response(now - 5.0)
         self._set_started(now)
-        _consumer.assignment.return_value = {tp}
-        assignment = cthread.assignment()
-
-        assert assignment == {tp}
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value = MagicMock(
-            assignment=assignment,
-            timestamp=now,
-            tp_fetch_request_timeout_secs=10.0,
-        )
-        _consumer._fetcher._subscriptions.subscription.assignment.state_value.timestamp.return_value = (
-            now
-        )
-
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
@@ -574,7 +558,6 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_stream_idle_no_highwater(Test_verify_event_path_base):
     highwater = 10
     committed_offset = 10
@@ -587,7 +570,6 @@ class Test_VEP_stream_idle_no_highwater(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_stream_idle_highwater_no_acks(Test_verify_event_path_base):
     acks_enabled = False
 
@@ -599,7 +581,6 @@ class Test_VEP_stream_idle_highwater_no_acks(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_stream_idle_highwater_same_has_acks_everything_OK(
     Test_verify_event_path_base
 ):
@@ -612,6 +593,7 @@ class Test_VEP_stream_idle_highwater_same_has_acks_everything_OK(
         self._set_last_request(now - 10.0)
         self._set_last_response(now - 5.0)
         self._set_started(now)
+
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
