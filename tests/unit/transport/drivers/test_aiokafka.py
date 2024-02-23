@@ -1833,7 +1833,6 @@ class TestThreadedProducer(ProducerBaseTest):
             await threaded_producer.start()
             await threaded_producer.stop()
 
-    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test_on_thread_stop(
         self,
