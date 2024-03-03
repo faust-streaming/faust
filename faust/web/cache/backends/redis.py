@@ -140,6 +140,7 @@ class CacheBackend(base.CacheBackend):
                 host=url.host,
                 port=url.port,
                 db=self._db_from_path(url.path),
+                username=url.user,
                 password=url.password,
                 connect_timeout=self._float_from_str(
                     connect_timeout, self.connect_timeout
