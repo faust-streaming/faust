@@ -73,7 +73,7 @@ def setup_prometheus_sensors(
 
         return cast(
             _web.Response,
-            Response(body=generate_latest(REGISTRY), headers=headers, status=200),
+            Response(body=generate_latest(registry), headers=headers, status=200),
         )
 
 
