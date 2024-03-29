@@ -1,5 +1,6 @@
 """Record - Dictionary Model."""
 
+from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
 from itertools import chain
@@ -18,7 +19,6 @@ from typing import (
     cast,
 )
 
-from mode.utils.compat import OrderedDict
 from mode.utils.objects import annotations, is_optional, remove_optional
 from mode.utils.text import pluralize
 

@@ -5,11 +5,10 @@ import logging
 import traceback
 import typing
 from time import monotonic
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, NoReturn, Optional, Tuple
 
 from mode.utils.logging import CompositeLogger
 from mode.utils.times import humanize_seconds
-from mode.utils.typing import NoReturn
 
 from faust.models import maybe_model
 

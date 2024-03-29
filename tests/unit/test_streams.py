@@ -1,9 +1,9 @@
 import asyncio
 from collections import defaultdict
+from contextlib import ExitStack
 from unittest.mock import Mock, patch
 
 import pytest
-from mode.utils.contexts import ExitStack
 
 import faust
 from faust import joins

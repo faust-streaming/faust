@@ -1,8 +1,15 @@
 import abc
 import typing
-from typing import Any, Awaitable, Generic, Mapping, Optional, TypeVar, Union
-
-from mode.utils.typing import AsyncContextManager
+from typing import (
+    Any,
+    AsyncContextManager,
+    Awaitable,
+    Generic,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from .codecs import CodecArg
 from .core import HeadersArg, K, V
