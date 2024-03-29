@@ -23,6 +23,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Counter,
     Dict,
     Iterator,
     List,
@@ -45,7 +46,6 @@ from mode.utils.objects import (
     is_union,
     qualname,
 )
-from mode.utils.typing import Counter
 
 from faust.types.models import CoercionHandler, CoercionMapping, IsInstanceArgT, ModelT
 from faust.utils import codegen

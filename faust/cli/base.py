@@ -21,6 +21,7 @@ from typing import (
     List,
     Mapping,
     MutableSequence,
+    NoReturn,
     Optional,
     Sequence,
     Tuple,
@@ -36,7 +37,6 @@ from mode import Service, ServiceT, Worker
 from mode.utils import text
 from mode.utils.compat import want_bytes
 from mode.utils.imports import import_from_cwd, symbol_by_name
-from mode.utils.typing import NoReturn
 from mode.worker import exiting
 
 from faust.types import AppT, CodecArg, ModelT

@@ -10,6 +10,8 @@ from time import monotonic
 from typing import (
     Any,
     Callable,
+    Counter,
+    Deque,
     Dict,
     Mapping,
     MutableMapping,
@@ -21,7 +23,6 @@ from typing import (
 
 from mode import Service, label
 from mode.utils.objects import KeywordReduce
-from mode.utils.typing import Counter, Deque
 
 from faust import web
 from faust.types import AppT, CollectionT, EventT, StreamT
