@@ -383,7 +383,7 @@ class Collection(Service, CollectionT):
             while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 triggered_windows = [
-                    self._partition_timestamp_keys.get((partition, window_range))
+                    self._partition_timestamp_keys.get((partition, window_range))  # noqa
                     for window_range in self._window_ranges(timestamp)
                 ]
                 keys_to_remove = self._partition_timestamp_keys.pop(

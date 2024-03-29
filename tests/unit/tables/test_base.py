@@ -1,7 +1,7 @@
 import asyncio
 import operator
 from copy import copy
-from unittest.mock import Mock, call, patch
+from unittest.mock import Mock, call, patch, MagicMock
 
 import pytest
 from mode import label, shortlabel
@@ -191,6 +191,7 @@ class Test_Collection:
         assert table.last_closed_window == 0.0
 
         table.window = Mock(name="window")
+        self.mock_no_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -271,6 +272,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
 
         table.window = Mock(name="window")
+        self.mock_no_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -384,7 +386,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = Mock(name="on_window_close")
 
         table.window = Mock(name="window")
-        self.mock_ranges(table)
+        self.mock_no_ranges(table)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -673,7 +675,12 @@ class Test_Collection:
         assert list(table._window_ranges(300.3)) == [1, 2, 3]
 
     def mock_ranges(self, table, ranges=[1.1, 1.2, 1.3]):  # noqa
-        table._window_ranges = Mock(name="_window_ranges")
+        table._window_ranges = MagicMock(name="_window_ranges")
+        table._window_ranges.return_value = ranges
+        return ranges
+
+    def mock_no_ranges(self, table, ranges=[]):  # noqa
+        table._window_ranges = MagicMock(name="_window_ranges")
         table._window_ranges.return_value = ranges
         return ranges
 
