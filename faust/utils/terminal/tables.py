@@ -1,4 +1,5 @@
 """Using :pypi:`terminaltables` to draw ANSI tables."""
+
 import sys
 from operator import itemgetter
 from typing import (

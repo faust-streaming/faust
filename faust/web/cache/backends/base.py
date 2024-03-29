@@ -1,4 +1,5 @@
 """Cache backend - base implementation."""
+
 import abc
 from typing import Any, ClassVar, Optional, Tuple, Type, Union
 
@@ -39,18 +40,15 @@ class CacheBackend(CacheBackendT, Service):
         Service.__init__(self, **kwargs)
 
     @abc.abstractmethod
-    async def _get(self, key: str) -> Optional[bytes]:
-        ...
+    async def _get(self, key: str) -> Optional[bytes]: ...
 
     @abc.abstractmethod
     async def _set(
         self, key: str, value: bytes, timeout: Optional[float] = None
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    async def _delete(self, key: str) -> None:
-        ...
+    async def _delete(self, key: str) -> None: ...
 
     async def get(self, key: str) -> Optional[bytes]:
         """Get cached-value by key."""

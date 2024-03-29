@@ -5,6 +5,7 @@ A "worker" starts a single instance of a Faust application.
 See Also:
     :ref:`app-starting`: for more information.
 """
+
 import asyncio
 import logging
 import os
@@ -29,8 +30,7 @@ try:  # pragma: no cover
     from setproctitle import setproctitle
 except ImportError:  # pragma: no cover
 
-    def setproctitle(title: str) -> None:
-        ...  # noqa
+    def setproctitle(title: str) -> None: ...  # noqa
 
 
 __all__ = ["Worker"]

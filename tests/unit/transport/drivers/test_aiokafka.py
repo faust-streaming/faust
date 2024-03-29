@@ -34,6 +34,7 @@ from faust.transport.drivers.aiokafka import (
     ThreadedProducer,
     Transport,
     credentials_to_aiokafka_auth,
+    ensure_aiokafka_TPset,
     server_list,
 )
 from faust.types import TP
@@ -786,7 +787,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
                 api_version=app.conf.consumer_api_version,
                 client_id=conf.broker_client_id,
                 group_id=conf.id,
-                # group_instance_id=conf.consumer_group_instance_id,
+                group_instance_id=conf.consumer_group_instance_id,
                 bootstrap_servers=server_list(transport.url, transport.default_port),
                 partition_assignment_strategy=[cthread._assignor],
                 enable_auto_commit=False,
@@ -1287,8 +1288,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             cthread.call_thread.assert_called_once_with(method, *args, **kwargs)
 
 
-class MyPartitioner:
-    ...
+class MyPartitioner: ...
 
 
 my_partitioner = MyPartitioner()
@@ -2038,3 +2038,9 @@ def test_credentials_to_aiokafka(credentials, ssl_context, expected):
 def test_credentials_to_aiokafka__invalid():
     with pytest.raises(ImproperlyConfigured):
         credentials_to_aiokafka_auth(object())
+
+
+def test_ensure_aiokafka_TPset():
+    actual = ensure_aiokafka_TPset({TP(topic="foo", partition=0)})
+    assert actual == {TopicPartition("foo", 0)}
+    assert all(isinstance(tp, TopicPartition) for tp in actual)

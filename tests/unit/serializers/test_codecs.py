@@ -81,8 +81,7 @@ def test_get_codec():
 def test_register():
     try:
 
-        class MyCodec(Codec):
-            ...
+        class MyCodec(Codec): ...
 
         register("mine", MyCodec)
         assert get_codec("mine") is MyCodec

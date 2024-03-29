@@ -1,4 +1,5 @@
 """Table recovery after rebalancing."""
+
 import asyncio
 import statistics
 import typing
@@ -18,7 +19,7 @@ from typing import (
 )
 
 import opentracing
-from kafka.errors import IllegalStateError
+from aiokafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
@@ -39,11 +40,9 @@ if typing.TYPE_CHECKING:
     from .manager import TableManager as _TableManager
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
-    class _TableManager:
-        ...  # noqa
+    class _TableManager: ...  # noqa
 
 
 E_PERSISTED_OFFSET = """\

@@ -1,4 +1,5 @@
 """Authentication Credentials."""
+
 import ssl
 from typing import Any, Optional, Union
 

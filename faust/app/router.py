@@ -1,4 +1,5 @@
 """Route messages to Faust nodes by partitioning."""
+
 from typing import Tuple
 
 from yarl import URL

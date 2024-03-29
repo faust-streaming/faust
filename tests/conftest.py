@@ -16,8 +16,7 @@ from tests.helpers import AsyncContextManagerMock, AsyncMock
 sentinel = object()
 
 
-class DirtyTest(Exception):
-    ...
+class DirtyTest(Exception): ...
 
 
 @pytest.fixture()

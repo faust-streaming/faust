@@ -1,4 +1,5 @@
 """LiveCheck - Test cases."""
+
 import traceback
 import typing
 from collections import deque
@@ -29,8 +30,7 @@ if typing.TYPE_CHECKING:
     from .app import LiveCheck as _LiveCheck
 else:
 
-    class _LiveCheck:
-        ...  # noqa
+    class _LiveCheck: ...  # noqa
 
 
 __all__ = ["Case"]
@@ -318,8 +318,7 @@ class Case(Service):
                 if self.app.is_leader():
                     await self.make_fake_request()
 
-    async def make_fake_request(self) -> None:
-        ...
+    async def make_fake_request(self) -> None: ...
 
     @Service.task
     async def _check_frequency(self) -> None:
