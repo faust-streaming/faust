@@ -1,7 +1,7 @@
 import asyncio
 import operator
 from copy import copy
-from unittest.mock import Mock, call, patch, MagicMock
+from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
 from mode import label, shortlabel
