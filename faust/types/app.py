@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     Mapping,
     MutableSequence,
+    NoReturn,
     Optional,
     Pattern,
     Set,
@@ -28,7 +29,6 @@ from mode.utils.futures import stampede
 from mode.utils.objects import cached_property
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
-from mode.utils.typing import NoReturn
 
 from .agents import AgentFun, AgentManagerT, AgentT, SinkT
 from .assignor import PartitionAssignorT

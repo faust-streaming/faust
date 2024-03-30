@@ -382,13 +382,40 @@ class Collection(Service, CollectionT):
         for partition, timestamps in self._partition_timestamps.items():
             while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
+                triggered_windows = [
+                    self._partition_timestamp_keys.get(
+                        (partition, window_range)
+                    )  # noqa
+                    for window_range in self._window_ranges(timestamp)
+                ]
                 keys_to_remove = self._partition_timestamp_keys.pop(
                     (partition, timestamp), None
                 )
+                window_data = {}
                 if keys_to_remove:
-                    for key in keys_to_remove:
-                        value = self.data.pop(key, None)
-                        await self.on_window_close(key, value)
+                    for windows in triggered_windows:
+                        if windows:
+                            for processed_window in windows:
+                                # we use set to avoid duplicate element in window's data
+                                # window[0] is the window's key
+                                # it is not related to window's timestamp
+                                # windows are in format:
+                                # (key, (window_start, window_end))
+                                window_data.setdefault(processed_window[0], []).extend(
+                                    self.data.get(processed_window, [])
+                                )
+
+                    for key_to_remove in keys_to_remove:
+                        value = self.data.pop(key_to_remove, None)
+                        if key_to_remove[1][0] > self.last_closed_window:
+                            await self.on_window_close(
+                                key_to_remove,
+                                (
+                                    window_data[key_to_remove[0]]
+                                    if key_to_remove[0] in window_data
+                                    else value
+                                ),
+                            )
                     self.last_closed_window = max(
                         self.last_closed_window,
                         max(key[1][0] for key in keys_to_remove),

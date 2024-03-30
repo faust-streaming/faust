@@ -8,6 +8,8 @@ from collections import defaultdict, deque
 from time import monotonic
 from typing import (
     Any,
+    Counter,
+    Deque,
     Iterator,
     List,
     Mapping,
@@ -23,7 +25,6 @@ from aiokafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
 from mode.utils.times import humanize_seconds, humanize_seconds_ago
-from mode.utils.typing import Counter, Deque
 from yarl import URL
 
 from faust.exceptions import ConsistencyError
