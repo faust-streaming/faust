@@ -847,7 +847,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 self.log.error(
                     SLOW_PROCESSING_NO_FETCH_SINCE_START,
                     tp,
-                    humanize_seconds_ago(secs_since_started),
+                    secs_since_started,
                 )
             return True
 
@@ -857,7 +857,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             self.log.error(
                 SLOW_PROCESSING_NO_RECENT_FETCH,
                 tp,
-                humanize_seconds_ago(secs_since_request),
+                secs_since_request,
             )
             return True
 
