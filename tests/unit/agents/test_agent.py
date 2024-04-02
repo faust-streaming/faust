@@ -954,8 +954,9 @@ class Test_Agent:
     def test_label(self, *, agent):
         assert label(agent)
 
-    @pytest.mark.skipif(platform.python_implementation() == 'PyPy',
-                        reason="Not yet supported on PyPy")
+    @pytest.mark.skipif(
+        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+    )
     async def test_context_calls_sink(self, *, agent):
         class SinkCalledException(Exception):
             pass
