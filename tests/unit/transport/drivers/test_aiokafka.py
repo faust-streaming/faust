@@ -549,7 +549,7 @@ class Test_VEP_no_highwater_since_start(Test_verify_event_path_base):
         (fetcher._subscriptions.subscription.assignment.state_value).return_value = (
             MagicMock(
                 assignment=assignment,
-                timestamp=now,
+                timestamp=now * 1000.0,
                 highwater=None,
                 tp_stream_timeout_secs=cthread.tp_stream_timeout_secs,
                 tp_fetch_request_timeout_secs=cthread.tp_fetch_request_timeout_secs,
