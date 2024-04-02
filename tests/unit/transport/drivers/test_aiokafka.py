@@ -300,7 +300,7 @@ class AIOKafkaConsumerThreadFixtures:
             _consumer._fetcher._subscriptions.subscription.assignment.state_value
         ).return_value = MagicMock(
             assignment={tp},
-            timestamp=now,
+            timestamp=now * 1000.0,
             highwater=1,
             position=0,
         )
