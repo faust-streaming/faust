@@ -3,7 +3,7 @@ packaging
 pre-commit
 pydocstyle
 pytest-sugar
-setuptools>=30.3.0
+setuptools>=30.3.0,<69.0.0
 sphinx-autobuild
 sphinx2rst>=1.0
 tox>=2.3.1

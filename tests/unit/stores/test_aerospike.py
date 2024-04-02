@@ -10,8 +10,7 @@ try:
     from aerospike.exception import RecordNotFound
 except ImportError:
 
-    class RecordNotFound(Exception):
-        ...
+    class RecordNotFound(Exception): ...
 
     m1 = MagicMock()
     m2 = MagicMock()

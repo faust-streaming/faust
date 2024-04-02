@@ -4,6 +4,7 @@ An app is an instance of the Faust library.
 Everything starts here.
 
 """
+
 import asyncio
 import importlib
 import inspect
@@ -11,6 +12,7 @@ import re
 import sys
 import typing
 import warnings
+from contextlib import nullcontext
 from datetime import tzinfo
 from functools import wraps
 from itertools import chain
@@ -28,6 +30,7 @@ from typing import (
     Mapping,
     MutableMapping,
     MutableSequence,
+    NoReturn,
     Optional,
     Pattern,
     Set,
@@ -43,14 +46,12 @@ import opentracing
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping
-from mode.utils.contexts import nullcontext
 from mode.utils.futures import stampede
 from mode.utils.imports import import_from_cwd, smart_import
 from mode.utils.logging import flight_recorder, get_logger
 from mode.utils.objects import cached_property, qualname, shortlabel
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
-from mode.utils.typing import NoReturn
 
 from faust import transport
 from faust.agents import AgentFun, AgentManager, AgentT, ReplyConsumer, SinkT
@@ -113,17 +114,13 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.worker import Worker as _Worker
 else:
 
-    class _AppCommand:
-        ...  # noqa
+    class _AppCommand: ...  # noqa
 
-    class _LiveCheck:
-        ...  # noqa
+    class _LiveCheck: ...  # noqa
 
-    class _Fetcher:
-        ...  # noqa
+    class _Fetcher: ...  # noqa
 
-    class _Worker:
-        ...  # noqa
+    class _Worker: ...  # noqa
 
 
 __all__ = ["App", "BootStrategy"]

@@ -1,4 +1,5 @@
 """Cache interface."""
+
 import hashlib
 from contextlib import suppress
 from functools import wraps

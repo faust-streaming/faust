@@ -6,6 +6,7 @@ then converting that to a generator expression that can be used
 to deserialize such a structure.
 
 """
+
 import abc
 import os
 import random
@@ -22,6 +23,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Counter,
     Dict,
     Iterator,
     List,
@@ -44,7 +46,6 @@ from mode.utils.objects import (
     is_union,
     qualname,
 )
-from mode.utils.typing import Counter
 
 from faust.types.models import CoercionHandler, CoercionMapping, IsInstanceArgT, ModelT
 from faust.utils import codegen
@@ -280,8 +281,7 @@ class Node(abc.ABC):
         )
 
     @abc.abstractmethod
-    def build(self, var: Variable, *args: Type) -> str:
-        ...
+    def build(self, var: Variable, *args: Type) -> str: ...
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.expr!r}>"
@@ -604,8 +604,7 @@ class RootNode(Node):
     found_types: Dict[NodeType, Set[Type]]
 
     @classmethod
-    def _register(cls) -> None:
-        ...  # we do not register root nodes.
+    def _register(cls) -> None: ...  # we do not register root nodes.
 
     def add_closure(self, local_name: str, global_name: str, obj: Any) -> None:
         self.globals[global_name] = obj

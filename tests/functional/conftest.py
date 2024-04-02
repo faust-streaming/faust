@@ -1,5 +1,6 @@
 import logging as _logging
 import os
+import sys
 from copy import copy
 from typing import IO, Dict, NamedTuple, Union
 from unittest.mock import Mock
@@ -71,26 +72,43 @@ def logging(request):
             **((marks.kwargs or {}) if marks else {}),
         }
     )
-    _logging._acquireLock()
-    try:
-        prev_state = copy(_logging.Logger.manager.loggerDict)
-        prev_handlers = copy(_logging.root.handlers)
-    finally:
-        _logging._releaseLock()
-    try:
+    # acquireLock() is removed in Python 3.13
+    if sys.version_info < (3, 13):
+        _logging._acquireLock()
+        try:
+            prev_state = copy(_logging.Logger.manager.loggerDict)
+            prev_handlers = copy(_logging.root.handlers)
+        finally:
+            _logging._releaseLock()
+        try:
+            setup_logging(
+                logfile=options.logfile,
+                loglevel=options.loglevel,
+                logging_config=options.logging_config,
+            )
+            yield
+        finally:
+            _logging._acquireLock()
+            try:
+                _logging.Logger.manager.loggerDict = prev_state
+                _logging.root.handlers = prev_handlers
+            finally:
+                _logging._releaseLock()
+    else:
+        with _logging._lock:
+            prev_state = copy(_logging.Logger.manager.loggerDict)
+            prev_handlers = copy(_logging.root.handlers)
+
         setup_logging(
             logfile=options.logfile,
             loglevel=options.loglevel,
             logging_config=options.logging_config,
         )
         yield
-    finally:
-        _logging._acquireLock()
-        try:
+
+        with _logging._lock:
             _logging.Logger.manager.loggerDict = prev_state
             _logging.root.handlers = prev_handlers
-        finally:
-            _logging._releaseLock()
 
 
 @pytest.fixture()

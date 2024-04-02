@@ -6,8 +6,7 @@ from mode import Service, label
 from tests.helpers import AsyncMock
 
 
-class OtherService(Service):
-    ...
+class OtherService(Service): ...
 
 
 class Test_AppService:

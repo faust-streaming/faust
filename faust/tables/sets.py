@@ -1,4 +1,5 @@
 """Storing sets in tables."""
+
 from enum import Enum
 from typing import (
     Any,
