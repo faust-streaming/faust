@@ -392,7 +392,13 @@ class TestRecovery:
     [
         ({TP1: 0, TP2: -1}, {TP1: -1, TP2: -1}, True, 1, {TP1: 1, TP2: 0}),
         ({TP1: -1, TP2: -1}, {TP1: -1, TP2: -1}, False, 0, {TP1: 0, TP2: 0}),
-        ({TP1: 100, TP2: -1}, {TP1: -1, TP2: -1}, True, 101, {TP1: 101, TP2: 0}),
+        (
+            {TP1: 100, TP2: -1},
+            {TP1: -1, TP2: -1},
+            True,
+            101,
+            {TP1: 101, TP2: 0},
+        ),
     ],
 )
 def test_recovery_from_offset_0(

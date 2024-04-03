@@ -1,0 +1,123 @@
+[project]
+name = "faust-streaming"
+description = "Python Stream Processing. A Faust fork"
+requires-python = ">=3.8"
+dynamic = [
+    "version",
+    "optional-dependencies",
+    "dependencies",
+
+]
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+    "stream",
+    "processing",
+    "asyncio",
+    "distributed",
+    "queue",
+    "kafka",
+]
+classifiers = [
+    "Framework :: AsyncIO",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Operating System :: POSIX",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: BSD",
+    "Operating System :: Microsoft :: Windows",
+    "Topic :: System :: Networking",
+    "Topic :: System :: Distributed Computing",
+]
+
+authors = [
+    { name = "Ask Solem Hoel", email= "ask@robinhood.com" },
+    { name = "Vineet Goel", email= "vineet@robinhood.com" },
+]
+
+maintainers = [
+    { name = "Vikram Patki", email = "vpatki@wayfair.com" },
+    { name = "William Barnhart", email = "williambbarnhart@gmail.com" },
+]
+
+[project.scripts]
+faust = "faust.cli.faust:cli"
+
+[project.urls]
+Documentation = "https://faust-streaming.github.io/faust/"
+Source = "https://github.com/faust-streaming/faust"
+Changes = "https://github.com/faust-streaming/faust/releases"
+
+[build-system]
+requires = [
+    "setuptools>=30.3.0",
+    "setuptools_scm[toml]",
+    "wheel",
+    "cython>=0.29; implementation_name == 'cpython'",
+    "cython>=3.0.0; implementation_name == 'cpython' and python_version >= '3.12'",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# enables setuptools_scm to provide the dynamic version
+
+[tool.flake8]
+ignore = [
+    "W503",
+    "E203",
+    "E231",
+    "E225",
+    "B305",
+]
+max-line-length = 88
+
+[tool.isort]
+profile = "black"
+combine_as_imports = true
+
+[tool.mypy]
+ignore_missing_imports = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+minversion = "6.0"
+addopts = [
+  "--cov-report=term-missing:skip-covered",
+  "--cov=faust",
+  "-rxXs",
+  "--strict-config",
+  "--strict-markers",
+]
+filterwarnings = [
+    "error::ResourceWarning",
+]
+xfail_strict = true
+
+testpaths = [
+    "tests",
+    "integration",
+]
+
+
+[tool.cibuildwheel]
+build = "cp3*"
+
+archs = ["auto64"]
+skip = ["*musllinux*"]
+
+before-build = "pip install Cython"
+
+manylinux-x86_64-image = "manylinux2014"
+manylinux-pypy_x86_64-image = "manylinux2014"

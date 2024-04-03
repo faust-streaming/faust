@@ -8,6 +8,7 @@ The Transport is responsible for:
 To see a reference transport implementation go to:
 :file:`faust/transport/drivers/aiokafka.py`
 """
+
 import asyncio
 from typing import Any, ClassVar, List, Optional, Type
 

@@ -16,14 +16,11 @@ if typing.TYPE_CHECKING:
     from .serializers import SchemaT as _SchemaT
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
-    class _ModelArg:
-        ...  # noqa
+    class _ModelArg: ...  # noqa
 
-    class _SchemaT:
-        ...  # noqa
+    class _SchemaT: ...  # noqa
 
 
 __all__ = ["TopicT"]
@@ -88,31 +85,25 @@ class TopicT(ChannelT):
         active_partitions: Optional[Set[TP]] = None,
         allow_empty: bool = False,
         has_prefix: bool = False,
-        loop: Optional[asyncio.AbstractEventLoop] = None
-    ) -> None:
-        ...
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> None: ...
 
     @property
     @abc.abstractmethod
-    def pattern(self) -> Optional[Pattern]:
-        ...
+    def pattern(self) -> Optional[Pattern]: ...
 
     @pattern.setter
-    def pattern(self, pattern: Union[str, Pattern]) -> None:
-        ...
+    def pattern(self, pattern: Union[str, Pattern]) -> None: ...
 
     @property
     @abc.abstractmethod
-    def partitions(self) -> Optional[int]:
-        ...
+    def partitions(self) -> Optional[int]: ...
 
     @partitions.setter
-    def partitions(self, partitions: int) -> None:
-        ...
+    def partitions(self, partitions: int) -> None: ...
 
     @abc.abstractmethod
-    def derive(self, **kwargs: Any) -> ChannelT:
-        ...
+    def derive(self, **kwargs: Any) -> ChannelT: ...
 
     @abc.abstractmethod
     def derive_topic(
@@ -130,6 +121,5 @@ class TopicT(ChannelT):
         config: Optional[Mapping[str, Any]] = None,
         prefix: str = "",
         suffix: str = "",
-        **kwargs: Any
-    ) -> "TopicT":
-        ...
+        **kwargs: Any,
+    ) -> "TopicT": ...

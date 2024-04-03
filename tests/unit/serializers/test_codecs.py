@@ -36,7 +36,11 @@ def test_interface():
 def test_json_subset(codec: str) -> None:
     if codec == "json":
         # special exception for json since integers can be serialized
-        assert loads(codec, dumps(codec, DATA)) == {"a": 1, "b": "string", "1": 2}
+        assert loads(codec, dumps(codec, DATA)) == {
+            "a": 1,
+            "b": "string",
+            "1": 2,
+        }
     else:
         assert loads(codec, dumps(codec, DATA)) == DATA
 
@@ -77,8 +81,7 @@ def test_get_codec():
 def test_register():
     try:
 
-        class MyCodec(Codec):
-            ...
+        class MyCodec(Codec): ...
 
         register("mine", MyCodec)
         assert get_codec("mine") is MyCodec

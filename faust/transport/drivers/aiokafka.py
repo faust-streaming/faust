@@ -1,4 +1,5 @@
 """Message transport using :pypi:`aiokafka`."""
+
 import asyncio
 import typing
 from asyncio import Lock, QueueEmpty
@@ -10,6 +11,7 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
+    Deque,
     Iterable,
     List,
     Mapping,
@@ -25,37 +27,38 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
+from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
+from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from aiokafka.errors import (
     CommitFailedError,
     ConsumerStoppedError,
     IllegalStateError,
     KafkaError,
-    ProducerFenced,
-)
-from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
-from aiokafka.util import parse_kafka_version
-from kafka import TopicPartition
-from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
-from kafka.errors import (
     NotControllerError,
+    ProducerFenced,
     TopicAlreadyExistsError as TopicExistsError,
     for_code,
 )
-from kafka.partitioner import murmur2
-from kafka.partitioner.default import DefaultPartitioner
-from kafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.partitioner import DefaultPartitioner, murmur2
+from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
+from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
 from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
 from mode.utils.times import Seconds, humanize_seconds_ago, want_seconds
-from mode.utils.typing import Deque
 from opentracing.ext import tags
 from yarl import URL
 
-from faust.auth import GSSAPICredentials, SASLCredentials, SSLCredentials
+from faust.auth import (
+    GSSAPICredentials,
+    OAuthCredentials,
+    SASLCredentials,
+    SSLCredentials,
+)
 from faust.exceptions import (
     ConsumerNotStarted,
     ImproperlyConfigured,
@@ -523,7 +526,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
             api_version=conf.consumer_api_version,
             client_id=conf.broker_client_id,
             group_id=conf.id,
-            # group_instance_id=conf.consumer_group_instance_id,
+            group_instance_id=conf.consumer_group_instance_id,
             bootstrap_servers=server_list(transport.url, transport.default_port),
             partition_assignment_strategy=[self._assignor],
             enable_auto_commit=False,
@@ -706,13 +709,15 @@ class AIOKafkaConsumerThread(ConsumerThread):
     async def _commit(self, offsets: Mapping[TP, int]) -> bool:
         consumer = self._ensure_consumer()
         now = monotonic()
+        commitable_offsets = {
+            tp: offset for tp, offset in offsets.items() if tp in self.assignment()
+        }
         try:
             aiokafka_offsets = {
-                tp: OffsetAndMetadata(offset, "")
-                for tp, offset in offsets.items()
-                if tp in self.assignment()
+                ensure_aiokafka_TP(tp): OffsetAndMetadata(offset, "")
+                for tp, offset in commitable_offsets.items()
             }
-            self.tp_last_committed_at.update({tp: now for tp in aiokafka_offsets})
+            self.tp_last_committed_at.update({tp: now for tp in commitable_offsets})
             await consumer.commit(aiokafka_offsets)
         except CommitFailedError as exc:
             if "already rebalanced" in str(exc):
@@ -829,13 +834,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
         aiotp = TopicPartition(tp.topic, tp.partition)
         assignment = consumer._fetcher._subscriptions.subscription.assignment
-        if not assignment and not assignment.active:
+        if not assignment or not assignment.active:
             self.log.error(f"No active partitions for {tp}")
             return True
         poll_at = None
         aiotp_state = assignment.state_value(aiotp)
         if aiotp_state and aiotp_state.timestamp:
-            poll_at = aiotp_state.timestamp / 1000
+            poll_at = aiotp_state.timestamp / 1000  # milliseconds
         if poll_at is None:
             if secs_since_started >= self.tp_fetch_request_timeout_secs:
                 # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
@@ -1584,6 +1589,13 @@ def credentials_to_aiokafka_auth(
                 "security_protocol": credentials.protocol.value,
                 "ssl_context": credentials.context,
             }
+        elif isinstance(credentials, OAuthCredentials):
+            return {
+                "security_protocol": credentials.protocol.value,
+                "sasl_mechanism": credentials.mechanism.value,
+                "sasl_oauth_token_provider": credentials.oauth_cb,
+                "ssl_context": credentials.ssl_context,
+            }
         elif isinstance(credentials, SASLCredentials):
             return {
                 "security_protocol": credentials.protocol.value,
@@ -1609,3 +1621,17 @@ def credentials_to_aiokafka_auth(
         }
     else:
         return {"security_protocol": "PLAINTEXT"}
+
+
+def ensure_aiokafka_TP(tp: TP) -> _TopicPartition:
+    """Convert Faust ``TP`` to aiokafka ``TopicPartition``."""
+    return (
+        tp
+        if isinstance(tp, _TopicPartition)
+        else _TopicPartition(tp.topic, tp.partition)
+    )
+
+
+def ensure_aiokafka_TPset(tps: Iterable[TP]) -> Set[_TopicPartition]:
+    """Convert set of Faust ``TP`` to aiokafka ``TopicPartition``."""
+    return {ensure_aiokafka_TP(tp) for tp in tps}

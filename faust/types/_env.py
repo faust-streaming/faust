@@ -1,4 +1,5 @@
 """Faust environment variables."""
+
 import os
 from typing import Any, Sequence
 

@@ -1,4 +1,5 @@
 """Program ``faust agents`` used to list agents."""
+
 from operator import attrgetter
 from typing import Any, Callable, Optional, Sequence, Type, cast
 

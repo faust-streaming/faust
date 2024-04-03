@@ -1,6 +1,6 @@
 import asyncio
 import json
-from unittest.mock import Mock
+from unittest.mock import MagicMock, Mock
 
 import pytest
 
@@ -86,7 +86,7 @@ class Test_BarrierState:
 
         if pending:
             raise Exception(
-                f"Test did not return in 5s:\n"
+                f"Test did not return within 5s:\n"
                 f"  DONE_TASKS={done}\n"
                 f"  PENDING_TASKS={pending}\n"
                 f"  size={p.size}\n"
@@ -192,7 +192,7 @@ class Test_ReplyConsumer:
     async def test_start_fetcher(self, *, c):
         c._drain_replies = Mock()
         c._reply_topic = Mock(
-            return_value=Mock(
+            return_value=MagicMock(
                 maybe_declare=AsyncMock(),
             ),
         )

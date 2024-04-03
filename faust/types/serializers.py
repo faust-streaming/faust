@@ -11,14 +11,11 @@ if typing.TYPE_CHECKING:
     from .tuples import Message as _Message
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
-    class _ModelArg:
-        ...  # noqa
+    class _ModelArg: ...  # noqa
 
-    class _Message:
-        ...  # noqa
+    class _Message: ...  # noqa
 
 
 __all__ = ["RegistryT", "SchemaT"]
@@ -34,8 +31,7 @@ class RegistryT(abc.ABC):
     @abc.abstractmethod
     def __init__(
         self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     def loads_key(
@@ -43,9 +39,8 @@ class RegistryT(abc.ABC):
         typ: Optional[_ModelArg],
         key: Optional[bytes],
         *,
-        serializer: CodecArg = None
-    ) -> K:
-        ...
+        serializer: CodecArg = None,
+    ) -> K: ...
 
     @abc.abstractmethod
     def loads_value(
@@ -53,21 +48,18 @@ class RegistryT(abc.ABC):
         typ: Optional[_ModelArg],
         value: Optional[bytes],
         *,
-        serializer: CodecArg = None
-    ) -> Any:
-        ...
+        serializer: CodecArg = None,
+    ) -> Any: ...
 
     @abc.abstractmethod
     def dumps_key(
         self, typ: Optional[_ModelArg], key: K, *, serializer: CodecArg = None
-    ) -> Optional[bytes]:
-        ...
+    ) -> Optional[bytes]: ...
 
     @abc.abstractmethod
     def dumps_value(
         self, typ: Optional[_ModelArg], value: V, *, serializer: CodecArg = None
-    ) -> Optional[bytes]:
-        ...
+    ) -> Optional[bytes]: ...
 
 
 class SchemaT(Generic[KT, VT]):
@@ -86,9 +78,8 @@ class SchemaT(Generic[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: Optional[bool] = None
-    ) -> None:
-        ...
+        allow_empty: Optional[bool] = None,
+    ) -> None: ...
 
     @abc.abstractmethod
     def update(
@@ -98,9 +89,8 @@ class SchemaT(Generic[KT, VT]):
         value_type: _ModelArg = None,
         key_serializer: CodecArg = None,
         value_serializer: CodecArg = None,
-        allow_empty: Optional[bool] = None
-    ) -> None:
-        ...
+        allow_empty: Optional[bool] = None,
+    ) -> None: ...
 
     @abc.abstractmethod
     def loads_key(
@@ -109,9 +99,8 @@ class SchemaT(Generic[KT, VT]):
         message: _Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None
-    ) -> KT:
-        ...
+        serializer: CodecArg = None,
+    ) -> KT: ...
 
     @abc.abstractmethod
     def loads_value(
@@ -120,9 +109,8 @@ class SchemaT(Generic[KT, VT]):
         message: _Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None
-    ) -> VT:
-        ...
+        serializer: CodecArg = None,
+    ) -> VT: ...
 
     @abc.abstractmethod
     def dumps_key(
@@ -131,9 +119,8 @@ class SchemaT(Generic[KT, VT]):
         key: K,
         *,
         serializer: CodecArg = None,
-        headers: OpenHeadersArg
-    ) -> Tuple[Any, OpenHeadersArg]:
-        ...
+        headers: OpenHeadersArg,
+    ) -> Tuple[Any, OpenHeadersArg]: ...
 
     @abc.abstractmethod
     def dumps_value(
@@ -142,18 +129,15 @@ class SchemaT(Generic[KT, VT]):
         value: V,
         *,
         serializer: CodecArg = None,
-        headers: OpenHeadersArg
-    ) -> Tuple[Any, OpenHeadersArg]:
-        ...
+        headers: OpenHeadersArg,
+    ) -> Tuple[Any, OpenHeadersArg]: ...
 
     @abc.abstractmethod
     def on_dumps_key_prepare_headers(
         self, key: V, headers: OpenHeadersArg
-    ) -> OpenHeadersArg:
-        ...
+    ) -> OpenHeadersArg: ...
 
     @abc.abstractmethod
     def on_dumps_value_prepare_headers(
         self, value: V, headers: OpenHeadersArg
-    ) -> OpenHeadersArg:
-        ...
+    ) -> OpenHeadersArg: ...

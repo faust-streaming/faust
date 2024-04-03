@@ -68,7 +68,7 @@ def create_app(name, origin, base=faust.App, **kwargs: Any) -> faust.App:
         topic_partitions=config.topic_partitions,
         loghandlers=config.loghandlers(),
         autodiscover=True,
-        **kwargs
+        **kwargs,
     )
 
 

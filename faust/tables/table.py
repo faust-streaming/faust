@@ -1,4 +1,5 @@
 """Table (key/value changelog stream)."""
+
 from typing import Any, ClassVar, Optional, Type
 
 from mode import Seconds

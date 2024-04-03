@@ -1,8 +1,15 @@
 import abc
 import typing
-from typing import Any, Awaitable, Generic, Mapping, Optional, TypeVar, Union
-
-from mode.utils.typing import AsyncContextManager
+from typing import (
+    Any,
+    AsyncContextManager,
+    Awaitable,
+    Generic,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+)
 
 from .codecs import CodecArg
 from .core import HeadersArg, K, V
@@ -14,14 +21,11 @@ if typing.TYPE_CHECKING:
     from .serializers import SchemaT as _SchemaT
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
-    class _ChannelT:
-        ...  # noqa
+    class _ChannelT: ...  # noqa
 
-    class _SchemaT:
-        ...  # noqa
+    class _SchemaT: ...  # noqa
 
 
 T = TypeVar("T")
@@ -45,8 +49,7 @@ class EventT(Generic[T], AsyncContextManager):
         value: V,
         headers: Optional[HeadersArg],
         message: Message,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     async def send(
@@ -62,8 +65,7 @@ class EventT(Generic[T], AsyncContextManager):
         value_serializer: CodecArg = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
-    ) -> Awaitable[RecordMetadata]:
-        ...
+    ) -> Awaitable[RecordMetadata]: ...
 
     @abc.abstractmethod
     async def forward(
@@ -79,9 +81,7 @@ class EventT(Generic[T], AsyncContextManager):
         value_serializer: CodecArg = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
-    ) -> Awaitable[RecordMetadata]:
-        ...
+    ) -> Awaitable[RecordMetadata]: ...
 
     @abc.abstractmethod
-    def ack(self) -> bool:
-        ...
+    def ack(self) -> bool: ...

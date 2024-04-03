@@ -31,8 +31,7 @@ if typing.TYPE_CHECKING:
     from raven.handlers.logging import SentryHandler as _SentryHandler
 else:
 
-    class _SentryHandler:
-        ...  # noqa: E701
+    class _SentryHandler: ...  # noqa: E701
 
 
 __all__ = ["handler_from_dsn", "setup"]
@@ -96,7 +95,7 @@ def handler_from_dsn(
     include_paths: Iterable[str] = None,
     loglevel: Optional[int] = None,
     qsize: int = 1000,
-    **kwargs: Any
+    **kwargs: Any,
 ) -> Optional[logging.Handler]:
     if raven is None:
         raise ImproperlyConfigured("faust.contrib.sentry requires the `raven` library.")
@@ -115,7 +114,7 @@ def handler_from_dsn(
                 qsize=qsize,
             ),
             disable_existing_loggers=False,
-            **kwargs
+            **kwargs,
         )
         handler = _build_sentry_handler()(client)
         handler.setLevel(level)
@@ -130,7 +129,7 @@ def setup(
     workers: int = 4,
     max_queue_size: int = 1000,
     loglevel: Optional[int] = None,
-    **kwargs
+    **kwargs,
 ) -> None:
     sentry_handler = handler_from_dsn(
         dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs

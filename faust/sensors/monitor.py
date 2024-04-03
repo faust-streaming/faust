@@ -1,4 +1,5 @@
 """Monitor - sensor tracking metrics."""
+
 import asyncio
 import re
 import weakref
@@ -9,6 +10,8 @@ from time import monotonic
 from typing import (
     Any,
     Callable,
+    Counter,
+    Deque,
     Dict,
     Mapping,
     MutableMapping,
@@ -20,7 +23,6 @@ from typing import (
 
 from mode import Service, label
 from mode.utils.objects import KeywordReduce
-from mode.utils.typing import Counter, Deque
 
 from faust import web
 from faust.types import AppT, CollectionT, EventT, StreamT
@@ -68,7 +70,7 @@ class TableState(KeywordReduce):
         *,
         keys_retrieved: int = 0,
         keys_updated: int = 0,
-        keys_deleted: int = 0
+        keys_deleted: int = 0,
     ) -> None:
         self.table: CollectionT = table
         self.keys_retrieved = keys_retrieved
@@ -252,7 +254,7 @@ class Monitor(Sensor, KeywordReduce):
         http_response_codes: Counter[HTTPStatus] = None,
         http_response_latency: Deque[float] = None,
         http_response_latency_avg: float = 0.0,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         if max_avg_history is not None:
             self.max_avg_history = max_avg_history
@@ -636,7 +638,7 @@ class Monitor(Sensor, KeywordReduce):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None
+        view: web.View = None,
     ) -> None:
         """Web server finished working on request."""
         status_code = HTTPStatus(response.status if response is not None else 500)
@@ -659,7 +661,7 @@ class Monitor(Sensor, KeywordReduce):
         name: str,
         *,
         pattern: Pattern = RE_NORMALIZE,
-        substitution: str = RE_NORMALIZE_SUBSTITUTION
+        substitution: str = RE_NORMALIZE_SUBSTITUTION,
     ) -> str:
         return pattern.sub(substitution, name)
 

@@ -1,4 +1,5 @@
 """Tables (changelog stream)."""
+
 import asyncio
 import typing
 from typing import Any, MutableMapping, Optional, Set, Tuple, cast
@@ -16,8 +17,7 @@ if typing.TYPE_CHECKING:
     from faust.app import App as _App
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
 
 __all__ = [

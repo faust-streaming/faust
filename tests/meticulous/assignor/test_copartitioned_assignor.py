@@ -1,7 +1,9 @@
 import copy
+import platform
 from collections import Counter
 from typing import MutableMapping
 
+import pytest
 from hypothesis import assume, given, settings
 from hypothesis.strategies import integers
 
@@ -77,6 +79,9 @@ def client_removal_sticky(
     return True
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -95,6 +100,9 @@ def test_fresh_assignment(partitions, replicas, num_clients):
     assert is_valid(new_assignments, partitions, replicas)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -131,6 +139,9 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
         assert clients_balanced(new_assignments)
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),

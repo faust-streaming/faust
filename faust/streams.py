@@ -1,4 +1,5 @@
 """Streams."""
+
 import asyncio
 import os
 import reprlib
@@ -11,6 +12,7 @@ from typing import (
     AsyncIterable,
     AsyncIterator,
     Callable,
+    Deque,
     Dict,
     Iterable,
     Iterator,
@@ -31,7 +33,6 @@ from mode.utils.aiter import aenumerate, aiter
 from mode.utils.futures import current_task, maybe_async, notify
 from mode.utils.queues import ThrowableQueue
 from mode.utils.types.trees import NodeT
-from mode.utils.typing import Deque
 
 from . import joins
 from .exceptions import ImproperlyConfigured, Skip

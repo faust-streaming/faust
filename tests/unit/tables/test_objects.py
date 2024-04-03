@@ -1,4 +1,4 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -54,6 +54,7 @@ class Test_ChangeloggedObjectManager:
     def man(self, *, table):
         man = ChangeloggedObjectManager(table)
         man.ValueType = ValueType
+        man.storage.__setitem__ = MagicMock()
         return man
 
     @pytest.fixture()
@@ -62,7 +63,7 @@ class Test_ChangeloggedObjectManager:
 
     def test_send_changelog_event(self, *, man, table, key, current_event):
         man.send_changelog_event(key, 3, "value")
-        assert key in man._dirty
+        man.storage.__setitem__.assert_called_once()
         table._send_changelog.assert_called_once_with(
             current_event(),
             (3, key),
@@ -98,12 +99,6 @@ class Test_ChangeloggedObjectManager:
         await man.on_start()
         man.add_runtime_dependency.assert_called_once_with(man.storage)
 
-    @pytest.mark.asyncio
-    async def test_on_stop(self, *, man):
-        man.flush_to_storage = Mock()
-        await man.on_stop()
-        man.flush_to_storage.assert_called_once_with()
-
     def test_persisted_offset(self, *, man, storage):
         ret = man.persisted_offset(TP1)
         storage.persisted_offset.assert_called_once_with(TP1)
@@ -134,14 +129,6 @@ class Test_ChangeloggedObjectManager:
         man.sync_from_storage()
         assert 1 in man["foo"].synced
         assert 2 in man["bar"].synced
-
-    def test_flush_to_storage(self, *, man):
-        man._storage = {}
-        man._dirty = {"foo", "bar"}
-        assert man["foo"]
-        assert man["bar"]
-        man.flush_to_storage()
-        assert man._storage["foo"] == "foo-stored"
 
     def test_reset_state(self, *, man, storage):
         man.reset_state()
