@@ -58,7 +58,6 @@ globals().update(conf.build_config(
         'faust.types._env',
         'faust.utils',
         'faust.utils._iso8601_python',
-        r'faust.utils.kafka.*',
         'faust.web',
         r'faust.web.apps.*',
         'faust.web.apps.stats.app',

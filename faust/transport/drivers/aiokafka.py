@@ -41,6 +41,7 @@ from aiokafka.errors import (
     for_code,
 )
 from aiokafka.partitioner import DefaultPartitioner, murmur2
+from aiokafka.protocol.admin import CreateTopicsRequest
 from aiokafka.protocol.metadata import MetadataRequest_v1
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
@@ -82,7 +83,6 @@ from faust.types import (
 )
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
-from faust.utils.kafka.protocol.admin import CreateTopicsRequest
 from faust.utils.tracing import noop_span, set_current_span, traced_from_parent_span
 
 __all__ = ["Consumer", "Producer", "Transport"]

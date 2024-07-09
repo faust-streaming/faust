@@ -374,7 +374,7 @@ class Test_WindowWrapper_using_key_index:
 
     @pytest.fixture()
     def data(self, *, freeze_time, iwtable):
-        iwtable.key_index_table = {k: 1 for k in self.TABLE_DATA}
+        iwtable.key_index_table = dict.fromkeys(self.TABLE_DATA, 1)
         iwtable.table._data = {}
         for w in iwtable.table._window_ranges(freeze_time.time):
             iwtable.table._data.update({(k, w): v for k, v in self.TABLE_DATA.items()})
