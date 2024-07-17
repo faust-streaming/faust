@@ -516,6 +516,7 @@ class Command(abc.ABC):  # noqa: B024
     daemon: bool = False
     redirect_stdouts: Optional[bool] = None
     redirect_stdouts_level: Optional[int] = None
+    override_logging: Optional[bool] = None
 
     builtin_options: OptionSequence = builtin_options
     options: Optional[OptionList] = None
@@ -660,6 +661,7 @@ class Command(abc.ABC):  # noqa: B024
             console_port=self.console_port,
             redirect_stdouts=self.redirect_stdouts or False,
             redirect_stdouts_level=self.redirect_stdouts_level,
+            override_logging=self.override_logging or False,
             loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
             daemon=self.daemon,
         )

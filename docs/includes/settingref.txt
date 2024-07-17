@@ -2135,6 +2135,21 @@ Level used when redirecting standard outputs.
 The logging level to use when redirect STDOUT/STDERR to logging.
 
 
+.. setting:: worker_override_logging
+
+``worker_override_logging``
+---------------------------
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`WORKER_OVERRIDE_LOGGING`
+
+Override worker logging.
+
+Enable to configure root logger.
+
+Enabled by default.
+
 
 .. _settings-extending:
 
