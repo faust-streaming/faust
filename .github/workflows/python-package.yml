@@ -100,7 +100,7 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-20.04, macos-13, macos-14]
     steps:
       - uses: actions/checkout@v4
         with:
