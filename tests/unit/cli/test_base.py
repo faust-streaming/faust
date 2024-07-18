@@ -366,6 +366,7 @@ class Test_Command:
                 console_port=command.console_port,
                 redirect_stdouts=command.redirect_stdouts or False,
                 redirect_stdouts_level=command.redirect_stdouts_level,
+                override_logging=command.override_logging or False,
                 loop=loop,
                 daemon=command.daemon,
             )
