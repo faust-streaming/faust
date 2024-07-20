@@ -26,6 +26,7 @@ except ImportError:  # pragma: no cover
 if typing.TYPE_CHECKING:  # pragma: no cover
     from redis import StrictRedis as _RedisClientT
 else:
+
     class _RedisClientT: ...  # noqa
 
 

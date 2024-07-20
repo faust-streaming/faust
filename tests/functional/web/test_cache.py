@@ -1,7 +1,7 @@
 from itertools import count
 
-import redis.asyncio as aredis
 import pytest
+import redis.asyncio as aredis
 
 import faust
 from faust.exceptions import ImproperlyConfigured
