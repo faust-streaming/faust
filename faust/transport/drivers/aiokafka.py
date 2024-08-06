@@ -294,6 +294,7 @@ class ThreadedProducer(ServiceThread):
     _push_events_task: Optional[asyncio.Task] = None
     app: None
     stopped: bool
+    _shutdown_initiated: bool = False
 
     def __init__(
         self,
@@ -314,6 +315,11 @@ class ThreadedProducer(ServiceThread):
         )
         self._default_producer = default_producer
         self.app = app
+
+    def _shutdown_thread(self) -> None:
+        # Ensure that the shutdown process is initiated only once
+        if not self._shutdown_initiated:
+            asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
 
     async def flush(self) -> None:
         """Wait for producer to finish transmitting all buffered messages."""
@@ -349,6 +355,7 @@ class ThreadedProducer(ServiceThread):
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
+        self._shutdown_initiated = True
         logger.info("Stopping producer thread")
         await super().on_thread_stop()
         self.stopped = True
