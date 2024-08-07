@@ -1563,9 +1563,9 @@ class Transport(base.Transport):
             return
         response = wait_result.result
 
-        assert len(response.topic_error_codes), "single topic"
+        assert len(response.topic_errors), "single topic"
 
-        _, code, reason = response.topic_error_codes[0]
+        _, code, reason = response.topic_errors[0]
 
         if code != 0:
             if not ensure_created and code == TopicExistsError.errno:
