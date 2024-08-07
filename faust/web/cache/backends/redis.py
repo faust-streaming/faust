@@ -15,13 +15,16 @@ from faust.types import AppT
 from . import base
 
 try:
-    import aredis
-    import aredis.exceptions
+    import redis
+    import redis.asyncio as aredis
+    import redis.exceptions
+
+    redis.client.Redis
 except ImportError:  # pragma: no cover
     aredis = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from aredis import StrictRedis as _RedisClientT
+    from redis import StrictRedis as _RedisClientT
 else:
 
     class _RedisClientT: ...  # noqa
@@ -45,22 +48,22 @@ class CacheBackend(base.CacheBackend):
     _client: Optional[_RedisClientT] = None
     _client_by_scheme: Mapping[str, Type[_RedisClientT]]
 
-    if aredis is None:  # pragma: no cover
+    if redis is None:  # pragma: no cover
         ...
     else:
         operational_errors = (
             socket.error,
             IOError,
             OSError,
-            aredis.exceptions.ConnectionError,
-            aredis.exceptions.TimeoutError,
+            redis.ConnectionError,
+            redis.TimeoutError,
         )
         invalidating_errors = (
-            aredis.exceptions.DataError,
-            aredis.exceptions.InvalidResponse,
-            aredis.exceptions.ResponseError,
+            redis.DataError,
+            redis.InvalidResponse,
+            redis.ResponseError,
         )
-        irrecoverable_errors = (aredis.exceptions.AuthenticationError,)
+        irrecoverable_errors = (redis.AuthenticationError,)
 
     def __init__(
         self,
@@ -81,12 +84,12 @@ class CacheBackend(base.CacheBackend):
         self._client_by_scheme = self._init_schemes()
 
     def _init_schemes(self) -> Mapping[str, Type[_RedisClientT]]:
-        if aredis is None:  # pragma: no cover
+        if redis is None:  # pragma: no cover
             return {}
         else:
             return {
-                RedisScheme.SINGLE_NODE.value: aredis.StrictRedis,
-                RedisScheme.CLUSTER.value: aredis.StrictRedisCluster,
+                RedisScheme.SINGLE_NODE.value: redis.StrictRedis,
+                RedisScheme.CLUSTER.value: redis.RedisCluster,
             }
 
     async def _get(self, key: str) -> Optional[bytes]:
@@ -108,9 +111,9 @@ class CacheBackend(base.CacheBackend):
 
     async def on_start(self) -> None:
         """Call when Redis backend starts."""
-        if aredis is None:
+        if redis is None:
             raise ImproperlyConfigured(
-                "Redis cache backend requires `pip install aredis`"
+                "Redis cache backend requires `pip install redis`"
             )
         await self.connect()
 
@@ -130,7 +133,6 @@ class CacheBackend(base.CacheBackend):
         connect_timeout: Optional[str] = None,
         stream_timeout: Optional[str] = None,
         max_connections: Optional[str] = None,
-        max_connections_per_node: Optional[str] = None,
         **kwargs: Any,
     ) -> _RedisClientT:
         Client = self._client_by_scheme[url.scheme]
@@ -141,19 +143,15 @@ class CacheBackend(base.CacheBackend):
                 port=url.port,
                 db=self._db_from_path(url.path),
                 password=url.password,
-                connect_timeout=self._float_from_str(
+                socket_connect_timeout=self._float_from_str(
                     connect_timeout, self.connect_timeout
                 ),
-                stream_timeout=self._float_from_str(
+                socket_timeout=self._float_from_str(
                     stream_timeout, self.stream_timeout
                 ),
                 max_connections=self._int_from_str(
                     max_connections, self.max_connections
                 ),
-                max_connections_per_node=self._int_from_str(
-                    max_connections_per_node, self.max_connections_per_node
-                ),
-                skip_full_coverage_check=True,
             )
         )
 
