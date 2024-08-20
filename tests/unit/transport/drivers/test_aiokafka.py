@@ -1391,7 +1391,6 @@ class ProducerBaseTest:
                 max_request_size=max_request_size,
                 compression_type=compression_type,
                 security_protocol=security_protocol,
-                loop=producer.loop,
                 partitioner=producer.partitioner,
                 transactional_id=None,
                 api_version=api_version,

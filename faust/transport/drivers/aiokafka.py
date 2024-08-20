@@ -1249,7 +1249,6 @@ class Producer(base.Producer):
         self, transactional_id: Optional[str] = None
     ) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
-            loop=self.loop,
             **{
                 **self._settings_default(),
                 **self._settings_auth(),
