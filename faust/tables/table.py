@@ -93,6 +93,11 @@ class Table(TableT[KT, VT], Collection):
         self._maybe_del_key_ttl(key, partition)
         self._sensor_on_del(self, key)
 
+    def on_clear(self) -> None:
+        """Call when the table is cleared."""
+        for key in self:
+            self.on_key_del(key)
+
     def as_ansitable(self, title: str = "{table.name}", **kwargs: Any) -> str:
-        """Draw table as a a terminal ANSI table."""
+        """Draw table as a terminal ANSI table."""
         return dict_as_ansitable(self, title=title.format(table=self), **kwargs)

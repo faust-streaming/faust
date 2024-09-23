@@ -84,6 +84,9 @@ class ChangeloggedSet(ChangeloggedObject, ManagedUserSet[VT]):
     def on_change(self, added: Set[VT], removed: Set[VT]) -> None:
         self.manager.send_changelog_event(self.key, OPERATION_UPDATE, [added, removed])
 
+    def on_clear(self) -> None:
+        self.manager.send_changelog_event(self.key, OPERATION_UPDATE, [set(), set(self.data)])
+
     def sync_from_storage(self, value: Any) -> None:
         self.data = set(value)
 
