@@ -105,6 +105,15 @@ class Test_ChangeloggedSet:
             "value",
         )
 
+    def test_on_clear(self, *, cset, manager, key):
+        cset.data.add("value")
+        cset.clear()
+        manager.send_changelog_event.assert_called_once_with(
+            key,
+            OPERATION_UPDATE,
+            [set(), {"value"}],
+        )
+
     def test_on_change__diff(self, *, cset, manager, key):
         cset.data.update({1, 2, 3, 4})
         cset.difference_update({2, 3, 4, 5, 6})
