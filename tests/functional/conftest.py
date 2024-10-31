@@ -113,7 +113,7 @@ def logging(request):
 
 @pytest.fixture()
 def mocked_redis(*, event_loop, monkeypatch):
-    import aredis
+    import redis.asyncio as aredis
 
     storage = CacheStorage()
 
@@ -130,7 +130,7 @@ def mocked_redis(*, event_loop, monkeypatch):
         ),
     )
     client_cls.storage = storage
-    monkeypatch.setattr("aredis.StrictRedis", client_cls)
+    monkeypatch.setattr("redis.StrictRedis", client_cls)
     return client_cls
 
 
