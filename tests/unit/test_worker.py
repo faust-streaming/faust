@@ -38,10 +38,8 @@ class Test_Worker:
         assert not w2.redirect_stdouts
         w3 = Worker(app, redirect_stdouts_level="DEBUG")
         assert w3.redirect_stdouts_level == 10
-        w4 = Worker(app, override_logging=False)
-        assert not w4.override_logging
-        w5 = Worker(app, logging_config={"foo": 1})
-        assert w5.logging_config == {"foo": 1}
+        w4 = Worker(app, logging_config={"foo": 1})
+        assert w4.logging_config == {"foo": 1}
 
     def test_set_sensors(self, app):
         assert Worker(app, sensors=[1, 2]).sensors == {1, 2}

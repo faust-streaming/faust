@@ -139,6 +139,18 @@ class Test_Table:
             table.send_changelog.asssert_called_once_with(partition, "foo", None)
             assert "foo" not in table.data
 
+    def test_clear(self, *, table):
+        with patch("faust.tables.base.current_event") as current_event:
+            event = current_event.return_value
+            partition = event.message.partition
+            table.send_changelog = Mock(name="send_changelog")
+            table.data["foo"] = 3
+            table.data["bar"] = 4
+            table.clear()
+            table.send_changelog.asssert_called_once_with(partition, "foo", None)
+            table.send_changelog.asssert_called_once_with(partition, "bar", None)
+            assert not table.data
+
     def test_as_ansitable(self, *, table):
         table.data["foo"] = "bar"
         table.data["bar"] = "baz"

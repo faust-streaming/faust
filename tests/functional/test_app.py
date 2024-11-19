@@ -444,11 +444,6 @@ class Test_settings:
                 setting=Settings.worker_redirect_stdouts_level,
                 expected_value="error",
             ),
-            EnvCase(
-                env={"WORKER_OVERRIDE_LOGGING": "no"},
-                setting=Settings.worker_override_logging,
-                expected_value=False,
-            ),
         ],
     )
     def test_env(self, env, setting, expected_value):
@@ -560,7 +555,6 @@ class Test_settings:
         assert conf.web_cors_options is None
         assert conf.worker_redirect_stdouts
         assert conf.worker_redirect_stdouts_level == "WARN"
-        assert conf.worker_override_logging
 
         assert conf.agent_supervisor is mode.OneForOneSupervisor
 
@@ -683,7 +677,6 @@ class Test_settings:
         },
         worker_redirect_stdouts=False,
         worker_redirect_stdouts_level="DEBUG",
-        worker_override_logging=False,
         broker_max_poll_records=1000,
         broker_max_poll_interval=10000,
         timezone=pytz.timezone("US/Eastern"),  # noqa: B008
@@ -752,7 +745,6 @@ class Test_settings:
             web_cors_options=web_cors_options,
             worker_redirect_stdouts=worker_redirect_stdouts,
             worker_redirect_stdouts_level=worker_redirect_stdouts_level,
-            worker_override_logging=worker_override_logging,
             logging_config=logging_config,
             consumer_auto_offset_reset=consumer_auto_offset_reset,
             ConsumerScheduler=ConsumerScheduler,
@@ -817,7 +809,6 @@ class Test_settings:
         assert conf.web_cors_options == web_cors_options
         assert conf.worker_redirect_stdouts == worker_redirect_stdouts
         assert conf.worker_redirect_stdouts_level == worker_redirect_stdouts_level
-        assert conf.worker_override_logging == worker_override_logging
         assert conf.broker_max_poll_records == broker_max_poll_records
         assert conf.broker_max_poll_interval == broker_max_poll_interval
         assert conf.logging_config == logging_config

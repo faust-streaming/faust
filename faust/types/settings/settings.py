@@ -168,7 +168,6 @@ class Settings(base.SettingsRegistry):
         # Worker settings:
         worker_redirect_stdouts: Optional[bool] = None,
         worker_redirect_stdouts_level: Severity = None,
-        worker_override_logging: Optional[bool] = None,
         # Extension settings:
         Agent: SymbolArg[Type[AgentT]] = None,
         ConsumerScheduler: SymbolArg[Type[SchedulingStrategyT]] = None,
@@ -2022,19 +2021,6 @@ class Settings(base.SettingsRegistry):
         """Level used when redirecting standard outputs.
 
         The logging level to use when redirect STDOUT/STDERR to logging.
-        """
-
-    @sections.Worker.setting(
-        params.Bool,
-        env_name="WORKER_OVERRIDE_LOGGING",
-        default=True,
-    )
-    def worker_override_logging(self) -> bool:
-        """Override worker logging.
-
-        Enable to configure root logger.
-
-        Enabled by default.
         """
 
     @sections.Extension.setting(
