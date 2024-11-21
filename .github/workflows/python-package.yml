@@ -13,9 +13,6 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
   PIP_NO_PYTHON_VERSION_WARNING: '1'
   PYTHON_LATEST: '3.13'
-
-  # For re-actors/checkout-python-sdist
-  sdist-artifact: python-package-distributions
 jobs:
   lint:
     name: Check linting
@@ -98,8 +95,9 @@ jobs:
           fetch-depth: 0
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: wheel-artifacts
           path: ./wheelhouse/*.whl
   build_sdist:
     name: 📦 Build the source distribution
@@ -116,9 +114,10 @@ jobs:
         run: >
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:
+          name: sdist-artifact
           path: dist/*.tar.gz
   publish:
     name: 📦 Publish to PyPI
@@ -132,8 +131,13 @@ jobs:
       - name: Download the sdist artifact
         uses: actions/download-artifact@v4.1.7
         with:
-          name: artifact
+          name: sdist-artifact
           path: dist
+      - name: Download the wheel artifact
+        uses: actions/download-artifact@v4.1.7
+        with:
+          pattern: "*artifact*"
+          merge-multiple: true
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
