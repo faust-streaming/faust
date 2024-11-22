@@ -68,7 +68,7 @@ jobs:
       - name: Run tests
         run: scripts/tests
       - name: Enforce coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   check:  # This job does nothing and is only used for the branch protection
