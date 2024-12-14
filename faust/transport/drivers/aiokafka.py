@@ -41,6 +41,7 @@ from aiokafka.errors import (
     for_code,
 )
 from aiokafka.partitioner import DefaultPartitioner, murmur2
+from aiokafka.protocol.admin import CreateTopicsRequest
 from aiokafka.protocol.metadata import MetadataRequest_v1
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
@@ -82,7 +83,6 @@ from faust.types import (
 )
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
-from faust.utils.kafka.protocol.admin import CreateTopicsRequest
 from faust.utils.tracing import noop_span, set_current_span, traced_from_parent_span
 
 __all__ = ["Consumer", "Producer", "Transport"]
@@ -294,6 +294,7 @@ class ThreadedProducer(ServiceThread):
     _push_events_task: Optional[asyncio.Task] = None
     app: None
     stopped: bool
+    _shutdown_initiated: bool = False
 
     def __init__(
         self,
@@ -314,6 +315,11 @@ class ThreadedProducer(ServiceThread):
         )
         self._default_producer = default_producer
         self.app = app
+
+    def _shutdown_thread(self) -> None:
+        # Ensure that the shutdown process is initiated only once
+        if not self._shutdown_initiated:
+            asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
 
     async def flush(self) -> None:
         """Wait for producer to finish transmitting all buffered messages."""
@@ -349,6 +355,7 @@ class ThreadedProducer(ServiceThread):
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
+        self._shutdown_initiated = True
         logger.info("Stopping producer thread")
         await super().on_thread_stop()
         self.stopped = True
@@ -1242,7 +1249,6 @@ class Producer(base.Producer):
         self, transactional_id: Optional[str] = None
     ) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
-            loop=self.loop,
             **{
                 **self._settings_default(),
                 **self._settings_auth(),
@@ -1563,9 +1569,9 @@ class Transport(base.Transport):
             return
         response = wait_result.result
 
-        assert len(response.topic_error_codes), "single topic"
+        assert len(response.topic_errors), "single topic"
 
-        _, code, reason = response.topic_error_codes[0]
+        _, code, reason = response.topic_errors[0]
 
         if code != 0:
             if not ensure_created and code == TopicExistsError.errno:

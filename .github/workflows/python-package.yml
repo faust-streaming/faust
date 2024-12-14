@@ -12,10 +12,7 @@ env:
   FORCE_COLOR: '1'  # Make tools pretty.
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
   PIP_NO_PYTHON_VERSION_WARNING: '1'
-  PYTHON_LATEST: '3.12'
-
-  # For re-actors/checkout-python-sdist
-  sdist-artifact: python-package-distributions
+  PYTHON_LATEST: '3.13'
 jobs:
   lint:
     name: Check linting
@@ -45,16 +42,13 @@ jobs:
       # for example if a test fails only when Cython is enabled
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
         use-cython: ['true', 'false']
         experimental: [false]
         include:
           - python-version: 'pypy3.9'
             use-cython: false
             experimental: true
-          - python-version: ~3.13.0-0
-            experimental: true
-            use-cython: false
     env:
       USE_CYTHON: ${{ matrix.use-cython }}
     continue-on-error: ${{ matrix.experimental }}
@@ -74,7 +68,7 @@ jobs:
       - name: Run tests
         run: scripts/tests
       - name: Enforce coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   check:  # This job does nothing and is only used for the branch protection
@@ -94,15 +88,16 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-20.04, macos-13, macos-14]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.1
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: wheel-artifacts
           path: ./wheelhouse/*.whl
   build_sdist:
     name: 📦 Build the source distribution
@@ -119,9 +114,10 @@ jobs:
         run: >
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:
+          name: sdist-artifact
           path: dist/*.tar.gz
   publish:
     name: 📦 Publish to PyPI
@@ -133,10 +129,15 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
       - name: Download the sdist artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
-          name: artifact
+          name: sdist-artifact
           path: dist
+      - name: Download the wheel artifact
+        uses: actions/download-artifact@v4.1.7
+        with:
+          pattern: "*artifact*"
+          merge-multiple: true
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:

@@ -29,7 +29,7 @@ globals().update(conf.build_config(
     extra_intersphinx_mapping={
         'aiohttp': ('https://aiohttp.readthedocs.io/en/stable/', None),
         'aiokafka': ('https://aiokafka.readthedocs.io/en/stable/', None),
-        'aredis': ('https://aredis.readthedocs.io/en/latest/', None),
+        'redis': ('https://redis.readthedocs.io/en/stable/examples/asyncio_examples.html', None),
         'click': ('https://click.palletsprojects.com/en/7.x/', None),
         'kafka-python': (
             'https://kafka-python.readthedocs.io/en/master/', None),
@@ -58,7 +58,6 @@ globals().update(conf.build_config(
         'faust.types._env',
         'faust.utils',
         'faust.utils._iso8601_python',
-        r'faust.utils.kafka.*',
         'faust.web',
         r'faust.web.apps.*',
         'faust.web.apps.stats.app',

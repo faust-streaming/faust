@@ -28,7 +28,6 @@ omit =
 
     # not needed
     */faust/utils/functional.py
-    */faust/utils/kafka/*
     */faust/utils/iso8601.py
     */faust/utils/platforms.py
     */faust/utils/tracing.py
