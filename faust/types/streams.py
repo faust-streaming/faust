@@ -16,7 +16,6 @@ from typing import (
     Tuple,
     TypeVar,
     Union,
-    no_type_check,
 )
 
 from mode import Seconds, ServiceT
@@ -149,21 +148,34 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     def clone(self, **kwargs: Any) -> "StreamT": ...
 
     @abc.abstractmethod
-    @no_type_check
-    async def items(self) -> AsyncIterator[Tuple[K, T_co]]: ...
+    def noack(self) -> "StreamT": ...
 
     @abc.abstractmethod
-    @no_type_check
-    async def events(self) -> AsyncIterable[EventT]: ...
+    def items(self) -> AsyncIterator[Tuple[K, T_co]]: ...
 
     @abc.abstractmethod
-    @no_type_check
-    async def take(
+    def events(self) -> AsyncIterable[EventT]: ...
+
+    @abc.abstractmethod
+    def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]: ...
+
+    @abc.abstractmethod
+    def take_events(
         self, max_: int, within: Seconds
+    ) -> AsyncIterable[Sequence[EventT[T_co]]]: ...
+
+    @abc.abstractmethod
+    def take_with_timestamp(
+        self, max_: int, within: Seconds, timestamp_field_name: str
     ) -> AsyncIterable[Sequence[T_co]]: ...
 
     @abc.abstractmethod
     def enumerate(self, start: int = 0) -> AsyncIterable[Tuple[int, T_co]]: ...
+
+    @abc.abstractmethod
+    def noack_take(
+        self, max_: int, within: Seconds
+    ) -> AsyncIterable[Sequence[EventT[T_co]]]: ...
 
     @abc.abstractmethod
     def through(self, channel: Union[str, ChannelT]) -> "StreamT": ...
@@ -179,6 +191,9 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         name: Optional[str] = None,
         topic: Optional[TopicT] = None,
     ) -> "StreamT": ...
+
+    @abc.abstractmethod
+    def filter(self, fun: Processor[T]) -> "StreamT": ...
 
     @abc.abstractmethod
     def derive_topic(
@@ -199,13 +214,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     def __copy__(self) -> "StreamT": ...
 
     @abc.abstractmethod
-    def __iter__(self) -> Any: ...
-
-    @abc.abstractmethod
     def __next__(self) -> T: ...
-
-    @abc.abstractmethod
-    def __aiter__(self) -> AsyncIterator[T_co]: ...
 
     @abc.abstractmethod
     async def ack(self, event: EventT) -> bool: ...
