@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set up Python
@@ -53,7 +53,7 @@ jobs:
       USE_CYTHON: ${{ matrix.use-cython }}
     continue-on-error: ${{ matrix.experimental }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -90,7 +90,7 @@ jobs:
       matrix:
         os: [ubuntu-20.04, macos-13, macos-14]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Build wheels
@@ -105,7 +105,7 @@ jobs:
     needs: check
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Checkout source repository
         with:
           fetch-depth: 0
