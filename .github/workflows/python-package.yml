@@ -95,7 +95,7 @@ jobs:
           fetch-depth: 0
       - name: Build wheels
         uses: pypa/cibuildwheel@v2.10.1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: wheel-artifacts
           path: ./wheelhouse/*.whl
@@ -114,7 +114,7 @@ jobs:
         run: >
           pip3 install pkgconfig cython --upgrade &&
           python3 setup.py sdist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         name: Upload build artifacts
         with:
           name: sdist-artifact
