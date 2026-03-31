@@ -42,7 +42,7 @@ from aiokafka.errors import (
 )
 from aiokafka.partitioner import DefaultPartitioner, murmur2
 from aiokafka.protocol.admin import CreateTopicsRequest
-from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.protocol.metadata import MetadataRequest
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
@@ -95,6 +95,8 @@ __all__ = ["Consumer", "Producer", "Transport"]
 #         'Please install robinhood-aiokafka, not aiokafka')
 
 logger = get_logger(__name__)
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 
 DEFAULT_GENERATION_ID = OffsetCommitRequest.DEFAULT_GENERATION_ID
 
@@ -511,9 +513,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
         conf = self.app.conf
         if self.consumer.in_transaction:
             isolation_level = "read_committed"
+        # Table recovery depends on app.assignor state to map changelog
+        # active/standby partitions. Keep Faust assignor enabled whenever
+        # this app has changelog tables configured.
+        has_changelog_tables = bool(self.app.tables.changelog_topics)
         self._assignor = (
             self.app.assignor
-            if self.app.conf.table_standby_replicas > 0
+            if self.app.conf.table_standby_replicas > 0 or has_changelog_tables
             else RoundRobinPartitionAssignor
         )
         auth_settings = credentials_to_aiokafka_auth(
@@ -1513,7 +1519,7 @@ class Transport(base.Transport):
         for node_id in nodes:
             if node_id is None:
                 raise NotReady("Not connected to Kafka Broker")
-            request = MetadataRequest_v1([])
+            request = MetadataRequest([])
             wait_result = await owner.wait(
                 client.send(node_id, request),
                 timeout=timeout,
@@ -1546,7 +1552,6 @@ class Transport(base.Transport):
             owner.log.debug("Topic %r exists, skipping creation.", topic)
             return
 
-        protocol_version = 1
         extra_configs = config or {}
         config = self._topic_config(retention, compacting, deleting)
         config.update(extra_configs)
@@ -1563,7 +1568,7 @@ class Transport(base.Transport):
             else:
                 raise Exception("Controller node is None")
 
-        request = CreateTopicsRequest[protocol_version](
+        request = CreateTopicsRequest(
             [(topic, partitions, replication, [], list(config.items()))],
             timeout,
             False,
