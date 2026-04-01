@@ -162,7 +162,7 @@ What do I need?
 
     - RocksDB 5.0 or later, :pypi:`python-rocksdb`
 
-Faust requires Python 3.8 or later, and a running Kafka broker.
+Faust requires Python 3.10 or later, and a running Kafka broker.
 
 There's no plan to support earlier Python versions.
 Please get in touch if this is something you want to work on.
