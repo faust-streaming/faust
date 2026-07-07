@@ -17,10 +17,10 @@ from opentracing.ext import tags
 import faust
 from faust import auth
 from faust.exceptions import ImproperlyConfigured, NotReady
-from faust.transport.drivers.aiokafka import _AIOKAFKA_HAS_API_VERSION
 from faust.sensors.monitor import Monitor
 from faust.transport.drivers import aiokafka as mod
 from faust.transport.drivers.aiokafka import (
+    _AIOKAFKA_HAS_API_VERSION,
     SLOW_PROCESSING_CAUSE_AGENT,
     SLOW_PROCESSING_CAUSE_STREAM,
     SLOW_PROCESSING_EXPLAINED,
