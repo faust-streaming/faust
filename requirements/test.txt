@@ -20,8 +20,6 @@ python-dateutil>=2.8
 pytz>=2018.7
 bandit
 twine
-cryptography<45; implementation_name == 'pypy' and python_version < '3.11'
-nh3<0.3; implementation_name == 'pypy' and python_version < '3.11'
 wheel
 intervaltree
 -r requirements.txt
