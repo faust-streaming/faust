@@ -753,6 +753,9 @@ async def test_noack_take__10_and_ack(app, loop):
     assert s.enable_acks is False
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_take(app):
     async with new_stream(app) as s:
@@ -863,6 +866,9 @@ async def test_take__no_event_crashes(app, loop):
     assert s.enable_acks is True
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_take_wit_timestamp(app):
     async with new_stream(app) as s:
@@ -890,6 +896,9 @@ async def test_take_wit_timestamp(app):
         assert s.enable_acks is True
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_take_wit_timestamp_wit_simple_value(app):
     async with new_stream(app) as s:
@@ -916,6 +925,9 @@ async def test_take_wit_timestamp_wit_simple_value(app):
         assert s.enable_acks is True
 
 
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
 @pytest.mark.asyncio
 async def test_take_wit_timestamp_without_timestamp_field(app):
     async with new_stream(app) as s:
