@@ -17,6 +17,7 @@ from opentracing.ext import tags
 import faust
 from faust import auth
 from faust.exceptions import ImproperlyConfigured, NotReady
+from faust.transport.drivers.aiokafka import _AIOKAFKA_HAS_API_VERSION
 from faust.sensors.monitor import Monitor
 from faust.transport.drivers import aiokafka as mod
 from faust.transport.drivers.aiokafka import (
@@ -813,8 +814,7 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             c = cthread._create_worker_consumer(transport)
             assert c is AIOKafkaConsumer.return_value
             max_poll_interval = conf.broker_max_poll_interval
-            AIOKafkaConsumer.assert_called_once_with(
-                api_version=app.conf.consumer_api_version,
+            expected_kwargs = dict(
                 client_id=conf.broker_client_id,
                 group_id=conf.id,
                 group_instance_id=conf.consumer_group_instance_id,
@@ -841,6 +841,9 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
                 # flush_spans=cthread.flush_spans,
                 **auth_settings,
             )
+            if _AIOKAFKA_HAS_API_VERSION:
+                expected_kwargs["api_version"] = app.conf.consumer_api_version
+            AIOKafkaConsumer.assert_called_once_with(**expected_kwargs)
 
     def test__create_client_consumer(self, *, cthread, app):
         transport = cthread.transport
@@ -1382,7 +1385,7 @@ class ProducerBaseTest:
         with patch("aiokafka.AIOKafkaProducer") as AIOKafkaProducer:
             p = producer._new_producer()
             assert p is AIOKafkaProducer.return_value
-            AIOKafkaProducer.assert_called_once_with(
+            expected_kwargs = dict(
                 bootstrap_servers=bootstrap_servers,
                 client_id=client_id,
                 acks=acks,
@@ -1393,12 +1396,14 @@ class ProducerBaseTest:
                 security_protocol=security_protocol,
                 partitioner=producer.partitioner,
                 transactional_id=None,
-                api_version=api_version,
                 metadata_max_age_ms=metadata_max_age_ms,
                 connections_max_idle_ms=connections_max_idle_ms,
                 request_timeout_ms=request_timeout_ms,
                 **kwargs,
             )
+            if _AIOKAFKA_HAS_API_VERSION:
+                expected_kwargs["api_version"] = api_version
+            AIOKafkaProducer.assert_called_once_with(**expected_kwargs)
 
 
 class TestProducer(ProducerBaseTest):
@@ -1475,7 +1480,13 @@ class TestProducer(ProducerBaseTest):
         [
             pytest.param(
                 {"api_version": "auto"},
-                marks=pytest.mark.conf(producer_api_version="auto"),
+                marks=[
+                    pytest.mark.conf(producer_api_version="auto"),
+                    pytest.mark.skipif(
+                        not _AIOKAFKA_HAS_API_VERSION,
+                        reason="api_version removed in aiokafka>=0.13.0",
+                    ),
+                ],
             ),
             pytest.param({"acks": -1}, marks=pytest.mark.conf(producer_acks="all")),
             pytest.param(
