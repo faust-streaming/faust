@@ -8,11 +8,16 @@ around :pypi:`confluent_kafka` -- with the underlying ``confluent_kafka``
 from unittest.mock import Mock, patch
 
 import pytest
-from confluent_kafka import TopicPartition
-from mode.utils.futures import done_future
 
-from faust.transport.drivers import confluent as mod
-from faust.transport.drivers.confluent import (
+# confluent-kafka is an optional extra (faust[ckafka]); skip the whole module
+# when it -- and therefore the confluent driver -- is not installed.
+pytest.importorskip("confluent_kafka")
+
+from confluent_kafka import TopicPartition  # noqa: E402
+from mode.utils.futures import done_future  # noqa: E402
+
+from faust.transport.drivers import confluent as mod  # noqa: E402
+from faust.transport.drivers.confluent import (  # noqa: E402
     AsyncConsumer,
     ConfluentConsumerThread,
     Consumer,
@@ -23,9 +28,9 @@ from faust.transport.drivers.confluent import (
     Transport,
     server_list,
 )
-from faust.types import TP
-from faust.types.tuples import RecordMetadata
-from tests.helpers import AsyncMock
+from faust.types import TP  # noqa: E402
+from faust.types.tuples import RecordMetadata  # noqa: E402
+from tests.helpers import AsyncMock  # noqa: E402
 
 TP1 = TP("topic", 0)
 TP2 = TP("topic", 3)
