@@ -133,6 +133,14 @@ class TestConsumer:
         )
 
     @pytest.mark.asyncio
+    async def test_create_topic__default_retention(self, *, consumer):
+        # retention defaults to None; must not crash on int(None * 1000).
+        consumer.app.conf.topic_allow_declare = True
+        await consumer.create_topic("topic", 3, 1)
+        _, kwargs = consumer._thread.create_topic.call_args
+        assert kwargs["retention"] is None
+
+    @pytest.mark.asyncio
     async def test_create_topic__not_allowed(self, *, consumer):
         consumer.app.conf.topic_allow_declare = False
         with patch(TESTED_MODULE + ".logger") as logger:

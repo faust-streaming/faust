@@ -97,7 +97,11 @@ class Consumer(ThreadDelegateConsumer):
                 replication,
                 config=config,
                 timeout=int(want_seconds(timeout) * 1000.0),
-                retention=int(want_seconds(retention) * 1000.0),
+                retention=(
+                    int(want_seconds(retention) * 1000.0)
+                    if retention is not None
+                    else None
+                ),
                 compacting=compacting,
                 deleting=deleting,
                 ensure_created=ensure_created,
