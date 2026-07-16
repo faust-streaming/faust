@@ -1,5 +1,8 @@
-black
-isort
+# Formatters are pinned: new releases change formatting output and would
+# fail `scripts/check` on an otherwise-unchanged tree (non-reproducible CI).
+# Bump these deliberately together with a reformat.
+black==26.5.1
+isort==8.0.1
 autoflake
 flake8==5.0.4  # 5.0.4 can be upgraded to 6.0.0+ when we EOL Python 3.7
 flake8-bugbear
