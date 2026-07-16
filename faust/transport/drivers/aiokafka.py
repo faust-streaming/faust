@@ -27,6 +27,9 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
+from packaging.version import Version
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
@@ -529,8 +532,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 f"broker_request_timeout={request_timeout}"
             )
 
+        consumer_kwargs: dict[str, Any] = {}
+        if _AIOKAFKA_HAS_API_VERSION:
+            consumer_kwargs["api_version"] = conf.consumer_api_version
         return aiokafka.AIOKafkaConsumer(
-            api_version=conf.consumer_api_version,
+            **consumer_kwargs,
             client_id=conf.broker_client_id,
             group_id=conf.id,
             group_instance_id=conf.consumer_group_instance_id,
@@ -1111,7 +1117,7 @@ class Producer(base.Producer):
 
     def _settings_default(self) -> Mapping[str, Any]:
         transport = cast(Transport, self.transport)
-        return {
+        settings: dict[str, Any] = {
             "bootstrap_servers": server_list(transport.url, transport.default_port),
             "client_id": self.client_id,
             "acks": self.acks,
@@ -1122,10 +1128,12 @@ class Producer(base.Producer):
             "security_protocol": "SSL" if self.ssl_context else "PLAINTEXT",
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
-            "api_version": self._api_version,
             "metadata_max_age_ms": self.app.conf.producer_metadata_max_age_ms,
             "connections_max_idle_ms": self.app.conf.producer_connections_max_idle_ms,
         }
+        if _AIOKAFKA_HAS_API_VERSION:
+            settings["api_version"] = self._api_version
+        return settings
 
     def _settings_auth(self) -> Mapping[str, Any]:
         return credentials_to_aiokafka_auth(self.credentials, self.ssl_context)
