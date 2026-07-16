@@ -129,7 +129,7 @@ first test ``foo`` with ``bar`` mocked, then in a different test do ``bar``:
     @pytest.mark.asyncio()
     async def test_foo(test_app):
         with patch(__name__ + '.bar') as mocked_bar:
-            mocked_bar.send = mock_coro()
+                mocked_bar.send = mock_coro()
             async with foo.test_context() as agent:
                 await agent.put('hey')
                 mocked_bar.send.assert_called_with('hey')
@@ -145,8 +145,8 @@ first test ``foo`` with ``bar`` mocked, then in a different test do ``bar``:
         async with bar.test_context() as agent:
             event = await agent.put('hey')
             assert agent.results[event.message.offset] == 'heyYOLO'
-            
-   
+
+
 You can put the `test_app` fixture into a [`conftest.py` file](https://docs.pytest.org/en/6.2.x/fixture.html#scope-sharing-fixtures-across-classes-modules-packages-or-session). If the fixture is not in the same file as the app's definition (which should be the case) you must import the app the fixture definition:
 
 .. sourcecode:: python
@@ -155,9 +155,9 @@ You can put the `test_app` fixture into a [`conftest.py` file](https://docs.pyte
     @pytest.fixture(scope="function")
     def test_app(event_loop):
         """passing in event_loop helps avoid 'attached to a different loop' error"""
-        
+
         from example import app
-        
+
         app.loop = event_loop
         app.finalize()
         app.conf.store = 'memory://'

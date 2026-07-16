@@ -1,4 +1,5 @@
 """Actor - Individual Agent instances."""
+
 from typing import Any, AsyncGenerator, AsyncIterator, Coroutine, Optional, Set, cast
 
 from mode import Service

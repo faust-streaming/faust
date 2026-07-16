@@ -603,8 +603,7 @@ class Test_App:
         with patch("faust.app.base.venusian") as venusian:
 
             @app.agent()
-            async def foo(stream):
-                ...
+            async def foo(stream): ...
 
             assert foo.name
             assert app.agents[foo.name] is foo
@@ -639,8 +638,7 @@ class Test_App:
         with patch("faust.app.base.venusian") as venusian:
 
             @app.task
-            async def foo():
-                ...
+            async def foo(): ...
 
             venusian.attach.assert_called_once_with(foo, category=SCAN_TASK)
             assert foo in app._app_tasks
@@ -796,8 +794,7 @@ class Test_App:
 
     def test_service(self, *, app):
         @app.service
-        class Foo(Service):
-            ...
+        class Foo(Service): ...
 
         assert Foo in app._extra_services
 
@@ -831,8 +828,7 @@ class Test_App:
         with patch("faust.app.base.venusian") as venusian:
 
             @app.page("/foo")
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
             assert "/foo" in app.web.views
 
@@ -853,8 +849,7 @@ class Test_App:
                     ),
                 },
             )
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
             assert "/foo" in app.web.views
 
@@ -864,8 +859,7 @@ class Test_App:
         with pytest.raises(TypeError):
 
             @app.page("/foo")
-            class Foo:
-                ...
+            class Foo: ...
 
     @pytest.mark.asyncio
     async def test_table_route__query_param(self, *, app):
@@ -930,8 +924,7 @@ class Test_App:
         with pytest.warns(DeprecationWarning):
 
             @app.table_route(table, shard_param="x")
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
     def test_table_route__query_param_and_shard_param(self, *, app):
         table = app.Table("foo")
@@ -939,16 +932,14 @@ class Test_App:
             with pytest.raises(TypeError):
 
                 @app.table_route(table, query_param="q", shard_param="x")
-                async def view(self, request):
-                    ...
+                async def view(self, request): ...
 
     def test_table_route__missing_param(self, *, app):
         table = app.Table("foo")
         with pytest.raises(TypeError):
 
             @app.table_route(table)
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
     @pytest.mark.asyncio
     async def test_topic_route__query_param(self, *, app):
@@ -1013,8 +1004,7 @@ class Test_App:
         with pytest.warns(DeprecationWarning):
 
             @app.topic_route(topic, shard_param="x")
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
     def test_topic_route__query_param_and_shard_param(self, *, app):
         topic = app.topic("foo")
@@ -1022,29 +1012,24 @@ class Test_App:
             with pytest.raises(TypeError):
 
                 @app.topic_route(topic, query_param="q", shard_param="x")
-                async def view(self, request):
-                    ...
+                async def view(self, request): ...
 
     def test_topic_route__missing_param(self, *, app):
         topic = app.topic("foo")
         with pytest.raises(TypeError):
 
             @app.topic_route(topic)
-            async def view(self, request):
-                ...
+            async def view(self, request): ...
 
     def test_command(self, *, app):
         @app.command()
-        async def foo():
-            ...
+        async def foo(): ...
 
     def test_command__with_base(self, *, app):
-        class MyBase(AppCommand):
-            ...
+        class MyBase(AppCommand): ...
 
         @app.command(base=MyBase)
-        async def foo():
-            ...
+        async def foo(): ...
 
         assert issubclass(foo, MyBase)
 

@@ -1,10 +1,11 @@
 """Monitor using Prometheus."""
+
 import typing
 from typing import Any, NamedTuple, Optional, cast
 
 from aiohttp.web import Response
 
-from faust import web, web as _web
+from faust import web
 from faust.exceptions import ImproperlyConfigured
 from faust.types import (
     TP,
@@ -67,12 +68,12 @@ def setup_prometheus_sensors(
     app.monitor = PrometheusMonitor(metrics=faust_metrics)
 
     @app.page(pattern)
-    async def metrics_handler(self: _web.View, request: _web.Request) -> _web.Response:
+    async def metrics_handler(self: web.View, request: web.Request) -> web.Response:
         headers = {"Content-Type": CONTENT_TYPE_LATEST}
 
         return cast(
-            _web.Response,
-            Response(body=generate_latest(REGISTRY), headers=headers, status=200),
+            web.Response,
+            Response(body=generate_latest(registry), headers=headers, status=200),
         )
 
 

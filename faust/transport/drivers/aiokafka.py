@@ -1,4 +1,5 @@
 """Message transport using :pypi:`aiokafka`."""
+
 import asyncio
 import typing
 from asyncio import Lock, QueueEmpty
@@ -10,6 +11,7 @@ from typing import (
     Awaitable,
     Callable,
     ClassVar,
+    Deque,
     Iterable,
     List,
     Mapping,
@@ -25,33 +27,33 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
+from packaging.version import Version
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
+from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
+from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
 from aiokafka.errors import (
     CommitFailedError,
     ConsumerStoppedError,
     IllegalStateError,
     KafkaError,
-    ProducerFenced,
-)
-from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
-from aiokafka.util import parse_kafka_version
-from kafka import TopicPartition
-from kafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
-from kafka.errors import (
     NotControllerError,
+    ProducerFenced,
     TopicAlreadyExistsError as TopicExistsError,
     for_code,
 )
-from kafka.partitioner import murmur2
-from kafka.partitioner.default import DefaultPartitioner
-from kafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.partitioner import DefaultPartitioner, murmur2
+from aiokafka.protocol.admin import CreateTopicsRequest
+from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
+from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
 from mode.threads import ServiceThread, WorkerThread
 from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
 from mode.utils.times import Seconds, humanize_seconds_ago, want_seconds
-from mode.utils.typing import Deque
 from opentracing.ext import tags
 from yarl import URL
 
@@ -84,7 +86,6 @@ from faust.types import (
 )
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
-from faust.utils.kafka.protocol.admin import CreateTopicsRequest
 from faust.utils.tracing import noop_span, set_current_span, traced_from_parent_span
 
 __all__ = ["Consumer", "Producer", "Transport"]
@@ -296,6 +297,7 @@ class ThreadedProducer(ServiceThread):
     _push_events_task: Optional[asyncio.Task] = None
     app: None
     stopped: bool
+    _shutdown_initiated: bool = False
 
     def __init__(
         self,
@@ -316,6 +318,11 @@ class ThreadedProducer(ServiceThread):
         )
         self._default_producer = default_producer
         self.app = app
+
+    def _shutdown_thread(self) -> None:
+        # Ensure that the shutdown process is initiated only once
+        if not self._shutdown_initiated:
+            asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
 
     async def flush(self) -> None:
         """Wait for producer to finish transmitting all buffered messages."""
@@ -351,6 +358,7 @@ class ThreadedProducer(ServiceThread):
 
     async def on_thread_stop(self) -> None:
         """Call when producer thread is stopping."""
+        self._shutdown_initiated = True
         logger.info("Stopping producer thread")
         await super().on_thread_stop()
         self.stopped = True
@@ -524,11 +532,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 f"broker_request_timeout={request_timeout}"
             )
 
+        consumer_kwargs: dict[str, Any] = {}
+        if _AIOKAFKA_HAS_API_VERSION:
+            consumer_kwargs["api_version"] = conf.consumer_api_version
         return aiokafka.AIOKafkaConsumer(
-            api_version=conf.consumer_api_version,
+            **consumer_kwargs,
             client_id=conf.broker_client_id,
             group_id=conf.id,
-            # group_instance_id=conf.consumer_group_instance_id,
+            group_instance_id=conf.consumer_group_instance_id,
             bootstrap_servers=server_list(transport.url, transport.default_port),
             partition_assignment_strategy=[self._assignor],
             enable_auto_commit=False,
@@ -836,13 +847,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
         secs_since_started = now - self.time_started
         aiotp = TopicPartition(tp.topic, tp.partition)
         assignment = consumer._fetcher._subscriptions.subscription.assignment
-        if not assignment and not assignment.active:
+        if not assignment or not assignment.active:
             self.log.error(f"No active partitions for {tp}")
             return True
         poll_at = None
         aiotp_state = assignment.state_value(aiotp)
         if aiotp_state and aiotp_state.timestamp:
-            poll_at = aiotp_state.timestamp / 1000
+            poll_at = aiotp_state.timestamp / 1000  # milliseconds
         if poll_at is None:
             if secs_since_started >= self.tp_fetch_request_timeout_secs:
                 # NO FETCH REQUEST SENT AT ALL SINCE WORKER START
@@ -1106,7 +1117,7 @@ class Producer(base.Producer):
 
     def _settings_default(self) -> Mapping[str, Any]:
         transport = cast(Transport, self.transport)
-        return {
+        settings: dict[str, Any] = {
             "bootstrap_servers": server_list(transport.url, transport.default_port),
             "client_id": self.client_id,
             "acks": self.acks,
@@ -1117,10 +1128,12 @@ class Producer(base.Producer):
             "security_protocol": "SSL" if self.ssl_context else "PLAINTEXT",
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
-            "api_version": self._api_version,
             "metadata_max_age_ms": self.app.conf.producer_metadata_max_age_ms,
             "connections_max_idle_ms": self.app.conf.producer_connections_max_idle_ms,
         }
+        if _AIOKAFKA_HAS_API_VERSION:
+            settings["api_version"] = self._api_version
+        return settings
 
     def _settings_auth(self) -> Mapping[str, Any]:
         return credentials_to_aiokafka_auth(self.credentials, self.ssl_context)
@@ -1244,7 +1257,6 @@ class Producer(base.Producer):
         self, transactional_id: Optional[str] = None
     ) -> aiokafka.AIOKafkaProducer:
         return self._producer_type(
-            loop=self.loop,
             **{
                 **self._settings_default(),
                 **self._settings_auth(),
@@ -1565,9 +1577,9 @@ class Transport(base.Transport):
             return
         response = wait_result.result
 
-        assert len(response.topic_error_codes), "single topic"
+        assert len(response.topic_errors), "single topic"
 
-        _, code, reason = response.topic_error_codes[0]
+        _, code, reason = response.topic_errors[0]
 
         if code != 0:
             if not ensure_created and code == TopicExistsError.errno:

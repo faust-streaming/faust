@@ -1,4 +1,5 @@
 """JSON utilities."""
+
 import datetime
 import enum
 import typing
@@ -68,7 +69,7 @@ except ImportError:  # pragma: no cover
 DECIMAL_MAXLEN = 1000
 
 #: Types that we convert to lists.
-SEQUENCE_TYPES: TypeTuple[Iterable] = (set, frozenset, deque)
+SEQUENCE_TYPES: TypeTuple[Iterable] = (set, frozenset, deque, tuple)
 
 DateTypeTuple = Tuple[Union[Type[datetime.date], Type[datetime.time]], ...]
 DatetimeTypeTuple = Tuple[

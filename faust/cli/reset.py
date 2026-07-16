@@ -1,4 +1,5 @@
 """Program ``faust reset`` used to delete local table state."""
+
 from .base import AppCommand
 
 __all__ = ["reset"]

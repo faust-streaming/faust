@@ -1,4 +1,5 @@
 """Base interface for Web server and views."""
+
 import abc
 import socket
 from datetime import datetime

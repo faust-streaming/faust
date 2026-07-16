@@ -35,8 +35,7 @@ else:
     TABLEDIR = Path("/var/faust/")
 
 
-class OtherSchedulingStrategy(DefaultSchedulingStrategy):
-    ...
+class OtherSchedulingStrategy(DefaultSchedulingStrategy): ...
 
 
 def _dummy_partitioner(a, b, c):

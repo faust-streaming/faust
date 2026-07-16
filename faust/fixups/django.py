@@ -1,4 +1,5 @@
 """Django Fixups - Integration with Django."""
+
 import os
 import typing
 import warnings
@@ -14,11 +15,9 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from django.settings import Settings as _Settings
 else:
 
-    class _Apps:
-        ...  # noqa
+    class _Apps: ...  # noqa
 
-    class _Settings:
-        ...  # noqa
+    class _Settings: ...  # noqa
 
 
 __all__ = ["Fixup"]

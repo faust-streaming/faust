@@ -1,4 +1,5 @@
 """Python :pypi:`click` parameter types."""
+
 from typing import Any, Iterable, Optional
 
 import click

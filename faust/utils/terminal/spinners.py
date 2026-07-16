@@ -1,4 +1,5 @@
 """Terminal progress bar spinners."""
+
 import atexit
 import logging
 import random

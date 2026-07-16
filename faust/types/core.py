@@ -18,8 +18,7 @@ if typing.TYPE_CHECKING:
     from .models import ModelT as _ModelT
 else:
 
-    class _ModelT:
-        ...  # noqa
+    class _ModelT: ...  # noqa
 
 
 __all__ = ["K", "V"]

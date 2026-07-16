@@ -1,4 +1,5 @@
 """Leader assignor."""
+
 from typing import Any
 
 from mode import Service

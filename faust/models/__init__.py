@@ -1,4 +1,5 @@
 """Models."""
+
 from .base import Model, ModelOptions, maybe_model, registry
 from .fields import FieldDescriptor, StringField
 from .record import Record

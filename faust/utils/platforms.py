@@ -1,4 +1,5 @@
 """Platform/OS utilities."""
+
 import platform
 import subprocess  # nosec: B404
 from typing import Optional

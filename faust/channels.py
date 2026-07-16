@@ -5,6 +5,7 @@ A channel is used to send values to streams.
 The stream will iterate over incoming events in the channel.
 
 """
+
 import asyncio
 from typing import (
     Any,

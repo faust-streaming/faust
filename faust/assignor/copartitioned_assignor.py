@@ -1,9 +1,8 @@
 """Copartitioned Assignor."""
+
 from itertools import cycle
 from math import ceil, floor
-from typing import Iterable, Iterator, MutableMapping, Optional, Sequence, Set
-
-from mode.utils.typing import Counter
+from typing import Counter, Iterable, Iterator, MutableMapping, Optional, Sequence, Set
 
 from .client_assignment import CopartitionedAssignment
 

@@ -51,6 +51,7 @@ is ``/user/{user_id}/``.
 
 Blueprints can be registered to multiple apps at the same time.
 """
+
 from pathlib import Path
 from typing import List, Mapping, NamedTuple, Optional, Type, Union
 

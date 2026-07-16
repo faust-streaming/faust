@@ -1,4 +1,5 @@
 """HTTP endpoint showing statistics from the Faust monitor."""
+
 from collections import defaultdict
 from typing import List, MutableMapping, Set
 

@@ -1,4 +1,5 @@
 """Topic - Named channel using Kafka."""
+
 import asyncio
 import re
 import typing
@@ -46,8 +47,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from .app import App as _App
 else:
 
-    class _App:
-        ...  # noqa
+    class _App: ...  # noqa
 
 
 __all__ = ["Topic"]

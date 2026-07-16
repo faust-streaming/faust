@@ -1,4 +1,5 @@
 """Functional utilities."""
+
 from functools import reduce
 from itertools import groupby
 from typing import Iterable, Iterator, Mapping, Sequence, Tuple, TypeVar

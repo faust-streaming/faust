@@ -43,6 +43,7 @@ The Consumer is responsible for:
         _new_offset).
 
 """
+
 import abc
 import asyncio
 import gc
@@ -101,8 +102,7 @@ if typing.TYPE_CHECKING:  # pragma: no cover
     from faust.app import App as _App
 else:
 
-    class _App:
-        ...  # noqa: E701
+    class _App: ...  # noqa: E701
 
 
 __all__ = ["Consumer", "Fetcher"]
@@ -580,8 +580,7 @@ class Consumer(Service, ConsumerT):
         self._read_offset[ensure_TP(partition)] = offset if offset else None
 
     @abc.abstractmethod
-    async def _seek(self, partition: TP, offset: int) -> None:
-        ...
+    async def _seek(self, partition: TP, offset: int) -> None: ...
 
     def stop_flow(self) -> None:
         """Block consumer from processing any more messages."""
@@ -676,8 +675,7 @@ class Consumer(Service, ConsumerT):
     @abc.abstractmethod
     async def _getmany(
         self, active_partitions: Optional[Set[TP]], timeout: float
-    ) -> RecordMap:
-        ...
+    ) -> RecordMap: ...
 
     async def getmany(self, timeout: float) -> AsyncIterator[Tuple[TP, Message]]:
         """Fetch batch of messages from server."""
@@ -797,8 +795,7 @@ class Consumer(Service, ConsumerT):
             self.not_waiting_next_records.set()
 
     @abc.abstractmethod
-    def _to_message(self, tp: TP, record: Any) -> ConsumerMessage:
-        ...
+    def _to_message(self, tp: TP, record: Any) -> ConsumerMessage: ...
 
     def track_message(self, message: Message) -> None:
         """Track message and mark it as pending ack."""
@@ -908,11 +905,9 @@ class Consumer(Service, ConsumerT):
             if not self.should_stop:
                 self.verify_event_path(now, tp)
 
-    def verify_event_path(self, now: float, tp: TP) -> None:
-        ...
+    def verify_event_path(self, now: float, tp: TP) -> None: ...
 
-    def verify_recovery_event_path(self, now: float, tp: TP) -> None:
-        ...
+    def verify_recovery_event_path(self, now: float, tp: TP) -> None: ...
 
     async def commit(
         self, topics: TPorTopicSet = None, start_new_transaction: bool = True
@@ -1302,8 +1297,7 @@ class ConsumerThread(QueueServiceThread):
         ...
 
     @abc.abstractmethod
-    def close(self) -> None:
-        ...
+    def close(self) -> None: ...
 
     @abc.abstractmethod
     async def earliest_offsets(self, *partitions: TP) -> Mapping[TP, int]:
@@ -1358,8 +1352,7 @@ class ConsumerThread(QueueServiceThread):
         """Hash key to determine partition number."""
         ...
 
-    def verify_recovery_event_path(self, now: float, tp: TP) -> None:
-        ...
+    def verify_recovery_event_path(self, now: float, tp: TP) -> None: ...
 
 
 class ThreadDelegateConsumer(Consumer):
@@ -1381,8 +1374,7 @@ class ThreadDelegateConsumer(Consumer):
         self.add_dependency(self._thread)
 
     @abc.abstractmethod
-    def _new_consumer_thread(self) -> ConsumerThread:
-        ...
+    def _new_consumer_thread(self) -> ConsumerThread: ...
 
     async def threadsafe_partitions_revoked(
         self, receiver_loop: asyncio.AbstractEventLoop, revoked: Set[TP]

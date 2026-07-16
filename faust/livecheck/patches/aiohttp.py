@@ -1,4 +1,5 @@
 """LiveCheck :pypi:`aiohttp` integration."""
+
 from contextlib import ExitStack
 from types import SimpleNamespace
 from typing import Any, List, Optional, no_type_check
@@ -26,8 +27,7 @@ def patch_aiohttp_session() -> None:
     from aiohttp import TraceConfig, client
 
     # monkeypatch to remove ridiculous "do not subclass" warning.
-    def __init_subclass__() -> None:
-        ...
+    def __init_subclass__() -> None: ...
 
     client.ClientSession.__init_subclass__ = __init_subclass__  # type: ignore
 

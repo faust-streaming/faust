@@ -1,4 +1,5 @@
 """Cluster assignment."""
+
 from typing import List, MutableMapping, Sequence, Set, cast
 
 from faust.models import Record

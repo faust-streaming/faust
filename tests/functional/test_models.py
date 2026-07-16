@@ -406,8 +406,9 @@ def test_custom_coercion():
         def __repr__(self):
             return f"<{type(self).__name__}: {self.value}>"
 
-    class CanFooModel(Record, abstract=True, coercions={Foo: Foo}, serializer="json"):
-        ...
+    class CanFooModel(
+        Record, abstract=True, coercions={Foo: Foo}, serializer="json"
+    ): ...
 
     class IsFoo(CanFooModel, serializer="json"):
         foo: Foo
@@ -1118,8 +1119,7 @@ def test_subclass_inherit_flags(flag, expected_default):
 
 
 def test_abstract_model_repr():
-    class MyBase(faust.Record, abstract=True):
-        ...
+    class MyBase(faust.Record, abstract=True): ...
 
     assert MyBase.__is_abstract__
     with pytest.raises(NotImplementedError):

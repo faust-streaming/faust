@@ -1,1 +1,0 @@
-"""Kafka protocol definitions."""

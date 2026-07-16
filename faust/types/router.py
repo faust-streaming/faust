@@ -1,4 +1,5 @@
 """Types for module :mod:`faust.router`."""
+
 import abc
 import typing
 
@@ -13,8 +14,7 @@ if typing.TYPE_CHECKING:
     from .app import AppT as _AppT
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
 
 class RouterT(abc.ABC):
@@ -23,37 +23,29 @@ class RouterT(abc.ABC):
     app: _AppT
 
     @abc.abstractmethod
-    def __init__(self, app: _AppT) -> None:
-        ...
+    def __init__(self, app: _AppT) -> None: ...
 
     @abc.abstractmethod
-    def key_store(self, table_name: str, key: K) -> URL:
-        ...
+    def key_store(self, table_name: str, key: K) -> URL: ...
 
     @abc.abstractmethod
-    def external_topic_key_store(self, topic: TopicT, key: K) -> URL:
-        ...
+    def external_topic_key_store(self, topic: TopicT, key: K) -> URL: ...
 
     @abc.abstractmethod
-    def table_metadata(self, table_name: str) -> HostToPartitionMap:
-        ...
+    def table_metadata(self, table_name: str) -> HostToPartitionMap: ...
 
     @abc.abstractmethod
-    def tables_metadata(self) -> HostToPartitionMap:
-        ...
+    def tables_metadata(self) -> HostToPartitionMap: ...
 
     @abc.abstractmethod
-    def external_topics_metadata(self) -> HostToPartitionMap:
-        ...
+    def external_topics_metadata(self) -> HostToPartitionMap: ...
 
     @abc.abstractmethod
     async def route_req(
         self, table_name: str, key: K, web: web.Web, request: web.Request
-    ) -> web.Response:
-        ...
+    ) -> web.Response: ...
 
     @abc.abstractmethod
     async def route_topic_req(
         self, topic: TopicT, key: K, web: web.Web, request: web.Request
-    ) -> web.Response:
-        ...
+    ) -> web.Response: ...

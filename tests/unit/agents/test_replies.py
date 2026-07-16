@@ -86,7 +86,7 @@ class Test_BarrierState:
 
         if pending:
             raise Exception(
-                f"Test did not return in 5s:\n"
+                f"Test did not return within 5s:\n"
                 f"  DONE_TASKS={done}\n"
                 f"  PENDING_TASKS={pending}\n"
                 f"  size={p.size}\n"

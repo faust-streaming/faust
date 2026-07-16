@@ -1,4 +1,5 @@
 """Program ``faust send`` used to send events to agents and topics."""
+
 import asyncio
 import random
 from typing import Any, Optional

@@ -1,4 +1,5 @@
 """Faust Web."""
+
 from faust.types.web import ResourceOptions
 
 from .base import Request, Response, Web

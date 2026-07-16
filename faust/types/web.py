@@ -24,20 +24,15 @@ if typing.TYPE_CHECKING:
     from faust.web.views import View
 else:
 
-    class _AppT:
-        ...  # noqa
+    class _AppT: ...  # noqa
 
-    class Request:
-        ...  # noqa
+    class Request: ...  # noqa
 
-    class Response:
-        ...  # noqa
+    class Response: ...  # noqa
 
-    class Web:
-        ...  # noqa
+    class Web: ...  # noqa
 
-    class View:
-        ...  # noqa
+    class View: ...  # noqa
 
 
 __all__ = [
@@ -101,22 +96,18 @@ class CacheBackendT(ServiceT):
     @abc.abstractmethod
     def __init__(
         self, app: _AppT, url: Union[URL, str] = "memory://", **kwargs: Any
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    async def get(self, key: str) -> Optional[bytes]:
-        ...
+    async def get(self, key: str) -> Optional[bytes]: ...
 
     @abc.abstractmethod
     async def set(
         self, key: str, value: bytes, timeout: Optional[float] = None
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    async def delete(self, key: str) -> None:
-        ...
+    async def delete(self, key: str) -> None: ...
 
 
 class CacheT(abc.ABC):
@@ -132,8 +123,7 @@ class CacheT(abc.ABC):
         key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
         **kwargs: Any,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
     def view(
@@ -142,8 +132,7 @@ class CacheT(abc.ABC):
         include_headers: bool = False,
         key_prefix: Optional[str] = None,
         **kwargs: Any,
-    ) -> Callable[[Callable], Callable]:
-        ...
+    ) -> Callable[[Callable], Callable]: ...
 
 
 class BlueprintT(abc.ABC):
@@ -157,14 +146,12 @@ class BlueprintT(abc.ABC):
         include_headers: bool = False,
         key_prefix: Optional[str] = None,
         backend: Union[Type[CacheBackendT], str] = None,
-    ) -> CacheT:
-        ...
+    ) -> CacheT: ...
 
     @abc.abstractmethod
     def route(
         self, uri: str, *, name: Optional[str] = None, base: Type[View] = View
-    ) -> RouteDecoratorRet:
-        ...
+    ) -> RouteDecoratorRet: ...
 
     @abc.abstractmethod
     def static(
@@ -173,17 +160,13 @@ class BlueprintT(abc.ABC):
         file_or_directory: Union[str, Path],
         *,
         name: Optional[str] = None,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     @abc.abstractmethod
-    def register(self, app: _AppT, *, url_prefix: Optional[str] = None) -> None:
-        ...
+    def register(self, app: _AppT, *, url_prefix: Optional[str] = None) -> None: ...
 
     @abc.abstractmethod
-    def init_webserver(self, web: Web) -> None:
-        ...
+    def init_webserver(self, web: Web) -> None: ...
 
     @abc.abstractmethod
-    def on_webserver_init(self, web: Web) -> None:
-        ...
+    def on_webserver_init(self, web: Web) -> None: ...

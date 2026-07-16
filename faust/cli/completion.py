@@ -2,6 +2,7 @@
 
 Supports ``bash``, ``ksh``, ``zsh``, etc.
 """
+
 import os
 from pathlib import Path
 

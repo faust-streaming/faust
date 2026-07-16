@@ -1,4 +1,5 @@
 """HTTP endpoint showing partition routing destinations."""
+
 from faust import web
 from faust.web.exceptions import ServiceUnavailable
 

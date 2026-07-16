@@ -31,8 +31,7 @@ if typing.TYPE_CHECKING:
     from raven.handlers.logging import SentryHandler as _SentryHandler
 else:
 
-    class _SentryHandler:
-        ...  # noqa: E701
+    class _SentryHandler: ...  # noqa: E701
 
 
 __all__ = ["handler_from_dsn", "setup"]

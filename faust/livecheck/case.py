@@ -1,20 +1,31 @@
 """LiveCheck - Test cases."""
+
 import traceback
 import typing
 from collections import deque
-from contextlib import ExitStack
+from contextlib import ExitStack, asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from itertools import count
 from random import uniform
 from statistics import median
 from time import monotonic
-from typing import Any, ClassVar, Dict, Iterable, Optional, Type, Union, cast
+from typing import (
+    Any,
+    AsyncGenerator,
+    ClassVar,
+    Counter,
+    Deque,
+    Dict,
+    Iterable,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 
 from aiohttp import ClientError, ClientTimeout
 from mode import Seconds, Service, want_seconds
-from mode.utils.contexts import asynccontextmanager
 from mode.utils.times import humanize_seconds
-from mode.utils.typing import AsyncGenerator, Counter, Deque
 from yarl import URL
 
 from faust.utils import uuid
@@ -29,8 +40,7 @@ if typing.TYPE_CHECKING:
     from .app import LiveCheck as _LiveCheck
 else:
 
-    class _LiveCheck:
-        ...  # noqa
+    class _LiveCheck: ...  # noqa
 
 
 __all__ = ["Case"]
@@ -318,8 +328,7 @@ class Case(Service):
                 if self.app.is_leader():
                     await self.make_fake_request()
 
-    async def make_fake_request(self) -> None:
-        ...
+    async def make_fake_request(self) -> None: ...
 
     @Service.task
     async def _check_frequency(self) -> None:

@@ -1,4 +1,5 @@
 """Program ``faust worker`` used to start application from console."""
+
 import asyncio
 import os
 import platform

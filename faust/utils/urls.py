@@ -1,4 +1,5 @@
 """URL utilities - Working with URLs."""
+
 from typing import List, Optional, Union
 
 from yarl import URL
