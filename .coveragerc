@@ -38,6 +38,9 @@ omit =
     # opentracing fallback stub: only used when opentracing is NOT installed,
     # which the CI test env is not (it installs faust[opentracing]).
     */faust/utils/_opentracing.py
+    # opentracing distributed-tracing sensor: optional, requires opentracing +
+    # a live tracer to exercise; not covered by the CI test suite.
+    */faust/sensors/distributed_tracing.py
     */faust/types/*
     */faust/__main__.py
 
