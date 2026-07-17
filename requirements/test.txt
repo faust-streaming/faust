@@ -1,5 +1,13 @@
-black
-isort
+# Formatters are pinned so `scripts/check` is reproducible: new releases
+# change formatting output and would fail lint on an otherwise-unchanged
+# tree. They are lint-only tools, run only by the lint job (PYTHON_LATEST).
+# The current pins require Python >= 3.10, so guard them with a marker and
+# fall back to an unpinned install on 3.9 (installed there but never run).
+# Bump the pins deliberately, together with a tree-wide reformat.
+black==26.5.1; python_version >= "3.10"
+black; python_version < "3.10"
+isort==8.0.1; python_version >= "3.10"
+isort; python_version < "3.10"
 autoflake
 flake8==5.0.4  # 5.0.4 can be upgraded to 6.0.0+ when we EOL Python 3.7
 flake8-bugbear

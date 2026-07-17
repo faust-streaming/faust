@@ -27,9 +27,6 @@ from typing import (
 import aiokafka
 import aiokafka.abc
 import opentracing
-from packaging.version import Version
-
-_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
@@ -55,6 +52,7 @@ from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
 from mode.utils.times import Seconds, humanize_seconds_ago, want_seconds
 from opentracing.ext import tags
+from packaging.version import Version
 from yarl import URL
 
 from faust.auth import (
@@ -87,6 +85,8 @@ from faust.types import (
 from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
 from faust.utils.tracing import noop_span, set_current_span, traced_from_parent_span
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 
 __all__ = ["Consumer", "Producer", "Transport"]
 
