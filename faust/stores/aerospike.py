@@ -98,7 +98,7 @@ class AeroSpikeStore(base.SerializedStore):
         key = (self.namespace, self.table_name, key)
         fun = self.client.get
         try:
-            (key, meta, bins) = self.aerospike_fun_call_with_retry(fun=fun, key=key)
+            key, meta, bins = self.aerospike_fun_call_with_retry(fun=fun, key=key)
             if bins:
                 return bins[self.BIN_KEY]
             return None
@@ -173,7 +173,7 @@ class AeroSpikeStore(base.SerializedStore):
                 fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
-                (key, meta, bins) = result
+                key, meta, bins = result
                 if bins:
                     yield bins[self.BIN_KEY]
                 else:
@@ -193,8 +193,8 @@ class AeroSpikeStore(base.SerializedStore):
                 fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
-                (key_data, meta, bins) = result
-                (ns, set, policy, key) = key_data
+                key_data, meta, bins = result
+                ns, set, policy, key = key_data
 
                 if bins:
                     bins = bins[self.BIN_KEY]
@@ -214,7 +214,7 @@ class AeroSpikeStore(base.SerializedStore):
         try:
             if self.app.conf.store_check_exists:
                 key = (self.namespace, self.table_name, key)
-                (key, meta) = self.aerospike_fun_call_with_retry(
+                key, meta = self.aerospike_fun_call_with_retry(
                     fun=self.client.exists, key=key
                 )
                 if meta:
