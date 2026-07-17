@@ -1,0 +1,20 @@
+# Codecov configuration.
+#
+# Without this file Codecov applies its default project status of
+# target: auto / threshold: 0%, which fails CI on any coverage decrease at
+# all -- including the sub-0.1% jitter that comes from async/threaded lines
+# being counted slightly differently between runs. Give the gate a 1%
+# threshold so it tolerates that noise while still catching real regressions.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+# Suppress the per-PR coverage comment; the status checks carry the signal.
+comment: false
