@@ -30,6 +30,7 @@ BUNDLES = {
     "datadog",
     "debug",
     "fast",
+    "opentracing",
     "orjson",
     "prometheus",
     "redis",

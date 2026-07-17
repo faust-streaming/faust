@@ -32,6 +32,7 @@ wheel
 intervaltree
 -r requirements.txt
 -r extras/datadog.txt
+-r extras/opentracing.txt
 -r extras/redis.txt
 -r extras/statsd.txt
 -r extras/yaml.txt

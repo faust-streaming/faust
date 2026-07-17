@@ -42,7 +42,10 @@ from typing import (
     no_type_check,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping

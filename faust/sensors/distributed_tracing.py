@@ -3,11 +3,16 @@ from functools import cached_property
 from typing import Any, Dict
 
 import aiohttp
-import opentracing
 from mode import get_logger
 from mode.utils.compat import want_str
-from opentracing import Format
-from opentracing.ext import tags
+
+try:
+    import opentracing
+    from opentracing import Format
+    from opentracing.ext import tags
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
+    from faust.utils._opentracing import Format, tags
 
 from faust import App, EventT, Sensor, StreamT
 from faust.types import TP, Message, PendingMessage, ProducerT, RecordMetadata
