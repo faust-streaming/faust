@@ -514,6 +514,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         self._assignor = (
             self.app.assignor
             if self.app.conf.table_standby_replicas > 0
+            or self.app.conf.consumer_group_instance_id
             else RoundRobinPartitionAssignor
         )
         auth_settings = credentials_to_aiokafka_auth(
