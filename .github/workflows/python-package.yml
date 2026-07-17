@@ -123,8 +123,9 @@ jobs:
         uses: pypa/cibuildwheel@v2.10.1
       - uses: actions/upload-artifact@v4
         with:
-          name: wheel-artifacts
+          name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
+          if-no-files-found: error
   build_sdist:
     name: 📦 Build the source distribution
     runs-on: ubuntu-latest
@@ -143,8 +144,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:
-          name: sdist-artifact
+          name: cibw-sdist
           path: dist/*.tar.gz
+          if-no-files-found: error
   publish:
     name: 📦 Publish to PyPI
     runs-on: ubuntu-latest
@@ -154,17 +156,14 @@ jobs:
     environment: pypi
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - name: Download the sdist artifact
-        uses: actions/download-artifact@v4.1.7
+      - name: Download all build artifacts (sdist + every wheel)
+        uses: actions/download-artifact@v4
         with:
-          name: sdist-artifact
-          path: dist
-      - name: Download the wheel artifact
-        uses: actions/download-artifact@v4.1.7
-        with:
-          pattern: "*artifact*"
+          pattern: cibw-*
           merge-multiple: true
+          path: dist
       - name: Publish package to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
