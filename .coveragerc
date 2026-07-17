@@ -31,9 +31,7 @@ omit =
     */faust/tables/recovery.py
 
     # not needed
-    */faust/utils/functional.py
     */faust/utils/iso8601.py
-    */faust/utils/platforms.py
     */faust/utils/tracing.py
     */faust/types/*
     */faust/__main__.py
