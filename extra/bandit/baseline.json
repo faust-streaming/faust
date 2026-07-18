@@ -1070,6 +1070,18 @@
       "loc": 890,
       "nosec": 0
     },
+    "faust/transport/drivers/confluent.py": {
+      "CONFIDENCE.HIGH": 0.0,
+      "CONFIDENCE.LOW": 0.0,
+      "CONFIDENCE.MEDIUM": 0.0,
+      "CONFIDENCE.UNDEFINED": 0.0,
+      "SEVERITY.HIGH": 0.0,
+      "SEVERITY.LOW": 0.0,
+      "SEVERITY.MEDIUM": 0.0,
+      "SEVERITY.UNDEFINED": 0.0,
+      "loc": 486,
+      "nosec": 0
+    },
     "faust/transport/producer.py": {
       "CONFIDENCE.HIGH": 0.0,
       "CONFIDENCE.LOW": 0.0,

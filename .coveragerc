@@ -23,13 +23,15 @@ omit =
     */faust/assignor/*
     */faust/transport/drivers/memory.py
 
+    # optional driver: only importable/tested with the ckafka extra installed
+    # (faust[ckafka]); not part of the CI test environment.
+    */faust/transport/drivers/confluent.py
+
     # tested by integration
     */faust/tables/recovery.py
 
     # not needed
-    */faust/utils/functional.py
     */faust/utils/iso8601.py
-    */faust/utils/platforms.py
     */faust/utils/tracing.py
     */faust/types/*
     */faust/__main__.py
