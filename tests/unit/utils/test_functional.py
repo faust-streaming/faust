@@ -1,6 +1,6 @@
 import pytest
 
-from faust.utils.functional import consecutive_numbers
+from faust.utils.functional import consecutive_numbers, translate
 
 
 @pytest.mark.parametrize(
@@ -14,3 +14,17 @@ from faust.utils.functional import consecutive_numbers
 )
 def test_consecutive_numbers(numbers, expected):
     assert next(consecutive_numbers(numbers), None) == expected
+
+
+@pytest.mark.parametrize(
+    "table,s,expected",
+    [
+        ({".": "_", "@": "."}, "foo.bar@baz", "foo_bar.baz"),
+        ({".": "_"}, "foo.bar", "foo_bar"),
+        # multi-character patterns/replacements, not just single chars
+        ({"foo": "bar"}, "foofoo", "barbar"),
+        ({}, "unchanged", "unchanged"),
+    ],
+)
+def test_translate(table, s, expected):
+    assert translate(table, s) == expected
