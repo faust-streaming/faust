@@ -1374,7 +1374,7 @@ setuptools to install a command-line program for your project.
             include_package_data=True,
             zip_safe=False,
             install_requires=['faust'],
-            python_requires='~=3.8',
+            python_requires='~=3.10',
         )
 
     For inspiration you can also look to the `setup.py` files in the

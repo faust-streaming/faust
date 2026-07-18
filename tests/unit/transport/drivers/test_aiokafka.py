@@ -796,6 +796,26 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             isolation_level="read_committed",
         )
 
+    def test__create_worker_consumer__uses_roundrobin_without_tables(
+        self, *, cthread, app
+    ):
+        app.conf.table_standby_replicas = 0
+        app.tables._changelogs.clear()
+        transport = cthread.transport
+        with patch("aiokafka.AIOKafkaConsumer"):
+            cthread._create_worker_consumer(transport)
+        assert cthread._assignor is mod.RoundRobinPartitionAssignor
+
+    def test__create_worker_consumer__uses_faust_assignor_with_changelog_topics(
+        self, *, cthread, app
+    ):
+        app.conf.table_standby_replicas = 0
+        app.tables._changelogs["app-foo-changelog"] = Mock(name="table")
+        transport = cthread.transport
+        with patch("aiokafka.AIOKafkaConsumer"):
+            cthread._create_worker_consumer(transport)
+        assert cthread._assignor is app.assignor
+
     def assert_create_worker_consumer(
         self,
         cthread,
