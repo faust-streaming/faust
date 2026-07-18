@@ -97,7 +97,7 @@ def resolve_tracer(
     returns a no-op tracer whose spans are cheap and non-exporting, so callers
     never need to special-case the unconfigured state.
     """
-    if not HAS_OTEL:
+    if not HAS_OTEL:  # pragma: no cover
         return None
     return trace.get_tracer(service_name, version)
 
@@ -114,7 +114,7 @@ def set_current_span(span: Optional["Span"]) -> None:
 
 def noop_span() -> Optional["Span"]:
     """Return a non-recording span (or :const:`None` without OpenTelemetry)."""
-    if not HAS_OTEL:
+    if not HAS_OTEL:  # pragma: no cover
         return None
     return trace.INVALID_SPAN
 
@@ -142,7 +142,7 @@ def deterministic_parent_context(trace_id: int) -> Optional["Context"]:
     This is the native replacement for the old
     ``span.context.trace_id = murmur2(...)`` mutation.
     """
-    if not HAS_OTEL:
+    if not HAS_OTEL:  # pragma: no cover
         return None
     # span_id must be a non-zero 64-bit int; derive it from the trace id so it
     # is stable per (app, generation) too.
@@ -256,7 +256,7 @@ def inject_trace_headers(carrier: Optional[Dict[str, Any]] = None) -> Dict[str, 
     """Inject the current context into *carrier* as W3C trace headers."""
     if carrier is None:
         carrier = {}
-    if not HAS_OTEL:
+    if not HAS_OTEL:  # pragma: no cover
         return carrier
     propagate.inject(carrier)
     return carrier
@@ -264,7 +264,7 @@ def inject_trace_headers(carrier: Optional[Dict[str, Any]] = None) -> Dict[str, 
 
 def extract_trace_context(carrier: Mapping[str, Any]) -> Optional["Context"]:
     """Extract a parent context from *carrier* (W3C trace headers)."""
-    if not HAS_OTEL:
+    if not HAS_OTEL:  # pragma: no cover
         return None
     return propagate.extract(carrier)
 

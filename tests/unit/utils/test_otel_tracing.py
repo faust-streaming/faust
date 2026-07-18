@@ -201,3 +201,29 @@ def test_pending_span_cancel_marks_and_ends(tracer, exporter):
 def test_semconv_span_name_builder():
     assert otel_tracing.semconv_span_name("process", "orders") == "orders process"
     assert otel_tracing.semconv_span_name("publish", "orders") == "orders publish"
+
+
+def test_attribute_helpers_noop_on_none_span():
+    # None spans are common (noop tracing); helpers must be silent no-ops.
+    otel_tracing.add_default_tags(None, "myapp", "myapp-id")
+    otel_tracing.add_consume_attributes(None, topic="t", partition=1)
+    otel_tracing.add_produce_attributes(None, topic="t", offset=2)
+
+
+def test_stringify_key_str_and_int(tracer, exporter):
+    span = tracer.start_span("op")
+    otel_tracing.add_consume_attributes(span, topic="t", key="plain-str")
+    span.end()
+    assert _finished(exporter)["op"].attributes["kafka-key"] == "plain-str"
+
+
+def test_inject_trace_headers_defaults_to_new_carrier():
+    carrier = otel_tracing.inject_trace_headers()
+    assert isinstance(carrier, dict)
+
+
+def test_pending_span_without_tracer_is_noop():
+    pending = otel_tracing.PendingSpan(None, "x")
+    assert pending.materialize() is None
+    # cancel is a no-op when nothing was materialized.
+    pending.cancel()
