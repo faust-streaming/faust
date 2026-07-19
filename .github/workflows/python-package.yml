@@ -68,7 +68,7 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   test-pypy:
-    name: 'Python pypy3.9/Cython: false'
+    name: 'Python pypy3.11/Cython: false'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     continue-on-error: true
@@ -80,7 +80,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: pypy3.9
+          python-version: pypy3.11
           cache: pip
           cache-dependency-path: requirements/test.txt
       - name: Install dependencies
@@ -183,13 +183,17 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-13, macos-14]
+        # Modern, supported runner images (ubuntu-20.04 was retired in 2025).
+        # macos-15-intel -> x86_64 wheels, macos-14 -> arm64 wheels,
+        # windows-2022 -> AMD64 wheels. Build config lives in
+        # pyproject.toml's [tool.cibuildwheel] (cp3*, auto64, Cython).
+        os: [ubuntu-latest, macos-15-intel, macos-14, windows-2022]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.10.1
+        uses: pypa/cibuildwheel@v2.21.3
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}
