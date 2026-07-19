@@ -43,7 +43,6 @@ resumes the Keep a Changelog format.  Set the release date at tag time.
   refreshed `cibuildwheel`, and an updated test matrix (#690).
 - Pin `black`/`isort` and update the `click` constraint for reproducible CI
   (#677, #680).
-- Add `codecov.yml` with a 1% coverage threshold (#683).
 
 ### Fixed
 - **Data loss:** never commit past an in-flight (unacked) message — offsets for

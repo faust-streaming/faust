@@ -63,7 +63,6 @@ upgrading.
   and the test matrix (#690).
 - Pin `black`/`isort` and update the `click` constraint for reproducible CI
   (#677, #680).
-- Add `codecov.yml` with a 1% coverage threshold (#683).
 
 ## Fixed
 
