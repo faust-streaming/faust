@@ -264,6 +264,8 @@ class Test_WindowWrapper:
         "input,expected",
         [
             (DATETIME, DATETIME_TS),
+            # relative_to_field on an ISO-8601 string field (issue #389)
+            (DATETIME.isoformat(), DATETIME_TS),
             (303.333, 303.333),
             (None, 99999.6),
         ],
