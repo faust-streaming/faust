@@ -109,27 +109,6 @@ jobs:
       fail-fast: false
       matrix:
         kafka-version: ['3.8.1']
-    services:
-      kafka:
-        image: apache/kafka:${{ matrix.kafka-version }}
-        ports:
-          - 9092:9092
-        env:
-          KAFKA_NODE_ID: '1'
-          KAFKA_PROCESS_ROLES: 'broker,controller'
-          KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
-          KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
-          KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
-          KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
-          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
-          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
-          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
-          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
-          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-          # Keep the broker quiet so the job log surfaces the pytest output
-          # instead of thousands of lines of broker startup/offset logging.
-          KAFKA_LOG4J_ROOT_LOGLEVEL: 'WARN'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -139,6 +118,25 @@ jobs:
           python-version: '3.12'
           cache: pip
           cache-dependency-path: requirements/test.txt
+      # Run Kafka as a plain container (not a GH `services:` container) so its
+      # very chatty broker log stays inside the container -- retrievable on
+      # demand via `docker logs` -- and the job log shows the pytest output.
+      - name: Start Kafka (KRaft, single node)
+        run: |
+          docker run -d --name kafka -p 9092:9092 \
+            -e KAFKA_NODE_ID=1 \
+            -e KAFKA_PROCESS_ROLES=broker,controller \
+            -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+            -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+            -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+            -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
+            -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
+            -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+            -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
+            -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
+            -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
+            -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
+            apache/kafka:${{ matrix.kafka-version }}
       - name: Install dependencies
         run: |
           pip install -r requirements/test.txt
@@ -162,6 +160,9 @@ jobs:
         env:
           FAUST_TEST_BROKER: 'kafka://localhost:9092'
         run: pytest tests/integration/broker -v --no-cov
+      - name: Kafka broker logs (on failure)
+        if: failure()
+        run: docker logs kafka
   check:  # This job does nothing and is only used for the branch protection
     name: ✅ Ensure the required checks passing
     if: always()

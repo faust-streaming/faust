@@ -86,6 +86,10 @@ async def test_faust_app_roundtrip(broker_url, unique_topic, unique_group):
         # Wait until the agent's consumer owns the partition, otherwise the
         # send could race ahead of the subscription.
         await _wait_for_assignment(app, timeout=ASSIGN_TIMEOUT)
+        # Flow control starts suspended; a normal `faust worker` resumes it on
+        # partition assignment.  When embedding the app ourselves we have to
+        # resume it explicitly or the agent's stream never pulls messages.
+        app.flow_control.resume()
         await topic.send(value=b"ping")
         value = await asyncio.wait_for(received.get(), timeout=RECV_TIMEOUT)
     finally:
