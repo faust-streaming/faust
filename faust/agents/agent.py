@@ -4,6 +4,7 @@ import asyncio
 import typing
 from contextlib import suppress
 from contextvars import ContextVar
+from inspect import isasyncgenfunction
 from time import time
 from typing import (
     Any,
@@ -1101,10 +1102,27 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         self.results = {}
         self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
-        self.add_sink(self._on_value_processed)
         self._stream = self.channel.stream()
+        # Agents that never yield cannot use sinks -- ``_prepare_actor``
+        # raises ``ImproperlyConfigured('Agent must yield to use sinks')``
+        # for them.  So only attach the results sink when the wrapped agent
+        # actually yields; for sink-less agents observe processed values with
+        # a stream processor instead, so ``test_context`` works either way.
+        # See issue #433.
+        self._agent_yields = isasyncgenfunction(self.fun)
+        if self._agent_yields:
+            self.add_sink(self._on_value_processed)
+        else:
+            self._stream.add_processor(self._on_value_processed_processor)
         self.sent_offset = 0
         self.processed_offset = 0
+
+    async def _on_value_processed_processor(self, value: Any) -> Any:
+        # Sink-less agents don't yield, so we can't observe their output.
+        # Record the incoming value and wake up any ``put(wait=True)`` caller
+        # instead, then hand the value on to the agent unchanged.
+        await self._on_value_processed(value)
+        return value
 
     async def on_stop(self) -> None:
         await self._stream.stop()
