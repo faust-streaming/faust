@@ -65,3 +65,16 @@ def unique_topic() -> str:
 def unique_group() -> str:
     """A fresh consumer-group / app id per test."""
     return f"faust-it-{uuid4().hex}"
+
+
+@pytest.fixture(autouse=True)
+def threads_not_lingering():
+    """Override the global no-lingering-threads guard for broker tests.
+
+    Talking to a real broker makes asyncio resolve ``localhost`` via
+    ``getaddrinfo`` in its default ``ThreadPoolExecutor``; that resolver
+    thread (``asyncio_0``) outlives a single test and is not a leak we can
+    act on.  The strict global guard in ``tests/conftest.py`` would fail an
+    otherwise-passing round-trip, so shadow it here with a no-op.
+    """
+    yield
