@@ -529,6 +529,37 @@ class TestConsumer:
         ]
 
     @pytest.mark.asyncio
+    async def test_getmany__highwater_none_not_tracked(self, *, consumer):
+        # Regression test for #214: highwater() can return None during a
+        # rebalance.  Passing it to track_tp_end_offset crashes metric
+        # sensors that do float(offset), so it must be skipped.
+        def to_message(tp, record):
+            return record
+
+        consumer._to_message = to_message
+        consumer.highwater = Mock(name="highwater", return_value=None)
+        consumer.app.monitor = Mock(name="monitor")
+        self._setup_records(consumer, active_partitions={TP1}, records={TP1: ["A"]})
+        consumer.flow_active = True
+
+        assert [a async for a in consumer.getmany(1.0)] == [(TP1, "A")]
+        consumer.app.monitor.track_tp_end_offset.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_getmany__highwater_tracked(self, *, consumer):
+        def to_message(tp, record):
+            return record
+
+        consumer._to_message = to_message
+        consumer.highwater = Mock(name="highwater", return_value=42)
+        consumer.app.monitor = Mock(name="monitor")
+        self._setup_records(consumer, active_partitions={TP1}, records={TP1: ["A"]})
+        consumer.flow_active = True
+
+        assert [a async for a in consumer.getmany(1.0)] == [(TP1, "A")]
+        consumer.app.monitor.track_tp_end_offset.assert_called_once_with(TP1, 42)
+
+    @pytest.mark.asyncio
     async def test_getmany_buffered(self, *, consumer):
         def to_message(tp, record):
             return record
