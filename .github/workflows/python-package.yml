@@ -100,7 +100,7 @@ jobs:
   test-integration:
     name: 'Integration (Kafka ${{ matrix.kafka-version }})'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     # Advisory for now: broker tests can be flaky while we stabilise them, so
     # a red here must not block the required checks / the merge queue.  This
     # job is intentionally NOT in the `check` job's `needs`.
