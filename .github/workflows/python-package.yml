@@ -214,9 +214,13 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
       - name: Build sdist
+        # Use `python -m build`, not the deprecated `setup.py sdist`, so the
+        # sdist is named with the normalized project name
+        # (`faust_streaming-*.tar.gz`).  PyPI enforces PEP 625 and rejects the
+        # legacy hyphenated `faust-streaming-*.tar.gz`.
         run: >
-          pip3 install pkgconfig cython --upgrade &&
-          python3 setup.py sdist
+          pip3 install build pkgconfig cython --upgrade &&
+          python3 -m build --sdist --outdir dist
       - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:

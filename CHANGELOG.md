@@ -11,6 +11,19 @@ https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
 resumes the Keep a Changelog format.
 -->
 
+## [v0.12.1](https://github.com/faust-streaming/faust/releases/tag/v0.12.1) - 2026-07-19
+
+[Compare with v0.12.0](https://github.com/faust-streaming/faust/compare/v0.12.0...v0.12.1)
+
+Packaging-only patch release. v0.12.0's wheels published to PyPI, but its source
+distribution was rejected under [PEP 625](https://peps.python.org/pep-0625/);
+this release fixes the sdist filename so the full set of artifacts publishes.
+
+### Fixed
+- Build the source distribution with `python -m build` and a PEP 625-compliant
+  (normalized) filename — `faust_streaming-<version>.tar.gz` instead of the
+  legacy `faust-streaming-<version>.tar.gz` that PyPI now rejects (#712).
+
 ## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - 2026-07-19
 
 [Compare with v0.11.3](https://github.com/faust-streaming/faust/compare/v0.11.3...v0.12.0)

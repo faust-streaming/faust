@@ -61,7 +61,9 @@ Changes = "https://github.com/faust-streaming/faust/releases"
 
 [build-system]
 requires = [
-    "setuptools>=30.3.0",
+    # setuptools >= 69 normalizes the sdist filename per PEP 625
+    # (faust_streaming-*.tar.gz), which PyPI now requires.
+    "setuptools>=69",
     "setuptools_scm[toml]",
     "wheel",
     "cython>=0.29; implementation_name == 'cpython'",
