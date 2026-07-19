@@ -89,7 +89,9 @@ class Web(base.Web):
 
     def __init__(self, app: AppT, **kwargs: Any) -> None:
         super().__init__(app, **kwargs)
-        self.web_app: Application = Application()
+        self.web_app: Application = Application(
+            **(app.conf.web_application_options or {})
+        )
         self.cors_options = _prepare_cors_options(app.conf.web_cors_options or {})
         self._runner: AppRunner = AppRunner(self.web_app, access_log=None)
         self._transport_handlers = {
