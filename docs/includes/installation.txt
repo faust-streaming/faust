@@ -37,6 +37,10 @@ Stores
 
     **Recommended in production.**
 
+:``faust[rocksdict]``:
+    for storing Faust table state in `RocksDB`_ through the
+    :pypi:`rocksdict` bindings.
+
 
 .. _`RocksDB`: http://rocksdb.org
 
@@ -73,6 +77,12 @@ Sensors
 
 :``faust[statsd]``:
     for using the Statsd Faust monitor.
+
+:``faust[prometheus]``:
+    for using the Prometheus Faust monitor.
+
+:``faust[sentry]``:
+    for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
 
 Event Loops
 ~~~~~~~~~~~
