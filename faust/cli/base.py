@@ -156,6 +156,7 @@ class State:
     loglevel: Optional[int] = None
     blocking_timeout: Optional[float] = None
     console_port: Optional[int] = None
+    override_logging: Optional[bool] = None
 
 
 def compat_option(
@@ -207,6 +208,17 @@ now_builtin_worker_options: OptionSequence = [
         default=CONSOLE_PORT,
         type=params.TCPPort(),
         help="when --debug: Port to run debugger console on.",
+    ),
+    compat_option(
+        "--override-logging/--no-override-logging",
+        state_key="override_logging",
+        default=True,
+        help=(
+            "Reconfigure the root logger when the worker starts "
+            "(clears any existing handlers, e.g. from structlog or "
+            "logging.basicConfig). Pass --no-override-logging to leave "
+            "your own logging setup untouched."
+        ),
     ),
 ]
 
@@ -509,6 +521,7 @@ class Command(abc.ABC):  # noqa: B024
     _loglevel: Optional[str]
     _blocking_timeout: Optional[float]
     _console_port: Optional[int]
+    _override_logging: Optional[bool]
 
     stdout: IO
     stderr: IO
@@ -592,6 +605,7 @@ class Command(abc.ABC):  # noqa: B024
         self._loglevel = self.state.loglevel
         self._blocking_timeout = self.state.blocking_timeout
         self._console_port = self.state.console_port
+        self._override_logging = self.state.override_logging
 
     @no_type_check  # Subclasses can omit *args, **kwargs in signature.  # noqa: B027
     async def run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: B027
@@ -662,6 +676,7 @@ class Command(abc.ABC):  # noqa: B024
             redirect_stdouts_level=self.redirect_stdouts_level,
             loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
             daemon=self.daemon,
+            override_logging=self.override_logging,
         )
 
     @property
@@ -771,6 +786,15 @@ class Command(abc.ABC):  # noqa: B024
     @console_port.setter
     def console_port(self, port: int) -> None:
         self._console_port = port
+
+    @property
+    def override_logging(self) -> bool:
+        """Return whether the worker should reconfigure the root logger."""
+        return True if self._override_logging is None else self._override_logging
+
+    @override_logging.setter
+    def override_logging(self, override: bool) -> None:
+        self._override_logging = override
 
 
 class AppCommand(Command):

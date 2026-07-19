@@ -368,6 +368,7 @@ class Test_Command:
                 redirect_stdouts_level=command.redirect_stdouts_level,
                 loop=loop,
                 daemon=command.daemon,
+                override_logging=command.override_logging,
             )
 
     def test__Worker(self, *, command):
@@ -470,6 +471,13 @@ class Test_Command:
         assert command.console_port == 3241
         command.console_port = None
         assert command.console_port == CONSOLE_PORT
+
+    def test_override_logging(self, *, command, ctx):
+        assert command.override_logging == ctx.ensure_object().override_logging
+        command.override_logging = False
+        assert command.override_logging is False
+        command.override_logging = None
+        assert command.override_logging is True
 
 
 class Test_AppCommand:
