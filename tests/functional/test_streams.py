@@ -572,6 +572,25 @@ def mock_event_ack(event, return_value=False):
     return event
 
 
+async def wait_for_stream_ack(event, *, timeout=1.0):
+    """Wait until a taken event has been acked.
+
+    ``stream.take()`` acks the events it consumes from a background task, so
+    the ack has not necessarily run by the time the ``async for`` body returns.
+    Polling for the ack with a timeout keeps the assertion robust on slower
+    interpreters (notably PyPy) where the couple of ``asyncio.sleep(0)`` yields
+    the tests used to rely on aren't enough for that task to run.  If the ack
+    never lands the loop simply times out and returns, leaving the caller's
+    assertions to report the actual state.
+    """
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
+        if event.ack.called or event.message.acked:
+            return
+        await asyncio.sleep(0)
+
+
 async def get_event_from_value(stream, value, key=None):
     await stream.channel.send(key=key, value=value)
     async for value in stream:
@@ -766,10 +785,7 @@ async def test_take(app):
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event)
 
         if not event.ack.called:
             assert event.message.acked
@@ -879,10 +895,7 @@ async def test_take_wit_timestamp(app):
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event)
 
         if not event.ack.called:
             assert event.message.acked
@@ -905,10 +918,7 @@ async def test_take_wit_timestamp_wit_simple_value(app):
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event)
 
         if not event.ack.called:
             assert event.message.acked
@@ -931,10 +941,7 @@ async def test_take_wit_timestamp_without_timestamp_field(app):
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event)
 
         if not event.ack.called:
             assert event.message.acked
