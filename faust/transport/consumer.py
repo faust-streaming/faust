@@ -80,7 +80,7 @@ from mode.utils.futures import notify
 from mode.utils.text import pluralize
 from mode.utils.times import Seconds
 
-from faust.exceptions import ProducerSendError
+from faust.exceptions import ConsumerNotStarted, ProducerSendError
 from faust.types import TP, AppT, ConsumerMessage, Message, RecordMetadata
 from faust.types.core import HeadersArg
 from faust.types.transports import (
@@ -900,7 +900,15 @@ class Consumer(Service, ConsumerT):
 
     async def verify_all_partitions_active(self) -> None:
         now = monotonic()
-        for tp in self.assignment():
+        try:
+            assignment = self.assignment()
+        except ConsumerNotStarted:
+            # The commit-livelock detector may run before the consumer
+            # thread has finished starting (observed with alternative event
+            # loops such as eventlet).  There is nothing to verify yet, so
+            # skip this cycle instead of crashing the app.  See issue #446.
+            return
+        for tp in assignment:
             await self.sleep(0)
             if not self.should_stop:
                 self.verify_event_path(now, tp)
