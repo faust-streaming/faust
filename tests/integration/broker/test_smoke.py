@@ -13,7 +13,14 @@ from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 
 import faust
 
-pytestmark = pytest.mark.asyncio
+# The suite escalates ResourceWarning to an error (see pyproject.toml), but
+# aiokafka / faust legitimately deal with sockets and background tasks that
+# can emit ResourceWarning during teardown of a live-broker test.  Relax that
+# here so a leaked-socket warning doesn't mask the actual assertion.
+pytestmark = [
+    pytest.mark.asyncio,
+    pytest.mark.filterwarnings("ignore::ResourceWarning"),
+]
 
 # Generous timeouts: a cold broker + first rebalance can take a while in CI.
 ASSIGN_TIMEOUT = 60.0

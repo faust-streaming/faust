@@ -43,8 +43,8 @@ def broker_url() -> str:
     url = _broker_from_env()
     if not _broker_reachable(url):
         pytest.skip(
-            f"No Kafka broker reachable at {url}; "
-            f"set FAUST_TEST_BROKER to run live-broker integration tests"
+            f"No Kafka broker reachable at {url} - "
+            "set FAUST_TEST_BROKER to run live-broker integration tests"
         )
     return url
 

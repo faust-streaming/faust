@@ -127,6 +127,9 @@ jobs:
           KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
           KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+          # Keep the broker quiet so the job log surfaces the pytest output
+          # instead of thousands of lines of broker startup/offset logging.
+          KAFKA_LOG4J_ROOT_LOGLEVEL: 'WARN'
     steps:
       - uses: actions/checkout@v4
         with:
