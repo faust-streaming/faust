@@ -140,6 +140,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements/test.txt
+          pip install -r requirements/extras/ckafka.txt
           pip install .
       - name: Wait for Kafka to be ready
         run: |
@@ -159,10 +160,12 @@ jobs:
       - name: Run live-broker integration tests
         env:
           FAUST_TEST_BROKER: 'kafka://localhost:9092'
-        run: pytest tests/integration/broker -v --no-cov
+        run: pytest tests/integration/broker -v -ra --tb=short --no-cov
+      # Only the tail of the broker log on failure, so it augments rather than
+      # buries the pytest output in the job log.
       - name: Kafka broker logs (on failure)
         if: failure()
-        run: docker logs kafka
+        run: docker logs --tail 40 kafka
   check:  # This job does nothing and is only used for the branch protection
     name: ✅ Ensure the required checks passing
     if: always()

@@ -1,9 +1,16 @@
 """Smoke tests proving faust can talk to a real Kafka broker.
 
-The first test uses :pypi:`aiokafka` directly and is the robust anchor that
-proves the CI Kafka service is up.  The second drives a real faust ``App``
-end to end (produce -> agent consumes -> ack/commit), which is what we
-actually want to be able to exercise for broker-dependent bugs.
+Coverage is split so a failure points at the layer that broke:
+
+* raw :pypi:`aiokafka` and :pypi:`confluent-kafka` round-trips -- the robust
+  anchors that prove the CI broker is up and each client library works;
+* a real faust ``App`` round-trip (produce -> agent consumes -> ack), run
+  against *both* transport drivers (``kafka://`` = aiokafka and
+  ``confluent://`` = confluent-kafka), which is what we actually want to
+  exercise for broker-dependent bugs.
+
+``confluent-kafka`` is an optional dependency; its tests skip when it is not
+installed.
 """
 
 import asyncio
@@ -22,9 +29,10 @@ pytestmark = [
     pytest.mark.filterwarnings("ignore::ResourceWarning"),
 ]
 
-# Generous timeouts: a cold broker + first rebalance can take a while in CI.
-ASSIGN_TIMEOUT = 60.0
-RECV_TIMEOUT = 60.0
+# Enough for a cold broker + first rebalance in CI, but short enough that a
+# genuine hang fails fast instead of sitting at the timeout.
+ASSIGN_TIMEOUT = 30.0
+RECV_TIMEOUT = 20.0
 
 
 async def test_aiokafka_roundtrip(kafka_bootstrap, unique_topic):
@@ -51,6 +59,39 @@ async def test_aiokafka_roundtrip(kafka_bootstrap, unique_topic):
     assert msg.value == b"ping"
 
 
+async def test_confluent_roundtrip(kafka_bootstrap, unique_topic, unique_group):
+    """Produce and consume one message straight through confluent-kafka."""
+    pytest.importorskip("confluent_kafka")
+    from confluent_kafka import Consumer, Producer
+
+    producer = Producer({"bootstrap.servers": kafka_bootstrap})
+    producer.produce(unique_topic, b"ping")
+    producer.flush(RECV_TIMEOUT)
+
+    consumer = Consumer(
+        {
+            "bootstrap.servers": kafka_bootstrap,
+            "group.id": unique_group,
+            "auto.offset.reset": "earliest",
+            "enable.auto.commit": False,
+        }
+    )
+    consumer.subscribe([unique_topic])
+    loop = asyncio.get_event_loop()
+    deadline = loop.time() + RECV_TIMEOUT
+    value = None
+    try:
+        while loop.time() < deadline:
+            msg = consumer.poll(1.0)
+            if msg is None or msg.error():
+                continue
+            value = msg.value()
+            break
+    finally:
+        consumer.close()
+    assert value == b"ping"
+
+
 async def _wait_for_assignment(app: faust.App, timeout: float) -> None:
     async def _poll() -> None:
         while not app.consumer.assignment():
@@ -59,11 +100,18 @@ async def _wait_for_assignment(app: faust.App, timeout: float) -> None:
     await asyncio.wait_for(_poll(), timeout=timeout)
 
 
-async def test_faust_app_roundtrip(broker_url, unique_topic, unique_group):
-    """Drive a real faust App: send a value and have an agent receive it."""
+@pytest.mark.parametrize("scheme", ["kafka", "confluent"])
+async def test_faust_app_roundtrip(kafka_bootstrap, unique_topic, unique_group, scheme):
+    """Drive a real faust App on each transport: send a value, agent receives.
+
+    ``kafka://`` selects the aiokafka driver, ``confluent://`` the
+    confluent-kafka driver.
+    """
+    if scheme == "confluent":
+        pytest.importorskip("confluent_kafka")
     app = faust.App(
         unique_group,
-        broker=broker_url,
+        broker=f"{scheme}://{kafka_bootstrap}",
         store="memory://",
         topic_partitions=1,
         topic_replication_factor=1,
