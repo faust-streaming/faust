@@ -215,9 +215,7 @@ async def test_commits_contiguous_acks(
         consumer._committed_offset[tp] = 0
         consumer._acked[tp] = [0, 1, 2, 3, 4]
         consumer._acked_index[tp] = {0, 1, 2, 3, 4}
-        did_commit = await asyncio.wait_for(
-            consumer.commit({tp}), timeout=OP_TIMEOUT
-        )
+        did_commit = await asyncio.wait_for(consumer.commit({tp}), timeout=OP_TIMEOUT)
         assert did_commit
 
         committed = await asyncio.wait_for(
