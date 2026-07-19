@@ -4,6 +4,71 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+<!--
+This changelog was dormant between v0.9.0 and v0.11.3; those releases are
+documented in their GitHub release notes at
+https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
+resumes the Keep a Changelog format.  Set the release date at tag time.
+-->
+
+## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - UNRELEASED
+
+[Compare with v0.11.3](https://github.com/faust-streaming/faust/compare/v0.11.3...v0.12.0)
+
+### Added
+- Re-add the confluent-kafka transport driver (`confluent://`, install with the
+  `faust[ckafka]` extra), rewritten and tested against the released
+  `confluent-kafka` API.
+- Support Python 3.14 (tested with and without the Cython extensions).
+- Optional OpenTelemetry instrumentation via the `faust[opentelemetry]` extra,
+  with documentation in the sensors user guide (#688, #681).
+- `on_clear` handlers on `(Global)Table` and `ChangeloggedSet` (#645).
+- New `web_application_options` setting to configure the web application
+  (#551, #704).
+- Live-broker integration test harness: CI now starts a real Kafka broker and
+  round-trips messages through both the aiokafka and confluent-kafka client
+  libraries (#706).
+
+### Changed
+- **Dropped support for Python 3.8 and 3.9** (#650); the minimum supported
+  version is now Python 3.10.
+- **OpenTracing is now an optional dependency** — install it with the
+  `faust[opentracing]` extra (#685, #686).
+- Replaced the unmaintained `aredis` with `redis-py` for the Redis store and
+  leader (#635).
+- Support `aiokafka` 0.13.0, which removed the `api_version` parameter (#674);
+  guard aiokafka metadata/admin calls by the negotiated protocol-API version and
+  keep the Faust partition assignor for changelog tables (#682).
+- Modernize CI and wheel building: updated wheel runners, Windows wheels, a
+  refreshed `cibuildwheel`, and an updated test matrix (#690).
+- Pin `black`/`isort` and update the `click` constraint for reproducible CI
+  (#677, #680).
+- Add `codecov.yml` with a 1% coverage threshold (#683).
+
+### Fixed
+- **Data loss:** never commit past an in-flight (unacked) message — offsets for
+  a gap ahead of the smallest unacked offset are no longer committed prematurely
+  (#606, #707).
+- **Data loss:** don't advance committed-offset bookkeeping when the commit
+  itself fails (#316, #692).
+- Parse ISO-8601 string fields in `relative_to_field()` (#389, #700).
+- Record event runtime for events acked via `stream.take()` (#319, #701).
+- Don't crash while collecting actor tracebacks for finished coroutines
+  (#105, #698).
+- Allow `test_context()` for sink-less (non-yielding) agents (#433, #699).
+- Don't crash the livelock detector when the consumer has not started yet
+  (#446, #702).
+- Skip the end-offset metric when the highwater is unknown (`None`) (#214, #703).
+- Preserve the original event timestamp in `Event.forward` (#427, #705).
+- Don't crash when publishing a message with a non-bytes key (#513, #695).
+- Harden reply-topic creation against a hardcoded `replicas=0` that broke
+  `.ask()` (#76, #694).
+- Respect an explicit autodiscover module list under Django (#500, #697).
+- Fix Prometheus latency histograms mis-scaled by 1000x (#260, #693).
+- Add `charset=utf-8` to JSON web responses on the orjson (bytes) path
+  (#557, #696).
+- Fix release-artifact upload/download for `upload-artifact@v4` (#684).
+
 ## [v0.8.10](https://github.com/faust-streaming/faust/releases/tag/v0.8.10) - 2022-09-14
 
 [Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)
