@@ -8,10 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 This changelog was dormant between v0.9.0 and v0.11.3; those releases are
 documented in their GitHub release notes at
 https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
-resumes the Keep a Changelog format.  Set the release date at tag time.
+resumes the Keep a Changelog format.
 -->
 
-## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - UNRELEASED
+## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - 2026-07-19
 
 [Compare with v0.11.3](https://github.com/faust-streaming/faust/compare/v0.11.3...v0.12.0)
 
