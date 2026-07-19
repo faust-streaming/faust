@@ -46,6 +46,13 @@ Caching
 :``faust[redis]``:
     for using `Redis_` as a simple caching backend (Memcached-style).
 
+Transports
+~~~~~~~~~~
+
+:``faust[ckafka]``:
+    for using the :pypi:`confluent-kafka` client through the ``confluent://``
+    transport.
+
 Codecs
 ~~~~~~
 
