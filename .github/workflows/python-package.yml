@@ -108,7 +108,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        kafka-version: ['3.8.1']
+        # Test against both a 3.x broker and Kafka 4.x (KRaft-only, released
+        # 2025).  The `KAFKA_CONTROLLER_QUORUM_VOTERS` static-voter config below
+        # works for both.
+        kafka-version: ['3.8.1', '4.0.0']
     steps:
       - uses: actions/checkout@v4
         with:
