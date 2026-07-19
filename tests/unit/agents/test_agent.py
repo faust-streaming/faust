@@ -239,6 +239,29 @@ class Test_Agent:
         actor1.cancel.assert_called_once_with()
         actor2.cancel.assert_called_once_with()
 
+    def test_actor_tracebacks(self, *, agent):
+        actor1 = Mock(name="actor1")
+        actor1.traceback.return_value = "traceback for actor1"
+        agent._actors = [actor1]
+        assert agent.actor_tracebacks() == ["traceback for actor1"]
+
+    def test_actor_tracebacks__missing_stack(self, *, agent):
+        # A finished coroutine has no stack frame, and mode raises
+        # RuntimeError("cannot find stack of coroutine").  Collecting
+        # tracebacks (for logging around shutdown/rebalance) must not
+        # let that error escape.  See issue #105.
+        good = Mock(name="good_actor")
+        good.traceback.return_value = "traceback for good"
+        bad = Mock(name="bad_actor")
+        bad.traceback.side_effect = RuntimeError("cannot find stack of coroutine")
+        agent._actors = [good, bad]
+
+        tracebacks = agent.actor_tracebacks()
+
+        assert tracebacks[0] == "traceback for good"
+        assert "Could not extract traceback" in tracebacks[1]
+        assert "cannot find stack of coroutine" in tracebacks[1]
+
     @pytest.mark.asyncio
     async def test_on_partitions_revoked(self, *, agent):
         revoked = {TP("foo", 0)}
