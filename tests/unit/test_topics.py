@@ -7,7 +7,7 @@ import pytest
 import faust
 from faust import Event, Record
 from faust.exceptions import KeyDecodeError, ValueDecodeError
-from faust.types import Message
+from faust.types import FutureMessage, Message, PendingMessage
 from tests.helpers import AsyncMock
 
 
@@ -161,6 +161,38 @@ class Test_Topic:
             timestamp=312.5134,
         )
         callback.assert_called_once_with(fm)
+
+    @pytest.mark.asyncio
+    async def test_publish_message__non_bytes_key_does_not_crash(self, *, topic, app):
+        # A raw, unserialized non-bytes key/value can reach publish_message
+        # (e.g. an int key produced via group_by/forward). Computing the
+        # sensor keysize must not crash the publish -- see #513.
+        producer = Mock(send_and_wait=AsyncMock())
+        topic._get_producer = AsyncMock(return_value=producer)
+        topic._finalize_message = AsyncMock()
+        app.sensors.on_send_initiated = Mock(return_value={})
+        app.sensors.on_send_completed = Mock()
+
+        pending = PendingMessage(
+            channel=topic,
+            key=12345,
+            value=678,
+            partition=None,
+            timestamp=None,
+            headers=None,
+            key_serializer=None,
+            value_serializer=None,
+            callback=None,
+            topic="foo",
+        )
+        fm = FutureMessage(pending)
+
+        # Must not raise TypeError from len(int).
+        await topic.publish_message(fm, wait=True)
+
+        _, kwargs = app.sensors.on_send_initiated.call_args
+        assert kwargs["keysize"] == 0
+        assert kwargs["valsize"] == 0
 
     @pytest.mark.asyncio
     async def test_send__attachments_enabled(self, *, topic, app):

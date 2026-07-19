@@ -42,6 +42,7 @@ from .types import (
 )
 from .types.topics import ChannelT, TopicT
 from .types.transports import ProducerT
+from .types.tuples import _get_len
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from .app import App as _App
@@ -409,8 +410,12 @@ class Topic(SerializedChannel, TopicT):
             producer,
             topic,
             message=message,
-            keysize=len(key) if key else 0,
-            valsize=len(value) if value else 0,
+            # ``key``/``value`` are not always serialized bytes here -- e.g. a
+            # raw int key produced via group_by/forward (#513) -- and this only
+            # feeds a sensor statistic, so use the bytes-safe helper rather than
+            # a bare len() that would crash the publish for non-sized payloads.
+            keysize=_get_len(key),
+            valsize=_get_len(value),
         )
         if wait:
             ret: RecordMetadata = await producer.send_and_wait(
