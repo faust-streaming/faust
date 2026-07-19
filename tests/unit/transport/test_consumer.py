@@ -946,9 +946,10 @@ class TestConsumer:
 
     @pytest.mark.asyncio
     async def test_commit_offsets(self, *, consumer):
-        consumer._commit = AsyncMock(name="_commit")
+        consumer._commit = AsyncMock(name="_commit", return_value=True)
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.producer.flush = AsyncMock()
+        consumer.app.monitor.on_tp_commit = Mock(name="on_tp_commit")
         await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -961,6 +962,15 @@ class TestConsumer:
                 TP2: 6006,
             }
         )
+        # On a successful commit, bookkeeping must advance.
+        consumer.app.monitor.on_tp_commit.assert_called_once_with(
+            {
+                TP1: 3003,
+                TP2: 6006,
+            }
+        )
+        assert consumer._committed_offset[TP1] == 3003
+        assert consumer._committed_offset[TP2] == 6006
 
     @pytest.mark.asyncio
     async def test_commit_offsets__did_not_commit(self, *, consumer):
@@ -969,6 +979,8 @@ class TestConsumer:
         consumer.app.producer.flush = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         consumer.app.tables = Mock(name="app.tables")
+        consumer.app.monitor.on_tp_commit = Mock(name="on_tp_commit")
+        committed_offset_before = dict(consumer._committed_offset)
         await consumer._commit_offsets(
             {
                 TP1: 3003,
@@ -977,6 +989,11 @@ class TestConsumer:
             }
         )
         consumer.app.tables.on_commit.assert_not_called()
+        # Bookkeeping must not advance when the underlying commit failed
+        # (see faust-streaming/faust#316): a failed commit must not make
+        # Faust believe those offsets were actually committed.
+        consumer.app.monitor.on_tp_commit.assert_not_called()
+        assert consumer._committed_offset == committed_offset_before
 
     @pytest.mark.asyncio
     async def test_commit_offsets__in_transaction(self, *, consumer):
