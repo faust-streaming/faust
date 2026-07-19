@@ -7,6 +7,8 @@ Copyright
 
 Copyright |copy| 2017-2020, Robinhood Markets, Inc.
 
+Copyright |copy| 2021-2026, the faust-streaming project.
+
 All rights reserved.  This material may be copied or distributed only
 subject to the terms and conditions set forth in the `Creative Commons
 Attribution-ShareAlike 4.0 International`
