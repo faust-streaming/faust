@@ -97,6 +97,68 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+  test-integration:
+    name: 'Integration (Kafka ${{ matrix.kafka-version }})'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Advisory for now: broker tests can be flaky while we stabilise them, so
+    # a red here must not block the required checks / the merge queue.  This
+    # job is intentionally NOT in the `check` job's `needs`.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        kafka-version: ['3.8.1']
+    services:
+      kafka:
+        image: apache/kafka:${{ matrix.kafka-version }}
+        ports:
+          - 9092:9092
+        env:
+          KAFKA_NODE_ID: '1'
+          KAFKA_PROCESS_ROLES: 'broker,controller'
+          KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093'
+          KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092'
+          KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT'
+          KAFKA_CONTROLLER_QUORUM_VOTERS: '1@localhost:9093'
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: '1'
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: '1'
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: '1'
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: '0'
+          KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/test.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/test.txt
+          pip install .
+      - name: Wait for Kafka to be ready
+        run: |
+          python - <<'PY'
+          import socket, time, sys
+          deadline = time.monotonic() + 120
+          while time.monotonic() < deadline:
+              try:
+                  with socket.create_connection(("localhost", 9092), 2):
+                      print("Kafka port is open")
+                      break
+              except OSError:
+                  time.sleep(2)
+          else:
+              sys.exit("Kafka did not become reachable in time")
+          PY
+      - name: Run live-broker integration tests
+        env:
+          FAUST_TEST_BROKER: 'kafka://localhost:9092'
+        run: pytest tests/integration/broker -v --no-cov
   check:  # This job does nothing and is only used for the branch protection
     name: ✅ Ensure the required checks passing
     if: always()
