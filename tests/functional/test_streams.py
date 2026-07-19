@@ -9,6 +9,7 @@ from mode.utils.aiter import aiter, anext
 
 import faust
 from faust.exceptions import ImproperlyConfigured
+from faust.sensors import Monitor
 from faust.streams import maybe_forward
 from tests.helpers import AsyncMock
 
@@ -775,6 +776,30 @@ async def test_take(app):
             assert event.message.acked
             assert not event.message.refcount
         assert s.enable_acks is True
+
+
+@pytest.mark.skipif(
+    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+)
+@pytest.mark.asyncio
+async def test_take__records_event_runtime(app):
+    # Regression test for #319: events buffered by take() are acked manually
+    # after the main loop has already yielded, so on_stream_event_out used to
+    # be called without the sensor state and no event runtime was recorded.
+    monitor = Monitor()
+    app.sensors.add(monitor)
+    async with new_stream(app) as s:
+        await s.channel.send(value=1)
+        async for value in s.take(1, within=1):
+            assert value == [1]
+            break
+        # let take()'s finally ack the buffered event
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+
+    # on_stream_event_out ran with the captured sensor state, so a runtime
+    # was appended (would be empty before the fix).
+    assert monitor.events_runtime
 
 
 @pytest.mark.asyncio

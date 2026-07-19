@@ -210,15 +210,21 @@ class Test_Stream:
     async def test_ack(self, *, stream):
         event = Mock()
         event.ack.return_value = True
+        event.sensor_state = {"sensor": "state"}
         stream._on_stream_event_out = Mock()
         stream._on_message_out = Mock()
         assert await stream.ack(event)
+        # the sensor state captured in on_stream_event_in is forwarded so
+        # deferred acks still record the event runtime (issue #319)
         stream._on_stream_event_out.assert_called_once_with(
             event.message.tp,
             event.message.offset,
             stream,
             event,
+            {"sensor": "state"},
         )
+        # ...and cleared afterwards so a second ack can't double-count
+        assert event.sensor_state is None
         stream._on_message_out.assert_called_once_with(
             event.message.tp,
             event.message.offset,
