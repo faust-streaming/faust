@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import platform
 from copy import copy
 from unittest.mock import Mock, patch
@@ -575,20 +576,25 @@ def mock_event_ack(event, return_value=False):
 async def wait_for_stream_ack(event, *, timeout=1.0):
     """Wait until a taken event has been acked.
 
-    ``stream.take()`` acks the events it consumes from a background task, so
-    the ack has not necessarily run by the time the ``async for`` body returns.
-    Polling for the ack with a timeout keeps the assertion robust on slower
-    interpreters (notably PyPy) where the couple of ``asyncio.sleep(0)`` yields
-    the tests used to rely on aren't enough for that task to run.  If the ack
-    never lands the loop simply times out and returns, leaving the caller's
-    assertions to report the actual state.
+    Breaking out of ``async for value in s.take(...)`` leaves the ``take()``
+    async generator suspended; the ``finally:`` block that acks the buffered
+    events only runs once the generator is finalized.  CPython's refcounting
+    finalizes it as soon as the loop exits (so the ack lands within a couple
+    of event-loop ticks), but PyPy has no refcounting -- without an explicit
+    ``gc.collect()`` the finalizer (and thus the ack) may never run at all,
+    no matter how long we sleep.  So poll for the ack, nudging the collector
+    each round to trigger generator finalization, exactly like
+    ``Consumer.wait_empty()`` does in faust itself.  If the ack never lands
+    the loop times out and returns, leaving the caller's assertions to report
+    the actual state.
     """
     loop = asyncio.get_event_loop()
     deadline = loop.time() + timeout
     while loop.time() < deadline:
         if event.ack.called or event.message.acked:
             return
-        await asyncio.sleep(0)
+        gc.collect()
+        await asyncio.sleep(0.05)
 
 
 async def get_event_from_value(stream, value, key=None):
