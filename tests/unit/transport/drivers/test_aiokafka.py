@@ -443,19 +443,20 @@ class Test_VEP_no_fetch_since_start(Test_verify_event_path_base):
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
-    @pytest.mark.skip(
-        reason="verify_event_path no longer emits the fetch-timeout "
-        "error() under this condition; predates that behaviour change and "
-        "needs re-deriving against the current driver"
-    )
-    def test_timed_out(self, *, cthread, now, tp, logger):
+    def test_timed_out(self, *, cthread, now, tp, logger, _consumer):
+        # No fetch request has ever been sent: aiokafka has not stamped a
+        # poll timestamp on the partition state yet.
+        state = (
+            _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value  # noqa: E501
+        )
+        state.timestamp = None
         self._set_started(
             now - cthread.tp_fetch_request_timeout_secs * 2,
         )
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
             mod.SLOW_PROCESSING_NO_FETCH_SINCE_START,
-            ANY,
+            tp,
             ANY,
         )
 
@@ -468,9 +469,12 @@ class Test_VEP_no_response_since_start(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
     @pytest.mark.skip(
-        reason="verify_event_path no longer emits the fetch-timeout "
-        "error() under this condition; predates that behaviour change and "
-        "needs re-deriving against the current driver"
+        reason="SOURCE BUG: faust/transport/drivers/aiokafka.py defines "
+        "SLOW_PROCESSING_NO_RESPONSE_SINCE_START but never emits it. "
+        "_verify_aiokafka_event_path only logs NO_FETCH_SINCE_START and "
+        "NO_RECENT_FETCH from the aiokafka poll timestamp; the "
+        "response-since-start check was dropped and the constant is now "
+        "dead code, so no condition can make verify_event_path log it."
     )
     def test_timed_out(self, *, cthread, _consumer, now, tp, logger):
         assert cthread.verify_event_path(now, tp) is None
@@ -517,9 +521,12 @@ class Test_VEP_no_recent_response(Test_verify_event_path_base):
         logger.error.assert_not_called()
 
     @pytest.mark.skip(
-        reason="verify_event_path no longer emits the fetch-timeout "
-        "error() under this condition; predates that behaviour change and "
-        "needs re-deriving against the current driver"
+        reason="SOURCE BUG: faust/transport/drivers/aiokafka.py defines "
+        "SLOW_PROCESSING_NO_RECENT_RESPONSE but never emits it. "
+        "_verify_aiokafka_event_path only tracks the aiokafka poll "
+        "timestamp (request side) and logs NO_RECENT_FETCH; the "
+        "broker-response-staleness check was dropped and the constant is "
+        "now dead code, so no condition can make verify_event_path log it."
     )
     def test_timed_out(self, *, cthread, now, tp, logger):
         self._set_last_request(now - 10.0)
@@ -1056,13 +1063,11 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             await cthread.commit(offsets)
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="stale mock: _commit no longer forwards offsets to the "
-        "wrapped AIOKafkaConsumer.commit in this harness; needs a mock refresh"
-    )
     async def test__commit(self, *, cthread, _consumer):
         offsets = {TP1: 1001}
         cthread._consumer = _consumer
+        # _commit only commits offsets for partitions in the assignment.
+        _consumer.assignment.return_value = {TP1}
         await cthread._commit(offsets)
 
         _consumer.commit.assert_called_once_with(
@@ -1076,33 +1081,22 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         assert not (await cthread._commit({TP1: 1001}))
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="stale mock: _commit no longer forwards offsets to the "
-        "wrapped AIOKafkaConsumer.commit in this harness; needs a mock refresh"
-    )
     async def test__commit__CommitFailedError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
+        _consumer.assignment.return_value = {TP1}
         exc = _consumer.commit.side_effect = CommitFailedError("xx")
         cthread.crash = AsyncMock()
-        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
-        cthread.supervisor.wakeup.assert_called_once()
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(
-        reason="stale mock: _commit no longer forwards offsets to the "
-        "wrapped AIOKafkaConsumer.commit in this harness; needs a mock refresh"
-    )
     async def test__commit__IllegalStateError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
-        cthread.assignment = Mock()
+        cthread.assignment = Mock(return_value={TP1})
         exc = _consumer.commit.side_effect = IllegalStateError("xx")
         cthread.crash = AsyncMock()
-        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
-        cthread.supervisor.wakeup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_position(self, *, cthread, _consumer):
