@@ -530,9 +530,11 @@ async def wait_for_stream_ack(event, agen):
     interpreter finalization -- immediate on CPython via reference counting,
     but only at a later (maybe never) GC cycle on PyPy.  Closing the generator
     explicitly runs its ``finally`` now, on every interpreter; ``aclose()`` on
-    an already-finished generator is a harmless no-op.
+    an already-finished generator is a harmless no-op.  A still-running
+    generator raises RuntimeError on CPython / ValueError on PyPy; both are
+    ignored (its owner will finalize it).
     """
-    with suppress(RuntimeError):
+    with suppress(RuntimeError, ValueError):
         await agen.aclose()
 
 

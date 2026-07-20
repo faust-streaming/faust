@@ -1080,8 +1080,12 @@ class Stream(StreamT[T_co], Service):
         for agen in list(self._active_agens):
             try:
                 await agen.aclose()
-            except RuntimeError:
-                # Still running in another task; its owner will clean up.
+            except (RuntimeError, ValueError):
+                # Generator is still running in another task (e.g. an agent
+                # actor iterating this stream during a rebalance); its owner
+                # will clean it up.  CPython raises RuntimeError for this,
+                # PyPy raises ValueError ("async generator already
+                # executing") -- catch both so on_stop never aborts here.
                 pass
         self._passive = False
         self._passive_started.clear()
