@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from copy import copy
 from unittest.mock import Mock, patch
 
@@ -422,7 +423,8 @@ async def test_ack(app):
         await s.channel.send(value=2)
         event = None
         i = 1
-        async for value in s:
+        it = aiter(s)
+        async for value in it:
             assert value == i
             i += 1
             last_to_ack = value == 2
@@ -430,10 +432,7 @@ async def test_ack(app):
             if value == 2:
                 break
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event, it)
         if not event.ack.called:
             assert event.message.acked
             assert not event.message.refcount
@@ -466,31 +465,27 @@ async def test_acked_when_raising(app):
         await s.channel.send(value=2)
 
         event1 = None
+        it1 = aiter(s)
         with pytest.raises(RuntimeError):
-            async for value in s:
+            async for value in it1:
                 event1 = mock_stream_event_ack(s)
                 assert value == 1
                 raise RuntimeError
         assert event1
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event1, it1)
         if not event1.ack.called:
             assert event1.message.acked
             assert not event1.message.refcount
 
         event2 = None
+        it2 = aiter(s)
         with pytest.raises(RuntimeError):
-            async for value in s:
+            async for value in it2:
                 event2 = mock_stream_event_ack(s)
                 assert value == 2
                 raise RuntimeError
         assert event2
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event2, it2)
         if not event2.ack.called:
             assert event2.message.acked
             assert not event2.message.refcount
@@ -526,23 +521,19 @@ def mock_event_ack(event, return_value=False):
     return event
 
 
-async def wait_for_stream_ack(event, *, timeout=1.0):
-    """Wait until a taken event has been acked.
+async def wait_for_stream_ack(event, agen):
+    """Ensure a consumed event has been acked, deterministically.
 
-    ``stream.take()`` acks the events it consumes from a background task, so
-    the ack has not necessarily run by the time the ``async for`` body returns.
-    Polling for the ack with a timeout keeps the assertion robust on slower
-    interpreters (notably PyPy) where the couple of ``asyncio.sleep(0)`` yields
-    the tests used to rely on aren't enough for that task to run.  If the ack
-    never lands the loop simply times out and returns, leaving the caller's
-    assertions to report the actual state.
+    The ack runs in the ``take()``/iterator generator's ``finally`` block,
+    which only executes when the generator is finalized.  Abandoning the
+    generator (``break`` or an exception in ``async for``) defers that to
+    interpreter finalization -- immediate on CPython via reference counting,
+    but only at a later (maybe never) GC cycle on PyPy.  Closing the generator
+    explicitly runs its ``finally`` now, on every interpreter; ``aclose()`` on
+    an already-finished generator is a harmless no-op.
     """
-    loop = asyncio.get_event_loop()
-    deadline = loop.time() + timeout
-    while loop.time() < deadline:
-        if event.ack.called or event.message.acked:
-            return
-        await asyncio.sleep(0)
+    with suppress(RuntimeError):
+        await agen.aclose()
 
 
 async def get_event_from_value(stream, value, key=None):
@@ -732,14 +723,15 @@ async def test_take(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take(1, within=1):
+        buffer = s.take(1, within=1)
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        await wait_for_stream_ack(event)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
@@ -900,9 +892,10 @@ async def test_take_wit_timestamp(app):
         assert s.enable_acks is True
         await s.channel.send(value={"id": 1})
         event = None
-        async for value in s.take_with_timestamp(
+        buffer = s.take_with_timestamp(
             1, within=1, timestamp_field_name="test_timestamp"
-        ):
+        )
+        async for value in buffer:
             assert "test_timestamp" in value[0].keys()
             assert isinstance(value[0]["test_timestamp"], float)
             assert s.enable_acks is False
@@ -910,7 +903,7 @@ async def test_take_wit_timestamp(app):
             break
 
         assert event
-        await wait_for_stream_ack(event)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
@@ -924,16 +917,17 @@ async def test_take_wit_timestamp_wit_simple_value(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take_with_timestamp(
+        buffer = s.take_with_timestamp(
             1, within=1, timestamp_field_name="test_timestamp"
-        ):
+        )
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        await wait_for_stream_ack(event)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
@@ -947,16 +941,15 @@ async def test_take_wit_timestamp_without_timestamp_field(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take_with_timestamp(
-            1, within=1, timestamp_field_name=None
-        ):
+        buffer = s.take_with_timestamp(1, within=1, timestamp_field_name=None)
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        await wait_for_stream_ack(event)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked

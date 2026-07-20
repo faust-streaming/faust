@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from collections import defaultdict
 from contextlib import ExitStack
 from unittest.mock import Mock, patch
@@ -189,9 +190,11 @@ class Test_Stream:
             await s.channel.put(new_event(app, topic="bar", value=sentinel))
             s._on_message_in = Mock()
             await got_sentinel.wait()
-            await asyncio.sleep(0)
-            await asyncio.sleep(0)
-            await asyncio.sleep(0)
+            for _ in range(20):
+                if event.ack.called or event.message.acked:
+                    break
+                gc.collect()
+                await asyncio.sleep(0.05)
         s._on_message_in.assert_called_once_with(
             event.message.tp,
             event.message.offset,
