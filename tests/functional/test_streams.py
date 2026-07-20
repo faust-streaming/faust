@@ -778,6 +778,41 @@ async def test_take(app):
 
 
 @pytest.mark.asyncio
+async def test_take_cleanup_on_stream_stop(app):
+    """An abandoned take() generator is closed when the stream stops.
+
+    Breaking out of ``async for`` leaves the generator suspended; its cleanup
+    (acking consumed events, restoring ``enable_acks``, detaching the
+    buffering processor) normally runs only when the interpreter finalizes
+    the generator.  Holding a strong reference here blocks finalization on
+    every interpreter -- mimicking PyPy, where finalization waits for a GC
+    cycle that may never come -- so this asserts the stream itself closes
+    leftover generators deterministically on stop.
+    """
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        n_processors = len(s._processors)
+        await s.channel.send(value=1)
+        agen = s.take(1, within=1)  # hold a strong reference
+        event = None
+        async for value in agen:
+            assert value == [1]
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # The reference above keeps the generator alive, so no interpreter
+        # has finalized it yet: cleanup must come from stopping the stream.
+        await s.stop()
+
+        if not event.ack.called:
+            assert event.message.acked
+        assert s.enable_acks is True
+        assert len(s._processors) == n_processors
+
+
+@pytest.mark.asyncio
 async def test_take__10(app, loop):
     s = new_stream(app)
     async with s:
