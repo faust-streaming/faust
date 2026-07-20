@@ -629,7 +629,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 def finish(self) -> None:
                     consumer._span_finish(span)
 
-            span._real_finish, span.finish = span.finish, LazySpan.finish
+            # Bind the replacement to ``span`` -- assigning the raw
+            # ``LazySpan.finish`` function leaves it unbound, so the later
+            # ``span.finish()`` call raises "missing 1 required positional
+            # argument: 'self'".
+            span._real_finish, span.finish = (
+                span.finish,
+                LazySpan.finish.__get__(span),
+            )
 
     def _span_finish(self, span: opentracing.Span) -> None:
         assert self._consumer is not None
