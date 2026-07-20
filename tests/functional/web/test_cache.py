@@ -333,16 +333,15 @@ async def test_redis__using_starting_(app, mocked_redis):
 @pytest.fixture()
 def no_redis(monkeypatch):
     # The backend's ``on_start`` guards on the ``redis`` module being
-    # importable (``if redis is None``); when the library is missing both
-    # ``redis`` and ``redis.asyncio``/``aredis`` are unavailable.  Patching
-    # the ``redis`` name to ``None`` faithfully simulates the library not
-    # being installed and must raise before any socket is opened.
+    # importable (``if redis is None``).  Patching the ``redis`` name to
+    # ``None`` faithfully simulates the library not being installed and must
+    # raise before any socket is opened.
     monkeypatch.setattr("faust.web.cache.backends.redis.redis", None)
 
 
 @pytest.mark.asyncio
 @pytest.mark.app(cache="redis://localhost:6079")
-async def test_redis__aredis_is_not_installed(*, app, no_redis):
+async def test_redis__is_not_installed(*, app, no_redis):
     cache = app.cache
     with pytest.raises(ImproperlyConfigured):
         async with cache:

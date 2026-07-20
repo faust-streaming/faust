@@ -16,12 +16,15 @@ from . import base
 
 try:
     import redis
-    import redis.asyncio as aredis
     import redis.exceptions
 
     redis.client.Redis
 except ImportError:  # pragma: no cover
-    aredis = None  # noqa
+    # ``on_start`` (and the module-level ``if redis is None`` guards) key off
+    # ``redis`` being ``None`` when the library is missing.  The name must be
+    # bound to ``None`` here -- otherwise it stays unbound and the guard below
+    # raises ``NameError`` instead of the intended ``ImproperlyConfigured``.
+    redis = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from redis import StrictRedis as _RedisClientT
