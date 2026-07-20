@@ -238,7 +238,10 @@ jobs:
         with:
           fetch-depth: 0
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.21.3
+        # cibuildwheel 2.21.3 predates CPython 3.14, so `build = "cp3*"`
+        # stopped at cp313 and no 3.14 wheels were published (issue #715).
+        # 4.x builds 3.14 by default and still supports cp310-cp313.
+        uses: pypa/cibuildwheel@v4.1.0
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}
