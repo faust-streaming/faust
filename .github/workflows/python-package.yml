@@ -38,7 +38,7 @@ jobs:
       - name: Run linting checks
         run: scripts/check
   test-pytest:
-    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}'
+    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}/Driver: ${{ matrix.kafka-driver }}'
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Maybe we should remove this someday but the PyPy tests are acting strange
     strategy:
@@ -49,6 +49,35 @@ jobs:
         python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
         use-cython: ['true', 'false']
         experimental: [false]
+        # aiokafka is the default driver and a core dependency, so it runs the
+        # full grid.  The confluent driver lives behind the optional
+        # `ckafka` extra; give it a dedicated leg (below) so its tests --
+        # tests/unit/transport/drivers/test_confluent.py, otherwise skipped for
+        # a missing confluent_kafka -- actually run.
+        kafka-driver: ['aiokafka']
+        include:
+          # confluent driver: broker-less unit tests over a pure-Python
+          # wrapper, so one leg per Python version (Cython off) is enough.
+          - python-version: '3.10'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.11'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.12'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.13'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.14'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
     env:
       USE_CYTHON: ${{ matrix.use-cython }}
     continue-on-error: ${{ matrix.experimental }}
@@ -65,8 +94,18 @@ jobs:
         run: |
           pip install -r requirements/test.txt
           pip install .
+          if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
+            pip install -r requirements/extras/ckafka.txt
+          fi
       - name: Run tests
-        run: scripts/tests
+        run: |
+          if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
+            # Dedicated confluent leg: run just the confluent driver's unit
+            # tests (the aiokafka legs already cover the rest of the suite).
+            pytest tests/unit/transport/drivers/test_confluent.py
+          else
+            scripts/tests
+          fi
       - name: Enforce coverage
         uses: codecov/codecov-action@v5
         with:
