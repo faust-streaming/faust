@@ -1,7 +1,6 @@
 from itertools import count
 
 import pytest
-import redis.asyncio as aredis
 
 import faust
 from faust.exceptions import ImproperlyConfigured
@@ -332,14 +331,18 @@ async def test_redis__using_starting_(app, mocked_redis):
 
 
 @pytest.fixture()
-def no_aredis(monkeypatch):
-    monkeypatch.setattr("faust.web.cache.backends.redis.aredis", None)
+def no_redis(monkeypatch):
+    # The backend's ``on_start`` guards on the ``redis`` module being
+    # importable (``if redis is None``); when the library is missing both
+    # ``redis`` and ``redis.asyncio``/``aredis`` are unavailable.  Patching
+    # the ``redis`` name to ``None`` faithfully simulates the library not
+    # being installed and must raise before any socket is opened.
+    monkeypatch.setattr("faust.web.cache.backends.redis.redis", None)
 
 
-@pytest.mark.skip(reason="Needs fixing")
 @pytest.mark.asyncio
 @pytest.mark.app(cache="redis://localhost:6079")
-async def test_redis__aredis_is_not_installed(*, app, no_aredis):
+async def test_redis__aredis_is_not_installed(*, app, no_redis):
     cache = app.cache
     with pytest.raises(ImproperlyConfigured):
         async with cache:
@@ -446,7 +449,6 @@ def bp(app):
     blueprint.register(app, url_prefix="/test/")
 
 
-@pytest.mark.skip(reason="Needs fixing")
 class Test_RedisScheme:
     def test_single_client(self, app):
         url = "redis://123.123.123.123:3636//1"
@@ -455,22 +457,40 @@ class Test_RedisScheme:
         backend = Backend(app, url=url)
         assert isinstance(backend, redis.CacheBackend)
         client = backend._new_client()
-        assert isinstance(client, redis.StrictRedis)
+        # The single-node scheme maps to redis.StrictRedis, which under
+        # redis-py 8.x is the concrete redis.client.Redis class.  Creating
+        # the client does not open a socket (redis-py connects lazily).
+        single_node_client = backend._client_by_scheme[
+            redis.RedisScheme.SINGLE_NODE.value
+        ]
+        assert single_node_client is redis.redis.StrictRedis
+        assert isinstance(client, single_node_client)
+        assert isinstance(client, redis.redis.StrictRedis)
         pool = client.connection_pool
         assert pool.connection_kwargs["host"] == backend.url.host
         assert pool.connection_kwargs["port"] == backend.url.port
         assert pool.connection_kwargs["db"] == 1
 
-    def test_cluster_client(self, app):
+    def test_cluster_client(self, app, monkeypatch):
+        # A real RedisCluster client connects to the cluster on construction,
+        # so stand in the (external) cluster class with a mock -- mirroring the
+        # ``mocked_redis`` fixture which patches ``redis.StrictRedis``.
+        cluster_cls = Mock(name="RedisCluster")
+        monkeypatch.setattr("redis.RedisCluster", cluster_cls)
+
         url = "rediscluster://123.123.123.123:3636//1"
         Backend = backends.by_url(url)
         assert Backend is redis.CacheBackend
         backend = Backend(app, url=url)
         assert isinstance(backend, redis.CacheBackend)
+        # The cluster scheme maps to redis.RedisCluster.
+        assert backend._client_by_scheme[redis.RedisScheme.CLUSTER.value] is cluster_cls
         client = backend._new_client()
-        assert isinstance(client, aredis.RedisCluster)
-        pool = client.connection_pool
-        assert {
-            "host": backend.url.host,
-            "port": 3636,
-        } in pool.nodes.startup_nodes
+        assert client is cluster_cls.return_value
+        cluster_cls.assert_called_once()
+        _, kwargs = cluster_cls.call_args
+        assert kwargs["host"] == backend.url.host
+        assert kwargs["port"] == backend.url.port
+        # Redis Cluster does not accept a ``db`` argument, so the backend
+        # must strip it (see CacheBackend._as_cluster_kwargs).
+        assert "db" not in kwargs
