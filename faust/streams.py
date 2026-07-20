@@ -108,7 +108,7 @@ def _tracks_buffer_agen(
     @wraps(fun)
     def _create_agen(self: StreamT, *args: Any, **kwargs: Any) -> AsyncIterable:
         agen = fun(self, *args, **kwargs)
-        cast("Stream", self)._active_buffer_agens.add(agen)
+        cast("Stream", self)._active_agens.add(agen)
         return agen
 
     return _create_agen
@@ -175,11 +175,12 @@ class Stream(StreamT[T_co], Service):
         self._processors = list(processors) if processors else []
         self._on_start = on_start
 
-        # Live buffering generators created by take() and friends,
-        # closed explicitly in on_stop().  A WeakSet so that on CPython an
-        # abandoned generator is still finalized (and thus cleaned up)
-        # promptly by reference counting.
-        self._active_buffer_agens: "weakref.WeakSet[AsyncGenerator]" = weakref.WeakSet()
+        # Live async generators handed out by this stream --
+        # __aiter__ iterators and the take() family -- closed explicitly
+        # in on_stop().  A WeakSet so that on CPython an abandoned
+        # generator is still finalized (and thus cleaned up) promptly by
+        # reference counting.
+        self._active_agens: "weakref.WeakSet[AsyncGenerator]" = weakref.WeakSet()
 
         # attach beacon to channel, or if iterable attach to current task.
         task = current_task(loop=self.loop)
@@ -1076,7 +1077,7 @@ class Stream(StreamT[T_co], Service):
         # finalizes the generator (which on PyPy waits for a GC cycle that
         # may never come).  ``aclose()`` on an exhausted generator is a
         # harmless no-op.
-        for agen in list(self._active_buffer_agens):
+        for agen in list(self._active_agens):
             try:
                 await agen.aclose()
             except RuntimeError:
@@ -1095,9 +1096,14 @@ class Stream(StreamT[T_co], Service):
 
     def __aiter__(self) -> AsyncIterator[T_co]:  # pragma: no cover
         if _CStreamIterator is not None:
-            return self._c_aiter()
+            it = self._c_aiter()
         else:
-            return self._py_aiter()
+            it = self._py_aiter()
+        # Track the iterator so on_stop() can close it if the caller
+        # abandons it (see _tracks_buffer_agen for why this matters on
+        # interpreters without reference counting, e.g. PyPy).
+        self._active_agens.add(cast(AsyncGenerator, it))
+        return it
 
     async def _c_aiter(self) -> AsyncIterator[T_co]:  # pragma: no cover
         self.log.dev("Using Cython optimized __aiter__")
