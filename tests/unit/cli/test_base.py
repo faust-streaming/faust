@@ -13,6 +13,7 @@ from mode import Worker
 from faust.cli import AppCommand, Command, call_command
 from faust.cli.base import (
     DEFAULT_LOGLEVEL,
+    State,
     _Group,
     _prepare_cli,
     argument,
@@ -80,18 +81,35 @@ def test_call_command__custom_ins():
         assert stderr is o_err
 
 
-@pytest.mark.skip("Needs fixing")
 def test_compat_option():
-    option = compat_option("--foo", default=1, state_key="foo")
+    # compat_option returns our `option` wrapper; the real callback is
+    # wired into click.option through the `callback` kwarg (it is a
+    # closure, not an attribute on the decorated function).
+    opt = compat_option("--foo", default=1, state_key="foo")
+    callback = opt.kwargs["callback"]
+
     ctx = Mock(name="ctx")
     param = Mock(name="param")
+    param.default = 1
     state = ctx.ensure_object.return_value
+
+    # The callback fetches (or creates) the State object from the ctx.
     state.foo = 33
-    print(dir(option(ctx)))
-    assert option(ctx)._callback(ctx, param, None) == 33
-    assert option(ctx)._callback(ctx, param, 44) == 44
+    assert callback(ctx, param, None) is None
+    ctx.ensure_object.assert_called_once_with(State)
+    # A previously set state value is left untouched.
+    assert state.foo == 33
+
+    # When the state value is unset and a non-default value is passed,
+    # the value is stored on the state and returned unchanged.
     state.foo = None
-    assert option(ctx)._callback(ctx, param, 44) == 44
+    assert callback(ctx, param, 44) == 44
+    assert state.foo == 44
+
+    # A value equal to the option default is returned but not stored.
+    state.foo = None
+    assert callback(ctx, param, 1) == 1
+    assert state.foo is None
 
 
 def test_find_app():

@@ -7,8 +7,10 @@ import typing
 import weakref
 from asyncio import CancelledError
 from contextvars import ContextVar
+from functools import wraps
 from typing import (
     Any,
+    AsyncGenerator,
     AsyncIterable,
     AsyncIterator,
     Callable,
@@ -88,6 +90,30 @@ async def maybe_forward(value: Any, channel: ChannelT) -> Any:
     return value
 
 
+def _tracks_buffer_agen(
+    fun: Callable[..., AsyncIterable],
+) -> Callable[..., AsyncIterable]:
+    """Register buffering generators (``take()`` and friends) on the stream.
+
+    The cleanup for these generators -- acking consumed events, restoring
+    ``enable_acks`` and detaching the buffering processor -- lives in
+    ``finally`` blocks that only run once the generator is finalized.  When a
+    caller abandons the generator (``break`` inside ``async for``), CPython's
+    reference counting finalizes it right away, but PyPy defers finalization
+    to the next major GC cycle, which may never come.  Tracking every
+    generator in a WeakSet lets ``Stream.on_stop`` close leftovers
+    explicitly, making cleanup deterministic on any interpreter.
+    """
+
+    @wraps(fun)
+    def _create_agen(self: StreamT, *args: Any, **kwargs: Any) -> AsyncIterable:
+        agen = fun(self, *args, **kwargs)
+        cast("Stream", self)._active_agens.add(agen)
+        return agen
+
+    return _create_agen
+
+
 class _LinkedListDirection(NamedTuple):
     attr: str
     getter: Callable[[StreamT], Optional[StreamT]]
@@ -148,6 +174,13 @@ class Stream(StreamT[T_co], Service):
 
         self._processors = list(processors) if processors else []
         self._on_start = on_start
+
+        # Live async generators handed out by this stream --
+        # __aiter__ iterators and the take() family -- closed explicitly
+        # in on_stop().  A WeakSet so that on CPython an abandoned
+        # generator is still finalized (and thus cleaned up) promptly by
+        # reference counting.
+        self._active_agens: "weakref.WeakSet[AsyncGenerator]" = weakref.WeakSet()
 
         # attach beacon to channel, or if iterable attach to current task.
         task = current_task(loop=self.loop)
@@ -300,6 +333,7 @@ class Stream(StreamT[T_co], Service):
             if self.current_event is not None:
                 yield self.current_event
 
+    @_tracks_buffer_agen
     async def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
         """Buffer n values at a time and yield a list of buffered values.
 
@@ -392,6 +426,7 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
+    @_tracks_buffer_agen
     async def take_events(
         self, max_: int, within: Seconds
     ) -> AsyncIterable[Sequence[EventT]]:
@@ -485,6 +520,7 @@ class Stream(StreamT[T_co], Service):
             self.enable_acks = stream_enable_acks
             self._processors.remove(add_to_buffer)
 
+    @_tracks_buffer_agen
     async def take_with_timestamp(
         self, max_: int, within: Seconds, timestamp_field_name: str
     ) -> AsyncIterable[Sequence[T_co]]:
@@ -592,6 +628,7 @@ class Stream(StreamT[T_co], Service):
         """
         return aenumerate(self, start)
 
+    @_tracks_buffer_agen
     async def noack_take(
         self, max_: int, within: Seconds
     ) -> AsyncIterable[Sequence[T_co]]:
@@ -1033,6 +1070,23 @@ class Stream(StreamT[T_co], Service):
 
     async def on_stop(self) -> None:
         """Signal that the stream is stopping."""
+        # Close any buffering generator (take() and friends) the caller
+        # abandoned, so their ``finally`` blocks -- acking consumed events,
+        # restoring ``enable_acks`` and detaching the buffering processor --
+        # run deterministically now instead of whenever the interpreter
+        # finalizes the generator (which on PyPy waits for a GC cycle that
+        # may never come).  ``aclose()`` on an exhausted generator is a
+        # harmless no-op.
+        for agen in list(self._active_agens):
+            try:
+                await agen.aclose()
+            except (RuntimeError, ValueError):
+                # Generator is still running in another task (e.g. an agent
+                # actor iterating this stream during a rebalance); its owner
+                # will clean it up.  CPython raises RuntimeError for this,
+                # PyPy raises ValueError ("async generator already
+                # executing") -- catch both so on_stop never aborts here.
+                pass
         self._passive = False
         self._passive_started.clear()
         for table_or_stream in self.combined:
@@ -1046,9 +1100,14 @@ class Stream(StreamT[T_co], Service):
 
     def __aiter__(self) -> AsyncIterator[T_co]:  # pragma: no cover
         if _CStreamIterator is not None:
-            return self._c_aiter()
+            it = self._c_aiter()
         else:
-            return self._py_aiter()
+            it = self._py_aiter()
+        # Track the iterator so on_stop() can close it if the caller
+        # abandons it (see _tracks_buffer_agen for why this matters on
+        # interpreters without reference counting, e.g. PyPy).
+        self._active_agens.add(cast(AsyncGenerator, it))
+        return it
 
     async def _c_aiter(self) -> AsyncIterator[T_co]:  # pragma: no cover
         self.log.dev("Using Cython optimized __aiter__")

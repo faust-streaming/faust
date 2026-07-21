@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Run the checks on merge-queue candidates too, so the merge queue enabled
+  # on `master` can validate each candidate as a `merge_group` event -- the
+  # required `check` job must run there or queued PRs stall.
+  merge_group:
   release:
     types: [created]
     branches: [master]
@@ -34,7 +38,7 @@ jobs:
       - name: Run linting checks
         run: scripts/check
   test-pytest:
-    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}'
+    name: 'Python ${{ matrix.python-version }}/Cython: ${{ matrix.use-cython }}/Driver: ${{ matrix.kafka-driver }}'
     runs-on: ubuntu-latest
     timeout-minutes: 10  # Maybe we should remove this someday but the PyPy tests are acting strange
     strategy:
@@ -42,9 +46,38 @@ jobs:
       # for example if a test fails only when Cython is enabled
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
         use-cython: ['true', 'false']
         experimental: [false]
+        # aiokafka is the default driver and a core dependency, so it runs the
+        # full grid.  The confluent driver lives behind the optional
+        # `ckafka` extra; give it a dedicated leg (below) so its tests --
+        # tests/unit/transport/drivers/test_confluent.py, otherwise skipped for
+        # a missing confluent_kafka -- actually run.
+        kafka-driver: ['aiokafka']
+        include:
+          # confluent driver: broker-less unit tests over a pure-Python
+          # wrapper, so one leg per Python version (Cython off) is enough.
+          - python-version: '3.10'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.11'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.12'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.13'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
+          - python-version: '3.14'
+            use-cython: 'false'
+            experimental: false
+            kafka-driver: 'confluent'
     env:
       USE_CYTHON: ${{ matrix.use-cython }}
     continue-on-error: ${{ matrix.experimental }}
@@ -61,16 +94,29 @@ jobs:
         run: |
           pip install -r requirements/test.txt
           pip install .
+          if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
+            pip install -r requirements/extras/ckafka.txt
+          fi
       - name: Run tests
-        run: scripts/tests
+        run: |
+          if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
+            # Dedicated confluent leg: run just the confluent driver's unit
+            # tests (the aiokafka legs already cover the rest of the suite).
+            pytest tests/unit/transport/drivers/test_confluent.py
+          else
+            scripts/tests
+          fi
       - name: Enforce coverage
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   test-pypy:
-    name: 'Python pypy3.9/Cython: false'
+    name: 'Python pypy3.11/Cython: false'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # PyPy runs the pure-Python paths and is markedly slower than CPython, and
+    # this leg now runs the formerly-skipped tests too; give it headroom over
+    # the old 10-minute cap, which already clipped the run at ~96%.
+    timeout-minutes: 15
     continue-on-error: true
     env:
       USE_CYTHON: 'false'
@@ -80,7 +126,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
-          python-version: pypy3.9
+          python-version: pypy3.11
           cache: pip
           cache-dependency-path: requirements/test.txt
       - name: Install dependencies
@@ -97,6 +143,114 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+  test-integration:
+    name: 'Integration (Kafka ${{ matrix.kafka-version }})'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory for now: broker tests can be flaky while we stabilise them, so
+    # a red here must not block the required checks / the merge queue.  This
+    # job is intentionally NOT in the `check` job's `needs`.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        # Test against both a 3.x broker and Kafka 4.x (KRaft-only, released
+        # 2025).  The `KAFKA_CONTROLLER_QUORUM_VOTERS` static-voter config below
+        # works for both.
+        kafka-version: ['3.8.1', '4.0.0']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/test.txt
+      # Run Kafka as a plain container (not a GH `services:` container) so its
+      # very chatty broker log stays inside the container -- retrievable on
+      # demand via `docker logs` -- and the job log shows the pytest output.
+      - name: Start Kafka (KRaft, single node)
+        run: |
+          docker run -d --name kafka -p 9092:9092 \
+            -e KAFKA_NODE_ID=1 \
+            -e KAFKA_PROCESS_ROLES=broker,controller \
+            -e KAFKA_LISTENERS=PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093 \
+            -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+            -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+            -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT \
+            -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
+            -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+            -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
+            -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
+            -e KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS=0 \
+            -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
+            apache/kafka:${{ matrix.kafka-version }}
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/test.txt
+          pip install -r requirements/extras/ckafka.txt
+          pip install .
+      - name: Wait for Kafka to be ready
+        run: |
+          python - <<'PY'
+          import socket, time, sys
+          deadline = time.monotonic() + 120
+          while time.monotonic() < deadline:
+              try:
+                  with socket.create_connection(("localhost", 9092), 2):
+                      print("Kafka port is open")
+                      break
+              except OSError:
+                  time.sleep(2)
+          else:
+              sys.exit("Kafka did not become reachable in time")
+          PY
+      - name: Run live-broker integration tests
+        env:
+          FAUST_TEST_BROKER: 'kafka://localhost:9092'
+        run: pytest tests/integration/broker -v -ra --tb=short --no-cov
+      # Only the tail of the broker log on failure, so it augments rather than
+      # buries the pytest output in the job log.
+      - name: Kafka broker logs (on failure)
+        if: failure()
+        run: docker logs --tail 40 kafka
+  test-redis-integration:
+    name: 'Redis cache integration'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory for now, like the Kafka integration job: intentionally NOT in
+    # the `check` job's `needs`, so a red here does not block the merge queue.
+    continue-on-error: true
+    services:
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements/test.txt
+      - name: Install dependencies
+        run: |
+          pip install -r requirements/test.txt
+          pip install .
+      # Runs the redis cache backend against the real server started above --
+      # the unit tests only ever mock the client.
+      - name: Run redis cache integration tests
+        env:
+          FAUST_TEST_REDIS: 'redis://localhost:6379'
+        run: pytest tests/integration/cache -v -ra --tb=short --no-cov
   check:  # This job does nothing and is only used for the branch protection
     name: ✅ Ensure the required checks passing
     if: always()
@@ -114,13 +268,20 @@ jobs:
     if: github.event_name == 'release' && github.event.action == 'created'
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-13, macos-14]
+        # Modern, supported runner images (ubuntu-20.04 was retired in 2025).
+        # macos-15-intel -> x86_64 wheels, macos-14 -> arm64 wheels,
+        # windows-2022 -> AMD64 wheels. Build config lives in
+        # pyproject.toml's [tool.cibuildwheel] (cp3*, auto64, Cython).
+        os: [ubuntu-latest, macos-15-intel, macos-14, windows-2022]
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.10.1
+        # cibuildwheel 2.21.3 predates CPython 3.14, so `build = "cp3*"`
+        # stopped at cp313 and no 3.14 wheels were published (issue #715).
+        # 4.x builds 3.14 by default and still supports cp310-cp313.
+        uses: pypa/cibuildwheel@v4.1.0
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}
@@ -138,9 +299,13 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-python@v5
       - name: Build sdist
+        # Use `python -m build`, not the deprecated `setup.py sdist`, so the
+        # sdist is named with the normalized project name
+        # (`faust_streaming-*.tar.gz`).  PyPI enforces PEP 625 and rejects the
+        # legacy hyphenated `faust-streaming-*.tar.gz`.
         run: >
-          pip3 install pkgconfig cython --upgrade &&
-          python3 setup.py sdist
+          pip3 install build pkgconfig cython --upgrade &&
+          python3 -m build --sdist --outdir dist
       - uses: actions/upload-artifact@v4
         name: Upload build artifacts
         with:

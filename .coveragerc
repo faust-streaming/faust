@@ -31,9 +31,7 @@ omit =
     */faust/tables/recovery.py
 
     # not needed
-    */faust/utils/functional.py
     */faust/utils/iso8601.py
-    */faust/utils/platforms.py
     */faust/utils/tracing.py
     # opentracing fallback stub: only used when opentracing is NOT installed,
     # which the CI test env is not (it installs faust[opentracing]).
