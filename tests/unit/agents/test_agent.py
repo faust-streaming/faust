@@ -469,7 +469,6 @@ class Test_Agent:
             await agent._execute_actor(coro, Mock(name="aref", autospec=Actor))
         coro.assert_awaited()
 
-    @pytest.mark.skip(reason="Fix is TBD")
     @pytest.mark.asyncio
     async def test_execute_actor__cancelled_running(self, *, agent):
         agent._on_error = AsyncMock(name="on_error")
