@@ -375,3 +375,78 @@ Web Callbacks
 
     .. automethod:: on_web_request_end
         :noindex:
+
+
+.. _sensor-tracing:
+
+===================
+Distributed Tracing
+===================
+
+Faust can emit distributed-tracing spans for streams, agents, tasks, timers,
+Crontabs and the rebalancing process.  Tracing is **opt-in**: it only does
+anything once you set ``app.tracer`` to an object implementing the
+``faust.types.app.TracerT`` interface -- essentially a
+``get_tracer(service_name)`` method returning an OpenTracing-compatible tracer.
+
+You can route those spans to `OpenTelemetry`_ using its `OpenTracing shim`_,
+which exposes an OpenTracing-compatible tracer backed by an OpenTelemetry
+``TracerProvider``.  Install the extra:
+
+.. sourcecode:: console
+
+    $ pip install "faust[opentelemetry]"
+
+Then configure an OpenTelemetry ``TracerProvider`` (with the exporter of your
+choice) and wire it to ``app.tracer`` through ``create_tracer``:
+
+.. sourcecode:: python
+
+    from typing import Any, Optional
+
+    import faust
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import (
+        BatchSpanProcessor,
+        ConsoleSpanExporter,
+    )
+    from opentelemetry.shim.opentracing_shim import create_tracer
+
+    # 1) Configure OpenTelemetry once, at startup.
+    #    Swap ConsoleSpanExporter for an OTLP/Jaeger/Zipkin exporter.
+    provider = TracerProvider()
+    provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
+
+
+    # 2) Adapt the provider to Faust's tracer interface via the shim.
+    class OpenTelemetryTracer:
+        def __init__(self, provider: TracerProvider) -> None:
+            self.provider = provider
+            self._tracers: dict = {}
+
+        @property
+        def default_tracer(self):
+            return self.get_tracer("faust")
+
+        def get_tracer(self, service_name: str):
+            if service_name not in self._tracers:
+                # create_tracer returns an OpenTracing-compatible tracer
+                # backed by OpenTelemetry.
+                self._tracers[service_name] = create_tracer(self.provider)
+            return self._tracers[service_name]
+
+        def trace(
+            self, name: str, sample_rate: Optional[float] = None, **extra_context: Any
+        ):
+            return self.default_tracer.start_span(
+                operation_name=name, tags=extra_context
+            )
+
+
+    app = faust.App("myapp", broker="kafka://localhost:9092")
+    app.tracer = OpenTelemetryTracer(provider)
+
+Faust's spans now flow through OpenTelemetry out to your configured backend.
+
+.. _`OpenTelemetry`: https://opentelemetry.io
+.. _`OpenTracing shim`: https://opentelemetry-python.readthedocs.io/en/latest/shim/opentracing_shim/opentracing_shim.html
