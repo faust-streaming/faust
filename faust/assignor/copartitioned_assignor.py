@@ -259,8 +259,39 @@ class CopartitionedAssignor:
                         and assigment.can_assign(partition, active)
                     )
                 )  # By above assertion, should never throw error
-                unassigned_partition = assign_to.pop_partition(active)
+                unassigned_partition = self._free_up_partition(assign_to, active)
                 unassigned.append(unassigned_partition)
 
             # Assign partition
             assign_to.assign_partition(partition, active)
+
+    def _free_up_partition(
+        self, assignment: CopartitionedAssignment, active: bool
+    ) -> int:
+        # Evict a partition from an exhausted client so the partition we are
+        # placing can take its slot.  Prefer a victim that some *other*
+        # not-yet-exhausted client can immediately take, so the re-queued
+        # victim makes forward progress instead of bouncing straight back
+        # here.  ``CopartitionedAssignment.pop_partition`` pops an arbitrary
+        # set element, and when the arbitrary choice is the victim's only
+        # possible home two partitions ping-pong between the queue and this
+        # client forever.  Whether that happens depends on set iteration
+        # order, so the livelock strikes on PyPy while CPython (with a
+        # different order) escapes it for the same input.  Choosing a
+        # re-homable victim in deterministic (sorted) order makes the loop
+        # terminate on every interpreter.
+        held = assignment.get_assigned_partitions(active)
+        for candidate in sorted(held):
+            for other in self._client_assignments.values():
+                if other is assignment:
+                    continue
+                if not self._client_exhausted(other, active) and other.can_assign(
+                    candidate, active
+                ):
+                    assignment.unassign_partition(candidate, active)
+                    return candidate
+        # No immediately re-homable victim: fall back to a deterministic
+        # arbitrary choice (still correct, just not progress-guaranteed).
+        candidate = min(held)
+        assignment.unassign_partition(candidate, active)
+        return candidate

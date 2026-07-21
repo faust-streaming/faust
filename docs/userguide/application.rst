@@ -78,7 +78,7 @@ the driver that you want to use (it can also be the fully qualified
 path to a Python class).
 
 The storage driver decides how to keep distributed tables locally, and
-Faust version 1.0 supports two options:
+Faust supports two options:
 
 +----------------+-----------------------------------------------+
 | ``rocksdb://`` | `RocksDB`_ an embedded database (production)  |
@@ -1374,7 +1374,7 @@ setuptools to install a command-line program for your project.
             include_package_data=True,
             zip_safe=False,
             install_requires=['faust'],
-            python_requires='~=3.8',
+            python_requires='~=3.10',
         )
 
     For inspiration you can also look to the `setup.py` files in the

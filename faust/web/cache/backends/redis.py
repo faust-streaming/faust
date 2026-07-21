@@ -19,9 +19,12 @@ try:
     import redis.asyncio as aredis
     import redis.exceptions
 
-    redis.client.Redis
+    redis.asyncio.client.Redis
 except ImportError:  # pragma: no cover
-    aredis = None  # noqa
+    # ``on_start`` (and the module-level ``if redis is None`` guards) key off
+    # ``redis`` being ``None`` when the library is missing; bind both names so
+    # the guard fires instead of raising ``NameError``.
+    redis = aredis = None  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from redis import StrictRedis as _RedisClientT
@@ -84,12 +87,16 @@ class CacheBackend(base.CacheBackend):
         self._client_by_scheme = self._init_schemes()
 
     def _init_schemes(self) -> Mapping[str, Type[_RedisClientT]]:
-        if redis is None:  # pragma: no cover
+        if aredis is None:  # pragma: no cover
             return {}
         else:
+            # Use the asyncio clients: ``_get``/``_set``/``_delete`` await the
+            # client, so the synchronous ``redis.StrictRedis`` would raise
+            # "object ... can't be used in 'await' expression" against a real
+            # server (it only appeared to work because the tests mock it).
             return {
-                RedisScheme.SINGLE_NODE.value: redis.StrictRedis,
-                RedisScheme.CLUSTER.value: redis.RedisCluster,
+                RedisScheme.SINGLE_NODE.value: aredis.StrictRedis,
+                RedisScheme.CLUSTER.value: aredis.RedisCluster,
             }
 
     async def _get(self, key: str) -> Optional[bytes]:
@@ -116,6 +123,12 @@ class CacheBackend(base.CacheBackend):
                 "Redis cache backend requires `pip install redis`"
             )
         await self.connect()
+
+    async def on_stop(self) -> None:
+        """Call when Redis backend stops -- close the client connections."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def connect(self) -> None:
         """Connect to Redis/Redis Cluster server."""

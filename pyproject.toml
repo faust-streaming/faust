@@ -1,7 +1,7 @@
 [project]
 name = "faust-streaming"
 description = "Python Stream Processing. A Faust fork"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = [
     "version",
     "optional-dependencies",
@@ -26,11 +26,11 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -61,7 +61,9 @@ Changes = "https://github.com/faust-streaming/faust/releases"
 
 [build-system]
 requires = [
-    "setuptools>=30.3.0",
+    # setuptools >= 69 normalizes the sdist filename per PEP 625
+    # (faust_streaming-*.tar.gz), which PyPI now requires.
+    "setuptools>=69",
     "setuptools_scm[toml]",
     "wheel",
     "cython>=0.29; implementation_name == 'cpython'",
@@ -115,7 +117,12 @@ testpaths = [
 build = "cp3*"
 
 archs = ["auto64"]
-skip = ["*musllinux*"]
+# Skip musllinux, and skip the free-threaded builds (cp313t/cp314t): as of
+# cibuildwheel 3.1 free-threading is no longer experimental for 3.14, so
+# `cp3*` would otherwise build free-threaded wheels for the Cython extension,
+# which has not been validated under a no-GIL interpreter.  Drop `cp31?t-*`
+# from this list once faust is verified free-threading-safe.
+skip = ["*musllinux*", "cp31?t-*"]
 
 before-build = "pip install Cython"
 

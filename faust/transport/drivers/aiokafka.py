@@ -42,7 +42,7 @@ from aiokafka.errors import (
 )
 from aiokafka.partitioner import DefaultPartitioner, murmur2
 from aiokafka.protocol.admin import CreateTopicsRequest
-from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.protocol.metadata import MetadataRequest, MetadataRequest_v1
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
@@ -86,8 +86,6 @@ from faust.types.auth import CredentialsT
 from faust.types.transports import ConsumerT, PartitionerT, ProducerT
 from faust.utils.tracing import noop_span, set_current_span, traced_from_parent_span
 
-_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
-
 __all__ = ["Consumer", "Producer", "Transport"]
 
 # if not hasattr(aiokafka, '__robinhood__'):  # pragma: no cover
@@ -95,6 +93,8 @@ __all__ = ["Consumer", "Producer", "Transport"]
 #         'Please install robinhood-aiokafka, not aiokafka')
 
 logger = get_logger(__name__)
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 
 DEFAULT_GENERATION_ID = OffsetCommitRequest.DEFAULT_GENERATION_ID
 
@@ -511,9 +511,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
         conf = self.app.conf
         if self.consumer.in_transaction:
             isolation_level = "read_committed"
+        # Table recovery depends on app.assignor state to map changelog
+        # active/standby partitions. Keep Faust assignor enabled whenever
+        # this app has changelog tables configured.
+        has_changelog_tables = bool(self.app.tables.changelog_topics)
         self._assignor = (
             self.app.assignor
-            if self.app.conf.table_standby_replicas > 0
+            if self.app.conf.table_standby_replicas > 0 or has_changelog_tables
             else RoundRobinPartitionAssignor
         )
         auth_settings = credentials_to_aiokafka_auth(
@@ -625,7 +629,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 def finish(self) -> None:
                     consumer._span_finish(span)
 
-            span._real_finish, span.finish = span.finish, LazySpan.finish
+            # Bind the replacement to ``span`` -- assigning the raw
+            # ``LazySpan.finish`` function leaves it unbound, so the later
+            # ``span.finish()`` call raises "missing 1 required positional
+            # argument: 'self'".
+            span._real_finish, span.finish = (
+                span.finish,
+                LazySpan.finish.__get__(span),
+            )
 
     def _span_finish(self, span: opentracing.Span) -> None:
         assert self._consumer is not None
@@ -1513,7 +1524,11 @@ class Transport(base.Transport):
         for node_id in nodes:
             if node_id is None:
                 raise NotReady("Not connected to Kafka Broker")
-            request = MetadataRequest_v1([])
+            if _AIOKAFKA_HAS_API_VERSION:
+                # aiokafka < 0.13: MetadataRequest is a versioned list.
+                request = MetadataRequest_v1([])
+            else:
+                request = MetadataRequest([])
             wait_result = await owner.wait(
                 client.send(node_id, request),
                 timeout=timeout,
@@ -1546,7 +1561,6 @@ class Transport(base.Transport):
             owner.log.debug("Topic %r exists, skipping creation.", topic)
             return
 
-        protocol_version = 1
         extra_configs = config or {}
         config = self._topic_config(retention, compacting, deleting)
         config.update(extra_configs)
@@ -1563,11 +1577,16 @@ class Transport(base.Transport):
             else:
                 raise Exception("Controller node is None")
 
-        request = CreateTopicsRequest[protocol_version](
+        create_topics_args = (
             [(topic, partitions, replication, [], list(config.items()))],
             timeout,
             False,
         )
+        if _AIOKAFKA_HAS_API_VERSION:
+            # aiokafka < 0.13: CreateTopicsRequest is indexed by protocol version.
+            request = CreateTopicsRequest[1](*create_topics_args)
+        else:
+            request = CreateTopicsRequest(*create_topics_args)
         wait_result = await owner.wait(
             client.send(controller_node, request),
             timeout=timeout,

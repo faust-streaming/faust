@@ -158,6 +158,7 @@ class Settings(base.SettingsRegistry):
         canonical_url: URLArg = None,
         web: URLArg = None,
         web_bind: Optional[str] = None,
+        web_application_options: typing.Mapping[str, typing.Any] = None,
         web_cors_options: typing.Mapping[str, ResourceOptions] = None,
         web_enabled: Optional[bool] = None,
         web_host: Optional[str] = None,
@@ -703,6 +704,15 @@ class Settings(base.SettingsRegistry):
             The recommended transport using the :pypi:`aiokafka` client.
 
             Limitations: None
+
+
+        - ``confluent://``
+
+            Experimental transport using the :pypi:`confluent-kafka` client.
+
+            Limitations: Does not do sticky partition assignment (not
+                suitable for tables), and do not create any necessary internal
+                topics (you have to create them manually).
         """
 
     @broker.on_set_default  # type: ignore
@@ -1846,6 +1856,34 @@ class Settings(base.SettingsRegistry):
 
         This option is usually set by :option:`faust worker --web-bind`,
         not by passing it as a keyword argument to :class:`app`.
+        """
+
+    @sections.WebServer.setting(
+        params.Dict[Any],
+        version_introduced="0.11.4",
+    )
+    def web_application_options(self) -> Mapping[str, Any]:
+        """Extra keyword arguments passed to the web framework's application.
+
+        Use this to configure the underlying web application object that the
+        web driver creates.  For the default :pypi:`aiohttp` driver these are
+        forwarded straight to :class:`aiohttp.web.Application`, so you can set
+        things like ``client_max_size`` or install middlewares:
+
+        .. sourcecode:: python
+
+            from aiohttp.web import middleware
+
+            @middleware
+            async def error_middleware(request, handler):
+                ...
+
+            app = App(..., web_application_options={
+                'client_max_size': 1024 ** 2 * 20,
+                'middlewares': [error_middleware],
+            })
+
+        The accepted keys depend on the configured web driver.
         """
 
     @sections.WebServer.setting(

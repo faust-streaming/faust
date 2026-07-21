@@ -465,6 +465,9 @@ class Test_App:
         on_worker_init.assert_called_once_with(app, signal=app.on_worker_init)
 
     def test_discover(self, *, app):
+        # With an explicit module list, fixup-provided modules (e.g. Django's
+        # INSTALLED_APPS) must NOT be pulled in -- the user's list is honored
+        # as-is.  See #500.
         app.conf.autodiscover = ["a", "b", "c"]
         app.conf.origin = "faust"
         fixup1 = Mock(name="fixup1", autospec=Fixup)
@@ -479,12 +482,32 @@ class Test_App:
                         call("a"),
                         call("b"),
                         call("c"),
-                        call("d"),
-                        call("e"),
                         call("faust"),
                     ],
                     any_order=True,
                 )
+                imported = {c.args[0] for c in import_module.call_args_list}
+                assert "d" not in imported
+                assert "e" not in imported
+                fixup1.autodiscover_modules.assert_not_called()
+
+    def test_discover__true_includes_fixup_modules(self, *, app):
+        # The blanket autodiscover=True mode DOES pull in fixup-provided
+        # modules (e.g. every app in Django's INSTALLED_APPS).
+        app.conf.autodiscover = True
+        app.conf.origin = "faust"
+        fixup1 = Mock(name="fixup1", autospec=Fixup)
+        fixup1.autodiscover_modules.return_value = ["d", "e"]
+        app.fixups = [fixup1]
+        with patch("faust.app.base.venusian"):
+            with patch("importlib.import_module") as import_module:
+                app.discover()
+
+                import_module.assert_has_calls(
+                    [call("faust"), call("d"), call("e")],
+                    any_order=True,
+                )
+                fixup1.autodiscover_modules.assert_called_once_with()
 
     def test_discover__disabled(self, *, app):
         app.conf.autodiscover = False
