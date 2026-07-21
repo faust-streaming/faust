@@ -127,10 +127,13 @@ def mocked_redis(*, event_loop, monkeypatch):
             setex=AsyncMock(side_effect=storage.setex),
             delete=AsyncMock(side_effect=storage.delete),
             ttl=AsyncMock(side_effect=storage.ttl),
+            aclose=AsyncMock(),
         ),
     )
     client_cls.storage = storage
-    monkeypatch.setattr("redis.StrictRedis", client_cls)
+    # The backend uses the asyncio client (redis.asyncio.StrictRedis), so patch
+    # that name rather than the synchronous redis.StrictRedis.
+    monkeypatch.setattr("redis.asyncio.StrictRedis", client_cls)
     return client_cls
 
 
