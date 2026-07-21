@@ -20,7 +20,10 @@ from typing import (
     cast,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from aiokafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
