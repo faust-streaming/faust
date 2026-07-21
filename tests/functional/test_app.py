@@ -552,6 +552,7 @@ class Test_settings:
         assert conf.web_bind == "0.0.0.0"
         assert conf.web_port == 6066
         assert conf.web_transport == Settings.web_transport.default
+        assert conf.web_application_options is None
         assert conf.web_cors_options is None
         assert conf.worker_redirect_stdouts
         assert conf.worker_redirect_stdouts_level == "WARN"
@@ -666,6 +667,7 @@ class Test_settings:
         web_host="localhost",
         web_transport="udp://",
         web_in_thread=True,
+        web_application_options={"client_max_size": 1024},  # noqa: B006
         web_cors_options={  # noqa: B006
             "http://example.com": ResourceOptions(  # noqa: B008
                 allow_credentials=True,
@@ -742,6 +744,7 @@ class Test_settings:
             web_host=web_host,
             web_transport=web_transport,
             web_in_thread=web_in_thread,
+            web_application_options=web_application_options,
             web_cors_options=web_cors_options,
             worker_redirect_stdouts=worker_redirect_stdouts,
             worker_redirect_stdouts_level=worker_redirect_stdouts_level,
@@ -806,6 +809,7 @@ class Test_settings:
         assert conf.web_port == web_port
         assert conf.web_host == web_host
         assert conf.web_transport == URL(web_transport)
+        assert conf.web_application_options == web_application_options
         assert conf.web_cors_options == web_cors_options
         assert conf.worker_redirect_stdouts == worker_redirect_stdouts
         assert conf.worker_redirect_stdouts_level == worker_redirect_stdouts_level
