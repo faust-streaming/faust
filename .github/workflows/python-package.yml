@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Run the checks on merge-queue candidates too, so a GitHub merge queue can
+  # be enabled on `master`: the queue tests each candidate as a `merge_group`
+  # event, and the required `check` job must run there or queued PRs stall.
+  merge_group:
   release:
     types: [created]
     branches: [master]
