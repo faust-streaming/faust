@@ -117,7 +117,12 @@ testpaths = [
 build = "cp3*"
 
 archs = ["auto64"]
-skip = ["*musllinux*"]
+# Skip musllinux, and skip the free-threaded builds (cp313t/cp314t): as of
+# cibuildwheel 3.1 free-threading is no longer experimental for 3.14, so
+# `cp3*` would otherwise build free-threaded wheels for the Cython extension,
+# which has not been validated under a no-GIL interpreter.  Drop `cp31?t-*`
+# from this list once faust is verified free-threading-safe.
+skip = ["*musllinux*", "cp31?t-*"]
 
 before-build = "pip install Cython"
 
