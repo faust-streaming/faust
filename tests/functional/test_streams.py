@@ -1,5 +1,5 @@
 import asyncio
-import platform
+from contextlib import suppress
 from copy import copy
 from unittest.mock import Mock, patch
 
@@ -40,9 +40,6 @@ def _prepare_app(app):
     return app
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 @pytest.mark.allow_lingering_tasks(count=1)
 async def test_simple(app, loop):
@@ -54,9 +51,6 @@ async def test_simple(app, loop):
         assert await channel_empty(stream.channel)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_async_iterator(app):
     async with new_stream(app) as stream:
@@ -71,9 +65,6 @@ async def test_async_iterator(app):
         assert await channel_empty(stream.channel)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_throw(app):
     async with new_stream(app) as stream:
@@ -85,9 +76,6 @@ async def test_throw(app):
             await anext(streamit)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_enumerate(app):
     async with new_stream(app) as stream:
@@ -102,9 +90,6 @@ async def test_enumerate(app):
         assert await channel_empty(stream.channel)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_items(app):
     async with new_stream(app) as stream:
@@ -120,9 +105,6 @@ async def test_items(app):
         assert await channel_empty(stream.channel)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_through(app):
     app._attachments.enabled = False
@@ -255,9 +237,6 @@ async def test_stream_filter_acks_filtered_out_messages(app, event_loop):
     assert len(app.consumer.unacked) == 0
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_acks_filtered_out_messages_when_using_take(app, event_loop):
     """
@@ -282,9 +261,6 @@ async def test_acks_filtered_out_messages_when_using_take(app, event_loop):
     assert len(acked) == len(initial_values)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_events(app):
     async with new_stream(app) as stream:
@@ -321,9 +297,6 @@ def assert_events_acked(events):
         raise
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 class Test_chained_streams:
     def _chain(self, app):
         root = new_stream(app)
@@ -427,9 +400,6 @@ class Test_chained_streams:
             assert node._stopped.is_set()
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_start_and_stop_Stream(app):
     s = new_topic_stream(app)
@@ -445,9 +415,6 @@ async def _start_stop_stream(stream):
     await stream.stop()
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_ack(app):
     async with new_stream(app) as s:
@@ -456,7 +423,8 @@ async def test_ack(app):
         await s.channel.send(value=2)
         event = None
         i = 1
-        async for value in s:
+        it = aiter(s)
+        async for value in it:
             assert value == i
             i += 1
             last_to_ack = value == 2
@@ -464,18 +432,12 @@ async def test_ack(app):
             if value == 2:
                 break
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event, it)
         if not event.ack.called:
             assert event.message.acked
             assert not event.message.refcount
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_noack(app):
     async with new_stream(app) as s:
@@ -496,9 +458,6 @@ async def test_noack(app):
         event.ack.assert_not_called()
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_acked_when_raising(app):
     async with new_stream(app) as s:
@@ -506,39 +465,32 @@ async def test_acked_when_raising(app):
         await s.channel.send(value=2)
 
         event1 = None
+        it1 = aiter(s)
         with pytest.raises(RuntimeError):
-            async for value in s:
+            async for value in it1:
                 event1 = mock_stream_event_ack(s)
                 assert value == 1
                 raise RuntimeError
         assert event1
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event1, it1)
         if not event1.ack.called:
             assert event1.message.acked
             assert not event1.message.refcount
 
         event2 = None
+        it2 = aiter(s)
         with pytest.raises(RuntimeError):
-            async for value in s:
+            async for value in it2:
                 event2 = mock_stream_event_ack(s)
                 assert value == 2
                 raise RuntimeError
         assert event2
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)  # needed for some reason
-        await asyncio.sleep(0)  # needed for some reason
+        await wait_for_stream_ack(event2, it2)
         if not event2.ack.called:
             assert event2.message.acked
             assert not event2.message.refcount
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 @pytest.mark.allow_lingering_tasks(count=1)
 async def test_maybe_forward__when_event(app):
@@ -551,9 +503,6 @@ async def test_maybe_forward__when_event(app):
         s.channel.send.assert_not_called()
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_maybe_forward__when_concrete_value(app):
     s = new_stream(app)
@@ -570,6 +519,23 @@ def mock_event_ack(event, return_value=False):
     event.ack = Mock(name="ack")
     event.ack.return_value = return_value
     return event
+
+
+async def wait_for_stream_ack(event, agen):
+    """Ensure a consumed event has been acked, deterministically.
+
+    The ack runs in the ``take()``/iterator generator's ``finally`` block,
+    which only executes when the generator is finalized.  Abandoning the
+    generator (``break`` or an exception in ``async for``) defers that to
+    interpreter finalization -- immediate on CPython via reference counting,
+    but only at a later (maybe never) GC cycle on PyPy.  Closing the generator
+    explicitly runs its ``finally`` now, on every interpreter; ``aclose()`` on
+    an already-finished generator is a harmless no-op.  A still-running
+    generator raises RuntimeError on CPython / ValueError on PyPy; both are
+    ignored (its owner will finalize it).
+    """
+    with suppress(RuntimeError, ValueError):
+        await agen.aclose()
 
 
 async def get_event_from_value(stream, value, key=None):
@@ -759,22 +725,81 @@ async def test_take(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take(1, within=1):
+        buffer = s.take(1, within=1)
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
             assert not event.message.refcount
         assert s.enable_acks is True
+
+
+@pytest.mark.asyncio
+async def test_take_cleanup_on_stream_stop(app):
+    """An abandoned take() generator is closed when the stream stops.
+
+    Breaking out of ``async for`` leaves the generator suspended; its cleanup
+    (acking consumed events, restoring ``enable_acks``, detaching the
+    buffering processor) normally runs only when the interpreter finalizes
+    the generator.  Holding a strong reference here blocks finalization on
+    every interpreter -- mimicking PyPy, where finalization waits for a GC
+    cycle that may never come -- so this asserts the stream itself closes
+    leftover generators deterministically on stop.
+    """
+    async with new_stream(app) as s:
+        assert s.enable_acks is True
+        n_processors = len(s._processors)
+        await s.channel.send(value=1)
+        agen = s.take(1, within=1)  # hold a strong reference
+        event = None
+        async for value in agen:
+            assert value == [1]
+            assert s.enable_acks is False
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        # The reference above keeps the generator alive, so no interpreter
+        # has finalized it yet: cleanup must come from stopping the stream.
+        await s.stop()
+
+        if not event.ack.called:
+            assert event.message.acked
+        assert s.enable_acks is True
+        assert len(s._processors) == n_processors
+
+
+@pytest.mark.asyncio
+async def test_aiter_cleanup_on_stream_stop(app):
+    """An abandoned ``__aiter__`` generator is closed when the stream stops.
+
+    Same contract as ``test_take_cleanup_on_stream_stop`` but for the main
+    stream iterator: its inner ``finally`` acks the last yielded event, and
+    that only runs when the generator is finalized.  Holding a strong
+    reference blocks finalization on every interpreter (mimicking PyPy), so
+    the ack must come from the stream closing its tracked iterators on stop.
+    """
+    async with new_stream(app) as s:
+        await s.channel.send(value=1)
+        agen = aiter(s)  # hold a strong reference
+        event = None
+        async for value in agen:
+            assert value == 1
+            event = mock_stream_event_ack(s)
+            break
+
+        assert event
+        await s.stop()
+
+        if not event.ack.called:
+            assert event.message.acked
 
 
 @pytest.mark.asyncio
@@ -869,9 +894,10 @@ async def test_take_wit_timestamp(app):
         assert s.enable_acks is True
         await s.channel.send(value={"id": 1})
         event = None
-        async for value in s.take_with_timestamp(
+        buffer = s.take_with_timestamp(
             1, within=1, timestamp_field_name="test_timestamp"
-        ):
+        )
+        async for value in buffer:
             assert "test_timestamp" in value[0].keys()
             assert isinstance(value[0]["test_timestamp"], float)
             assert s.enable_acks is False
@@ -879,10 +905,7 @@ async def test_take_wit_timestamp(app):
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
@@ -896,19 +919,17 @@ async def test_take_wit_timestamp_wit_simple_value(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take_with_timestamp(
+        buffer = s.take_with_timestamp(
             1, within=1, timestamp_field_name="test_timestamp"
-        ):
+        )
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked
@@ -922,19 +943,15 @@ async def test_take_wit_timestamp_without_timestamp_field(app):
         assert s.enable_acks is True
         await s.channel.send(value=1)
         event = None
-        async for value in s.take_with_timestamp(
-            1, within=1, timestamp_field_name=None
-        ):
+        buffer = s.take_with_timestamp(1, within=1, timestamp_field_name=None)
+        async for value in buffer:
             assert value == [1]
             assert s.enable_acks is False
             event = mock_stream_event_ack(s)
             break
 
         assert event
-        # need one sleep on Python 3.6.0-3.6.6 + 3.7.0
-        # need two sleeps on Python 3.6.7 + 3.7.1 :-/
-        await asyncio.sleep(0)
-        await asyncio.sleep(0)
+        await wait_for_stream_ack(event, buffer)
 
         if not event.ack.called:
             assert event.message.acked

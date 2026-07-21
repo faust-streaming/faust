@@ -1,9 +1,7 @@
 import copy
-import platform
 from collections import Counter
 from typing import MutableMapping
 
-import pytest
 from hypothesis import assume, given, settings
 from hypothesis.strategies import integers
 
@@ -79,9 +77,6 @@ def client_removal_sticky(
     return True
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -100,9 +95,6 @@ def test_fresh_assignment(partitions, replicas, num_clients):
     assert is_valid(new_assignments, partitions, replicas)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -139,9 +131,6 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
         assert clients_balanced(new_assignments)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -179,3 +168,31 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
         assert client_removal_sticky(old_assignments, new_assignments)
     elif partitions >= num_clients - num_removal_clients:
         assert clients_balanced(new_assignments)
+
+
+@given(
+    partitions=integers(min_value=2, max_value=256),
+    num_clients=integers(min_value=2, max_value=64),
+    replicas=integers(min_value=1, max_value=8),
+)
+@settings(deadline=TEST_DEADLINE)
+def test_standby_assignment_terminates(partitions, num_clients, replicas):
+    # Regression test for a standby-assignment livelock.
+    #
+    # When the round-robin pass has to free up a slot on an exhausted client,
+    # it used to evict an arbitrary partition (``set.pop``).  If that arbitrary
+    # choice was the partition's only possible home, two partitions could
+    # ping-pong between the work queue and the same client forever.  Whether it
+    # happened depended on set iteration order, so the assignment hung on PyPy
+    # while completing on CPython for identical input.  Any ``replicas >= 1``
+    # case exercises the standby path; this asserts termination and a valid,
+    # fully-replicated assignment regardless of interpreter.
+    assume(replicas < num_clients)
+    client_assignments = {
+        str(client): CopartitionedAssignment(topics=_topics)
+        for client in range(num_clients)
+    }
+    new_assignments = CopartitionedAssignor(
+        _topics, client_assignments, partitions, replicas=replicas
+    ).get_assignment()
+    assert is_valid(new_assignments, partitions, replicas)

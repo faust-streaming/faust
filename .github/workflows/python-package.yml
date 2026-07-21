@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Run the checks on merge-queue candidates too, so the merge queue enabled
+  # on `master` can validate each candidate as a `merge_group` event -- the
+  # required `check` job must run there or queued PRs stall.
+  merge_group:
   release:
     types: [created]
     branches: [master]
@@ -70,7 +74,10 @@ jobs:
   test-pypy:
     name: 'Python pypy3.11/Cython: false'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # PyPy runs the pure-Python paths and is markedly slower than CPython, and
+    # this leg now runs the formerly-skipped tests too; give it headroom over
+    # the old 10-minute cap, which already clipped the run at ~96%.
+    timeout-minutes: 15
     continue-on-error: true
     env:
       USE_CYTHON: 'false'
