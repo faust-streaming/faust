@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Run the checks on merge-queue candidates too, so the merge queue enabled
+  # on `master` can validate each candidate as a `merge_group` event -- the
+  # required `check` job must run there or queued PRs stall.
+  merge_group:
   release:
     types: [created]
     branches: [master]
