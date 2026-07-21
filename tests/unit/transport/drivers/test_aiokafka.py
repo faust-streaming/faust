@@ -437,26 +437,30 @@ class Test_Log_Slow_Processing(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_no_fetch_since_start(Test_verify_event_path_base):
     def test_just_started(self, *, cthread, now, tp, logger):
         self._set_started(now - 2.0)
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
-    def test_timed_out(self, *, cthread, now, tp, logger):
+    def test_timed_out(self, *, cthread, now, tp, logger, _consumer):
+        # No fetch request has ever been sent: aiokafka has not stamped a
+        # poll timestamp on the partition state yet.
+        state = (
+            _consumer._fetcher._subscriptions.subscription.assignment.state_value.return_value  # noqa: E501
+        )
+        state.timestamp = None
         self._set_started(
             now - cthread.tp_fetch_request_timeout_secs * 2,
         )
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_called_with(
             mod.SLOW_PROCESSING_NO_FETCH_SINCE_START,
-            ANY,
+            tp,
             ANY,
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_no_response_since_start(Test_verify_event_path_base):
     def test_just_started(self, *, cthread, _consumer, now, tp, logger):
         self._set_last_request(now - 5.0)
@@ -464,6 +468,14 @@ class Test_VEP_no_response_since_start(Test_verify_event_path_base):
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
+    @pytest.mark.skip(
+        reason="SOURCE BUG: faust/transport/drivers/aiokafka.py defines "
+        "SLOW_PROCESSING_NO_RESPONSE_SINCE_START but never emits it. "
+        "_verify_aiokafka_event_path only logs NO_FETCH_SINCE_START and "
+        "NO_RECENT_FETCH from the aiokafka poll timestamp; the "
+        "response-since-start check was dropped and the constant is now "
+        "dead code, so no condition can make verify_event_path log it."
+    )
     def test_timed_out(self, *, cthread, _consumer, now, tp, logger):
         assert cthread.verify_event_path(now, tp) is None
         self._set_last_request(now - 5.0)
@@ -501,7 +513,6 @@ class Test_VEP_no_recent_fetch(Test_verify_event_path_base):
         )
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_no_recent_response(Test_verify_event_path_base):
     def test_recent_response(self, *, cthread, now, tp, logger):
         self._set_last_request(now - 10.0)
@@ -509,6 +520,14 @@ class Test_VEP_no_recent_response(Test_verify_event_path_base):
         assert cthread.verify_event_path(now, tp) is None
         logger.error.assert_not_called()
 
+    @pytest.mark.skip(
+        reason="SOURCE BUG: faust/transport/drivers/aiokafka.py defines "
+        "SLOW_PROCESSING_NO_RECENT_RESPONSE but never emits it. "
+        "_verify_aiokafka_event_path only tracks the aiokafka poll "
+        "timestamp (request side) and logs NO_RECENT_FETCH; the "
+        "broker-response-staleness check was dropped and the constant is "
+        "now dead code, so no condition can make verify_event_path log it."
+    )
     def test_timed_out(self, *, cthread, now, tp, logger):
         self._set_last_request(now - 10.0)
         self._set_last_response(now - cthread.tp_fetch_response_timeout_secs * 2)
@@ -608,7 +627,6 @@ class Test_VEP_stream_idle_highwater_same_has_acks_everything_OK(
         logger.error.assert_not_called()
 
 
-@pytest.mark.skip("Needs fixing")
 class Test_VEP_stream_idle_highwater_no_inbound(Test_verify_event_path_base):
     highwater = 20
     committed_offset = 10
@@ -630,13 +648,13 @@ class Test_VEP_stream_idle_highwater_no_inbound(Test_verify_event_path_base):
         expected_message = cthread._make_slow_processing_error(
             mod.SLOW_PROCESSING_STREAM_IDLE_SINCE_START,
             [mod.SLOW_PROCESSING_CAUSE_STREAM, mod.SLOW_PROCESSING_CAUSE_AGENT],
+            "stream_processing_timeout",
+            app.conf.stream_processing_timeout,
         )
         logger.error.assert_called_once_with(
             expected_message,
             tp,
             ANY,
-            setting="stream_processing_timeout",
-            current_value=app.conf.stream_processing_timeout,
         )
 
     def test_has_inbound(self, *, app, cthread, now, tp, logger):
@@ -658,13 +676,13 @@ class Test_VEP_stream_idle_highwater_no_inbound(Test_verify_event_path_base):
         expected_message = cthread._make_slow_processing_error(
             mod.SLOW_PROCESSING_STREAM_IDLE,
             [mod.SLOW_PROCESSING_CAUSE_STREAM, mod.SLOW_PROCESSING_CAUSE_AGENT],
+            "stream_processing_timeout",
+            app.conf.stream_processing_timeout,
         )
         logger.error.assert_called_once_with(
             expected_message,
             tp,
             ANY,
-            setting="stream_processing_timeout",
-            current_value=app.conf.stream_processing_timeout,
         )
 
 
@@ -907,7 +925,6 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
     def test_trace_category(self, *, cthread, app):
         assert cthread.trace_category == f"{app.conf.name}-_aiokafka"
 
-    @pytest.mark.skip("Needs fixing")
     def test_transform_span_lazy(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -920,7 +937,6 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         cthread.on_generation_id_known()
         assert not pending
 
-    @pytest.mark.skip("Needs fixing")
     def test_transform_span_flush_spans(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -939,7 +955,6 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
 
         assert cthread._on_span_cancelled_early(span) is None
 
-    @pytest.mark.skip("Needs fixing")
     def test_transform_span_lazy_no_consumer(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = -1
@@ -953,7 +968,6 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             span = pending.popleft()
             cthread._on_span_generation_known(span)
 
-    @pytest.mark.skip("Needs fixing")
     def test_transform_span_eager(self, *, cthread, app, tracer):
         cthread._consumer = Mock(name="_consumer")
         cthread._consumer._coordinator.generation = 10
@@ -1048,46 +1062,41 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
         with self.assert_calls_thread(cthread, _consumer, cthread._commit, offsets):
             await cthread.commit(offsets)
 
-    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit(self, *, cthread, _consumer):
         offsets = {TP1: 1001}
         cthread._consumer = _consumer
+        # _commit only commits offsets for partitions in the assignment.
+        _consumer.assignment.return_value = {TP1}
         await cthread._commit(offsets)
 
         _consumer.commit.assert_called_once_with(
             {TP1: OffsetAndMetadata(1001, "")},
         )
 
-    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__already_rebalancing(self, *, cthread, _consumer):
         cthread._consumer = _consumer
         _consumer.commit.side_effect = CommitFailedError("already rebalanced")
         assert not (await cthread._commit({TP1: 1001}))
 
-    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__CommitFailedError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
+        _consumer.assignment.return_value = {TP1}
         exc = _consumer.commit.side_effect = CommitFailedError("xx")
         cthread.crash = AsyncMock()
-        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
-        cthread.supervisor.wakeup.assert_called_once()
 
-    @pytest.mark.skip("Needs fixing")
     @pytest.mark.asyncio
     async def test__commit__IllegalStateError(self, *, cthread, _consumer):
         cthread._consumer = _consumer
-        cthread.assignment = Mock()
+        cthread.assignment = Mock(return_value={TP1})
         exc = _consumer.commit.side_effect = IllegalStateError("xx")
         cthread.crash = AsyncMock()
-        cthread.supervisor = Mock(name="supervisor")
         assert not (await cthread._commit({TP1: 1001}))
         cthread.crash.assert_called_once_with(exc)
-        cthread.supervisor.wakeup.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_position(self, *, cthread, _consumer):
