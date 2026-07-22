@@ -107,7 +107,7 @@ jobs:
             scripts/tests
           fi
       - name: Enforce coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   test-pypy:
@@ -140,7 +140,7 @@ jobs:
         run: scripts/tests
       - name: Enforce coverage
         if: steps.install.outcome == 'success'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   test-integration:
