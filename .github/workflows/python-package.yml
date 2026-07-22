@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout project
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Set up Python
@@ -82,7 +82,7 @@ jobs:
       USE_CYTHON: ${{ matrix.use-cython }}
     continue-on-error: ${{ matrix.experimental }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -121,7 +121,7 @@ jobs:
     env:
       USE_CYTHON: 'false'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -159,7 +159,7 @@ jobs:
         # works for both.
         kafka-version: ['3.8.1', '4.0.0']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -233,7 +233,7 @@ jobs:
           --health-timeout 3s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
@@ -274,7 +274,7 @@ jobs:
         # pyproject.toml's [tool.cibuildwheel] (cp3*, auto64, Cython).
         os: [ubuntu-latest, macos-15-intel, macos-14, windows-2022]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Build wheels
@@ -293,7 +293,7 @@ jobs:
     needs: check
     if: github.event_name == 'release' && github.event.action == 'created'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         name: Checkout source repository
         with:
           fetch-depth: 0
