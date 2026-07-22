@@ -9,6 +9,6 @@ sphinx2rst>=1.0
 tox>=2.3.1
 twine
 vulture
-wheel>=0.29.0
+wheel>=0.47.0
 intervaltree
 importlib-metadata; python_version<'3.8'
