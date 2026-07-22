@@ -282,7 +282,7 @@ jobs:
         # stopped at cp313 and no 3.14 wheels were published (issue #715).
         # 4.x builds 3.14 by default and still supports cp310-cp313.
         uses: pypa/cibuildwheel@v4.1.0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
@@ -306,7 +306,7 @@ jobs:
         run: >
           pip3 install build pkgconfig cython --upgrade &&
           python3 -m build --sdist --outdir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         name: Upload build artifacts
         with:
           name: cibw-sdist
