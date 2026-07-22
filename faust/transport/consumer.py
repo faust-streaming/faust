@@ -1053,8 +1053,8 @@ class Consumer(Service, ConsumerT):
                 on_timeout.info("+tables.on_commit")
                 self.app.tables.on_commit(committable_offsets)
                 on_timeout.info("-tables.on_commit")
-        self._committed_offset.update(committable_offsets)
-        self.app.monitor.on_tp_commit(committable_offsets)
+                self._committed_offset.update(committable_offsets)
+                self.app.monitor.on_tp_commit(committable_offsets)
         return did_commit
 
     def _filter_tps_with_pending_acks(
