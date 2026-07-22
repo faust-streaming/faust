@@ -258,6 +258,39 @@ Class: ``TableState``
         .. autoattribute:: keys_deleted
             :noindex:
 
+.. _sensor-opentelemetry:
+
+OpenTelemetry
+=============
+
+Faust can be instrumented with `OpenTelemetry`_ using the official
+`opentelemetry-instrumentation-faust`_ package:
+
+.. sourcecode:: console
+
+    $ pip install opentelemetry-instrumentation-faust
+
+The instrumentation uses the sensor API described on this page to
+record a producer span for every message sent to Kafka (injecting the
+span context into the message headers), and a consumer span for every
+event processed by an agent (continuing the trace from the incoming
+message headers).
+
+Instrument faust before creating the app:
+
+.. sourcecode:: python
+
+    import faust
+    from opentelemetry.instrumentation.faust import FaustInstrumentor
+
+    FaustInstrumentor().instrument()
+
+    app = faust.App('example', broker='kafka://localhost:9092')
+
+.. _`OpenTelemetry`: https://opentelemetry.io/
+.. _`opentelemetry-instrumentation-faust`:
+    https://pypi.org/project/opentelemetry-instrumentation-faust/
+
 .. _sensor-reference:
 
 Sensor API Reference
