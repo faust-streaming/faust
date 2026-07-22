@@ -8,7 +8,7 @@ autoflake
 flake8==5.0.4  # 5.0.4 can be upgraded to 6.0.0+ when we EOL Python 3.7
 flake8-bugbear
 flake8-comprehensions
-hypothesis>=3.31
+hypothesis>=6.160.0
 freezegun>=0.3.11
 mock; python_version<'3.8'  # backport that contains AsyncMock class, includes mock library as dependency
 pre-commit
