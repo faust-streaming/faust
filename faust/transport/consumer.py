@@ -1118,12 +1118,37 @@ class Consumer(Service, ConsumerT):
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
             batch = next(consecutive_numbers(acked))
+
+            # Never commit past a message that has been read but not yet
+            # acked: with concurrency the message at the head of the partition
+            # can still be processing while later offsets are already acked, so
+            # the acked run may jump right over it.  Committing then loses that
+            # in-flight message on the next restart.  Cap the batch at the
+            # smallest unacked offset for this tp.  See issue #606.
+            smallest_unacked = self._smallest_unacked_offset(tp)
+            if smallest_unacked is not None:
+                batch = [offset for offset in batch if offset < smallest_unacked]
+                if not batch:
+                    return None
+
             # remove them from the list to clean up.
             acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)
             # return the highest commit offset
             return batch[-1] + 1
         return None
+
+    def _smallest_unacked_offset(self, tp: TP) -> Optional[int]:
+        # Smallest offset of a message that has been delivered to a stream but
+        # is not yet acknowledged, for this topic-partition (or None if there
+        # are no in-flight messages).  Used to make sure a commit never skips
+        # past an event that is still being processed.  See issue #606.
+        offsets = [
+            message.offset
+            for message in self._unacked_messages
+            if message.tp == tp and not message.acked
+        ]
+        return min(offsets) if offsets else None
 
     async def on_task_error(self, exc: BaseException) -> None:
         """Call when processing a message failed."""

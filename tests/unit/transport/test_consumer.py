@@ -1085,6 +1085,30 @@ class TestConsumer:
         consumer._gap[tp] = gaps
         assert consumer._new_offset(tp) == expected_offset
 
+    def test_new_offset__withheld_for_inflight_message(self, *, consumer):
+        # Regression test for #606: with concurrency the head message can be
+        # still in-flight (read but not yet acked) while later offsets ack.
+        # Committing would jump over it and lose it on the next restart, so no
+        # offset may be committed until it is acked.
+        tp = TP1
+        consumer._committed_offset[tp] = 2585
+        consumer._acked[tp] = [2586, 2587, 2588, 2589]
+        inflight = Mock(name="msg2585", tp=tp, offset=2585, acked=False)
+        consumer._unacked_messages.add(inflight)
+
+        assert consumer._new_offset(tp) is None
+
+    def test_new_offset__commits_up_to_inflight_message(self, *, consumer):
+        # Offsets acked before the in-flight message are still committable;
+        # only the in-flight offset and everything after it is withheld.
+        tp = TP1
+        consumer._committed_offset[tp] = 100
+        consumer._acked[tp] = [100, 101, 102]
+        inflight = Mock(name="msg101", tp=tp, offset=101, acked=False)
+        consumer._unacked_messages.add(inflight)
+
+        assert consumer._new_offset(tp) == 101
+
     @pytest.mark.asyncio
     async def test_on_task_error(self, *, consumer):
         consumer.commit = AsyncMock(name="commit")
