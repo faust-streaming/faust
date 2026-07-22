@@ -986,3 +986,26 @@ class Test_Agent:
         async with agent.test_context() as agent_mock:
             with pytest.raises(SinkCalledException):
                 await agent_mock.put("hello")
+
+    @pytest.mark.skipif(
+        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
+    )
+    async def test_context__sinkless_agent(self, *, app):
+        # An agent that never yields cannot use sinks, so test_context() used
+        # to raise ImproperlyConfigured("Agent must yield to use sinks") at
+        # startup.  It should now work and still let put(wait=True) return.
+        # See issue #433.
+        processed = []
+
+        @app.agent()
+        async def sinkless(stream):
+            async for value in stream:
+                processed.append(value)
+
+        async with sinkless.test_context() as agent:
+            assert not agent._agent_yields
+            event = await agent.put("hello")
+            assert event.value == "hello"
+
+        assert processed == ["hello"]
+        assert agent.results[0] == "hello"
