@@ -9,7 +9,7 @@ from mode.utils.futures import done_future
 
 from faust import App
 from faust.app._attached import Attachments
-from faust.exceptions import AlreadyConfiguredWarning
+from faust.exceptions import AlreadyConfiguredWarning, ConsumerNotStarted
 from faust.tables.manager import TableManager
 from faust.transport.base import Producer, Transport
 from faust.transport.conductor import Conductor
@@ -1393,6 +1393,21 @@ class Test_ThreadDelegateConsumer:
                     call(now, TP3),
                 ]
             )
+
+    @pytest.mark.asyncio
+    async def test_verify_all_partitions_active__consumer_not_started(
+        self, *, consumer
+    ):
+        # The livelock detector can run before the consumer thread has
+        # started; assignment() then raises ConsumerNotStarted.  This must
+        # be swallowed rather than crash the app.  See issue #446.
+        consumer.assignment = Mock(name="assignment", side_effect=ConsumerNotStarted())
+        consumer.verify_event_path = Mock(name="verify_event_path")
+
+        with patch("faust.transport.consumer.monotonic"):
+            await consumer.verify_all_partitions_active()
+
+        consumer.verify_event_path.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_verify_all_partitions_active__bail_on_sleep(self, *, consumer):
