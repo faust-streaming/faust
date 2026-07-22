@@ -2,7 +2,7 @@
 
 import typing
 from types import TracebackType
-from typing import Any, Awaitable, Optional, Type, Union, cast
+from typing import Any, Awaitable, Dict, Optional, Type, Union, cast
 
 from faust.types import (
     AppT,
@@ -128,6 +128,11 @@ class Event(EventT):
             self.headers = {}
 
         self.acked: bool = False
+        #: Per-sensor state captured by ``Sensor.on_stream_event_in`` and
+        #: handed back to ``on_stream_event_out`` when the event is acked.
+        #: Stored here so deferred acks (e.g. ``Stream.take``) can still
+        #: report the event runtime.  See issue #319.
+        self.sensor_state: Optional[Dict] = None
 
     async def send(
         self,

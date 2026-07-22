@@ -182,10 +182,16 @@ class SensorDelegate(SensorDelegateT):
         self, tp: TP, offset: int, stream: StreamT, event: EventT
     ) -> Optional[Dict]:
         """Call when stream starts processing an event."""
-        return {
+        state = {
             sensor: sensor.on_stream_event_in(tp, offset, stream, event)
             for sensor in self._sensors
         }
+        # Remember the per-sensor state on the event itself so that a
+        # deferred ack (e.g. Stream.take(), which acks manually long after
+        # the main loop yielded) can still deliver it to on_stream_event_out
+        # and record the true event runtime.  See issue #319.
+        event.sensor_state = state
+        return state
 
     def on_stream_event_out(
         self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None

@@ -1327,7 +1327,13 @@ class Stream(StreamT[T_co], Service):
         message = event.message
         tp = message.tp
         offset = message.offset
-        self._on_stream_event_out(tp, offset, self, event)
+        # Forward the sensor state captured in on_stream_event_in so the
+        # event runtime is recorded even when acking is deferred (e.g. the
+        # buffered events produced by Stream.take()).  Clear it afterwards so
+        # a second ack of the same event cannot double-count.  See issue #319.
+        sensor_state = getattr(event, "sensor_state", None)
+        self._on_stream_event_out(tp, offset, self, event, sensor_state)
+        event.sensor_state = None
         if last_stream_to_ack:
             self._on_message_out(tp, offset, message)
         return last_stream_to_ack

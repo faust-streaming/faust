@@ -4,6 +4,7 @@ from typing import (
     Any,
     AsyncContextManager,
     Awaitable,
+    Dict,
     Generic,
     Mapping,
     Optional,
@@ -38,8 +39,9 @@ class EventT(Generic[T], AsyncContextManager):
     headers: Mapping
     message: Message
     acked: bool
+    sensor_state: Optional[Dict]
 
-    __slots__ = ("app", "key", "value", "headers", "message", "acked")
+    __slots__ = ("app", "key", "value", "headers", "message", "acked", "sensor_state")
 
     @abc.abstractmethod
     def __init__(
