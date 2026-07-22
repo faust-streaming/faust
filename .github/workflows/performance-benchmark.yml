@@ -1,0 +1,91 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      max_regression:
+        description: Maximum allowed slowdown versus a release baseline (for example, 1.25 = 25%)
+        required: false
+        default: "1.25"
+  schedule:
+    - cron: "23 4 * * 1"
+
+concurrency:
+  group: performance-benchmark-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: Compare current branch to recent releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run release comparison benchmarks
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PERF_MAX_REGRESSION: ${{ inputs.max_regression }}
+        run: |
+          python -m pip install --upgrade pip
+          MAX_REGRESSION="${PERF_MAX_REGRESSION:-1.25}"
+          python extra/tools/ci_benchmark.py \
+            --repo "$GITHUB_REPOSITORY" \
+            --release-count 2 \
+            --max-regression "$MAX_REGRESSION" \
+            --output-json benchmark-results.json \
+            --current-output-json benchmark-current.json \
+            --summary benchmark-summary.md
+
+      - name: Add benchmark summary
+        if: always()
+        run: |
+          if [ -f benchmark-summary.md ]; then
+            cat benchmark-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Benchmark did not produce a summary." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload benchmark artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-benchmark-results
+          path: |
+            benchmark-results.json
+            benchmark-current.json
+            benchmark-summary.md
+          if-no-files-found: ignore
+
+      - name: Store benchmark history
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: Faust core benchmarks
+          tool: customSmallerIsBetter
+          output-file-path: benchmark-current.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          gh-pages-branch: gh-pages
+          benchmark-data-dir-path: dev/bench
+          alert-threshold: "125%"
+          comment-on-alert: true
+          fail-on-alert: false
