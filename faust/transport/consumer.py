@@ -748,7 +748,13 @@ class Consumer(Service, ConsumerT):
                     or tp in self._buffered_partitions
                 ):
                     highwater_mark = self.highwater(tp)
-                    self.app.monitor.track_tp_end_offset(tp, highwater_mark)
+                    # highwater() can return None during a rebalance before
+                    # the end offset is known.  Tracking it would crash the
+                    # metric sensors that do float(offset) (Prometheus,
+                    # Datadog, StatsD) and take down _drain_messages.  Skip
+                    # until the highwater is known.  See issue #214.
+                    if highwater_mark is not None:
+                        self.app.monitor.track_tp_end_offset(tp, highwater_mark)
                     # convert timestamp to seconds from int milliseconds.
                     yield tp, to_message(tp, record)
         else:
