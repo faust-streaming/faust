@@ -397,6 +397,26 @@ CASE_UNION_X_Y = TypeExpressionTest(
     expected_types={NodeType.MODEL: {ModelT}},
 )
 
+# Regression for faust-streaming/mode#80: a heterogeneous union whose members
+# are neither all Models nor all scalar "literal" types (here list/dict are
+# neither) must pass the value through unchanged instead of raising
+# NotImplementedError.
+CASE_UNION_STR_LIST_DICT = TypeExpressionTest(
+    type_expression=Union[str, list, dict],
+    serialized_data={"key": "value"},
+    expected_result={"key": "value"},
+    expected_comprehension="a",
+    expected_types={},
+)
+
+CASE_UNION_STR_LIST_DICT_NONE = TypeExpressionTest(
+    type_expression=Union[str, list, dict, None],
+    serialized_data=[1, 2, 3],
+    expected_result=[1, 2, 3],
+    expected_comprehension="(a if a is not None else None)",
+    expected_types={},
+)
+
 CASES = [
     CASE_TUPLE_LIST_SET_X,
     CASE_LIST_LIST_X,
@@ -423,6 +443,8 @@ CASES = [
     CASE_LIST_NO_ARGS,
     CASE_UNION_STR_INT_FLOAT,
     CASE_UNION_X_Y,
+    CASE_UNION_STR_LIST_DICT,
+    CASE_UNION_STR_LIST_DICT_NONE,
 ]
 
 
@@ -439,3 +461,29 @@ def test_compile(case):
     fun = expr.as_function(globals=globals())
     assert fun(case.serialized_data) == case.expected_result
     assert expr.found_types == case.expected_types
+
+
+def test_record_heterogeneous_union_field():
+    # Regression test for faust-streaming/mode#80: defining a Record with a
+    # heterogeneous union field must not raise NotImplementedError at
+    # class-definition time, and the value round-trips through unchanged
+    # (including None, via the optional pass-through).
+    class SensitiveInfo(Record, namespace="test.SensitiveInfo"):
+        data: Union[str, list, dict, None]
+        meta: dict
+
+    v = SensitiveInfo.from_data({"data": [1, 2, 3], "meta": {"k": "v"}})
+    assert v.data == [1, 2, 3]
+    assert v.meta == {"k": "v"}
+    assert SensitiveInfo.from_data({"data": None, "meta": {}}).data is None
+
+
+def test_record_heterogeneous_union_field_pep604():
+    # The exact PEP 604 (X | Y) spelling from mode#80 must behave identically
+    # to the typing.Union spelling above.
+    class SensitiveInfo(Record, namespace="test.SensitiveInfoPEP604"):
+        data: str | list | dict | None
+        meta: dict
+
+    v = SensitiveInfo.from_data({"data": {"k": "v"}, "meta": {}})
+    assert v.data == {"k": "v"}
