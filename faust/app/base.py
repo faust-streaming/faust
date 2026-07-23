@@ -480,7 +480,7 @@ class App(AppT, Service):
         # for the web server.
         self._monitor = monitor
 
-        # Any additional asyncio.Task's specified using @app.task decorator.
+        # Any additional asyncio.Tasks specified using @app.task decorator.
         self._app_tasks = []
 
         # Called as soon as the a worker is fully operational.
@@ -1150,6 +1150,7 @@ class App(AppT, Service):
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
+        value_serializer: str = None,
         **kwargs: Any,
     ) -> TableT:
         """Define new table.
@@ -1181,6 +1182,7 @@ class App(AppT, Service):
                     beacon=self.tables.beacon,
                     partitions=partitions,
                     help=help,
+                    value_serializer=value_serializer,
                     **kwargs,
                 ),
             )
