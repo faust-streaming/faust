@@ -109,6 +109,11 @@ class TestOpenTelemetryMonitor:
     def test_metrics_container_built_lazily(self, *, mon):
         assert isinstance(mon.metrics, OTelMetrics)
 
+    def test_metrics_container_can_be_injected(self, *, meter):
+        metrics = OTelMetrics(meter)
+        mon = OpenTelemetryMonitor(meter=meter, metrics=metrics, time=_time)
+        assert mon.metrics is metrics
+
     def test_on_message_in(self, *, mon, reader):
         mon.on_message_in(TP1, 400, Mock(name="message"))
 
