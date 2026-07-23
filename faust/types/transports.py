@@ -57,7 +57,7 @@ ConsumerCallback = Callable[[Message], Awaitable]
 
 #: Argument to Consumer.commit to specify topics/tps to commit.
 TPorTopic = Union[str, TP]
-TPorTopicSet = AbstractSet[TPorTopic]
+TPorTopicSet = Optional[AbstractSet[TPorTopic]]
 
 #: Callback (:keyword:`async def`) called when consumer partitions are revoked.
 PartitionsRevokedCallback = Callable[[Set[TP]], Awaitable[None]]

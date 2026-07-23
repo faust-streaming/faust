@@ -631,7 +631,7 @@ class Stream(StreamT[T_co], Service):
     @_tracks_buffer_agen
     async def noack_take(
         self, max_: int, within: Seconds
-    ) -> AsyncIterable[Sequence[T_co]]:
+    ) -> AsyncIterable[Sequence[EventT[T_co]]]:
         """
          Buffer n values at a time and yield a list of buffered values.
         :param max_: Max number of messages to receive. When more than this
@@ -643,7 +643,7 @@ class Stream(StreamT[T_co], Service):
              the agent is likely to stall and block buffered events for an
              unreasonable length of time(!).
         """
-        buffer: List[T_co] = []
+        buffer: List[EventT[T_co]] = []
         events: List[EventT] = []
         buffer_add = buffer.append
         event_add = events.append
@@ -672,7 +672,7 @@ class Stream(StreamT[T_co], Service):
 
                 # We want to save events instead of values to allow for manual ack
                 event = self.current_event
-                buffer_add(cast(T_co, event))
+                buffer_add(event)
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
 
