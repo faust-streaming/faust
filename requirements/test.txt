@@ -28,6 +28,7 @@ wheel
 intervaltree
 -r requirements.txt
 -r extras/datadog.txt
+-r extras/opentelemetry.txt
 -r extras/opentracing.txt
 -r extras/redis.txt
 -r extras/statsd.txt

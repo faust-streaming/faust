@@ -81,6 +81,9 @@ Sensors
 :``faust[prometheus]``:
     for using the Prometheus Faust monitor.
 
+:``faust[opentelemetry]``:
+    for using the OpenTelemetry Faust monitor.
+
 :``faust[sentry]``:
     for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
 
