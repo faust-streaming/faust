@@ -156,9 +156,7 @@ class Worker(mode.Worker):
                     >>> worker = Worker(app)
                     >>> worker.execute_from_commandline()
 
-            3) or if you already have an event loop, calling ``await start``,
-               but in that case *you are responsible for gracefully shutting
-               down the event loop*::
+            3) or if you already have an event loop, calling ``await start``::
 
                     async def start_worker(worker: Worker) -> None:
                         await worker.start()
@@ -166,10 +164,7 @@ class Worker(mode.Worker):
                     def manage_loop():
                         loop = asyncio.get_event_loop_policy().get_event_loop()
                         worker = Worker(app, loop=loop)
-                        try:
-                            loop.run_until_complete(start_worker(worker)
-                        finally:
-                            worker.stop_and_shutdown_loop()
+                        loop.run_until_complete(start_worker(worker))
 
     Arguments:
         app: The Faust app to start.

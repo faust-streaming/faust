@@ -7,7 +7,10 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import shortlabel
 
 __all__ = [

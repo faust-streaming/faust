@@ -14,6 +14,7 @@ from faust.web.drivers.aiohttp import (
     NON_OPTIONS_METHODS,
     Server,
     ServerThread,
+    Web,
     _prepare_cors_options,
 )
 from tests.helpers import AsyncMock
@@ -127,6 +128,25 @@ class Test_Server:
 
 
 class Test_Web:
+    @pytest.mark.conf(web_application_options={"client_max_size": 1234})
+    def test_web_application_options(self, *, app):
+        # web_application_options are forwarded to aiohttp.web.Application.
+        # See issue #551.
+        with (
+            patch("faust.web.drivers.aiohttp.Application") as Application,
+            patch("faust.web.drivers.aiohttp.AppRunner"),
+        ):
+            Web(app)
+            Application.assert_called_once_with(client_max_size=1234)
+
+    def test_web_application_options__default(self, *, app):
+        with (
+            patch("faust.web.drivers.aiohttp.Application") as Application,
+            patch("faust.web.drivers.aiohttp.AppRunner"),
+        ):
+            Web(app)
+            Application.assert_called_once_with()
+
     def test_cors(self, *, web):
         assert web.cors is web.cors
         assert isinstance(web.cors, aiohttp_cors.CorsConfig)

@@ -37,6 +37,10 @@ Stores
 
     **Recommended in production.**
 
+:``faust[rocksdict]``:
+    for storing Faust table state in `RocksDB`_ through the
+    :pypi:`rocksdict` bindings.
+
 
 .. _`RocksDB`: http://rocksdb.org
 
@@ -45,6 +49,13 @@ Caching
 
 :``faust[redis]``:
     for using `Redis_` as a simple caching backend (Memcached-style).
+
+Transports
+~~~~~~~~~~
+
+:``faust[ckafka]``:
+    for using the :pypi:`confluent-kafka` client through the ``confluent://``
+    transport.
 
 Codecs
 ~~~~~~
@@ -66,6 +77,12 @@ Sensors
 
 :``faust[statsd]``:
     for using the Statsd Faust monitor.
+
+:``faust[prometheus]``:
+    for using the Prometheus Faust monitor.
+
+:``faust[sentry]``:
+    for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
 
 Event Loops
 ~~~~~~~~~~~

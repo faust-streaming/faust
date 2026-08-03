@@ -35,6 +35,7 @@ from faust.types.tables import (
     WindowSetT,
     WindowWrapperT,
 )
+from faust.utils import iso8601
 from faust.utils.terminal.tables import dict_as_ansitable
 
 if typing.TYPE_CHECKING:  # pragma: no cover
@@ -402,6 +403,13 @@ class WindowWrapper(WindowWrapperT):
         get_relative_timestamp = self.get_relative_timestamp
         if get_relative_timestamp:
             timestamp = get_relative_timestamp(event)
+            if isinstance(timestamp, str):
+                # relative_to_field() pointing at a field that holds an
+                # ISO-8601 string (e.g. declared as ``str`` rather than
+                # ``datetime``) yields a string here.  Parse it so the
+                # windowing code receives a real number instead of raising
+                # ``TypeError: must be real number, not str``.  See issue #389.
+                timestamp = iso8601.parse(timestamp)
             if isinstance(timestamp, datetime):
                 return timestamp.timestamp()
             return timestamp
