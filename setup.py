@@ -21,6 +21,7 @@ if os.environ.get("NO_CYTHON"):
 
 NAME = "faust"
 BUNDLES = {
+    "aerospike",
     "aiodns",
     "aiomonitor",
     "cchardet",
@@ -30,6 +31,7 @@ BUNDLES = {
     "datadog",
     "debug",
     "fast",
+    "fastapi",
     "opentracing",
     "orjson",
     "prometheus",
