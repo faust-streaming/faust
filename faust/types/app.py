@@ -23,7 +23,10 @@ from typing import (
     no_type_check,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import Seconds, ServiceT, Signal, SupervisorStrategyT, SyncSignal
 from mode.utils.futures import stampede
 from mode.utils.objects import cached_property
