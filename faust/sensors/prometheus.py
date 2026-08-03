@@ -39,6 +39,29 @@ except ImportError:  # pragma: no cover
 
 __all__ = ["setup_prometheus_sensors"]
 
+#: Faust's latency metrics are all observed in milliseconds (see
+#: ``Monitor.ms_since``), but ``prometheus_client.Histogram`` defaults to
+#: second-scale buckets (5ms-10s). Without explicit millisecond-scale
+#: buckets, real latency observations mostly land in the ``+Inf`` overflow
+#: bucket. This mirrors the shape of ``Histogram.DEFAULT_BUCKETS`` scaled
+#: x1000 for milliseconds.
+MS_LATENCY_BUCKETS = (
+    5,
+    10,
+    25,
+    50,
+    75,
+    100,
+    250,
+    500,
+    750,
+    1000,
+    2500,
+    5000,
+    7500,
+    10000,
+)
+
 
 def setup_prometheus_sensors(
     app: AppT,
@@ -144,7 +167,10 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         events_runtime_latency = Histogram(
-            f"{app_name}_events_runtime_ms", "Events runtime in ms", registry=registry
+            f"{app_name}_events_runtime_ms",
+            "Events runtime in ms",
+            registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         total_events = Counter(
             f"{app_name}_total_events", "Total events received", registry=registry
@@ -177,6 +203,7 @@ class FaustMetrics(NamedTuple):
             f"{app_name}_producer_send_latency",
             "Producer send latency in ms",
             registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         total_error_messages_sent = Counter(
             f"{app_name}_total_error_messages_sent",
@@ -187,6 +214,7 @@ class FaustMetrics(NamedTuple):
             f"{app_name}_producer_error_send_latency",
             "Producer error send latency in ms",
             registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         assignment_operations = Counter(
             f"{app_name}_assignment_operations",
@@ -195,7 +223,10 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         assign_latency = Histogram(
-            f"{app_name}_assign_latency", "Assignment latency in ms", registry=registry
+            f"{app_name}_assign_latency",
+            "Assignment latency in ms",
+            registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         total_rebalances = Gauge(
             f"{app_name}_total_rebalances", "Total rebalances", registry=registry
@@ -209,11 +240,13 @@ class FaustMetrics(NamedTuple):
             f"{app_name}_rebalance_done_consumer_latency",
             "Consumer replying that rebalance is done to broker in ms",
             registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         rebalance_done_latency = Histogram(
             f"{app_name}_rebalance_done_latency",
             "Rebalance finished latency in ms",
             registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         count_metrics_by_name = Gauge(
             f"{app_name}_metrics_by_name",
@@ -228,7 +261,10 @@ class FaustMetrics(NamedTuple):
             registry=registry,
         )
         http_latency = Histogram(
-            f"{app_name}_http_latency", "Http response latency in ms", registry=registry
+            f"{app_name}_http_latency",
+            "Http response latency in ms",
+            registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         topic_partition_end_offset = Gauge(
             f"{app_name}_topic_partition_end_offset",
@@ -246,6 +282,7 @@ class FaustMetrics(NamedTuple):
             f"{app_name}_consumer_commit_latency",
             "Consumer commit latency in ms",
             registry=registry,
+            buckets=MS_LATENCY_BUCKETS,
         )
         return cls(
             messages_received=messages_received,

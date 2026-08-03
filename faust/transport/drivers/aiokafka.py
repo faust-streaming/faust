@@ -26,7 +26,6 @@ from typing import (
 
 import aiokafka
 import aiokafka.abc
-import opentracing
 from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
@@ -51,9 +50,15 @@ from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
 from mode.utils.times import Seconds, humanize_seconds_ago, want_seconds
-from opentracing.ext import tags
 from packaging.version import Version
 from yarl import URL
+
+try:
+    import opentracing
+    from opentracing.ext import tags
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
+    from faust.utils._opentracing import tags
 
 from faust.auth import (
     GSSAPICredentials,
@@ -629,7 +634,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 def finish(self) -> None:
                     consumer._span_finish(span)
 
-            span._real_finish, span.finish = span.finish, LazySpan.finish
+            # Bind the replacement to ``span`` -- assigning the raw
+            # ``LazySpan.finish`` function leaves it unbound, so the later
+            # ``span.finish()`` call raises "missing 1 required positional
+            # argument: 'self'".
+            span._real_finish, span.finish = (
+                span.finish,
+                LazySpan.finish.__get__(span),
+            )
 
     def _span_finish(self, span: opentracing.Span) -> None:
         assert self._consumer is not None
