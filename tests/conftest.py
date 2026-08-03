@@ -1,4 +1,7 @@
+import asyncio
+import gc
 import os
+import platform
 import threading
 import time
 from http import HTTPStatus
@@ -42,6 +45,27 @@ def patching(monkeypatch, request):
 @pytest.fixture()
 def loop(event_loop):
     return event_loop
+
+
+@pytest.fixture()
+def event_loop(request):
+    """Per-test event loop (overrides pytest-asyncio's default).
+
+    Identical to the pytest-asyncio 0.21 fixture, except that on PyPy we
+    finalize leftover async generators while the loop is still alive.
+    PyPy has no reference counting, so an abandoned async generator is
+    only finalized at a later GC cycle -- by which time this loop is
+    closed and its cleanup lands on a dead loop (leaking tasks into later
+    tests and misattributing warnings).  A gc pass plus
+    ``shutdown_asyncgens()`` inside the owning test keeps the cleanup
+    here, matching CPython's prompt-finalization behavior.
+    """
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    if platform.python_implementation() == "PyPy":
+        gc.collect()
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
 
 
 class _patching(object):

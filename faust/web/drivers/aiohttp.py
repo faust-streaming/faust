@@ -89,7 +89,9 @@ class Web(base.Web):
 
     def __init__(self, app: AppT, **kwargs: Any) -> None:
         super().__init__(app, **kwargs)
-        self.web_app: Application = Application()
+        self.web_app: Application = Application(
+            **(app.conf.web_application_options or {})
+        )
         self.cors_options = _prepare_cors_options(app.conf.web_cors_options or {})
         self._runner: AppRunner = AppRunner(self.web_app, access_log=None)
         self._transport_handlers = {
@@ -180,15 +182,22 @@ class Web(base.Web):
         """
         ctype = content_type or "application/json"
         payload: Any = _json.dumps(value)
-        # normal json returns str, orjson returns bytes
+        # normal json returns str, orjson returns bytes.
+        # The str path goes through Response(text=...), which makes aiohttp
+        # append "; charset=utf-8" to the content-type; the bytes path uses
+        # Response(body=...), which does not -- so set the charset explicitly
+        # to keep JSON responses consistent regardless of the JSON backend
+        # (see #557).
         if isinstance(payload, bytes):
-            return self.bytes(
-                payload,
+            response = Response(
+                body=payload,
                 content_type=ctype,
+                charset="utf-8",
                 status=status,
                 reason=reason,
                 headers=headers,
             )
+            return cast(base.Response, response)
         else:
             return self.text(
                 payload,
