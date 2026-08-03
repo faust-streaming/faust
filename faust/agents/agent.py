@@ -235,7 +235,22 @@ class Agent(AgentT, Service):
         return []
 
     def actor_tracebacks(self) -> List[str]:
-        return [actor.traceback() for actor in self._actors]
+        tracebacks: List[str] = []
+        for actor in self._actors:
+            try:
+                tracebacks.append(actor.traceback())
+            except RuntimeError as exc:
+                # A coroutine/async generator that has finished naturally has
+                # no stack frame (``cr_frame``/``ag_frame`` is ``None``), and
+                # ``mode`` raises "cannot find stack of coroutine" when asked
+                # to format it.  This happens during ``wait_empty`` around
+                # shutdown and rebalances, where tracebacks are collected
+                # purely for logging -- so a missing frame must not crash the
+                # whole collection.  See issue #105.
+                tracebacks.append(
+                    f"Could not extract traceback for actor {actor!r}: {exc}"
+                )
+        return tracebacks
 
     async def _start_one(
         self,

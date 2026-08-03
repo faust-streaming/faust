@@ -78,7 +78,7 @@ the driver that you want to use (it can also be the fully qualified
 path to a Python class).
 
 The storage driver decides how to keep distributed tables locally, and
-Faust version 1.0 supports two options:
+Faust supports two options:
 
 +----------------+-----------------------------------------------+
 | ``rocksdb://`` | `RocksDB`_ an embedded database (production)  |
