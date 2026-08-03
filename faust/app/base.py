@@ -42,7 +42,10 @@ from typing import (
     no_type_check,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping
@@ -705,8 +708,17 @@ class App(AppT, Service):
             categories = self.SCAN_CATEGORIES
         modules = set(self._discovery_modules())
         modules |= set(extra_modules)
-        for fixup in self.fixups:
-            modules |= set(fixup.autodiscover_modules())
+        # Fixup-provided autodiscovery (e.g. the Django fixup scanning every
+        # app in INSTALLED_APPS) only applies to the blanket
+        # ``autodiscover=True`` mode -- as documented on the Django fixup.
+        # When the user passes an explicit module list (or a callable),
+        # respect it and do not additionally pull in every fixup module,
+        # otherwise a Django app that set e.g.
+        # ``autodiscover=['myproj.agents']`` would still scan all of
+        # INSTALLED_APPS (including migrations/admin).  See #500.
+        if self.conf.autodiscover is True:
+            for fixup in self.fixups:
+                modules |= set(fixup.autodiscover_modules())
         if modules:
             scanner = venusian.Scanner()
             for name in modules:

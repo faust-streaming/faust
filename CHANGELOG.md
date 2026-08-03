@@ -4,6 +4,73 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+<!--
+This changelog was dormant between v0.9.0 and v0.11.3; those releases are
+documented in their GitHub release notes at
+https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
+resumes the Keep a Changelog format.
+-->
+
+## [v0.12.1](https://github.com/faust-streaming/faust/releases/tag/v0.12.1) - 2026-07-19
+
+[Compare with v0.12.0](https://github.com/faust-streaming/faust/compare/v0.12.0...v0.12.1)
+
+Packaging-only patch release. v0.12.0's wheels published to PyPI, but its source
+distribution was rejected under [PEP 625](https://peps.python.org/pep-0625/);
+this release fixes the sdist filename so the full set of artifacts publishes.
+
+### Fixed
+- Build the source distribution with `python -m build` and a PEP 625-compliant
+  (normalized) filename — `faust_streaming-<version>.tar.gz` instead of the
+  legacy `faust-streaming-<version>.tar.gz` that PyPI now rejects (#712).
+
+## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - 2026-07-19
+
+[Compare with v0.11.3](https://github.com/faust-streaming/faust/compare/v0.11.3...v0.12.0)
+
+<!--
+Scope: this entry lists only work already merged to `master`.  Fixes and
+features still in open PRs (e.g. the offset-commit data-loss fixes, the
+optional OpenTracing/OpenTelemetry extras, and the reported-issue fix stack)
+will be added here as they merge.
+-->
+
+### Added
+- Re-add the confluent-kafka transport driver (`confluent://`, install with the
+  `faust[ckafka]` extra), rewritten and tested against the released
+  `confluent-kafka` API.
+- Support Python 3.13 and 3.14 (tested with and without the Cython extensions).
+- `on_clear` handlers on `(Global)Table` and `ChangeloggedSet` (#645).
+- Live-broker integration test harness: CI now starts a real Kafka broker and
+  round-trips messages through both the aiokafka and confluent-kafka client
+  libraries (#706).
+
+### Changed
+- **Dropped support for Python 3.8 and 3.9** (#650); the minimum supported
+  version is now Python 3.10.
+- Replaced the unmaintained `aredis` with `redis-py` for the Redis store and
+  leader (#635).
+- Support recent `aiokafka` releases: handle 0.13.0 removing the `api_version`
+  parameter (#674), and guard aiokafka metadata/admin calls by the negotiated
+  protocol-API version while keeping the Faust partition assignor for changelog
+  tables (#682).
+- Modernize CI and wheel building: updated wheel runners, Windows wheels, a
+  refreshed `cibuildwheel`, and an updated test matrix (#690).
+- Pin `black`/`isort` and update the `click` constraint for reproducible CI
+  (#677, #680).
+
+### Fixed
+- Fix release-artifact upload/download for `upload-artifact@v4` (#684).
+
+### Dependencies
+- Runs on the maintained mode fork `mode-streaming >= 0.4.0`.
+- `aiokafka >= 0.10.0`, now compatible with recent aiokafka releases
+  (0.13.x / 0.14.x) — see #674 and #682.
+- Adds `confluent-kafka >= 2.0.0`, required by the optional `faust[ckafka]`
+  transport driver.
+- The `faust[cchardet]` extra now uses the maintained `faust-cchardet` fork in
+  place of the unmaintained `cchardet`.
+
 ## [v0.8.10](https://github.com/faust-streaming/faust/releases/tag/v0.8.10) - 2022-09-14
 
 [Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)
