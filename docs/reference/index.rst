@@ -54,6 +54,8 @@ Contrib
     :maxdepth: 1
 
     faust.contrib
+    faust.contrib.fastapi
+    faust.contrib.opentelemetry
     faust.contrib.sentry
 
 Fixups

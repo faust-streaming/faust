@@ -26,3 +26,4 @@
     kafka
     debugging
     workers
+    fastapi

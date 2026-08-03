@@ -84,6 +84,23 @@ Sensors
 :``faust[sentry]``:
     for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
 
+:``faust[opentracing]``:
+    for distributed tracing via :pypi:`opentracing`.  Deprecated upstream in
+    March 2026; prefer ``faust[opentelemetry]`` for new work.
+
+:``faust[opentelemetry]``:
+    for distributed tracing via :pypi:`opentelemetry-api`, including
+    continuing a trace from Kafka message headers into your agents.  See
+    :ref:`guide-fastapi`.
+
+Web
+~~~
+
+:``faust[fastapi]``:
+    for co-hosting a FastAPI (or any ASGI) application in the same process
+    and event loop as the Faust worker, via :pypi:`uvicorn`.
+    See :ref:`guide-fastapi`.
+
 Event Loops
 ~~~~~~~~~~~
 

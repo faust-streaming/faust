@@ -11,6 +11,35 @@ https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
 resumes the Keep a Changelog format.
 -->
 
+## [Unreleased]
+
+### Added
+- `faust.contrib.fastapi`: co-host a FastAPI (or any ASGI) application with the
+  worker, in one process and one event loop. `faust_lifespan()` runs Faust from
+  an ASGI lifespan, `serve_asgi()` serves your app from inside `faust worker`.
+  New `faust[fastapi]` extra.
+- `faust.contrib.opentelemetry`: OpenTelemetry tracing. `setup_opentelemetry()`
+  continues a trace from Kafka message headers into your agents — the hop
+  `opentelemetry-instrumentation-aiokafka` cannot bridge, because Faust's
+  consumer runs in its own thread. FastAPI apps are instrumented automatically
+  when an SDK is configured. New `faust[opentelemetry]` extra.
+- New userguide page: *FastAPI and other ASGI applications*.
+
+### Fixed
+- Faust apps no longer resolve an event loop when agents, tables or the
+  transport are declared at import time. Previously that pinned the app to a
+  loop that was never run, so starting it from `asyncio.run()` — as uvicorn
+  does — failed with "Please create objects with the same loop as running with"
+  or "Task ... got Future ... attached to a different loop" (#322, #435, #448).
+- `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
+  shipped without the matching `BUNDLES` entry in `setup.py`, despite being
+  advertised in the README. A new test guards both directions of that mapping.
+
+### Changed
+- The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
+  name shadowed the real `fastapi` package when running the sibling
+  `examples/fastapi_example.py`, so neither example could be run as documented.
+
 ## [v0.12.1](https://github.com/faust-streaming/faust/releases/tag/v0.12.1) - 2026-07-19
 
 [Compare with v0.12.0](https://github.com/faust-streaming/faust/compare/v0.12.0...v0.12.1)
