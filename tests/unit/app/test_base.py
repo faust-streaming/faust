@@ -137,9 +137,9 @@ class Test_App:
         assert app._new_transport() is by_url.return_value.return_value
         assert app.transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_consumer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_consumer, app, loop=app.loop
-        )
+        # No ``loop=`` is passed: the transport resolves its loop lazily so
+        # that building it at import time cannot pin the app to a dead loop.
+        by_url.return_value.assert_called_with(app.conf.broker_consumer, app)
         app.transport = 10
         assert app.transport == 10
 
@@ -161,9 +161,8 @@ class Test_App:
         assert transport is by_url.return_value.return_value
         assert app.producer_transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_producer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_producer, app, loop=app.loop
-        )
+        # See ``test_new_transport``: no ``loop=`` argument by design.
+        by_url.return_value.assert_called_with(app.conf.broker_producer, app)
         app.producer_transport = 10
         assert app.producer_transport == 10
 

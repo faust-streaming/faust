@@ -1818,13 +1818,16 @@ class App(AppT, Service):
         return self.transport.create_conductor(beacon=None)
 
     def _new_transport(self) -> TransportT:
+        # No ``loop=`` argument: the transport is reachable from import-time
+        # code (``app.topics`` -> ``_new_conductor`` -> ``app.transport``), so
+        # it resolves its loop lazily instead.  See ``faust.transport.base``.
         return transport.by_url(self.conf.broker_consumer[0])(
-            self.conf.broker_consumer, self, loop=self.loop
+            self.conf.broker_consumer, self
         )
 
     def _new_producer_transport(self) -> TransportT:
         return transport.by_url(self.conf.broker_producer[0])(
-            self.conf.broker_producer, self, loop=self.loop
+            self.conf.broker_producer, self
         )
 
     def _new_cache_backend(self) -> CacheBackendT:
@@ -2002,9 +2005,10 @@ class App(AppT, Service):
     @cached_property
     def tables(self) -> TableManagerT:
         """Map of available tables, and the table manager service."""
+        # No ``loop=``: tables are declared at module scope, so this property
+        # runs before any loop is running.  ``mode.Service`` late-binds.
         manager = self.conf.TableManager(  # type: ignore
             app=self,
-            loop=self.loop,
             beacon=self.beacon,
         )
         return cast(TableManagerT, manager)

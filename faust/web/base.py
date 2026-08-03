@@ -187,7 +187,12 @@ class Web(Service):
         else:
             blueprints.extend(self.production_blueprints)
         self.blueprints = BlueprintManager(blueprints)
-        Service.__init__(self, loop=app.loop, **kwargs)
+        # Do *not* pass ``loop=app.loop`` here: ``app.web`` is a cached
+        # property that is commonly touched before the loop is running (the
+        # ``faust worker`` banner does so), and reading ``app.loop`` there pins
+        # the App to a loop that will never be run.  ``mode.Service``
+        # late-binds the loop.  See the note in ``faust.agents.agent``.
+        Service.__init__(self, **kwargs)
 
     @abc.abstractmethod
     def text(
