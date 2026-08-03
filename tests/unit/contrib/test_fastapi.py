@@ -1,5 +1,5 @@
 import asyncio
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -11,6 +11,7 @@ from faust.contrib.fastapi import (
     bind_to_running_loop,
     faust_app_running,
     faust_lifespan,
+    maybe_instrument_opentelemetry,
     serve_asgi,
 )
 from faust.exceptions import ImproperlyConfigured
@@ -265,3 +266,52 @@ class Test_disable_signal_handling:
         _disable_signal_handling(server)
 
         assert server.install_signal_handlers() is None
+
+
+class Test_maybe_instrument_opentelemetry:
+    def test_opt_out(self):
+        assert maybe_instrument_opentelemetry(Mock(name="asgi_app"), False) is False
+
+    def test_delegates_to_the_contrib_module(self):
+        asgi_app = Mock(name="asgi_app")
+        with patch(
+            "faust.contrib.opentelemetry.instrument_asgi_app", return_value=True
+        ) as instrument:
+            assert maybe_instrument_opentelemetry(asgi_app, None) is True
+
+        instrument.assert_called_once_with(asgi_app, force=False)
+
+    def test_force(self):
+        asgi_app = Mock(name="asgi_app")
+        with patch(
+            "faust.contrib.opentelemetry.instrument_asgi_app", return_value=True
+        ) as instrument:
+            maybe_instrument_opentelemetry(asgi_app, True)
+
+        instrument.assert_called_once_with(asgi_app, force=True)
+
+    async def test_lifespan_instruments_the_asgi_app(self, *, app):
+        app.maybe_start = Mock(side_effect=lambda: _started(False))
+        asgi_app = Mock(name="asgi_app")
+        lifespan = faust_lifespan(app, discover=False)
+
+        with patch(
+            "faust.contrib.fastapi.maybe_instrument_opentelemetry"
+        ) as instrument:
+            async with lifespan(asgi_app):
+                pass
+
+        instrument.assert_called_once_with(asgi_app, None)
+
+    async def test_lifespan_opt_out_is_propagated(self, *, app):
+        app.maybe_start = Mock(side_effect=lambda: _started(False))
+        asgi_app = Mock(name="asgi_app")
+        lifespan = faust_lifespan(app, discover=False, opentelemetry=False)
+
+        with patch(
+            "faust.contrib.fastapi.maybe_instrument_opentelemetry"
+        ) as instrument:
+            async with lifespan(asgi_app):
+                pass
+
+        instrument.assert_called_once_with(asgi_app, False)

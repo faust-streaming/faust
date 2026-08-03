@@ -163,16 +163,49 @@ async def faust_app_running(
                 await asyncio.wait_for(app.stop(), timeout=stop_timeout)
 
 
-def faust_lifespan(app: AppT, **kwargs: Any) -> Callable[..., Any]:
+def maybe_instrument_opentelemetry(
+    asgi_app: Any, enabled: Optional[bool] = None
+) -> bool:
+    """Instrument ``asgi_app`` with OpenTelemetry when that makes sense.
+
+    ``enabled=None`` (the default) auto-detects: instrumentation is attached
+    only when :pypi:`opentelemetry-instrumentation-fastapi` is installed *and*
+    the application has configured a real ``TracerProvider``.  Until an SDK is
+    configured the OpenTelemetry API is a no-op, so this never turns on
+    telemetry an operator did not ask for.
+
+    Pass ``False`` to opt out entirely, or ``True`` to instrument even when no
+    SDK has been configured yet (useful if you configure it later).
+    """
+    if enabled is False:
+        return False
+    try:
+        from faust.contrib.opentelemetry import instrument_asgi_app
+    except Exception as exc:  # pragma: no cover
+        logger.debug("OpenTelemetry: integration unavailable: %r", exc)
+        return False
+    return instrument_asgi_app(asgi_app, force=bool(enabled))
+
+
+def faust_lifespan(
+    app: AppT, *, opentelemetry: Optional[bool] = None, **kwargs: Any
+) -> Callable[..., Any]:
     """Build an ASGI ``lifespan`` handler that runs ``app``.
 
     Accepts the same keyword arguments as :func:`faust_app_running`::
 
         api = FastAPI(lifespan=faust_lifespan(faust_app))
+
+    If OpenTelemetry is installed and configured, the ASGI application is
+    instrumented automatically; pass ``opentelemetry=False`` to opt out.
     """
 
     @asynccontextmanager
     async def lifespan(*args: Any, **lifespan_kwargs: Any) -> AsyncIterator[None]:
+        # ASGI hands the application object to the lifespan handler, which is
+        # the thing OpenTelemetry needs to wrap.
+        if args:
+            maybe_instrument_opentelemetry(args[0], opentelemetry)
         async with faust_app_running(app, **kwargs):
             # Yield None, not the app: Starlette treats a non-None lifespan
             # value as a state mapping to merge into the ASGI scope.
@@ -225,6 +258,9 @@ class AsgiService(Service):
     #: Seconds to wait for the server to finish serving on shutdown.
     server_shutdown_timeout: float = DEFAULT_SERVER_SHUTDOWN_TIMEOUT
 
+    #: Instrument the ASGI app with OpenTelemetry.  :const:`None` auto-detects.
+    opentelemetry: Optional[bool] = None
+
     def __init__(
         self,
         asgi_app: Any = None,
@@ -273,6 +309,7 @@ class AsgiService(Service):
         """Start serving."""
         if self.asgi_app is None:
             raise ImproperlyConfigured("AsgiService requires an ASGI application")
+        maybe_instrument_opentelemetry(self.asgi_app, self.opentelemetry)
         self._server = self._create_server()
         self._serve_fut = self.add_future(self._server.serve())
 

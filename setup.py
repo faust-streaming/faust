@@ -32,6 +32,7 @@ BUNDLES = {
     "debug",
     "fast",
     "fastapi",
+    "opentelemetry",
     "opentracing",
     "orjson",
     "prometheus",

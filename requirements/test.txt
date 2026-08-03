@@ -29,6 +29,11 @@ intervaltree
 -r requirements.txt
 -r extras/datadog.txt
 -r extras/opentracing.txt
+# The API+SDK only (pure Python, no fastapi): enough to cover
+# faust.contrib.opentelemetry's sensor.  The instrumentation packages in
+# extras/opentelemetry.txt pull in fastapi and are left to that extra.
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
 -r extras/redis.txt
 -r extras/statsd.txt
 -r extras/yaml.txt
