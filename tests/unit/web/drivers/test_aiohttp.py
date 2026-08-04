@@ -191,26 +191,43 @@ class Test_Web:
             assert response is web.text.return_value
 
     def test_json__from_bytes(self, *, web):
-        web.bytes = Mock(name="web.bytes")
+        # orjson returns bytes: build a Response directly with an explicit
+        # charset=utf-8 (Response(body=...) does not add one on its own),
+        # so the content-type matches the str path -- see #557.
+        with patch("faust.web.drivers.aiohttp.Response") as Response:
+            with patch("faust.utils.json.dumps") as dumps:
+                dumps.return_value = b"foo"
+                payload = {"foo": "bar"}
+                response = web.json(
+                    payload,
+                    content_type="application/x-json",
+                    status=101,
+                    reason="bar",
+                    headers={"k": "v"},
+                )
+                dumps.assert_called_once_with(payload)
+                Response.assert_called_once_with(
+                    body=b"foo",
+                    content_type="application/x-json",
+                    charset="utf-8",
+                    status=101,
+                    reason="bar",
+                    headers={"k": "v"},
+                )
+                assert response is Response()
+
+    def test_json_content_type_has_charset_for_both_backends(self, *, web):
+        # Regression for #557: whether the JSON backend returns str (stdlib
+        # json) or bytes (orjson), the response content-type must carry
+        # charset=utf-8.
         with patch("faust.utils.json.dumps") as dumps:
-            dumps.return_value = b"foo"
-            payload = {"foo": "bar"}
-            response = web.json(
-                payload,
-                content_type="application/x-json",
-                status=101,
-                reason="bar",
-                headers={"k": "v"},
-            )
-            dumps.assert_called_once_with(payload)
-            web.bytes.assert_called_once_with(
-                dumps.return_value,
-                content_type="application/x-json",
-                status=101,
-                reason="bar",
-                headers={"k": "v"},
-            )
-            assert response is web.bytes.return_value
+            dumps.return_value = b'{"a": 1}'  # orjson-style bytes
+            resp = web.json({"a": 1})
+            assert resp.headers["Content-Type"] == "application/json; charset=utf-8"
+
+            dumps.return_value = '{"a": 1}'  # stdlib-style str
+            resp = web.json({"a": 1})
+            assert resp.headers["Content-Type"] == "application/json; charset=utf-8"
 
     def test_html(self, *, web):
         with patch("faust.web.drivers.aiohttp.Response") as Response:
