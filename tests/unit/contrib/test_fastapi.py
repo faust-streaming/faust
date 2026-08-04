@@ -267,6 +267,27 @@ class Test_disable_signal_handling:
 
         assert server.install_signal_handlers() is None
 
+    def test_create_server_applies_it_to_a_real_uvicorn_server(self):
+        """The override must actually reach the server ``on_start`` builds.
+
+        Testing ``_disable_signal_handling`` in isolation would not catch
+        ``_create_server`` forgetting to call it.
+        """
+        import signal
+
+        uvicorn = pytest.importorskip("uvicorn")
+
+        service = AsgiService(Mock(name="asgi_app"), port=0)
+        server = service._create_server()
+
+        assert isinstance(server, uvicorn.Server)
+        before = signal.getsignal(signal.SIGINT)
+        with server.capture_signals():
+            # A server left to itself would have replaced the SIGINT handler
+            # here; ours must leave mode.Worker's in place.
+            assert signal.getsignal(signal.SIGINT) is before
+        assert signal.getsignal(signal.SIGINT) is before
+
 
 class Test_maybe_instrument_opentelemetry:
     def test_opt_out(self):

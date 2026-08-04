@@ -221,11 +221,19 @@ def _no_signal_handlers() -> Any:
 
 
 def _disable_signal_handling(server: Any) -> None:
-    """Stop uvicorn from taking over SIGINT/SIGTERM.
+    """Leave process signals to :class:`mode.Worker`.
 
-    :class:`mode.Worker` owns process signals; if uvicorn also installs
-    handlers it wins (it is installed later) and Ctrl-C stops only the web
-    server while the Faust worker keeps running.
+    ``mode.Worker`` registers SIGINT/SIGTERM via ``loop.add_signal_handler()``,
+    which on Unix is delivered through asyncio's wakeup file descriptor.
+    uvicorn installs its own handlers with ``signal.signal()`` afterwards,
+    which replaces the OS-level handler but *not* the wakeup fd -- so both
+    still fire, and the worker shuts down gracefully either way.  (Checked
+    with real SIGINTs, single and repeated, against a live uvicorn.)
+
+    What this avoids is a second, concurrent shutdown path: uvicorn reacting
+    to the same Ctrl-C, logging a duplicate interrupt, and -- on a repeated
+    signal -- setting ``force_exit`` while the worker is still draining
+    in-flight work.  One owner for process signals keeps shutdown predictable.
 
     The hook moved in uvicorn 0.27 -- older versions call
     ``install_signal_handlers()``, newer ones use the ``capture_signals()``
