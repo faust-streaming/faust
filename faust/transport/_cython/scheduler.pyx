@@ -81,21 +81,31 @@ cdef class _TopicCursor:
                 continue
             return (<object>PyList_GET_ITEM(self.tps, i), item)
 
-    cdef _start_pass(self):
+    cdef int _start_pass(self) except -1:
+        # The Python calls below (dict.pop, .items()) can raise, and this
+        # says so explicitly rather than relying on a compiler default:
+        # Cython 3 propagates from a bare `cdef` by default, but Cython 0.x
+        # silently swallowed unless an except clause was given, and
+        # `legacy_implicit_noexcept` restores that.  `except -1` propagates
+        # under every version.
         cdef:
             object tp
             object it
+            Py_ssize_t live
 
         if self.to_remove:
             for tp in self.to_remove:
                 self.buffers.pop(tp, None)
             self.to_remove.clear()
-        elif PyList_GET_SIZE(self.tps) == len(self.buffers):
-            # Nothing drained and nothing added since the last pass, so the
-            # snapshot is still accurate.  TopicBuffer.add() asserts the
-            # partition is new, so the size can only change on a real change.
-            self.pi = 0
-            return
+        else:
+            live = len(self.buffers)
+            if PyList_GET_SIZE(self.tps) == live:
+                # Nothing drained and nothing added since the last pass, so
+                # the snapshot is still accurate.  TopicBuffer.add() asserts
+                # the partition is new, so the size can only change on a
+                # real change.
+                self.pi = 0
+                return 0
         self.tps = []
         self.iters = []
         for tp, it in self.buffers.items():
@@ -103,6 +113,7 @@ cdef class _TopicCursor:
             self.iters.append(it)
         self.n = PyList_GET_SIZE(self.tps)
         self.pi = 0
+        return 0
 
 
 cdef class RoundRobinRecordIterator:
@@ -164,20 +175,25 @@ cdef class RoundRobinRecordIterator:
                 continue
             return item
 
-    cdef _start_pass(self):
+    cdef int _start_pass(self) except -1:
+        # See the note on _TopicCursor._start_pass for why the except clause
+        # is spelled out.
         cdef:
             object topic
             object buffer
             _TopicCursor cursor
+            Py_ssize_t live
 
         if self.to_remove:
             for topic in self.to_remove:
                 self.index.pop(topic, None)
                 self.cursors.pop(topic, None)
             self.to_remove.clear()
-        elif PyList_GET_SIZE(self.topics) == len(self.index):
-            self.ti = 0
-            return
+        else:
+            live = len(self.index)
+            if PyList_GET_SIZE(self.topics) == live:
+                self.ti = 0
+                return 0
         self.topics = []
         self.topic_cursors = []
         for topic, buffer in self.index.items():
@@ -189,6 +205,7 @@ cdef class RoundRobinRecordIterator:
             self.topic_cursors.append(cursor)
         self.n = PyList_GET_SIZE(self.topics)
         self.ti = 0
+        return 0
 
 
 cpdef object records_iterator(object index):

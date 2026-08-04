@@ -19,13 +19,13 @@ cdef class SensorDelegateBase:
         self.app = app
         self._sensors = set()
 
-    def add(self, sensor):
+    def add(self, object sensor):
         """Add sensor."""
         # connect beacons
         sensor.beacon = self.app.beacon.new(sensor)
         self._sensors.add(sensor)
 
-    def remove(self, sensor):
+    def remove(self, object sensor):
         """Remove sensor."""
         self._sensors.remove(sensor)
 
