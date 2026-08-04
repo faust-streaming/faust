@@ -1,3 +1,5 @@
+import sys
+import types
 from unittest.mock import Mock, patch
 
 import pytest
@@ -197,6 +199,20 @@ class Test_OpenTelemetrySensor:
 
         assert len(exporter.get_finished_spans()) == 1
 
+    def test_state_without_a_span_or_token(self, *, sensor, stream, exporter):
+        """A truthy state that carries neither must not raise."""
+        sensor.on_stream_event_out(TP1, 42, stream, _event(), {"other": 1})
+
+        assert exporter.get_finished_spans() == ()
+
+    def test_consumer_group_is_omitted_when_unknown(self, *, sensor, exporter):
+        """Sensors are not given the app; the stream may not expose one."""
+        state = sensor.on_stream_event_in(TP1, 42, Mock(spec=[]), _event())
+        sensor.on_stream_event_out(TP1, 42, Mock(spec=[]), _event(), state)
+
+        (span,) = exporter.get_finished_spans()
+        assert "messaging.consumer.group.name" not in span.attributes
+
     def test_garbage_headers_do_not_break_processing(self, *, sensor, stream, exporter):
         event = _event(headers=[("traceparent", b"not-a-traceparent")])
 
@@ -252,6 +268,56 @@ class Test_instrument_asgi_app:
         assert api._is_instrumented_by_opentelemetry is True
         # Second call is a no-op, not a duplicate middleware stack.
         assert instrument_asgi_app(api, tracer_provider=provider, force=True) is False
+
+    # The tests below stub the instrumentation package through sys.modules, so
+    # they exercise our own branching everywhere -- including CI, where
+    # opentelemetry-instrumentation-fastapi is deliberately not installed (it
+    # would drag fastapi and pydantic-core into all 15 matrix legs).
+
+    @staticmethod
+    def _fake_instrumentation(instrument_app):
+        module = types.ModuleType("opentelemetry.instrumentation.fastapi")
+        module.FastAPIInstrumentor = Mock(instrument_app=instrument_app)
+        return {"opentelemetry.instrumentation.fastapi": module}
+
+    def test_returns_false_when_the_package_is_missing(self, *, provider):
+        # A None entry in sys.modules makes the import raise ImportError.
+        with patch.dict(sys.modules, {"opentelemetry.instrumentation.fastapi": None}):
+            assert instrument_asgi_app(Mock(spec=[]), force=True) is False
+
+    def test_instruments_via_the_instrumentor(self, *, provider):
+        instrument_app = Mock()
+        asgi_app = Mock(spec=[])
+        with patch.dict(sys.modules, self._fake_instrumentation(instrument_app)):
+            assert (
+                instrument_asgi_app(asgi_app, tracer_provider=provider, force=True)
+                is True
+            )
+
+        instrument_app.assert_called_once_with(
+            asgi_app, tracer_provider=provider, exclude_spans=["receive", "send"]
+        )
+
+    def test_retries_without_exclude_spans_on_older_releases(self, *, provider):
+        """``exclude_spans`` was added after the initial release."""
+        instrument_app = Mock(side_effect=[TypeError("unexpected kwarg"), None])
+        asgi_app = Mock(spec=[])
+        with patch.dict(sys.modules, self._fake_instrumentation(instrument_app)):
+            assert instrument_asgi_app(asgi_app, force=True) is True
+
+        assert instrument_app.call_count == 2
+        assert "exclude_spans" not in instrument_app.call_args.kwargs
+
+    def test_gives_up_when_the_retry_also_fails(self, *, provider):
+        instrument_app = Mock(side_effect=[TypeError("nope"), RuntimeError("nope")])
+        with patch.dict(sys.modules, self._fake_instrumentation(instrument_app)):
+            assert instrument_asgi_app(Mock(spec=[]), force=True) is False
+
+    def test_never_raises_out_of_instrumentation(self, *, provider):
+        """Telemetry setup must not take the application down."""
+        instrument_app = Mock(side_effect=RuntimeError("boom"))
+        with patch.dict(sys.modules, self._fake_instrumentation(instrument_app)):
+            assert instrument_asgi_app(Mock(spec=[]), force=True) is False
 
 
 class Test_setup_opentelemetry:

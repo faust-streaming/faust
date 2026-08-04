@@ -295,10 +295,10 @@ def instrument_asgi_app(
             FastAPIInstrumentor.instrument_app(
                 asgi_app, tracer_provider=tracer_provider
             )
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             logger.debug("OpenTelemetry: could not instrument ASGI app: %r", exc)
             return False
-    except Exception as exc:  # pragma: no cover
+    except Exception as exc:
         logger.debug("OpenTelemetry: could not instrument ASGI app: %r", exc)
         return False
     logger.info("OpenTelemetry: instrumented ASGI application")
