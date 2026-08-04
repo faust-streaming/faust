@@ -1,5 +1,19 @@
-from faust.transport.utils import DefaultSchedulingStrategy, TopicBuffer
+import random
+
+import pytest
+
+from faust.transport.utils import (
+    DefaultSchedulingStrategy,
+    TopicBuffer,
+    _py_records_iterator,
+    _records_iterator,
+)
 from faust.types import TP
+
+#: Both round-robin implementations.  ``_records_iterator`` is the Cython one
+#: whenever the extension could be built, and is otherwise the same object as
+#: ``_py_records_iterator``.
+RECORDS_ITERATOR_IMPLS = [_py_records_iterator, _records_iterator]
 
 TP1 = TP("foo", 0)
 TP2 = TP("foo", 1)
@@ -77,3 +91,118 @@ class Test_TopicBuffer:
             (TP1, 3),
             (TP1, 4),
         ]
+
+
+class Test_records_iterator:
+    def _index(self, records):
+        return DefaultSchedulingStrategy.map_from_records(records)
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_round_robin_over_topics_and_partitions(self, impl):
+        records = {TP1: BUF1, TP2: BUF2, TP3: BUF3, TP4: BUF4, TP5: BUF5}
+
+        # Round-robin across topics, and across the partitions within each
+        # topic.  "baz" only has one partition, so it drains early and the
+        # interleaving shifts once it and "bar" are exhausted.
+        assert list(impl(self._index(records))) == [
+            (TP1, 0),
+            (TP3, 9),
+            (TP5, 14),
+            (TP2, 5),
+            (TP4, 11),
+            (TP5, 15),
+            (TP1, 1),
+            (TP3, 10),
+            (TP2, 6),
+            (TP4, 12),
+            (TP1, 2),
+            (TP4, 13),
+            (TP2, 7),
+            (TP1, 3),
+            (TP2, 8),
+            (TP1, 4),
+        ]
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_empty(self, impl):
+        assert list(impl(self._index({}))) == []
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_empty_buffers(self, impl):
+        assert list(impl(self._index({TP1: [], TP3: []}))) == []
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_drains_the_index_it_was_given(self, impl):
+        index = self._index({TP1: BUF1, TP3: BUF3})
+        list(impl(index))
+        assert not index
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_propagates_exceptions(self, impl):
+        def raising():
+            yield (TP1, 1)
+            raise RuntimeError("buffer exploded")
+
+        with pytest.raises(RuntimeError):
+            list(impl({"foo": raising()}))
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_topic_buffer_subclass(self, impl):
+        # A custom TopicBuffer must still be driven through next(), so that
+        # any overridden __iter__/__next__ is honoured.
+        class MyBuffer(TopicBuffer):
+            pass
+
+        buffer = MyBuffer()
+        buffer.add(TP1, BUF1)
+        assert list(impl({"foo": buffer})) == [(TP1, i) for i in BUF1]
+
+    def test_implementations_agree(self):
+        # Randomised differential test: the accelerated iterator must emit
+        # exactly the same sequence as the pure-Python one for any topology.
+        rng = random.Random(20220613)
+        for _ in range(200):
+            records = {
+                TP(f"t{topic}", partition): [
+                    f"t{topic}-{partition}-{i}" for i in range(rng.randint(0, 6))
+                ]
+                for topic in range(rng.randint(0, 4))
+                for partition in range(rng.randint(1, 4))
+            }
+            assert list(_records_iterator(self._index(records))) == list(
+                _py_records_iterator(self._index(records))
+            )
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_partition_added_mid_iteration(self, impl):
+        # Both implementations re-read the buffer map on each pass.
+        buffer = TopicBuffer()
+        buffer.add(TP1, [1, 2])
+        index = {"foo": buffer}
+
+        it = impl(index)
+        buffer.add(TP2, [7, 8])
+        assert list(it) == [(TP1, 1), (TP2, 7), (TP1, 2), (TP2, 8)]
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_topic_added_mid_iteration(self, impl):
+        buffer = TopicBuffer()
+        buffer.add(TP1, [1, 2])
+        index = {"foo": buffer}
+
+        it = impl(index)
+        late = TopicBuffer()
+        late.add(TP3, [9])
+        index["bar"] = late
+        assert list(it) == [(TP1, 1), (TP3, 9), (TP1, 2)]
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_drains_the_buffer_map_too(self, impl):
+        # Exhausted partitions are popped from TopicBuffer._buffers.
+        buffer = TopicBuffer()
+        buffer.add(TP1, [1, 2])
+        index = {"foo": buffer}
+
+        list(impl(index))
+        assert not index
+        assert not buffer._buffers
