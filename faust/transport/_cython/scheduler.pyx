@@ -91,21 +91,16 @@ cdef class _TopicCursor:
         cdef:
             object tp
             object it
-            Py_ssize_t live
 
         if self.to_remove:
             for tp in self.to_remove:
                 self.buffers.pop(tp, None)
             self.to_remove.clear()
-        else:
-            live = len(self.buffers)
-            if PyList_GET_SIZE(self.tps) == live:
-                # Nothing drained and nothing added since the last pass, so
-                # the snapshot is still accurate.  TopicBuffer.add() asserts
-                # the partition is new, so the size can only change on a
-                # real change.
-                self.pi = 0
-                return 0
+        elif self._snapshot_is_current():
+            # Unchanged since the last pass, so the existing snapshot still
+            # describes _buffers exactly and can be reused.
+            self.pi = 0
+            return 0
         self.tps = []
         self.iters = []
         for tp, it in self.buffers.items():
@@ -114,6 +109,33 @@ cdef class _TopicCursor:
         self.n = PyList_GET_SIZE(self.tps)
         self.pi = 0
         return 0
+
+    cdef bint _snapshot_is_current(self) except -1:
+        """Is the cached snapshot still identical to the live buffer map?
+
+        Comparing lengths alone is not enough: an iterator swapped in under
+        an existing TP keeps the length the same but leaves a stale cursor,
+        whose records would never be delivered.  So the entries are compared
+        by identity.  That walks the mapping, but allocates nothing, which is
+        what makes reusing the snapshot worth doing at all.
+        """
+        cdef:
+            Py_ssize_t i = 0
+            Py_ssize_t n = PyList_GET_SIZE(self.tps)
+            object tp
+            object it
+
+        if n != len(self.buffers):
+            return False
+        for tp, it in self.buffers.items():
+            if i >= n:
+                return False
+            if <object>PyList_GET_ITEM(self.tps, i) is not tp:
+                return False
+            if <object>PyList_GET_ITEM(self.iters, i) is not it:
+                return False
+            i += 1
+        return i == n
 
 
 cdef class RoundRobinRecordIterator:
@@ -182,18 +204,15 @@ cdef class RoundRobinRecordIterator:
             object topic
             object buffer
             _TopicCursor cursor
-            Py_ssize_t live
 
         if self.to_remove:
             for topic in self.to_remove:
                 self.index.pop(topic, None)
                 self.cursors.pop(topic, None)
             self.to_remove.clear()
-        else:
-            live = len(self.index)
-            if PyList_GET_SIZE(self.topics) == live:
-                self.ti = 0
-                return 0
+        elif self._snapshot_is_current():
+            self.ti = 0
+            return 0
         self.topics = []
         self.topic_cursors = []
         for topic, buffer in self.index.items():
@@ -206,6 +225,31 @@ cdef class RoundRobinRecordIterator:
         self.n = PyList_GET_SIZE(self.topics)
         self.ti = 0
         return 0
+
+    cdef bint _snapshot_is_current(self) except -1:
+        """Is the cached snapshot still identical to the live index map?
+
+        As with _TopicCursor, a length check alone would miss a TopicBuffer
+        replaced under an existing topic name, so each cursor is compared
+        against the buffer it was built from.
+        """
+        cdef:
+            Py_ssize_t i = 0
+            Py_ssize_t n = PyList_GET_SIZE(self.topics)
+            object topic
+            object buffer
+
+        if n != len(self.index):
+            return False
+        for topic, buffer in self.index.items():
+            if i >= n:
+                return False
+            if <object>PyList_GET_ITEM(self.topics, i) is not topic:
+                return False
+            if (<_TopicCursor>PyList_GET_ITEM(self.topic_cursors, i)).source is not buffer:
+                return False
+            i += 1
+        return i == n
 
 
 cpdef object records_iterator(object index):
