@@ -177,112 +177,21 @@ You can put the `test_app` fixture into a [`conftest.py` file](https://docs.pyte
 Setting up a test suite
 =======================
 
-A faust app is normally a module-level singleton, and its agents are attached
-to it at import time.  A test suite therefore needs a small amount of setup
-before agents can be started in isolation.  Put an ``app`` fixture in a
-:file:`conftest.py` next to your tests:
+A faust app is normally a module-level singleton whose agents are attached to
+it at import time, so a suite needs a little setup before those agents can be
+started in isolation.
 
-.. sourcecode:: python
+The four files below are a complete, working suite: copy them into an empty
+directory, ``pip install faust-streaming pytest pytest-asyncio``, run
+:program:`pytest`, and four tests pass.  The rest of this section explains
+what each piece is doing.
 
-    import asyncio
+The application under test -- :file:`myapp.py`
+----------------------------------------------
 
-    import pytest
-
-    from myapp import app as _app
-
-
-    @pytest.fixture()
-    async def app():
-        # Bind the app to the event loop pytest-asyncio created for this
-        # test -- a module-level app otherwise stays bound to the loop of
-        # whichever test ran first, and later tests fail with
-        # "RuntimeError: Event loop is closed".
-        _app.loop = asyncio.get_running_loop()
-        _app.finalize()
-        _app.conf.store = 'memory://'
-        _app.flow_control.resume()
-        return _app
-
-Each line earns its place:
-
-``_app.loop``
-    Re-binds the app to this test's event loop.  Without it only the first
-    test in a session passes.
-
-``_app.finalize()``
-    Completes app configuration.  Normally the worker does this for you.
-
-``_app.conf.store = 'memory://'``
-    Tables must be in-memory in tests; the default (RocksDB) wants a real
-    data directory.  Faust warns that the setting arrives after your topics
-    and agents were declared -- that is expected here and harmless, since no
-    table has started yet.  Set ``store`` on the :class:`~faust.App` itself
-    if you would rather not see the warning.
-
-``_app.flow_control.resume()``
-    Stream queues start out suspended, so without this the agent never
-    receives anything and ``put()`` hangs forever.
-
-.. note::
-
-    The ``test_app`` fixture shown earlier does the same job, but reaches the
-    loop by requesting :pypi:`pytest-asyncio`'s ``event_loop`` fixture.
-    Recent releases deprecate that (*"Asynchronous fixtures and test
-    functions should use asyncio.get_running_loop() instead"*), so prefer the
-    async fixture above in new test suites.
-
-The examples below use :pypi:`pytest-asyncio` in ``auto`` mode, so async tests
-and fixtures need no decorator.  Enable it in :file:`pytest.ini`:
-
-.. sourcecode:: ini
-
-    [pytest]
-    asyncio_mode = auto
-
-Mock anything that leaves the process
--------------------------------------
-
-``test_context()`` feeds the agent through a local channel, but it does *not*
-stub out the rest of your app.  If your agent sends to a topic or calls an
-external service, it will genuinely try to -- and the test fails with::
-
-    aiokafka.errors.KafkaConnectionError: Unable to bootstrap from [('localhost', 9092, ...)]
-
-So give every outbound dependency its own fixture:
-
-.. sourcecode:: python
-
-    from unittest.mock import AsyncMock
-
-    import myapp
-
-
-    @pytest.fixture()
-    def shipped(monkeypatch):
-        send = AsyncMock()
-        monkeypatch.setattr(myapp.shipped_topic, 'send', send)
-        return send
-
-
-    @pytest.fixture()
-    def warehouse(monkeypatch):
-        notify = AsyncMock()
-        monkeypatch.setattr(myapp, 'notify_warehouse', notify)
-        return notify
-
-.. _testing-sinkless-agents:
-
-Testing agents that don't yield
-===============================
-
-Every example so far ends in ``yield``, and reads results back with
-``agent.results``.  Plenty of real agents never yield anything: they update a
-table, call a service, or forward to another topic and stop there.  Such an
-agent cannot use sinks at all -- attaching one raises
-``ImproperlyConfigured('Agent must yield to use sinks')`` -- and
-``test_context()`` is happy to test them anyway.
-
-Here is an app whose agent is a pure consumer:
+The agent here is a *pure consumer*: it updates a table, calls a service and
+forwards to another topic, and never yields.  See
+:ref:`testing-sinkless-agents` for why that shape needs no sink.
 
 .. sourcecode:: python
 
@@ -295,6 +204,7 @@ Here is an app whose agent is a pure consumer:
 
 
     app = faust.App('orders-app', broker='kafka://localhost:9092')
+
     orders_topic = app.topic('orders', value_type=Order)
     shipped_topic = app.topic('shipped', value_type=Order)
 
@@ -314,9 +224,58 @@ Here is an app whose agent is a pure consumer:
             await notify_warehouse(order)
             await shipped_topic.send(value=order)
 
-Because nothing is yielded, you assert on what the agent *did* rather than on
-what it returned -- the table it wrote, the service it called, the message it
-forwarded:
+Enabling async tests -- :file:`pytest.ini`
+------------------------------------------
+
+These examples use :pypi:`pytest-asyncio` in ``auto`` mode, so async tests and
+fixtures need no decorator:
+
+.. sourcecode:: ini
+
+    [pytest]
+    asyncio_mode = auto
+
+Fixtures -- :file:`conftest.py`
+-------------------------------
+
+.. sourcecode:: python
+
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    import pytest
+
+    import myapp
+    from myapp import app as _app
+
+
+    @pytest.fixture()
+    async def app():
+        # Bind the app to the event loop pytest-asyncio created for this test.
+        _app.loop = asyncio.get_running_loop()
+        _app.finalize()
+        _app.conf.store = 'memory://'
+        _app.flow_control.resume()
+        return _app
+
+
+    @pytest.fixture()
+    def shipped(monkeypatch):
+        """Keep the agent from reaching a real broker."""
+        send = AsyncMock()
+        monkeypatch.setattr(myapp.shipped_topic, 'send', send)
+        return send
+
+
+    @pytest.fixture()
+    def warehouse(monkeypatch):
+        """Keep the agent from calling the real service."""
+        notify = AsyncMock()
+        monkeypatch.setattr(myapp, 'notify_warehouse', notify)
+        return notify
+
+The tests -- :file:`test_myapp.py`
+----------------------------------
 
 .. sourcecode:: python
 
@@ -345,6 +304,78 @@ forwarded:
             await agent.put(order)
             shipped.assert_awaited_once_with(value=order)
 
+
+    async def test_results_records_input_values(app, shipped, warehouse):
+        async with track_order.test_context() as agent:
+            order = Order(account_id='D', amount=5)
+            await agent.put(order)
+            # For a sink-less agent ``results`` holds what went IN.
+            assert agent.results[0] == order
+
+What the ``app`` fixture is doing
+----------------------------------
+
+Each line earns its place:
+
+``_app.loop``
+    Re-binds the app to the event loop :pypi:`pytest-asyncio` created for this
+    test.  A module-level app otherwise stays bound to the loop of whichever
+    test ran first, and every later test fails with ``RuntimeError: Event loop
+    is closed``.
+
+``_app.finalize()``
+    Completes app configuration.  Normally the worker does this for you.
+
+``_app.conf.store = 'memory://'``
+    Tables must be in-memory in tests; the default (RocksDB) wants a real data
+    directory.  Faust warns that the setting arrives after your topics and
+    agents were declared -- expected here and harmless, since no table has
+    started yet.  Set ``store`` on the :class:`~faust.App` itself if you would
+    rather not see the warning.
+
+``_app.flow_control.resume()``
+    Stream queues start out suspended.  Omit this and the agent never receives
+    anything, so ``put()`` hangs forever.
+
+.. note::
+
+    The ``test_app`` fixture shown earlier does the same job, but reaches the
+    loop by requesting :pypi:`pytest-asyncio`'s ``event_loop`` fixture.  Recent
+    releases deprecate that (*"Asynchronous fixtures and test functions should
+    use asyncio.get_running_loop() instead"*), so prefer the async fixture
+    above in new test suites.
+
+Mock anything that leaves the process
+--------------------------------------
+
+``test_context()`` feeds the agent through a local channel, but it does *not*
+stub out the rest of your app.  If the agent sends to a topic or calls an
+external service it will genuinely try to, and the test fails with::
+
+    aiokafka.errors.KafkaConnectionError: Unable to bootstrap from [('localhost', 9092, ...)]
+
+That is what the ``shipped`` and ``warehouse`` fixtures are for: give every
+outbound dependency its own fixture, so each test both stays offline and gets
+a mock it can assert on.
+
+.. _testing-sinkless-agents:
+
+Testing agents that don't yield
+===============================
+
+Every earlier example ends in ``yield`` and reads its output back through
+``agent.results``.  Plenty of real agents never yield: they update a table,
+call a service, or forward to another topic and stop there.  Such an agent
+cannot use sinks at all -- attaching one raises
+``ImproperlyConfigured('Agent must yield to use sinks')`` -- yet
+``test_context()`` tests them perfectly well.  ``track_order`` above is
+exactly that shape.
+
+Because nothing is yielded, you assert on what the agent *did* rather than on
+what it returned: the table it wrote (``test_counts_orders_per_account``), the
+service it called (``test_notifies_warehouse``), and the message it forwarded
+(``test_forwards_to_shipped_topic``).
+
 What ``agent.results`` holds
 ----------------------------
 
@@ -360,30 +391,21 @@ does not yield        the value that was **sent in** (its input)
 
 There is no output to capture for a sink-less agent, so faust records the
 incoming value instead.  That still makes ``results`` useful for confirming
-which values reached the agent, but do not read it expecting a return value:
-
-.. sourcecode:: python
-
-    async def test_results_records_input_values(app, shipped, warehouse):
-        async with track_order.test_context() as agent:
-            order = Order(account_id='D', amount=5)
-            await agent.put(order)
-            # For a sink-less agent ``results`` holds what went IN.
-            assert agent.results[0] == order
+which values reached the agent -- as ``test_results_records_input_values``
+does above -- but do not read it expecting a return value.
 
 .. admonition:: When ``put()`` returns
 
     ``await agent.put(value)`` waits for the value to be picked up by the
-    agent, and for an agent body that does not ``await`` anything mid-loop
-    the side effects are already visible when ``put()`` returns -- which is
-    why the assertions above can follow it directly.
+    agent, and for an agent body that does not ``await`` anything mid-loop the
+    side effects are already visible when ``put()`` returns -- which is why the
+    assertions above can follow it directly.
 
-    If the body *does* await something (an HTTP call, ``asyncio.sleep``, a
-    real ``send``), ``put()`` can return before the body has finished with
-    that value, and asserting immediately will be flaky.  Wait for the
-    effect rather than assuming it, for example by asserting on a mock with
-    a short retry, or by leaving the ``async with`` block -- stopping the
-    agent drains what is in flight:
+    If the body *does* await something (an HTTP call, ``asyncio.sleep``, a real
+    ``send``), ``put()`` can return before the body has finished with that
+    value, and asserting immediately will be flaky.  Wait for the effect rather
+    than assuming it -- for example by leaving the ``async with`` block, since
+    stopping the agent drains what is in flight:
 
     .. sourcecode:: python
 
