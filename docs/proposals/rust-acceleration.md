@@ -10,9 +10,9 @@ The prototype works and the build integration is sound, but on the code Faust
 actually accelerates, Rust lands between 2.3x faster and 15% *slower* than the
 Cython we already ship — and it is only faster on one method of one class,
 while being slower on the single busiest loop Faust owns. It would roughly
-double the test matrix and add a second native toolchain for that. Prefer keeping Cython, and revisit only if a
-hot path appears whose per-element work is *native* rather than
-Python-object-bound (see
+double the test matrix and add a second native toolchain for that. Prefer
+keeping Cython, and revisit only if a hot path appears whose per-element work
+is *native* rather than Python-object-bound (see
 [What would change this answer](#6-what-would-change-this-answer)).
 
 > **Update.** The batch-shaped hot path this document was waiting for has
@@ -22,6 +22,14 @@ Python-object-bound (see
 > evaluation: being batch-shaped is not sufficient. See
 > [§3.3](#33-first_consecutive_run-the-batch-shaped-path-that-arrived), which
 > also corrects the trigger in §6 that this update fires.
+>
+> [§3.4](#34-four-way-cpython-pypy-cython-rust--cpu-and-memory) then widens
+> the comparison to PyPy and to memory, and finds the strongest single
+> argument against this proposal: **on `ranges`, the one case where Rust
+> clearly beat Cython, PyPy beats Rust** — 162–198 ns against 311 ns — using
+> the pure-Python code already in the tree, on a runtime Faust already tests.
+> And memory is indistinguishable between Python, Cython and Rust on CPython,
+> so it supports no case either way.
 
 Everything below was measured or built, not estimated; see
 [Reproducing](#7-reproducing).
@@ -240,11 +248,106 @@ Two corollaries worth carrying forward:
    was written: even where abi3 is available, taking it costs ~22% on this
    kind of code.
 
+### 3.4 Four-way: CPython, PyPy, Cython, Rust — CPU and memory
+
+Everything above compares accelerators *inside CPython*. That leaves out the
+runtime Faust already supports and already tests: PyPy, whose CI leg runs with
+`USE_CYTHON: 'false'`, i.e. the pure-Python implementations under its JIT.
+It also leaves out memory entirely.
+
+Measured with `extra/tools/bench_accel_matrix.py`, which runs every cell in a
+**fresh subprocess** so no implementation's allocations can leak into another's
+reading. CPython 3.11.15, PyPy 7.3.15 (Python 3.9.18), Rust built `--no-abi3`
+(its best case, per §3.3).
+
+#### CPU
+
+`first_consecutive_run`, the offset commit scan (lower is better):
+
+| offsets | python | pypy | cython | rust | vs cython |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 10 000 | 270.5 µs | 59.4 µs | **54.0 µs** | 63.7 µs | python 0.20x · pypy 0.91x · rust 0.85x |
+| 100 000 | 2729.8 µs | 1307.7 µs | **555.5 µs** | 684.0 µs | python 0.20x · pypy 0.42x · rust 0.81x |
+| 600 000 | 16843.6 µs | 6158.7 µs | **3416.7 µs** | 3965.8 µs | python 0.20x · pypy 0.55x · rust 0.86x |
+
+`HoppingWindow.ranges`, per call (lower is better):
+
+| case | python | pypy | cython | rust | vs cython |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `ranges(ts)` | 1435–1482 ns | **162–198 ns** | 732–744 ns | 311–317 ns | python 0.50x · **pypy 3.8–4.5x** · rust 2.35x |
+
+Ranges rather than point values here because PyPy's JIT is the one column with
+real run-to-run spread (162–198 ns over four runs; the other three vary by
+about 1%). The sign is not in doubt at any point in that band.
+
+**PyPy wins the window workload outright — around 4x Cython and roughly 1.7x
+Rust — and it is the one row in this entire document where something beats
+Rust at Rust's best case.** The reason is the same call-boundary argument from
+§3.1 read the other way: PyPy has no boundary to pay. It JITs `ranges` and its
+caller together into one trace, while both native extensions pay a crossing
+per call.
+Rust's 1.7–2.3x win over Cython on `ranges` was the single strongest argument
+in this document for adopting it; on the interpreter Faust already ships CI
+for, that win is not just matched but beaten, for zero build cost.
+
+PyPy does *not* win the offset scan (0.42–0.91x), and it degrades as the list
+grows — the JIT handles the loop well, but the allocation and GC traffic of
+building a 600k-element result list does not trace away.
+
+#### Memory
+
+Peak RSS of a fresh process, in MiB. "after import" is the interpreter plus
+the accelerator module; "input list" is the cost of the `list(range(n))` the
+scan runs over; "peak" is the high-water mark for the whole process.
+
+| offsets | impl | after import | input list | peak |
+| ---: | --- | ---: | ---: | ---: |
+| 100 000 | python | 16.5 | 3.9 | 22.7 |
+| 100 000 | pypy | 112.7 | **1.1** | 135.8 |
+| 100 000 | cython | 16.5 | 3.9 | 22.7 |
+| 100 000 | rust | 16.7 | 3.9 | 23.0 |
+| 600 000 | python | 16.5 | 23.0 | 53.2 |
+| 600 000 | pypy | 112.8 | **5.0** | 244.8 |
+| 600 000 | cython | 16.5 | 22.9 | **53.2** |
+| 600 000 | rust | 16.6 | 23.0 | 53.4 |
+
+Three things fall out of this, and the first is the one that matters for the
+decision:
+
+* **On CPython the accelerator is invisible.** Python, Cython and Rust land
+  within 0.3 MiB of each other at every size. Whatever case exists for Rust,
+  *memory is not part of it* — and neither is it part of the case for Cython.
+  All three are dominated by the Python objects the data is made of.
+* **PyPy trades a fixed cost for a variable one.** Its interpreter footprint
+  is 112 MiB against CPython's 16.5 MiB (6.8x), but it stores a list of ints
+  unboxed, so the same 600k offsets cost 5.0 MiB instead of 23.0 MiB (4.6x
+  less). Its *peak* is nonetheless far worse (244.8 MiB vs 53.2 MiB), which is
+  GC headroom rather than live data. For a worker holding many partitions'
+  offset lists the compact representation is the interesting half; for a
+  memory-constrained deployment the peak is.
+* **Artifact size is a wash.** Rust's single `_accel.so` is 498 KiB against
+  224 KiB for `faust/utils/_cython/functional` and 541 KiB for
+  `faust/_cython/windows` — and Faust ships six Cython modules to Rust's one,
+  so a full replacement would likely shrink the distribution slightly. That is
+  a real but very small point in Rust's favour, and the only one memory or
+  size offers.
+
+#### Caveats
+
+* PyPy 7.3.15 implements Python 3.9; CPython here is 3.11. That is not a
+  matched language version, and it is also exactly the version skew the
+  project actually has, since PyPy trails CPython releases.
+* PyPy runs the **pure-Python** implementations. It cannot usefully run the
+  Cython or Rust modules: `cpyext` makes C extensions slower on PyPy than the
+  Python they replace, which is why the CI leg sets `USE_CYTHON: 'false'` in
+  the first place. So "pypy" here is a different *runtime* choice, not a
+  fourth accelerator — which is the point of including it.
+
 ## 4. Which Faust code could actually go to Rust
 
 | Candidate | Shape | Verdict |
 | --- | --- | --- |
-| `faust/_cython/windows.pyx` (109 lines) | Pure float math, no Python objects held | **Portable, mostly not worth it.** The port exists and is correct; §3.1 shows it wins only on `ranges`. |
+| `faust/_cython/windows.pyx` (109 lines) | Pure float math, no Python objects held | **Portable, and now clearly not worth it.** The port exists and is correct; §3.1 shows it wins only on `ranges`, and §3.4 shows PyPy running the *pure-Python* version beats that win by ~1.7x. If this shape is worth optimising, the answer is a runtime, not a language. |
 | `faust/_cython/streams.pyx` (198 lines) | `async def next()`, awaits `chan_slow_get`, `maybe_async`, sensor callbacks | **Poor fit.** The body is an await-driven sequence of calls back into Python; PyO3 needs `pyo3-async-runtimes` to express it and pays the 79 ns boundary on *every* callback it drives. The Cython version wins here precisely because `cdef class` attribute access is cheap, which is the one thing Rust is worse at. |
 | `faust/transport/_cython/conductor.pyx` (134 lines) | Same — async dispatch, all work is calling Python | **Poor fit**, same reason. |
 | JSON encode/decode (`faust/utils/json.py`) | Genuinely batch-shaped | **Already solved** by `faust[orjson]`, which is Rust. Writing our own would be strictly worse. |
@@ -337,6 +440,12 @@ Concrete triggers, in rough order of likelihood:
    `streams.pyx` + `conductor.pyx`. If it is small, the entire accelerator
    question — Rust or Cython — is the wrong thing to optimise. This is the
    cheapest next step and should precede any language decision.
+   §3.4 adds a corollary that should be checked at the same time: for the one
+   shape where a native accelerator looked clearly worthwhile, **PyPy was
+   faster than both of them**, and it needs no extension at all. Before
+   reaching for a second toolchain, it is worth knowing what an end-to-end
+   Faust worker actually costs on PyPy — a question this document cannot
+   answer from microbenchmarks, and nobody has published either.
 3. **Free-threaded CPython becomes a target.** If dropping the `cp31?t-*` skip
    matters, a `Py_GIL_DISABLED`-safe accelerator is needed and PyO3 is a
    better starting point than auditing the `.pyx` files. That argues for
@@ -363,11 +472,24 @@ pip install -e .                                  # builds the Cython extensions
 
 python extra/tools/bench_accel_windows.py         # §3.1
 python extra/tools/bench_accel_offsets.py         # §3.3
+python extra/tools/bench_accel_matrix.py          # §3.4 (CPU + memory, incl. PyPy)
 
-# optional: add the rust columns to both
+# optional: add the rust columns to all three
 extra/tools/build_rust_accel.sh                   # abi3, as a real PR would ship
 extra/tools/build_rust_accel.sh --no-abi3         # adds the macro-based variants
 ```
+
+`bench_accel_matrix.py` shells out to `pypy3` for its PyPy rows and runs every
+cell in a fresh subprocess, so it needs the pure-Python dependency chain
+importable under PyPy:
+
+```bash
+pypy3 -m pip install mode-streaming yarl aiohttp aiohttp_cors \
+    terminaltables croniter mypy_extensions venusian intervaltree six
+```
+
+Without that (or without `pypy3` at all) the PyPy rows are dropped and the
+reason is printed under "Skipped"; the rest of the matrix still runs.
 
 Both benchmarks skip any implementation they cannot import, so they are useful
 on a pure-Python install too, and `bench_accel_offsets.py` refuses to report
