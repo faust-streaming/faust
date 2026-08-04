@@ -7,14 +7,24 @@ alongside (or eventually instead of) its Cython extensions.
 
 **Recommendation in one line:** do not add a Rust build axis to Faust today.
 The prototype works and the build integration is sound, but on the code Faust
-actually accelerates, Rust is between 1.9x faster and 15% *slower* than the
-Cython we already ship, and it would roughly double the test matrix and add a
-second native toolchain for that. Prefer keeping Cython, and revisit only if a
-genuinely batch-shaped hot path appears (see
-[What would change this answer](#what-would-change-this-answer)).
+actually accelerates, Rust lands between 2.3x faster and 15% *slower* than the
+Cython we already ship — and it is only faster on one method of one class,
+while being slower on the single busiest loop Faust owns. It would roughly
+double the test matrix and add a second native toolchain for that. Prefer keeping Cython, and revisit only if a
+hot path appears whose per-element work is *native* rather than
+Python-object-bound (see
+[What would change this answer](#6-what-would-change-this-answer)).
+
+> **Update.** The batch-shaped hot path this document was waiting for has
+> since landed — `first_consecutive_run`, which scans up to hundreds of
+> thousands of acked offsets per commit. It was ported to Rust and measured.
+> **Rust lost anyway**, and the reason turned out to sharpen the whole
+> evaluation: being batch-shaped is not sufficient. See
+> [§3.3](#33-first_consecutive_run-the-batch-shaped-path-that-arrived), which
+> also corrects the trigger in §6 that this update fires.
 
 Everything below was measured or built, not estimated; see
-[Reproducing](#reproducing).
+[Reproducing](#7-reproducing).
 
 ---
 
@@ -132,16 +142,32 @@ extensions built with the project's standard `-O2`. `min` of 5 runs ×
 scalar methods at 0.87–0.91x; run-to-run spread is a few percent, the sign is
 stable.)
 
+**Correction, from re-running this against the on-branch port.** The `HoppingWindow`
+port now lives in `faust/_rust/src/lib.rs` (it was off-branch when the table
+above was written), so anyone can re-run it — and it measures better than the
+original did. On the same machine as §3.3: `ranges` **2.26x faster** than
+Cython (773 → 341 ns), `current` 1.02x, `stale` 0.98x, `earliest` 0.92x.
+So the three scalar methods are a **wash**, not the 0.83–0.87x loss recorded
+above; the difference is mostly `lto = true` plus `codegen-units = 1`, which
+the original crate did not set. `abi3` makes no measurable difference here —
+unlike §3.3, this code indexes no lists, so it never touches the macros the
+limited API hides.
+
+The conclusion is unchanged, and if anything the corrected numbers make it
+cleaner: **Rust wins where there is work to do per call and ties where there
+is not.** Nothing here justifies a second toolchain.
+
 The pattern is the important part, and it is not about Rust being slow:
 
 * **The win is proportional to work done per call.** `ranges` builds a list of
-  ~7 tuples and Rust wins 1.7x. The three methods that do a couple of
-  floating-point operations and return one tuple all *lose* to Cython.
+  ~7 tuples and Rust wins outright. The three methods that do a couple of
+  floating-point operations and return one tuple land on top of Cython.
 * **Because the floor is the call boundary, not the language.** A bare
-  attribute read costs **60 ns through Cython and 79 ns through PyO3** —
-  PyO3's argument parsing, `Bound` handling and error plumbing are simply
-  thicker than `cdef class` access. Any call whose body is cheaper than ~30 ns
-  of that difference is a guaranteed loss, whatever the language.
+  attribute read costs **43 ns through Cython and 52 ns through PyO3** on the
+  re-run (60/79 ns originally) — PyO3's argument parsing, `Bound` handling and
+  error plumbing are simply thicker than `cdef class` access. Any call whose
+  body is cheaper than that difference is a guaranteed loss, whatever the
+  language.
 
 ### 3.2 Build cost
 
@@ -156,6 +182,64 @@ almost entirely compiling the PyO3 macro stack (`syn`, `quote`,
 `proc-macro2`, `pyo3-macros`), and it is a fixed cost that does not grow much
 as Faust's own Rust grows. It is paid per CI leg, not once.
 
+### 3.3 `first_consecutive_run`: the batch-shaped path that arrived
+
+§6 said the answer would change if "a batch-shaped hot path appears in Faust's
+own code — something that crosses the boundary once and then does thousands of
+operations". One has: `faust/utils/_cython/functional.pyx`'s
+`first_consecutive_run`, called once per assigned partition per commit from
+`Consumer._new_offset`, scanning the sorted list of acked offsets. At a busy
+partition that list holds hundreds of thousands of entries, so a single call
+does one boundary crossing and then 600 000 iterations. It is about as
+batch-shaped as Faust gets, and it blocks the event loop while it runs.
+
+It was ported to Rust four ways, each one giving up more safety than the last.
+100 000 offsets, all consecutive (the worst case — the whole list is scanned),
+same machine and method as §3.1:
+
+| implementation | 100k offsets | vs cython |
+| --- | ---: | ---: |
+| pure Python | 2775 µs | 0.20x |
+| **Cython (what ships today)** | **549 µs** | **1.00x** |
+| Rust, idiomatic PyO3, `abi3` | 1793 µs | 0.31x |
+| Rust, idiomatic PyO3, no `abi3` | 1184 µs | 0.46x |
+| Rust, raw `pyo3::ffi`, `abi3` | 831 µs | 0.66x |
+| Rust, raw `pyo3::ffi` + CPython macros, no `abi3` | 648 µs | 0.85x |
+| *Rust, same scan over a native `Vec<i64>`* | *83 µs* | *6.8x* |
+
+Ratios hold within a few percent across 1k / 10k / 100k / 600k offsets, so this
+is not a fixed-overhead artefact — it is the per-element cost.
+
+**Rust at its absolute best is still 15% slower than the Cython already in the
+tree.** That best case is `unsafe` raw-pointer code calling `PyList_GET_ITEM`
+and `PyLong_AsLongLongAndOverflow` directly — which is to say, it is C with
+Rust syntax, and it has given up both memory safety and `abi3`, the two things
+that were the reasons to prefer Rust in the first place.
+
+The last row is the one that explains all the others, and it is the real
+finding here:
+
+> The loop is batch-shaped, but every element in it is a `PyObject`. Each
+> iteration is `PyList_GET_ITEM` + `PyLong_AsLongLongAndOverflow` +
+> `PyList_Append` — three C-API calls that Rust has to make just as Cython
+> does, at the same price. Handed the *same data* as a native `Vec<i64>`, the
+> identical scan is **6.8x faster than Cython**. The bottleneck was never the
+> language; it is that the data is Python objects from end to end.
+
+Two corollaries worth carrying forward:
+
+1. **"Batch-shaped" was the wrong test.** Crossing the boundary once is
+   necessary but nowhere near sufficient. What matters is whether the
+   per-element work is native or Python-object-bound. A loop that touches a
+   `PyObject` per iteration has already lost, no matter how long it runs;
+   §6.1 is rewritten accordingly.
+2. **`abi3` and performance are in direct tension.** The limited API does not
+   expose `PyList_GET_ITEM`/`PyList_GET_SIZE`, so the fastest variant *cannot
+   be compiled* in an `abi3` build — best-with-`abi3` is 0.66x, best-without
+   is 0.85x. §5's "the abi3 upside does not materialise" is stronger than it
+   was written: even where abi3 is available, taking it costs ~22% on this
+   kind of code.
+
 ## 4. Which Faust code could actually go to Rust
 
 | Candidate | Shape | Verdict |
@@ -168,11 +252,18 @@ as Faust's own Rust grows. It is paid per CI leg, not once.
 | State store | Batch-shaped, big | **Already solved** by `faust[rocksdict]`, which is PyO3. |
 | Codec chains (`faust/serializers/codecs.py`) | Thin wrappers over `json`/`pickle`/`base64` | No meaningful compute of our own to move. |
 | Model field coercion (`faust/models/`) | Plausible on paper | Deeply coupled to `typing` introspection and user-supplied Python callables; would cross the boundary constantly. Not evaluated further. |
+| `faust/utils/_cython/functional.pyx` (`first_consecutive_run`) | Batch-shaped, but every element is a `PyObject` | **Ported and measured — Rust loses.** 0.85x Cython at its unsafe, non-`abi3` best; 0.66x with `abi3`. See §3.3. |
+| `faust/transport/_cython/scheduler.pyx` (`records_iterator`) | Round-robin cursor over Python lists, once per record | **Poor fit.** ~50 ns/record in Cython, and the body is `PyIter_Next` + tuple building — Python-object work end to end, with a call boundary per record on top. |
+| `faust/sensors/_cython/base.pyx` (`SensorDelegateBase`) | Iterates a set and calls back into Python 4x per message | **Poor fit**, and the worst of the three: the entire body *is* calls into Python, which is precisely the 79 ns-per-crossing case from §3.1. |
 
 The summary of that table is the crux of the evaluation: **every part of Faust
-whose shape suits Rust is already served by someone else's Rust**, and the
-three things Faust accelerates itself are all latency-bound call-boundary code,
-which is the one workload where Cython beats PyO3.
+whose shape suits Rust is already served by someone else's Rust**, and
+everything Faust accelerates itself is either latency-bound call-boundary code
+or a loop over Python objects — the two workloads where Cython beats PyO3.
+
+The three accelerators added since this document was first written did not
+change that. Two are call-boundary code, and the third (§3.3) looked like the
+exception and turned out not to be.
 
 ## 5. What it would cost
 
@@ -221,12 +312,26 @@ real cost.
 
 Concrete triggers, in rough order of likelihood:
 
-1. **A batch-shaped hot path appears in Faust's own code** — something that
-   crosses the boundary once and then does thousands of operations
-   (windowed-table range scans over many keys, bulk changelog
-   reconstruction on recovery, a partition-wide sort/merge). §3.1 shows the
-   win scales with work-per-call; `ranges`, the most batch-like of four
-   methods, is the only one that wins.
+1. ~~**A batch-shaped hot path appears in Faust's own code**~~ — **tested and
+   wrong; superseded by 1a.** One did appear (`first_consecutive_run`,
+   §3.3) and Rust lost to Cython anyway. Crossing the boundary once is
+   necessary but not sufficient, because the per-element cost dominates and
+   that cost is the same in both languages when the elements are `PyObject`s.
+
+1a. **A hot path appears whose per-element work is *native*** — where the data
+   can be converted to a native representation once (or, better, already
+   *is* one) and then scanned without touching a `PyObject` per iteration.
+   §3.3 measured the gap this makes: the same scan is 0.85x Cython over a
+   Python list and **6.8x** over a `Vec<i64>`.
+   The practical test before porting anything: *count the C-API calls per
+   element.* If it is more than zero, expect to lose.
+   Candidates that might genuinely qualify — none of them evaluated yet —
+   are ones where Faust could own the buffer end to end: offset bookkeeping
+   held as an `i64` array instead of `list[int]`, changelog reconstruction
+   over raw bytes on recovery, or a windowed-table range scan that returns
+   an aggregate rather than a list of Python tuples. Note that the first of
+   those is a data-structure change to `Consumer._acked`, not a language
+   choice, and would speed up the Cython version too.
 2. **Profiling shows the Cython extensions are actually material.** Nobody has
    published what fraction of Faust's per-message cost lives in
    `streams.pyx` + `conductor.pyx`. If it is small, the entire accelerator
@@ -240,19 +345,41 @@ Concrete triggers, in rough order of likelihood:
    time, or the `cp3*`/free-threading friction already visible in
    `pyproject.toml`'s skip comment.
 
-If (1) or (3) lands, the §2 prototype is the implementation: it is about 40
+If (1a) or (3) lands, the §2 prototype is the implementation: it is about 40
 lines of build wiring, it degrades correctly, and it has been shown to work.
 
 ## 7. Reproducing
 
+The Rust crate used for §3.3 now lives in `faust/_rust/`. It is deliberately
+**not** wired into `setup.py`: §2's integration point 2 still applies — PEP 518
+has no conditional `build-requires`, so wiring it up would make
+`setuptools-rust` a mandatory build dependency for everyone, which is a real
+cost to impose for a prototype this document recommends against shipping. The
+build script below stands in for that wiring.
+
 ```bash
 python -m venv .venv && . .venv/bin/activate
 pip install -e .                                  # builds the Cython extensions
-python extra/tools/bench_accel_windows.py         # python vs cython (vs rust, if built)
+
+python extra/tools/bench_accel_windows.py         # §3.1
+python extra/tools/bench_accel_offsets.py         # §3.3
+
+# optional: add the rust columns to both
+extra/tools/build_rust_accel.sh                   # abi3, as a real PR would ship
+extra/tools/build_rust_accel.sh --no-abi3         # adds the macro-based variants
 ```
 
-The benchmark skips any implementation it cannot import, so it is useful on a
-pure-Python install too. To reproduce the `rust` column, apply the §2 wiring,
-port `faust/_cython/windows.pyx`'s `HoppingWindow` to
-`faust/_rust/src/lib.rs`, and build with `USE_RUST=1 pip install -e .` — the
-benchmark picks up `faust._rust._accel` automatically.
+Both benchmarks skip any implementation they cannot import, so they are useful
+on a pure-Python install too, and `bench_accel_offsets.py` refuses to report
+timings for implementations that disagree on its correctness cases.
+
+Note that the `rust/macro` row only exists in a `--no-abi3` build: the variants
+are gated behind `#[cfg(not(feature = "abi3"))]` because the limited API does
+not expose `PyList_GET_ITEM`. That gate is the §3.3 corollary in code form.
+
+`faust/_rust/` deliberately has **no `__init__.py`**. It is imported as a PEP
+420 namespace package, which is what keeps `find_packages()` from picking it
+up and shipping a dead directory inside the wheel — the crate stays entirely
+outside the distribution, with no `exclude` entry needed in `setup.py`. If a
+real Rust PR is ever written, that changes: it would add the `__init__.py`
+along with everything in §1's six-row table.

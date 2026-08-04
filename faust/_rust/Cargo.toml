@@ -1,0 +1,29 @@
+[package]
+name = "faust-accel"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+# Evaluation only -- see docs/proposals/rust-acceleration.md.
+# Nothing in Faust's build system references this crate; build it with
+# extra/tools/build_rust_accel.sh when you want to re-check the numbers.
+
+[lib]
+name = "_accel"
+crate-type = ["cdylib"]
+
+[features]
+# abi3 is what a real PR would ship: one build covers CPython 3.10-3.14.
+# Turning it off is what the proposal's measurements need, because the
+# limited API hides the CPython macros the Cython extension compiles down to.
+default = ["abi3"]
+abi3 = ["pyo3/abi3-py310"]
+
+[dependencies.pyo3]
+version = "0.29"
+features = ["extension-module"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

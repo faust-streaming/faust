@@ -52,3 +52,4 @@ faust/sensors/_cython/*.c
 # coverage
 .coverage
 coverage.xml
+faust/_rust/target/
