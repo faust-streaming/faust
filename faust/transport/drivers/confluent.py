@@ -208,8 +208,6 @@ class ConfluentConsumerThread(ConsumerThread):
     _consumer: Optional[AsyncConsumer] = None
     _assigned: bool = False
 
-    # _pending_rebalancing_spans: Deque[opentracing.Span]
-
     tp_last_committed_at: MutableMapping[TP, float]
     time_started: float
 
