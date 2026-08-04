@@ -162,7 +162,7 @@ class Worker(mode.Worker):
                         await worker.start()
 
                     def manage_loop():
-                        loop = asyncio.get_event_loop_policy().get_event_loop()
+                        loop = asyncio.new_event_loop()
                         worker = Worker(app, loop=loop)
                         loop.run_until_complete(start_worker(worker))
 

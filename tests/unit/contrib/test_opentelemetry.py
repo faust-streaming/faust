@@ -111,6 +111,13 @@ class Test_getter:
         getter = _build_getter()
         assert getter.get({"traceparent": b"abc"}, "traceparent") == ["abc"]
 
+    def test_accepts_non_bytes_values(self):
+        """Some clients hand back ``str`` headers rather than ``bytes``."""
+        getter = _build_getter()
+        assert getter.get([("traceparent", "already-a-str")], "traceparent") == [
+            "already-a-str"
+        ]
+
 
 class Test_OpenTelemetrySensor:
     def test_creates_a_process_span(self, *, sensor, stream, exporter):

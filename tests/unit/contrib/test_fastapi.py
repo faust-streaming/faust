@@ -130,6 +130,28 @@ class Test_faust_app_running:
         # This app is not configured with autodiscover.
         app.discover.assert_not_called()
 
+    async def test_stop_timeout_is_honoured(self, *, app):
+        app.maybe_start = Mock(side_effect=lambda: _started(True))
+        app.stop = Mock(side_effect=lambda: _completed_future())
+
+        with patch("asyncio.wait_for", side_effect=asyncio.wait_for) as wait_for:
+            async with faust_app_running(app, discover=False, stop_timeout=30):
+                pass
+
+        assert wait_for.call_args.kwargs["timeout"] == 30
+        app.stop.assert_called_once_with()
+
+    async def test_slow_stop_raises_when_it_exceeds_the_timeout(self, *, app):
+        async def never_stops():
+            await asyncio.Event().wait()
+
+        app.maybe_start = Mock(side_effect=lambda: _started(True))
+        app.stop = Mock(side_effect=never_stops)
+
+        with pytest.raises(asyncio.TimeoutError):
+            async with faust_app_running(app, discover=False, stop_timeout=0.01):
+                pass
+
     async def test_propagates_loop_mismatch(self, *, app):
         app.loop = Mock(name="other_loop")
 
@@ -155,6 +177,14 @@ class Test_faust_lifespan:
         async with lifespan(Mock(name="asgi_app")):
             app.maybe_start.assert_called_once_with()
         app.stop.assert_called_once_with()
+
+    async def test_works_without_an_asgi_app_argument(self, *, app):
+        """Not every ASGI server passes the app to the lifespan handler."""
+        app.maybe_start = Mock(side_effect=lambda: _started(False))
+        lifespan = faust_lifespan(app, discover=False)
+
+        async with lifespan():
+            app.maybe_start.assert_called_once_with()
 
 
 class Test_serve_asgi:
