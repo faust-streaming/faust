@@ -244,3 +244,22 @@ class Test_records_iterator:
     # live dict, so CPython raises "dictionary keys changed during
     # iteration" -- that is undefined behaviour in Python itself, not a
     # guarantee either implementation should be pinned to.
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_non_dict_index_mapping(self, impl):
+        # The Cython snapshot check has a PyDict_Next fast path for exact
+        # dicts and falls back to .items() for anything else, so a mapping
+        # that is not a plain dict has to give the same answer.
+        from collections import OrderedDict
+
+        buffer = TopicBuffer()
+        buffer.add(TP1, BUF1)
+        index = OrderedDict([("foo", buffer)])
+        assert list(impl(index)) == [(TP1, i) for i in BUF1]
+
+    def test_buffers_is_a_plain_dict(self):
+        # PyDict_Next requires an exact dict; TopicBuffer._buffers used to be
+        # an OrderedDict, which is a subclass and would take the slow path.
+        buffer = TopicBuffer()
+        buffer.add(TP1, BUF1)
+        assert type(buffer._buffers) is dict
