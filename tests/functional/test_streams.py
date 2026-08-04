@@ -778,9 +778,6 @@ async def test_take(app):
         assert s.enable_acks is True
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @pytest.mark.asyncio
 async def test_take__records_event_runtime(app):
     # Regression test for #319: events buffered by take() are acked manually
