@@ -987,9 +987,6 @@ class Test_Agent:
             with pytest.raises(SinkCalledException):
                 await agent_mock.put("hello")
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-    )
     async def test_context__sinkless_agent(self, *, app):
         # An agent that never yields cannot use sinks, so test_context() used
         # to raise ImproperlyConfigured("Agent must yield to use sinks") at
