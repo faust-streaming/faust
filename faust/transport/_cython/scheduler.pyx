@@ -1,6 +1,8 @@
 # cython: language_level=3
 """Cython optimized consumer record scheduler."""
+from cpython.dict cimport PyDict_CheckExact, PyDict_Next
 from cpython.list cimport PyList_GET_ITEM, PyList_GET_SIZE
+from cpython.ref cimport PyObject
 
 
 cdef object _SENTINEL = object()
@@ -122,11 +124,28 @@ cdef class _TopicCursor:
         cdef:
             Py_ssize_t i = 0
             Py_ssize_t n = PyList_GET_SIZE(self.tps)
+            Py_ssize_t pos = 0
+            PyObject *pkey
+            PyObject *pvalue
             object tp
             object it
 
         if n != len(self.buffers):
             return False
+        if PyDict_CheckExact(self.buffers):
+            # Walks the dict without allocating an items view, an iterator
+            # or a tuple per entry -- which is what makes this cheaper than
+            # simply rebuilding the snapshot.  The borrowed references are
+            # safe because nothing here mutates the dict.
+            while PyDict_Next(self.buffers, &pos, &pkey, &pvalue):
+                if i >= n:
+                    return False
+                if <object>PyList_GET_ITEM(self.tps, i) is not <object>pkey:
+                    return False
+                if <object>PyList_GET_ITEM(self.iters, i) is not <object>pvalue:
+                    return False
+                i += 1
+            return i == n
         for tp, it in self.buffers.items():
             if i >= n:
                 return False
@@ -236,11 +255,25 @@ cdef class RoundRobinRecordIterator:
         cdef:
             Py_ssize_t i = 0
             Py_ssize_t n = PyList_GET_SIZE(self.topics)
+            Py_ssize_t pos = 0
+            PyObject *pkey
+            PyObject *pvalue
             object topic
             object buffer
 
         if n != len(self.index):
             return False
+        if PyDict_CheckExact(self.index):
+            while PyDict_Next(self.index, &pos, &pkey, &pvalue):
+                if i >= n:
+                    return False
+                if <object>PyList_GET_ITEM(self.topics, i) is not <object>pkey:
+                    return False
+                if (<_TopicCursor>PyList_GET_ITEM(
+                        self.topic_cursors, i)).source is not <object>pvalue:
+                    return False
+                i += 1
+            return i == n
         for topic, buffer in self.index.items():
             if i >= n:
                 return False
