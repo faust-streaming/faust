@@ -95,7 +95,7 @@ from faust.types.transports import (
 )
 from faust.types.tuples import FutureMessage
 from faust.utils import terminal
-from faust.utils.functional import consecutive_numbers
+from faust.utils.functional import first_consecutive_run
 from faust.utils.tracing import traced_from_parent_span
 
 if typing.TYPE_CHECKING:  # pragma: no cover
@@ -1117,7 +1117,7 @@ class Consumer(Service, ConsumerT):
 
             # Note: acked is always kept sorted.
             # find first list of consecutive numbers
-            batch = next(consecutive_numbers(acked))
+            batch = first_consecutive_run(acked)
             # remove them from the list to clean up.
             acked[: len(batch)] = []
             self._acked_index[tp].difference_update(batch)

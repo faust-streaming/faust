@@ -1,5 +1,6 @@
 """Transport utils - scheduling."""
 
+import os
 from collections import OrderedDict
 from typing import (
     Any,
@@ -21,6 +22,8 @@ __all__ = [
     "DefaultSchedulingStrategy",
     "TopicBuffer",
 ]
+
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 # But we want to process records from topics in round-robin order.
 # We convert records into a mapping from topic-name to "chain-of-buffers":
@@ -54,22 +57,27 @@ class DefaultSchedulingStrategy(SchedulingStrategyT):
 
     def records_iterator(self, index: TopicIndexMap) -> Iterator[Tuple[TP, Any]]:
         """Iterate over topic index map in round-robin order."""
-        to_remove: Set[str] = set()
-        sentinel = object()
-        _next = next
-        while index:
-            for topic in to_remove:
-                index.pop(topic, None)
-            for topic, messages in index.items():
-                item = _next(messages, sentinel)
-                if item is sentinel:
-                    # this topic is now empty,
-                    # but we cannot remove from dict while iterating over it,
-                    # so move that to the outer loop.
-                    to_remove.add(topic)
-                    continue
-                tp, record = item  # type: ignore
-                yield tp, record
+        return _records_iterator(index)
+
+
+def _py_records_iterator(index: TopicIndexMap) -> Iterator[Tuple[TP, Any]]:
+    """Iterate over topic index map in round-robin order."""
+    to_remove: Set[str] = set()
+    sentinel = object()
+    _next = next
+    while index:
+        for topic in to_remove:
+            index.pop(topic, None)
+        for topic, messages in index.items():
+            item = _next(messages, sentinel)
+            if item is sentinel:
+                # this topic is now empty,
+                # but we cannot remove from dict while iterating over it,
+                # so move that to the outer loop.
+                to_remove.add(topic)
+                continue
+            tp, record = item  # type: ignore
+            yield tp, record
 
 
 class TopicBuffer(Iterator):
@@ -115,3 +123,19 @@ class TopicBuffer(Iterator):
         if it is None:
             it = self._it = iter(self)
         return it.__next__()
+
+
+# The Cython version flattens both round-robins (across topics, and across the
+# partitions within a topic) into a single C-level cursor, so no generator
+# frame has to be resumed for each record fetched from the broker.
+#
+# Only the default iteration strategy is swapped: ``map_from_records`` and
+# ``records_iterator`` remain overridable, and a ``TopicBuffer`` subclass falls
+# back to being driven through ``next()``.
+if not NO_CYTHON:  # pragma: no cover
+    try:
+        from ._cython.scheduler import records_iterator as _records_iterator
+    except ImportError:
+        _records_iterator = _py_records_iterator
+else:  # pragma: no cover
+    _records_iterator = _py_records_iterator
