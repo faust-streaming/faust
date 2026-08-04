@@ -1,7 +1,6 @@
 """Transport utils - scheduling."""
 
 import os
-from collections import OrderedDict
 from typing import (
     Any,
     Dict,
@@ -87,9 +86,11 @@ class TopicBuffer(Iterator):
     _it: Optional[Iterator]
 
     def __init__(self) -> None:
-        # note: this is a regular dict, but ordered on Python 3.6
-        # we use this alias to signify it must be ordered.
-        self._buffers = OrderedDict()
+        # Insertion-ordered by language guarantee since 3.7, and Faust
+        # requires 3.10, so a plain dict is enough.  Using one rather than
+        # OrderedDict also lets the Cython scheduler walk it with
+        # PyDict_Next, which allocates nothing per entry.
+        self._buffers = {}
         # getmany calls next(_TopicBuffer), and does not call iter(),
         # so the first call to next caches an iterator.
         self._it = None
