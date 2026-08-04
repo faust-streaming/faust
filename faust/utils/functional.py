@@ -1,15 +1,19 @@
 """Functional utilities."""
 
+import os
 from functools import reduce
 from itertools import groupby
-from typing import Iterable, Iterator, Mapping, Sequence, Tuple, TypeVar
+from typing import Iterable, Iterator, List, Mapping, Sequence, Tuple, TypeVar
 
 __all__ = [
     "consecutive_numbers",
+    "first_consecutive_run",
     "translate",
 ]
 
 T = TypeVar("T")
+
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 
 def consecutive_numbers(it: Iterable[int]) -> Iterator[Sequence[int]]:
@@ -20,6 +24,41 @@ def consecutive_numbers(it: Iterable[int]) -> Iterator[Sequence[int]]:
     """
     for _, g in groupby(enumerate(it), lambda a: a[0] - a[1]):
         yield [a[1] for a in g]
+
+
+def _py_first_consecutive_run(numbers: Iterable[int]) -> List[int]:
+    """Return the first run of consecutive numbers in ``numbers``.
+
+    Equivalent to ``next(consecutive_numbers(numbers), [])``, but without
+    building the intermediate tuples, the per-element key function and the
+    group generators that :func:`itertools.groupby` needs.
+
+    Callers that only need the first run (such as the consumer working out
+    the next offset to commit) should use this instead of
+    :func:`consecutive_numbers`, as it is the part of the commit path that
+    scales with the number of un-committed offsets.
+    """
+    it = iter(numbers)
+    try:
+        prev = next(it)
+    except StopIteration:
+        return []
+    run = [prev]
+    for cur in it:
+        if cur - prev != 1:
+            break
+        run.append(cur)
+        prev = cur
+    return run
+
+
+if not NO_CYTHON:  # pragma: no cover
+    try:
+        from ._cython.functional import first_consecutive_run
+    except ImportError:
+        first_consecutive_run = _py_first_consecutive_run
+else:  # pragma: no cover
+    first_consecutive_run = _py_first_consecutive_run
 
 
 def translate(table: Mapping, s: str) -> str:

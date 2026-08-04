@@ -5,6 +5,7 @@ import pytest
 from faust import Event, Stream, Table, Topic, web
 from faust.assignor import PartitionAssignor
 from faust.sensors import Sensor
+from faust.sensors.base import _PySensorDelegateBase, _SensorDelegateBase
 from faust.transport.consumer import Consumer
 from faust.transport.producer import Producer
 from faust.types import TP, Message
@@ -239,3 +240,94 @@ class TestSensorDelegate:
 
     def test_repr(self, *, sensors):
         assert repr(sensors)
+
+
+#: Both implementations of the per-message sensor fan-out.
+#: ``_SensorDelegateBase`` is the Cython one whenever the extension could be
+#: built, and is otherwise the same object as ``_PySensorDelegateBase``.
+SENSOR_DELEGATE_BASES = [_PySensorDelegateBase, _SensorDelegateBase]
+
+
+class Test_SensorDelegateBase:
+    """The four hooks that run on every message, in both implementations."""
+
+    def _delegate(self, base, n_sensors=1):
+        app = Mock(name="app")
+        delegate = base(app)
+        sensors = []
+        for _ in range(n_sensors):
+            sensor = Mock(name="sensor", autospec=Sensor)
+            delegate.add(sensor)
+            sensors.append(sensor)
+        return delegate, sensors
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    def test_add_connects_beacon(self, base):
+        delegate, [sensor] = self._delegate(base)
+        assert sensor.beacon is delegate.app.beacon.new.return_value
+        assert list(delegate) == [sensor]
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    def test_remove(self, base):
+        delegate, [sensor] = self._delegate(base)
+        delegate.remove(sensor)
+        assert not list(delegate)
+        delegate.on_message_in(TP1, 3, None)
+        sensor.on_message_in.assert_not_called()
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    def test_remove__missing_raises(self, base):
+        delegate, _ = self._delegate(base)
+        with pytest.raises(KeyError):
+            delegate.remove(Mock(name="never-added"))
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    def test_no_sensors(self, base):
+        delegate = base(Mock(name="app"))
+        delegate.on_message_in(TP1, 3, None)
+        assert delegate.on_stream_event_in(TP1, 3, None, None) == {}
+        delegate.on_stream_event_out(TP1, 3, None, None, None)
+        delegate.on_message_out(TP1, 3, None)
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    @pytest.mark.parametrize("n_sensors", [1, 3])
+    def test_on_message_in_out(self, base, n_sensors, message):
+        delegate, sensors = self._delegate(base, n_sensors)
+        delegate.on_message_in(TP1, 303, message)
+        delegate.on_message_out(TP1, 303, message)
+        for sensor in sensors:
+            sensor.on_message_in.assert_called_once_with(TP1, 303, message)
+            sensor.on_message_out.assert_called_once_with(TP1, 303, message)
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    @pytest.mark.parametrize("n_sensors", [1, 3])
+    def test_on_stream_event_in_out(self, base, n_sensors, stream, event):
+        delegate, sensors = self._delegate(base, n_sensors)
+        state = delegate.on_stream_event_in(TP1, 303, stream, event)
+        assert set(state) == set(sensors)
+        delegate.on_stream_event_out(TP1, 303, stream, event, state)
+        for sensor in sensors:
+            sensor.on_stream_event_in.assert_called_once_with(TP1, 303, stream, event)
+            sensor.on_stream_event_out.assert_called_once_with(
+                TP1, 303, stream, event, state[sensor]
+            )
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    @pytest.mark.parametrize("state", [None, {}])
+    def test_on_stream_event_out__without_state(self, base, state, stream, event):
+        # No state recorded for this sensor: it must still be called, with None.
+        delegate, [sensor] = self._delegate(base)
+        delegate.on_stream_event_out(TP1, 303, stream, event, state)
+        sensor.on_stream_event_out.assert_called_once_with(
+            TP1, 303, stream, event, None
+        )
+
+    @pytest.mark.parametrize("base", SENSOR_DELEGATE_BASES)
+    def test_direct_mutation_of_sensors_is_picked_up(self, base):
+        # The Cython version walks a list snapshot of the sensor set, so it
+        # has to notice a set that was mutated behind its back.
+        delegate, _ = self._delegate(base)
+        extra = Mock(name="extra", autospec=Sensor)
+        delegate._sensors.add(extra)
+        delegate.on_message_in(TP1, 3, None)
+        extra.on_message_in.assert_called_once_with(TP1, 3, None)

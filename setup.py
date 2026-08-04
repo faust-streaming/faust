@@ -88,6 +88,27 @@ extensions = [
         extra_compile_args=CFLAGS,
         extra_link_args=LDFLAGS,
     ),
+    Extension(
+        "faust.sensors._cython.base",
+        ["faust/sensors/_cython/base" + ext],
+        libraries=LIBRARIES,
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
+    Extension(
+        "faust.transport._cython.scheduler",
+        ["faust/transport/_cython/scheduler" + ext],
+        libraries=LIBRARIES,
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
+    Extension(
+        "faust.utils._cython.functional",
+        ["faust/utils/_cython/functional" + ext],
+        libraries=LIBRARIES,
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
 ]
 
 
