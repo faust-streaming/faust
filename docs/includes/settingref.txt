@@ -1904,6 +1904,39 @@ Advanced Web Server Settings
 
 Web server driver to use.
 
+.. setting:: web_application_options
+
+``web_application_options``
+---------------------------
+
+.. versionadded:: 0.11.4
+
+:type: :class:`~typing.Mapping` [ :class:`str`, :class:`~typing.Any` ]
+:default: :const:`None`
+
+Extra keyword arguments passed to the web framework's application.
+
+Use this to configure the underlying web application object that the
+web driver creates.  For the default :pypi:`aiohttp` driver these are
+forwarded straight to :class:`aiohttp.web.Application`, so you can set
+things like ``client_max_size`` or install middlewares:
+
+.. sourcecode:: python
+
+    from aiohttp.web import middleware
+
+    @middleware
+    async def error_middleware(request, handler):
+        ...
+
+    app = App(..., web_application_options={
+        'client_max_size': 1024 ** 2 * 20,
+        'middlewares': [error_middleware],
+    })
+
+The accepted keys depend on the configured web driver.
+
+
 .. setting:: web_bind
 
 ``web_bind``
