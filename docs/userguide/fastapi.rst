@@ -246,6 +246,18 @@ Two complete examples ship with Faust:
 Caveats
 =======
 
+* **A topic must exist when the worker starts for its agent to consume from
+  it.**  This bites co-hosted apps particularly often, because they typically
+  produce to and consume from the same topic: on a first run against a fresh
+  cluster the topic does not exist yet, the agent subscribes to nothing, and
+  messages produced by your endpoints are written but never processed until
+  the process is restarted.  Nothing is lost -- the backlog is picked up on
+  the next start -- but the first run looks like the agent is broken.
+
+  This is not specific to co-hosting; ``faust worker`` behaves the same way.
+  Create your topics ahead of time (or restart once) when bootstrapping a new
+  environment.
+
 * ``producer_threaded=True`` spawns a producer with its own thread and loop.
   It is untested in a co-hosted process and is not supported here yet.
 * ``uvicorn --reload`` and ``--workers`` fork or re-exec the process.  Faust
