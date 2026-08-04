@@ -331,7 +331,19 @@ class UnionNode(Node):
         return (x for x in union_args if not _is_NoneType(x))
 
     def build(self, var: Variable, *args: Type) -> str:
-        raise NotImplementedError(f"Union of types {args!r} not supported")
+        # A union that reaches this point is heterogeneous: its members are
+        # neither all Model subclasses nor all built-in scalar/"literal" types
+        # (both of those are collapsed to a single node by
+        # `_maybe_unroll_union` above). There is no unambiguous way to coerce a
+        # value into such a union -- e.g. ``str | list | dict | None`` -- so we
+        # pass the already-deserialized value through unchanged. This mirrors
+        # the handling of an all-literal union such as ``Union[str, int,
+        # float]`` (which compiles to a bare pass-through) and restores the
+        # behavior that existed before mode-streaming started recognizing PEP
+        # 604 (``X | Y``) unions; that change made annotations like ``str |
+        # list | dict | None`` reach this node and raise NotImplementedError at
+        # class-definition time (faust-streaming/mode#80).
+        return f"{var}"
 
 
 class LiteralNode(Node):
