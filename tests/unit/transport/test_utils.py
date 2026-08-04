@@ -206,3 +206,41 @@ class Test_records_iterator:
         list(impl(index))
         assert not index
         assert not buffer._buffers
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_topic_buffer_replaced_mid_iteration(self, impl):
+        # A TopicBuffer swapped in under an existing topic name keeps the
+        # index the same size, so a length-only staleness check would miss
+        # it and keep draining the old buffer -- silently dropping every
+        # record in the replacement.
+        first = TopicBuffer()
+        first.add(TP1, [1, 2])
+        index = {"foo": first}
+
+        it = impl(index)
+        assert next(it) == (TP1, 1)
+
+        replacement = TopicBuffer()
+        replacement.add(TP1, [10, 11])
+        index["foo"] = replacement
+
+        assert list(it) == [(TP1, 10), (TP1, 11)]
+
+    @pytest.mark.parametrize("impl", RECORDS_ITERATOR_IMPLS)
+    def test_partition_buffer_replaced_mid_iteration(self, impl):
+        # Same hazard one level down: an iterator swapped in under an
+        # existing TP leaves the partition cursor stale.
+        buffer = TopicBuffer()
+        buffer.add(TP1, [1, 2, 3])
+
+        it = impl({"foo": buffer})
+        assert next(it) == (TP1, 1)
+
+        buffer._buffers[TP1] = iter([10, 11])
+        assert list(it) == [(TP1, 10), (TP1, 11)]
+
+    # Note: swapping a topic for one under a *different* name mid-iteration
+    # is deliberately not covered.  The pure-Python generator iterates the
+    # live dict, so CPython raises "dictionary keys changed during
+    # iteration" -- that is undefined behaviour in Python itself, not a
+    # guarantee either implementation should be pinned to.
