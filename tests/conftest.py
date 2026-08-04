@@ -12,9 +12,29 @@ import pytest
 from _pytest.assertion.util import _compare_eq_dict, _compare_eq_set
 from aiohttp.client import ClientError, ClientSession
 from aiohttp.web import Response
+from hypothesis import HealthCheck, settings as hypothesis_settings
 from mode.utils.futures import all_tasks
 
 from tests.helpers import AsyncContextManagerMock, AsyncMock
+
+# Hypothesis runs its own machinery in pure Python, so PyPy generates and
+# shrinks examples far more slowly than CPython, and JIT warm-up makes
+# per-example deadlines meaningless -- a slow early example trips the
+# deadline and sends hypothesis into a long, silent shrinking search.  These
+# property tests used to be skipped on PyPy; #716 unskipped them, and at the
+# default budget they can now push the (advisory) PyPy CI leg past its
+# timeout.  Trade example count for wall-clock there only -- the CPython legs
+# keep running the full-size profile, so coverage of the properties is
+# unchanged where it is cheap to get.
+hypothesis_settings.register_profile(
+    "pypy",
+    max_examples=20,
+    deadline=None,
+    suppress_health_check=[HealthCheck.too_slow],
+)
+
+if platform.python_implementation() == "PyPy":  # pragma: no cover
+    hypothesis_settings.load_profile("pypy")
 
 sentinel = object()
 

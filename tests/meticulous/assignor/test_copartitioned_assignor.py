@@ -1,4 +1,5 @@
 import copy
+import platform
 from collections import Counter
 from typing import MutableMapping
 
@@ -8,7 +9,11 @@ from hypothesis.strategies import integers
 from faust.assignor.client_assignment import CopartitionedAssignment
 from faust.assignor.copartitioned_assignor import CopartitionedAssignor
 
-TEST_DEADLINE = 4000
+# An explicit ``deadline=`` on @settings wins over the active hypothesis
+# profile, so the "pypy" profile registered in tests/conftest.py cannot clear
+# this on its own.  Drop the deadline on PyPy, where it measures JIT warm-up
+# rather than the assignor, and tripping it costs minutes of silent shrinking.
+TEST_DEADLINE = None if platform.python_implementation() == "PyPy" else 4000
 
 
 _topics = {"foo", "bar", "baz"}
