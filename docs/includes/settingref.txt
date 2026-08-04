@@ -1984,6 +1984,132 @@ Enable web server and other web components.
 This option can also be set using :option:`faust worker --without-web`.
 
 
+.. setting:: web_graph_enabled
+
+``web_graph_enabled``
+---------------------
+
+.. versionadded:: 0.13
+
+:type: :class:`bool`
+:default (alias to setting): :setting:`debug`
+:environment: :envvar:`APP_WEB_GRAPH_ENABLED`
+
+Enable/disable the ``/graph`` dependency graph endpoint.
+
+Renders the worker's service dependency graph as a PNG.
+
+If not set, this follows :setting:`debug`, which is how this endpoint
+was gated before this setting existed.
+
+.. warning::
+
+    The graph describes the entire internal service tree of the
+    worker.
+
+
+.. setting:: web_metrics_enabled
+
+``web_metrics_enabled``
+-----------------------
+
+.. versionadded:: 0.13
+
+:type: :class:`bool`
+:default: :const:`False`
+:environment: :envvar:`APP_WEB_METRICS_ENABLED`
+
+Enable/disable the ``/performance/`` metrics endpoint.
+
+Serves throughput, latency, consumer lag and table statistics as
+JSON, gathered from :setting:`Monitor`.  Unlike the statistics
+endpoints this is independent of :setting:`debug`, so it can be left
+on in production.
+
+Disabled by default: it is a new endpoint, and enabling it should be
+a deliberate choice.
+
+.. seealso::
+
+    :mod:`faust.sensors.prometheus` serves the same underlying data
+    in Prometheus format on its own ``/metrics`` path.
+
+
+.. setting:: web_router_enabled
+
+``web_router_enabled``
+----------------------
+
+.. versionadded:: 0.13
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`APP_WEB_ROUTER_ENABLED`
+
+Enable/disable the ``/router`` endpoints.
+
+These report which worker in the cluster owns a given table key, and
+are what makes :meth:`@table_route` work across nodes.
+
+.. warning::
+
+    Disabling this breaks :meth:`@table_route` for multi-node
+    deployments.  Only turn it off if you route entirely within a
+    single worker.
+
+    Left enabled, it exposes your cluster topology -- the URLs of
+    every other worker.
+
+
+.. setting:: web_stats_enabled
+
+``web_stats_enabled``
+---------------------
+
+.. versionadded:: 0.13
+
+:type: :class:`bool`
+:default (alias to setting): :setting:`debug`
+:environment: :envvar:`APP_WEB_STATS_ENABLED`
+
+Enable/disable the built-in statistics endpoints.
+
+Serves sensor statistics at ``/`` and the current partition
+assignment at ``/assignment/``.
+
+If not set, this follows :setting:`debug`, which is how these
+endpoints were gated before this setting existed.
+
+When disabled, ``/`` serves the plain production index instead.
+
+.. warning::
+
+    These endpoints expose internal state: every registered sensor's
+    counters, and which partitions this worker is handling.
+
+
+.. setting:: web_tables_enabled
+
+``web_tables_enabled``
+----------------------
+
+.. versionadded:: 0.13
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`APP_WEB_TABLES_ENABLED`
+
+Enable/disable the ``/table`` endpoints.
+
+These list the tables defined by this app and allow reading
+individual keys over HTTP.
+
+.. warning::
+
+    This exposes table *data*, not just table names.  If your tables
+    hold anything sensitive, turn this off.
+
+
 .. setting:: web_host
 
 ``web_host``

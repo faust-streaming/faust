@@ -14,6 +14,19 @@ resumes the Keep a Changelog format.
 ## [Unreleased]
 
 ### Added
+- Per-endpoint feature flags for the built-in web endpoints:
+  `web_stats_enabled`, `web_graph_enabled`, `web_router_enabled`,
+  `web_tables_enabled` and `web_metrics_enabled`. Previously `debug` was the
+  only control, and it enabled the statistics and graph endpoints together,
+  while `/router` and `/table` could not be turned off at all — even though
+  `/table` serves table *data* over HTTP. The statistics and graph flags take
+  their default from `debug`, so behaviour is unchanged unless you set them.
+- New `/performance/` endpoint (`web_metrics_enabled`, off by default)
+  returning throughput, latency percentiles, consumer lag and table statistics
+  as JSON. Consumer lag and latency percentiles are computed here — `Monitor`
+  tracks read and log-end offsets but never derives lag, and keeps raw latency
+  deques rather than summaries. Needs no extra dependency, and is independent
+  of both `debug` and `faust.sensors.prometheus`.
 - `faust.contrib.fastapi`: co-host a FastAPI (or any ASGI) application with the
   worker, in one process and one event loop. `faust_lifespan()` runs Faust from
   an ASGI lifespan, `serve_asgi()` serves your app from inside `faust worker`.

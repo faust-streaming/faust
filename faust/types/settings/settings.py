@@ -1935,6 +1935,112 @@ class Settings(base.SettingsRegistry):
         """
 
     @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.13",
+        env_name="APP_WEB_STATS_ENABLED",
+        default_alias="debug",
+    )
+    def web_stats_enabled(self) -> bool:
+        """Enable/disable the built-in statistics endpoints.
+
+        Serves sensor statistics at ``/`` and the current partition
+        assignment at ``/assignment/``.
+
+        If not set, this follows :setting:`debug`, which is how these
+        endpoints were gated before this setting existed.
+
+        When disabled, ``/`` serves the plain production index instead.
+
+        .. warning::
+
+            These endpoints expose internal state: every registered sensor's
+            counters, and which partitions this worker is handling.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.13",
+        env_name="APP_WEB_GRAPH_ENABLED",
+        default_alias="debug",
+    )
+    def web_graph_enabled(self) -> bool:
+        """Enable/disable the ``/graph`` dependency graph endpoint.
+
+        Renders the worker's service dependency graph as a PNG.
+
+        If not set, this follows :setting:`debug`, which is how this endpoint
+        was gated before this setting existed.
+
+        .. warning::
+
+            The graph describes the entire internal service tree of the
+            worker.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.13",
+        env_name="APP_WEB_ROUTER_ENABLED",
+        default=True,
+    )
+    def web_router_enabled(self) -> bool:
+        """Enable/disable the ``/router`` endpoints.
+
+        These report which worker in the cluster owns a given table key, and
+        are what makes :meth:`@table_route` work across nodes.
+
+        .. warning::
+
+            Disabling this breaks :meth:`@table_route` for multi-node
+            deployments.  Only turn it off if you route entirely within a
+            single worker.
+
+            Left enabled, it exposes your cluster topology -- the URLs of
+            every other worker.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.13",
+        env_name="APP_WEB_TABLES_ENABLED",
+        default=True,
+    )
+    def web_tables_enabled(self) -> bool:
+        """Enable/disable the ``/table`` endpoints.
+
+        These list the tables defined by this app and allow reading
+        individual keys over HTTP.
+
+        .. warning::
+
+            This exposes table *data*, not just table names.  If your tables
+            hold anything sensitive, turn this off.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.13",
+        env_name="APP_WEB_METRICS_ENABLED",
+        default=False,
+    )
+    def web_metrics_enabled(self) -> bool:
+        """Enable/disable the ``/performance/`` metrics endpoint.
+
+        Serves throughput, latency, consumer lag and table statistics as
+        JSON, gathered from :setting:`Monitor`.  Unlike the statistics
+        endpoints this is independent of :setting:`debug`, so it can be left
+        on in production.
+
+        Disabled by default: it is a new endpoint, and enabling it should be
+        a deliberate choice.
+
+        .. seealso::
+
+            :mod:`faust.sensors.prometheus` serves the same underlying data
+            in Prometheus format on its own ``/metrics`` path.
+        """
+
+    @sections.WebServer.setting(
         params.Str,
         version_introduced="1.2",
         env_name="WEB_HOST",

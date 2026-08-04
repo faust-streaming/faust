@@ -243,6 +243,7 @@ Web
     :maxdepth: 1
 
     faust.web.apps.graph
+    faust.web.apps.metrics
     faust.web.apps.router
     faust.web.apps.stats
     faust.web.base

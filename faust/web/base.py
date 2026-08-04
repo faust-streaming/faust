@@ -55,6 +55,23 @@ DEBUG_BLUEPRINTS: _BPList = [
     ("", "faust.web.apps.stats:blueprint"),
 ]
 
+#: Blueprints that are off unless explicitly enabled.
+OPTIONAL_BLUEPRINTS: _BPList = [
+    ("/performance", "faust.web.apps.metrics:blueprint"),
+]
+
+#: Maps a blueprint to the setting that enables it.
+#:
+#: A blueprint not listed here is always enabled, so user-supplied blueprints
+#: are unaffected.
+BLUEPRINT_FLAGS: Mapping[str, str] = {
+    "faust.web.apps.router:blueprint": "web_router_enabled",
+    "faust.web.apps.tables.blueprint": "web_tables_enabled",
+    "faust.web.apps.graph:blueprint": "web_graph_enabled",
+    "faust.web.apps.stats:blueprint": "web_stats_enabled",
+    "faust.web.apps.metrics:blueprint": "web_metrics_enabled",
+}
+
 CONTENT_SEPARATOR: bytes = b"\r\n\r\n"
 HEADER_SEPARATOR: bytes = b"\r\n"
 HEADER_KEY_VALUE_SEPARATOR: bytes = b": "
@@ -163,6 +180,8 @@ class Web(Service):
     default_blueprints: ClassVar[_BPList] = DEFAULT_BLUEPRINTS  # noqa: E704
     production_blueprints: ClassVar[_BPList] = PRODUCTION_BLUEPRINTS
     debug_blueprints: ClassVar[_BPList] = DEBUG_BLUEPRINTS
+    optional_blueprints: ClassVar[_BPList] = OPTIONAL_BLUEPRINTS
+    blueprint_flags: ClassVar[Mapping[str, str]] = BLUEPRINT_FLAGS
 
     app: AppT
 
@@ -181,18 +200,38 @@ class Web(Service):
         self.app = app
         self.views = {}
         self.reverse_names = {}
-        blueprints = list(self.default_blueprints)
-        if self.app.conf.debug:
-            blueprints.extend(self.debug_blueprints)
-        else:
-            blueprints.extend(self.production_blueprints)
-        self.blueprints = BlueprintManager(blueprints)
+        self.blueprints = BlueprintManager(self._enabled_blueprints())
         # Do *not* pass ``loop=app.loop`` here: ``app.web`` is a cached
         # property that is commonly touched before the loop is running (the
         # ``faust worker`` banner does so), and reading ``app.loop`` there pins
         # the App to a loop that will never be run.  ``mode.Service``
         # late-binds the loop.  See the note in ``faust.agents.agent``.
         Service.__init__(self, **kwargs)
+
+    def _enabled_blueprints(self) -> List[Tuple[str, _BPArg]]:
+        """Select which built-in blueprints to serve.
+
+        Each built-in blueprint has its own setting (see
+        :attr:`blueprint_flags`).  The statistics and graph endpoints take
+        their default from :setting:`debug`, so an app that does not set the
+        new settings serves exactly what it served before.
+        """
+        conf = self.app.conf
+        candidates: List[Tuple[str, _BPArg]] = list(self.default_blueprints)
+        candidates.extend(self.debug_blueprints)
+        candidates.extend(self.optional_blueprints)
+        if not conf.web_stats_enabled:
+            # Statistics and the production index both mount at "/", so
+            # exactly one of them is served.
+            candidates.extend(self.production_blueprints)
+        return [(prefix, bp) for prefix, bp in candidates if self._is_enabled(bp, conf)]
+
+    def _is_enabled(self, blueprint: _BPArg, conf: Any) -> bool:
+        setting = (
+            self.blueprint_flags.get(blueprint) if isinstance(blueprint, str) else None
+        )
+        # Blueprints with no flag -- including any a subclass adds -- are on.
+        return True if setting is None else bool(getattr(conf, setting))
 
     @abc.abstractmethod
     def text(
