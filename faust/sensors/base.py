@@ -1,5 +1,6 @@
 """Base-interface for sensors."""
 
+import os
 from time import monotonic
 from typing import Any, Dict, Iterator, Mapping, Optional, Set
 
@@ -13,6 +14,8 @@ from faust.types.transports import ConsumerT, ProducerT
 from faust.types.tuples import TP, Message, PendingMessage, RecordMetadata
 
 __all__ = ["Sensor", "SensorDelegate"]
+
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 
 class Sensor(SensorT, Service):
@@ -151,8 +154,13 @@ class Sensor(SensorT, Service):
         return {}
 
 
-class SensorDelegate(SensorDelegateT):
-    """A class that delegates sensor methods to a list of sensors."""
+class _PySensorDelegateBase:
+    """Pure-Python implementation of the per-message sensor fan-out.
+
+    Split out from :class:`SensorDelegate` so the four hooks that run on
+    every single message can be swapped for a Cython implementation while
+    the (much larger) set of occasional hooks stays plain Python.
+    """
 
     _sensors: Set[SensorT]
 
@@ -197,15 +205,37 @@ class SensorDelegate(SensorDelegateT):
                 tp, offset, stream, event, sensor_state.get(sensor)
             )
 
-    def on_topic_buffer_full(self, tp: TP) -> None:
-        """Call when conductor topic buffer is full and has to wait."""
-        for sensor in self._sensors:
-            sensor.on_topic_buffer_full(tp)
-
     def on_message_out(self, tp: TP, offset: int, message: Message) -> None:
         """Call when message is fully acknowledged and can be committed."""
         for sensor in self._sensors:
             sensor.on_message_out(tp, offset, message)
+
+
+if not NO_CYTHON:  # pragma: no cover
+    try:
+        from ._cython.base import SensorDelegateBase as _SensorDelegateBase
+    except ImportError:
+        _SensorDelegateBase = _PySensorDelegateBase  # type: ignore[misc,assignment]
+else:  # pragma: no cover
+    _SensorDelegateBase = _PySensorDelegateBase  # type: ignore[misc,assignment]
+
+
+class SensorDelegate(  # type: ignore[misc,valid-type]
+    _SensorDelegateBase,
+    SensorDelegateT,
+):
+    """A class that delegates sensor methods to a list of sensors.
+
+    The four per-message hooks (``on_message_in``, ``on_stream_event_in``,
+    ``on_stream_event_out`` and ``on_message_out``) come from
+    :data:`_SensorDelegateBase`, which is the Cython implementation when it
+    could be built and :class:`_PySensorDelegateBase` otherwise.
+    """
+
+    def on_topic_buffer_full(self, tp: TP) -> None:
+        """Call when conductor topic buffer is full and has to wait."""
+        for sensor in self._sensors:
+            sensor.on_topic_buffer_full(tp)
 
     def on_table_get(self, table: CollectionT, key: Any) -> None:
         """Call when value in table is retrieved."""
