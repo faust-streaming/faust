@@ -102,10 +102,10 @@ class Record(Model, abstract=True):  # type: ignore
         allow_blessed_key: Optional[bool] = None,
         decimals: Optional[bool] = None,
         coerce: Optional[bool] = None,
-        coercions: CoercionMapping = None,
+        coercions: Optional[CoercionMapping] = None,
         polymorphic_fields: Optional[bool] = None,
         validation: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
         lazy_creation: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -224,7 +224,7 @@ class Record(Model, abstract=True):  # type: ignore
             tagged_fields.add(field)
 
         def add_related_to_tagged_indices(
-            field: str, related_model: Type = None
+            field: str, related_model: Optional[Type] = None
         ) -> None:
             if related_model is None:
                 return
@@ -298,7 +298,7 @@ class Record(Model, abstract=True):  # type: ignore
 
     @classmethod
     def from_data(
-        cls, data: Mapping, *, preferred_type: Type[ModelT] = None
+        cls, data: Mapping, *, preferred_type: Optional[Type[ModelT]] = None
     ) -> "Record":
         """Create model object from Python dictionary."""
         # check for blessed key to see if another model should be used.
@@ -310,7 +310,11 @@ class Record(Model, abstract=True):  # type: ignore
         return (self_cls or cls)(**data, __strict__=False)
 
     def __init__(
-        self, *args: Any, __strict__: bool = True, __faust: Any = None, **kwargs: Any
+        self,
+        *args: Any,
+        __strict__: bool = True,
+        __faust: Optional[Any] = None,
+        **kwargs: Any,
     ) -> None:  # pragma: no cover
         ...  # overridden by _BUILD_init
 

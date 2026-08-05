@@ -175,7 +175,7 @@ class Model(ModelT):
         cls,
         data: Any,
         *,
-        preferred_type: Type[ModelT] = None,
+        preferred_type: Optional[Type[ModelT]] = None,
         fast_types: Tuple[Type, ...] = (bytes, str),
         isinstance: Callable = isinstance,
     ) -> Optional[Type[ModelT]]:
@@ -232,8 +232,8 @@ class Model(ModelT):
         cls,
         s: bytes,
         *,
-        default_serializer: CodecArg = None,  # XXX use serializer
-        serializer: CodecArg = None,
+        default_serializer: Optional[CodecArg] = None,  # XXX use serializer
+        serializer: Optional[CodecArg] = None,
     ) -> ModelT:
         """Deserialize model object from bytes.
 
@@ -260,10 +260,10 @@ class Model(ModelT):
         allow_blessed_key: Optional[bool] = None,
         decimals: Optional[bool] = None,
         coerce: Optional[bool] = None,
-        coercions: CoercionMapping = None,
+        coercions: Optional[CoercionMapping] = None,
         polymorphic_fields: Optional[bool] = None,
         validation: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
         lazy_creation: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -315,10 +315,10 @@ class Model(ModelT):
         allow_blessed_key: Optional[bool] = None,
         decimals: Optional[bool] = None,
         coerce: Optional[bool] = None,
-        coercions: CoercionMapping = None,
+        coercions: Optional[CoercionMapping] = None,
         polymorphic_fields: Optional[bool] = None,
         validation: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
     ) -> None:
         # Can set serializer/namespace/etc. using:
         #    class X(Record, serializer='json', namespace='com.vandelay.X'):
@@ -484,7 +484,7 @@ class Model(ModelT):
     def _derive(self, *objects: ModelT, **fields: Any) -> ModelT:
         raise NotImplementedError()
 
-    def dumps(self, *, serializer: CodecArg = None) -> bytes:
+    def dumps(self, *, serializer: Optional[CodecArg] = None) -> bytes:
         """Serialize object to the target serialization format."""
         return dumps(serializer or self._options.serializer, self.to_representation())
 

@@ -90,14 +90,14 @@ class Attachments:
     async def maybe_put(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -148,10 +148,10 @@ class Attachments:
         value: V,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset."""

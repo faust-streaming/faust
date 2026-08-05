@@ -150,7 +150,7 @@ class Message:
         checksum: Optional[bytes],
         serialized_key_size: Optional[int] = None,
         serialized_value_size: Optional[int] = None,
-        tp: TP = None,
+        tp: Optional[TP] = None,
         time_in: Optional[float] = None,
         time_out: Optional[float] = None,
         time_total: Optional[float] = None,

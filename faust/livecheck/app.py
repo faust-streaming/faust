@@ -56,7 +56,12 @@ class LiveCheckSensor(Sensor):
         return None
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is finished handling event."""
         has_active_test = getattr(stream, "current_test", None)
@@ -193,11 +198,11 @@ class LiveCheck(faust.App):
     def on_produce_attach_test_headers(
         self,
         sender: AppT,
-        key: bytes = None,
-        value: bytes = None,
+        key: Optional[bytes] = None,
+        value: Optional[bytes] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: List[Tuple[str, bytes]] = None,
+        headers: Optional[List[Tuple[str, bytes]]] = None,
         signal: Optional[BaseSignalT] = None,
         **kwargs: Any,
     ) -> None:

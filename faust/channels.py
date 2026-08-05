@@ -92,8 +92,8 @@ class Channel(ChannelT[T]):
         app: AppT,
         *,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         is_iterator: bool = False,
         queue: Optional[ThrowableQueue] = None,
         maxsize: Optional[int] = None,
@@ -120,7 +120,7 @@ class Channel(ChannelT[T]):
         self.value_type = self.schema.value_type
 
     def _get_default_schema(
-        self, key_type: ModelArg = None, value_type: ModelArg = None
+        self, key_type: Optional[ModelArg] = None, value_type: Optional[ModelArg] = None
     ) -> SchemaT:
         return cast(
             SchemaT,
@@ -201,14 +201,14 @@ class Channel(ChannelT[T]):
     async def send(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -228,14 +228,14 @@ class Channel(ChannelT[T]):
     def send_soon(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
         eager_partitioning: bool = False,
@@ -251,14 +251,14 @@ class Channel(ChannelT[T]):
 
     def as_future_message(
         self,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         eager_partitioning: bool = False,
     ) -> FutureMessage:
@@ -302,14 +302,14 @@ class Channel(ChannelT[T]):
 
     async def _send_now(
         self,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         return await self.publish_message(
@@ -391,7 +391,7 @@ class Channel(ChannelT[T]):
         key: K,
         key_serializer: CodecArg,
         schema: Optional[SchemaT] = None,
-        headers: OpenHeadersArg = None,
+        headers: Optional[OpenHeadersArg] = None,
     ) -> Tuple[Any, OpenHeadersArg]:
         """Prepare key before it is sent to this channel.
 
@@ -405,7 +405,7 @@ class Channel(ChannelT[T]):
         value: V,
         value_serializer: CodecArg,
         schema: Optional[SchemaT] = None,
-        headers: OpenHeadersArg = None,
+        headers: Optional[OpenHeadersArg] = None,
     ) -> Tuple[Any, OpenHeadersArg]:
         """Prepare value before it is sent to this channel.
 
@@ -594,10 +594,10 @@ class SerializedChannel(Channel[T]):
         app: AppT,
         *,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
         **kwargs: Any,
     ) -> None:
@@ -631,10 +631,10 @@ class SerializedChannel(Channel[T]):
         self,
         schema: SchemaT,
         *,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None:
         # Update schema and take compat attributes
@@ -649,10 +649,10 @@ class SerializedChannel(Channel[T]):
 
     def _get_default_schema(
         self,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> SchemaT:
         return cast(
@@ -681,7 +681,7 @@ class SerializedChannel(Channel[T]):
         key: K,
         key_serializer: CodecArg,
         schema: Optional[SchemaT] = None,
-        headers: OpenHeadersArg = None,
+        headers: Optional[OpenHeadersArg] = None,
     ) -> Tuple[Any, OpenHeadersArg]:
         """Serialize key to format suitable for transport."""
         if key is not None:
@@ -697,7 +697,7 @@ class SerializedChannel(Channel[T]):
         value: V,
         value_serializer: CodecArg,
         schema: Optional[SchemaT] = None,
-        headers: OpenHeadersArg = None,
+        headers: Optional[OpenHeadersArg] = None,
     ) -> Tuple[Any, OpenHeadersArg]:
         """Serialize value to format suitable for transport."""
         schema = schema or self.schema

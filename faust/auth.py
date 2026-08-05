@@ -36,8 +36,8 @@ class SASLCredentials(Credentials):
         *,
         username: Optional[str] = None,
         password: Optional[str] = None,
-        ssl_context: ssl.SSLContext = None,
-        mechanism: Union[str, SASLMechanism] = None,
+        ssl_context: Optional[ssl.SSLContext] = None,
+        mechanism: Optional[Union[str, SASLMechanism]] = None,
     ) -> None:
         self.username = username
         self.password = password
@@ -93,8 +93,8 @@ class GSSAPICredentials(Credentials):
         *,
         kerberos_service_name: str = "kafka",
         kerberos_domain_name: Optional[str] = None,
-        ssl_context: ssl.SSLContext = None,
-        mechanism: Union[str, SASLMechanism] = None,
+        ssl_context: Optional[ssl.SSLContext] = None,
+        mechanism: Optional[Union[str, SASLMechanism]] = None,
     ) -> None:
         self.kerberos_service_name = kerberos_service_name
         self.kerberos_domain_name = kerberos_domain_name
@@ -122,9 +122,9 @@ class SSLCredentials(Credentials):
 
     def __init__(
         self,
-        context: ssl.SSLContext = None,
+        context: Optional[ssl.SSLContext] = None,
         *,
-        purpose: Any = None,
+        purpose: Optional[Any] = None,
         cafile: Optional[str] = None,
         capath: Optional[str] = None,
         cadata: Optional[str] = None,

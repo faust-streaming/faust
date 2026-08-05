@@ -1,6 +1,6 @@
 import traceback
 from functools import cached_property
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import aiohttp
 from mode import get_logger
@@ -84,7 +84,12 @@ class TracingSensor(Sensor):
 
     # Event was acknowledged by stream.
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         stream_meta = getattr(event.message, "stream_meta", None)
         if stream_meta is None:

@@ -294,19 +294,19 @@ class Param(Generic[IT, OT], property):
         *,
         name: str,
         env_name: Optional[str] = None,
-        default: IT = None,
+        default: Optional[IT] = None,
         default_alias: Optional[str] = None,
         default_template: Optional[str] = None,
         allow_none: Optional[bool] = None,
         ignore_default: Optional[bool] = None,
-        section: _Section = None,
+        section: Optional[_Section] = None,
         version_introduced: Optional[str] = None,
         version_deprecated: Optional[str] = None,
         version_removed: Optional[str] = None,
-        version_changed: Mapping[str, str] = None,
+        version_changed: Optional[Mapping[str, str]] = None,
         deprecation_reason: Optional[str] = None,
-        related_cli_options: Mapping[str, List[str]] = None,
-        related_settings: List[Any] = None,
+        related_cli_options: Optional[Mapping[str, List[str]]] = None,
+        related_settings: Optional[List[Any]] = None,
         help: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
@@ -366,7 +366,7 @@ class Param(Generic[IT, OT], property):
         self._on_set_default_ = fun
         return fun
 
-    def __get__(self, obj: Any, type: Type = None) -> OT:
+    def __get__(self, obj: Any, type: Optional[Type] = None) -> OT:
         if obj is None:
             return self  # type: ignore
         if self.version_deprecated:
@@ -443,7 +443,7 @@ class Param(Generic[IT, OT], property):
             alt_removal=alt_removal,
         )
 
-    def validate_before(self, value: IT = None) -> None:
+    def validate_before(self, value: Optional[IT] = None) -> None:
         """Validate value before setting is converted to the target type."""
         ...
 
@@ -522,7 +522,7 @@ class Number(Param[IT, OT]):
         self,
         min_value: Optional[int] = None,
         max_value: Optional[int] = None,
-        number_aliases: Mapping[IT, OT] = None,
+        number_aliases: Optional[Mapping[IT, OT]] = None,
         **kwargs: Any,
     ) -> None:
         if min_value is not None:

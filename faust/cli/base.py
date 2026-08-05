@@ -161,7 +161,7 @@ class State:
 def compat_option(
     *args: Any,
     state_key: str,
-    callback: Callable[[click.Context, click.Parameter, Any], Any] = None,
+    callback: Optional[Callable[[click.Context, click.Parameter, Any], Any]] = None,
     expose_value: bool = False,
     **kwargs: Any,
 ) -> Callable[[Any], click.Parameter]:
@@ -413,9 +413,9 @@ class _Group(click.Group):
         info_name: str,
         args: str,
         app: Optional[AppT] = None,
-        parent: click.Context = None,
-        stdout: IO = None,
-        stderr: IO = None,
+        parent: Optional[click.Context] = None,
+        stdout: Optional[IO] = None,
+        stderr: Optional[IO] = None,
         side_effects: bool = True,
         **extra: Any,
     ) -> click.Context:
@@ -715,7 +715,13 @@ class Command(abc.ABC):  # noqa: B024
         max_width = max(table.column_max_width(1), 10)
         return "\n".join(wrap(text, max_width))
 
-    def say(self, message: str, file: IO = None, err: IO = None, **kwargs: Any) -> None:
+    def say(
+        self,
+        message: str,
+        file: Optional[IO] = None,
+        err: Optional[IO] = None,
+        **kwargs: Any,
+    ) -> None:
         """Print something to stdout (or use ``file=stderr`` kwarg).
 
         Note:
@@ -819,8 +825,8 @@ class AppCommand(Command):
         self,
         ctx: click.Context,
         *args: Any,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(ctx)
@@ -996,9 +1002,9 @@ class AppCommand(Command):
 
 def call_command(
     command: str,
-    args: List[str] = None,
-    stdout: IO = None,
-    stderr: IO = None,
+    args: Optional[List[str]] = None,
+    stdout: Optional[IO] = None,
+    stderr: Optional[IO] = None,
     side_effects: bool = False,
     **kwargs: Any,
 ) -> Tuple[int, IO, IO]:

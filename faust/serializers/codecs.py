@@ -205,7 +205,9 @@ class Codec(CodecT):
     #: preserve keyword arguments in copies.
     kwargs: Dict
 
-    def __init__(self, children: Tuple[CodecT, ...] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, children: Optional[Tuple[CodecT, ...]] = None, **kwargs: Any
+    ) -> None:
         self.children = children or ()
         self.nodes = (self,) + self.children
         self.kwargs = kwargs

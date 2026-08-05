@@ -32,18 +32,26 @@ class BaseSignal(Generic[VT]):
     case: _Case
     index: int
 
-    def __init__(self, name: str = "", case: _Case = None, index: int = -1) -> None:
+    def __init__(
+        self, name: str = "", case: Optional[_Case] = None, index: int = -1
+    ) -> None:
         self.name = name
         self.case = cast(_Case, case)
         self.index = index
 
     async def send(
-        self, value: VT = None, *, key: Any = None, force: bool = False
+        self,
+        value: Optional[VT] = None,
+        *,
+        key: Optional[Any] = None,
+        force: bool = False,
     ) -> None:
         """Notify test that this signal is now complete."""
         raise NotImplementedError()
 
-    async def wait(self, *, key: Any = None, timeout: Optional[Seconds] = None) -> VT:
+    async def wait(
+        self, *, key: Optional[Any] = None, timeout: Optional[Seconds] = None
+    ) -> VT:
         """Wait for signal to be completed."""
         raise NotImplementedError()
 
@@ -96,7 +104,11 @@ class Signal(BaseSignal[VT]):
     # topic for each test app.
 
     async def send(
-        self, value: VT = None, *, key: Any = None, force: bool = False
+        self,
+        value: Optional[VT] = None,
+        *,
+        key: Optional[Any] = None,
+        force: bool = False,
     ) -> None:
         """Notify test that this signal is now complete."""
         current_test = current_test_stack.top
@@ -116,7 +128,9 @@ class Signal(BaseSignal[VT]):
             ),
         )
 
-    async def wait(self, *, key: Any = None, timeout: Optional[Seconds] = None) -> VT:
+    async def wait(
+        self, *, key: Optional[Any] = None, timeout: Optional[Seconds] = None
+    ) -> VT:
         """Wait for signal to be completed."""
         # wait for key to arrive in consumer
         runner = self.case.current_execution

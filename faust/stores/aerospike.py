@@ -56,7 +56,7 @@ class AeroSpikeStore(base.SerializedStore):
         url: Union[str, URL],
         app: AppT,
         table: CollectionT,
-        options: typing.Mapping[str, Any] = None,
+        options: Optional[typing.Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         try:

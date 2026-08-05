@@ -357,7 +357,7 @@ class ConsumerT(ServiceT):
 
     @abc.abstractmethod
     async def commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool: ...
 
     @abc.abstractmethod

@@ -205,7 +205,12 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def __init__(
-        self, id: str, *, monitor: _Monitor, config_source: Any = None, **options: Any
+        self,
+        id: str,
+        *,
+        monitor: _Monitor,
+        config_source: Optional[Any] = None,
+        **options: Any,
     ) -> None:
         self.on_startup_finished: Optional[Callable] = None
 
@@ -238,12 +243,12 @@ class AppT(ServiceT):
     def topic(
         self,
         *topics: str,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[_SchemaT] = None,
-        key_type: _ModelArg = None,
-        value_type: _ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[_ModelArg] = None,
+        value_type: Optional[_ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
@@ -263,8 +268,8 @@ class AppT(ServiceT):
         self,
         *,
         schema: Optional[_SchemaT] = None,
-        key_type: _ModelArg = None,
-        value_type: _ModelArg = None,
+        key_type: Optional[_ModelArg] = None,
+        value_type: Optional[_ModelArg] = None,
         maxsize: Optional[int] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> ChannelT: ...
@@ -272,12 +277,12 @@ class AppT(ServiceT):
     @abc.abstractmethod
     def agent(
         self,
-        channel: Union[str, ChannelT[_T]] = None,
+        channel: Optional[Union[str, ChannelT[_T]]] = None,
         *,
         name: Optional[str] = None,
         concurrency: int = 1,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
-        sink: Iterable[SinkT] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
+        sink: Optional[Iterable[SinkT]] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
         **kwargs: Any,
@@ -304,7 +309,7 @@ class AppT(ServiceT):
         self,
         cron_format: str,
         *,
-        timezone: tzinfo = None,
+        timezone: Optional[tzinfo] = None,
         on_leader: bool = False,
         traced: bool = True,
     ) -> Callable: ...
@@ -322,7 +327,7 @@ class AppT(ServiceT):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -334,7 +339,7 @@ class AppT(ServiceT):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -371,7 +376,7 @@ class AppT(ServiceT):
         path: str,
         *,
         base: Type[View] = View,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
         name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]: ...
 
@@ -388,7 +393,7 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def command(
-        self, *options: Any, base: Type[_AppCommand] = None, **kwargs: Any
+        self, *options: Any, base: Optional[Type[_AppCommand]] = None, **kwargs: Any
     ) -> Callable[[Callable], Type[_AppCommand]]: ...
 
     @abc.abstractmethod
@@ -411,14 +416,14 @@ class AppT(ServiceT):
     async def send(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[_SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]: ...
 

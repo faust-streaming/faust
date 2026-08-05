@@ -44,7 +44,7 @@ __all__ = [
 CharacterType = TypeVar("CharacterType", str, bytes)
 
 
-def _is_concrete_model(typ: Type = None) -> bool:
+def _is_concrete_model(typ: Optional[Type] = None) -> bool:
     return (
         typ is not None
         and inspect.isclass(typ)
@@ -135,15 +135,15 @@ class FieldDescriptor(FieldDescriptorT[T]):
         field: Optional[str] = None,
         input_name: Optional[str] = None,
         output_name: Optional[str] = None,
-        type: Type[T] = None,
-        model: Type[ModelT] = None,
+        type: Optional[Type[T]] = None,
+        model: Optional[Type[ModelT]] = None,
         required: bool = True,
-        default: T = None,
+        default: Optional[T] = None,
         parent: Optional[FieldDescriptorT] = None,
         coerce: Optional[bool] = None,
         exclude: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
-        tag: Type[Tag] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
+        tag: Optional[Type[Tag]] = None,
         **options: Any,
     ) -> None:
         self.field = cast(str, field)
@@ -244,7 +244,7 @@ class FieldDescriptor(FieldDescriptorT[T]):
     ) -> Optional[T]:
         return cast(T, value)
 
-    def _copy_descriptors(self, typ: Type = None) -> None:
+    def _copy_descriptors(self, typ: Optional[Type] = None) -> None:
         if typ is not None and _is_concrete_model(typ):
             typ._contribute_field_descriptors(self, typ._options, parent=self)
 

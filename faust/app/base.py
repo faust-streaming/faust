@@ -456,8 +456,8 @@ class App(AppT, Service):
         self,
         id: str,
         *,
-        monitor: Monitor = None,
-        config_source: Any = None,
+        monitor: Optional[Monitor] = None,
+        config_source: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         beacon: Optional[NodeT] = None,
         **options: Any,
@@ -698,7 +698,7 @@ class App(AppT, Service):
     def discover(
         self,
         *extra_modules: str,
-        categories: Iterable[str] = None,
+        categories: Optional[Iterable[str]] = None,
         ignore: Iterable[Any] = SCAN_IGNORE,
     ) -> None:
         """Discover decorators in packages."""
@@ -773,12 +773,12 @@ class App(AppT, Service):
     def topic(
         self,
         *topics: str,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[SchemaT] = None,
         key_type: Optional[ModelArg] = None,
         value_type: Optional[ModelArg] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
@@ -856,12 +856,12 @@ class App(AppT, Service):
 
     def agent(
         self,
-        channel: Union[str, ChannelT[_T]] = None,
+        channel: Optional[Union[str, ChannelT[_T]]] = None,
         *,
         name: Optional[str] = None,
         concurrency: int = 1,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
-        sink: Iterable[SinkT] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
+        sink: Optional[Iterable[SinkT]] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
         **kwargs: Any,
@@ -928,7 +928,11 @@ class App(AppT, Service):
 
     @no_type_check
     def task(
-        self, fun: TaskArg = None, *, on_leader: bool = False, traced: bool = True
+        self,
+        fun: Optional[TaskArg] = None,
+        *,
+        on_leader: bool = False,
+        traced: bool = True,
     ) -> TaskDecoratorRet:
         """Define an async def function to be started with the app.
 
@@ -1042,7 +1046,7 @@ class App(AppT, Service):
         self,
         cron_format: str,
         *,
-        timezone: tzinfo = None,
+        timezone: Optional[tzinfo] = None,
         on_leader: bool = False,
         traced: bool = True,
     ) -> Callable:
@@ -1146,7 +1150,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1191,7 +1195,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1297,7 +1301,7 @@ class App(AppT, Service):
         path: str,
         *,
         base: Type[View] = View,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
         name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         """Decorate view to be included in the web server."""
@@ -1502,14 +1506,14 @@ class App(AppT, Service):
     async def send(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Send event to channel/topic.

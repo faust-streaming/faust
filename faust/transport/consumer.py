@@ -910,7 +910,7 @@ class Consumer(Service, ConsumerT):
     def verify_recovery_event_path(self, now: float, tp: TP) -> None: ...
 
     async def commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Maybe commit the offset for all or specific topics.
 
@@ -954,7 +954,7 @@ class Consumer(Service, ConsumerT):
 
     @Service.transitions_to(CONSUMER_COMMITTING)
     async def force_commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Force offset commit."""
         sensor_state = self.app.sensors.on_commit_initiated(self)
@@ -1058,7 +1058,7 @@ class Consumer(Service, ConsumerT):
         return did_commit
 
     def _filter_tps_with_pending_acks(
-        self, topics: TPorTopicSet = None
+        self, topics: Optional[TPorTopicSet] = None
     ) -> Iterator[TP]:
         return (
             tp

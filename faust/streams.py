@@ -144,8 +144,8 @@ class Stream(StreamT[T_co], Service):
         channel: AsyncIterator[T_co],
         *,
         app: AppT,
-        processors: Iterable[Processor[T]] = None,
-        combined: List[JoinableT] = None,
+        processors: Optional[Iterable[Processor[T]]] = None,
+        combined: Optional[List[JoinableT]] = None,
         on_start: Optional[Callable] = None,
         join_strategy: Optional[JoinT] = None,
         beacon: Optional[NodeT] = None,
@@ -969,8 +969,8 @@ class Stream(StreamT[T_co], Service):
         name: str,
         *,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         prefix: str = "",
         suffix: str = "",
     ) -> TopicT:
@@ -1044,7 +1044,7 @@ class Stream(StreamT[T_co], Service):
     def _join(self, join_strategy: JoinT) -> StreamT:
         return self.clone(join_strategy=join_strategy)
 
-    async def on_merge(self, value: T = None) -> Optional[T]:
+    async def on_merge(self, value: Optional[T] = None) -> Optional[T]:
         """Signal called when an event is to be joined."""
         # TODO for joining streams
         # The join strategy.process method can return None

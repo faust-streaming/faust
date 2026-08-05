@@ -134,7 +134,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create text response, using "text/plain" content-type."""
         response = Response(
@@ -153,7 +153,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create HTML response from string, ``text/html`` content-type."""
         return self.text(
@@ -171,7 +171,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Any:
         """Create new JSON response.
 
@@ -214,7 +214,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create new ``bytes`` response - for binary data."""
         response = Response(
@@ -234,7 +234,7 @@ class Web(base.Web):
         self,
         pattern: str,
         handler: Callable,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
     ) -> None:
         """Add route for web view or handler."""
         async_handler = self._wrap_into_asyncdef(handler)

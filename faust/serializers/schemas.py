@@ -34,10 +34,10 @@ class Schema(SchemaT):
     def __init__(
         self,
         *,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None:
         self.update(
@@ -51,10 +51,10 @@ class Schema(SchemaT):
     def update(
         self,
         *,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None:
         if key_type is not None:
@@ -78,7 +78,7 @@ class Schema(SchemaT):
         message: Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> KT:
         if loads is None:
             loads = app.serializers.loads_key
@@ -97,7 +97,7 @@ class Schema(SchemaT):
         message: Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> VT:
         if loads is None:
             loads = app.serializers.loads_value
@@ -108,7 +108,12 @@ class Schema(SchemaT):
         )
 
     def dumps_key(
-        self, app: AppT, key: K, *, serializer: CodecArg = None, headers: OpenHeadersArg
+        self,
+        app: AppT,
+        key: K,
+        *,
+        serializer: Optional[CodecArg] = None,
+        headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_key(
             self.key_type,
@@ -122,7 +127,7 @@ class Schema(SchemaT):
         app: AppT,
         value: V,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_value(

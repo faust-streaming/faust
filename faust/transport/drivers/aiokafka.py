@@ -309,10 +309,10 @@ class ThreadedProducer(ServiceThread):
         default_producer,
         app,
         *,
-        executor: Any = None,
+        executor: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread_loop: Optional[asyncio.AbstractEventLoop] = None,
-        Worker: Type[WorkerThread] = None,
+        Worker: Optional[Type[WorkerThread]] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -1619,7 +1619,7 @@ class Transport(base.Transport):
 
 
 def credentials_to_aiokafka_auth(
-    credentials: Optional[CredentialsT] = None, ssl_context: Any = None
+    credentials: Optional[CredentialsT] = None, ssl_context: Optional[Any] = None
 ) -> Mapping:
     if credentials is not None:
         if isinstance(credentials, SSLCredentials):
