@@ -366,9 +366,19 @@ class Param(Generic[IT, OT], property):
         self._on_set_default_ = fun
         return fun
 
-    def __get__(self, obj: Any, type: Optional[Type] = None) -> OT:
+    @typing.overload
+    def __get__(self, obj: None, type: Optional[Type] = None) -> "Param[IT, OT]": ...
+
+    @typing.overload
+    def __get__(self, obj: Any, type: Optional[Type] = None) -> OT: ...
+
+    def __get__(self, obj: Any, type: Optional[Type] = None) -> Any:
+        # Accessed on the class (obj is None) this returns the descriptor
+        # itself, and accessed on a Settings instance it returns the value:
+        # the same split :class:`property` declares, so the overloads above
+        # mirror the ones in the base class.
         if obj is None:
-            return self  # type: ignore
+            return self
         if self.version_deprecated:
             # we use UserWarning because DeprecationWarning is silenced
             # by default in Python.
@@ -393,7 +403,7 @@ class Param(Generic[IT, OT], property):
         """Prepare value when accessed/retrieved."""
         return value
 
-    def on_set(self, settings: Any, value: OT) -> None:
+    def on_set(self, settings: Any, value: Optional[OT]) -> None:
         """What happens when the setting is stored/set."""
         settings.__dict__[self.storage_name] = value
         assert getattr(settings, self.storage_name) == value
@@ -424,11 +434,14 @@ class Param(Generic[IT, OT], property):
                             ``Settings.__init__`` or :const:`None` if not set.
         """
         if provided_value is None:
-            default_value = self.default
+            default_value: Optional[IT] = self.default
             if self._on_set_default_:
                 default_value = self._on_set_default_(conf)
             if default_value is None and self.default_template:
-                default_value = self.default_template.format(conf=conf)
+                # ``default_template`` renders to a string that is then fed
+                # through ``to_python``, so only settings whose input type
+                # accepts :class:`str` are allowed to define one.
+                default_value = cast(IT, self.default_template.format(conf=conf))
             setattr(
                 conf, self.storage_name, self.prepare_init_default(conf, default_value)
             )
@@ -447,24 +460,27 @@ class Param(Generic[IT, OT], property):
         """Validate value before setting is converted to the target type."""
         ...
 
-    def validate_after(self, value: OT) -> None:
+    def validate_after(self, value: Optional[OT]) -> None:
         """Validate value after it has been converted to its target type."""
         ...
 
-    def prepare_set(self, conf: _Settings, value: IT) -> OT:
+    def prepare_set(self, conf: _Settings, value: Optional[IT]) -> Optional[OT]:
         """Prepare value for storage."""
         skip_validate = value is None and self.allow_none
         if not skip_validate:
             self.validate_before(value)
+        new_value: Optional[OT]
         if value is not None:
             new_value = self.to_python(conf, value)
         else:
-            new_value = value
+            new_value = None
         if not skip_validate:
             self.validate_after(new_value)
         return new_value
 
-    def prepare_init_default(self, conf: _Settings, value: IT) -> OT:
+    def prepare_init_default(
+        self, conf: _Settings, value: Optional[IT]
+    ) -> Optional[OT]:
         """Prepare default value for storage."""
         if value is not None:
             return self.to_python(conf, value)
@@ -541,7 +557,7 @@ class Number(Param[IT, OT]):
         except KeyError:
             return self.convert(conf, value)
 
-    def validate_after(self, value: OT) -> None:
+    def validate_after(self, value: Optional[OT]) -> None:
         """Validate number value."""
         v = cast(int, value)
         min_ = self.min_value

@@ -461,6 +461,7 @@ class AppT(ServiceT):
     def on_rebalance_end(self) -> None: ...
 
     @property
+    @abc.abstractmethod
     def conf(self) -> _Settings: ...
 
     @conf.setter
