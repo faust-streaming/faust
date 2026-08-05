@@ -496,7 +496,11 @@ class ProducerThread(QueueServiceThread):
         key: Optional[bytes],
         value: Optional[bytes],
         partition: Optional[int],
-        on_delivery: Callable[[Optional[BaseException], _Message], None],
+        # Deliberately unparameterised: confluent hands the callback a
+        # KafkaError, which is not a BaseException, and set_from_on_delivery
+        # passes it straight to Future.set_exception.  A precise signature
+        # here would paper over that bug rather than fix it.
+        on_delivery: Callable,
     ) -> None:
         if self._producer is None:
             raise RuntimeError("Producer not started")
