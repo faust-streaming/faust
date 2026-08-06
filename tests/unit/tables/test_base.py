@@ -11,7 +11,7 @@ from faust.exceptions import PartitionsMismatch
 from faust.stores.base import Store
 from faust.tables.base import Collection
 from faust.types import TP
-from faust.windows import Window
+from faust.windows import HoppingWindow, Window
 from tests.helpers import AsyncMock
 
 TP1 = TP("foo", 0)
@@ -52,6 +52,11 @@ class MyTable(Collection):
 
 
 class Test_Collection:
+    # _window_ranges yields (start, end) pairs.  None of these pairs ends on
+    # a timestamp registered in _partition_timestamp_keys, so they trigger
+    # no windows.
+    UNTRIGGERED_RANGES = [(1.0, 1.1), (1.1, 1.2), (1.2, 1.3)]
+
     @pytest.fixture
     def table(self, *, app):
         return MyTable(app, name="name")
@@ -229,7 +234,7 @@ class Test_Collection:
         assert table.last_closed_window == 0.0
 
         table.window = Mock(name="window")
-        self.mock_ranges(table)
+        self.mock_ranges(table, self.UNTRIGGERED_RANGES)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -329,7 +334,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
 
         table.window = Mock(name="window")
-        self.mock_ranges(table)
+        self.mock_ranges(table, self.UNTRIGGERED_RANGES)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -440,7 +445,7 @@ class Test_Collection:
         on_window_close = table._on_window_close = Mock(name="on_window_close")
 
         table.window = Mock(name="window")
-        self.mock_ranges(table)
+        self.mock_ranges(table, self.UNTRIGGERED_RANGES)
         table._data = {
             ("boo", (1.1, 1.4)): "BOO",
             ("moo", (1.4, 1.6)): "MOO",
@@ -488,6 +493,65 @@ class Test_Collection:
         await table._del_old_keys()
 
         assert not table.data
+
+    @pytest.mark.asyncio
+    async def test_del_old_keys__triggered_windows_are_aggregated(self, *, table):
+        # _partition_timestamp_keys is keyed by (partition, range_end),
+        # so every range overlapping the expiring timestamp must be found
+        # and its data handed to on_window_close.
+        on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
+
+        table.window = Mock(name="window")
+        table.window.stale.side_effect = lambda timestamp, latest: timestamp <= 20.0
+        # the two windows that overlap the expiring timestamp (20.0)
+        self.mock_ranges(table, [(10.0, 20.0), (15.0, 25.0)])
+        table._data = {
+            ("k", (10.0, 20.0)): ["e1", "e2"],
+            ("k", (15.0, 25.0)): ["e3"],
+        }
+        table._partition_timestamps = {TP1: [20.0]}
+        table._partition_timestamp_keys = {
+            (TP1, 20.0): {("k", (10.0, 20.0))},
+            (TP1, 25.0): {("k", (15.0, 25.0))},
+        }
+
+        await table._del_old_keys()
+
+        on_window_close.assert_called_once_with(
+            ("k", (10.0, 20.0)),
+            ["e1", "e2", "e3"],
+        )
+        assert table.data == {("k", (15.0, 25.0)): ["e3"]}
+        assert table.last_closed_window == 10.0
+
+    @pytest.mark.asyncio
+    async def test_del_old_keys__aggregates_with_real_window(self, *, app):
+        # end to end: the keys written by _maybe_set_key_ttl must be the
+        # keys _del_old_keys looks up for the real window ranges.
+        on_window_close = AsyncMock(name="on_window_close")
+        window = HoppingWindow(size=10, step=5, expires=10)
+        table = MyTable(
+            app,
+            name="name",
+            window=window,
+            on_window_close=on_window_close,
+        )
+        partition = 0
+        first, second = window.ranges(20.0)
+        table._data = {
+            ("k", first): ["e1", "e2"],
+            ("k", second): ["e3"],
+        }
+        for window_range in (first, second):
+            table._maybe_set_key_ttl(("k", window_range), partition)
+
+        await table._del_old_keys()
+
+        assert not table.data
+        assert on_window_close.call_args_list == [
+            call(("k", first), ["e1", "e2", "e3"]),
+            call(("k", second), ["e3"]),
+        ]
 
     @pytest.mark.asyncio
     async def test_on_window_close__default(self, *, table):
