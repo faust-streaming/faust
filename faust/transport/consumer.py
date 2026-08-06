@@ -179,7 +179,13 @@ class Fetcher(Service):
             if self.app.rebalancing:
                 self.log.info("Restarting on rebalance")
                 await self.crash(exc)
-                self.supervisor.wakeup()
+                # XXX ``ServiceT.supervisor`` is ``Optional`` and nothing here
+                # guarantees the fetcher was adopted by a supervisor, so this
+                # raises AttributeError when it was not.  Left unguarded on
+                # purpose: ``wakeup()`` is what restarts the fetcher after a
+                # rebalance crash, and skipping it would silently leave the
+                # fetcher dead instead of failing loudly.
+                self.supervisor.wakeup()  # type: ignore[union-attr]
         finally:
             self.set_shutdown()
 
@@ -486,7 +492,14 @@ class Consumer(Service, ConsumerT):
         self.not_waiting_next_records.set()
         self._reset_state()
         super().__init__(loop=loop, **kwargs)
-        self.transactions = self.transport.create_transaction_manager(
+        # Every concrete transport provides ``create_transaction_manager``
+        # (see ``faust.transport.base.Transport``), but the ``TransportT``
+        # interface in ``faust/types/transports.py`` does not declare it
+        # next to ``create_consumer``/``create_producer``/``create_conductor``.
+        create_transaction_manager = (
+            self.transport.create_transaction_manager  # type: ignore[attr-defined]
+        )
+        self.transactions = create_transaction_manager(
             consumer=self,
             producer=self.app.producer,
             beacon=self.beacon,
@@ -764,7 +777,10 @@ class Consumer(Service, ConsumerT):
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
         if not self.flow_active:
-            await self.wait(self.can_resume_flow)
+            # mode types the waitable as ``mode.utils.locks.Event``, but
+            # Service.wait_first accepts anything with an awaitable
+            # ``.wait()`` -- asyncio.Event included.
+            await self.wait(self.can_resume_flow)  # type: ignore[arg-type]
 
         try:
             # Set signal that _wait_next_records is waiting on the fetcher service.
@@ -910,7 +926,7 @@ class Consumer(Service, ConsumerT):
     def verify_recovery_event_path(self, now: float, tp: TP) -> None: ...
 
     async def commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Maybe commit the offset for all or specific topics.
 
@@ -954,7 +970,7 @@ class Consumer(Service, ConsumerT):
 
     @Service.transitions_to(CONSUMER_COMMITTING)
     async def force_commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Force offset commit."""
         sensor_state = self.app.sensors.on_commit_initiated(self)
@@ -1058,7 +1074,7 @@ class Consumer(Service, ConsumerT):
         return did_commit
 
     def _filter_tps_with_pending_acks(
-        self, topics: TPorTopicSet = None
+        self, topics: Optional[TPorTopicSet] = None
     ) -> Iterator[TP]:
         return (
             tp
@@ -1096,7 +1112,7 @@ class Consumer(Service, ConsumerT):
                 # start without worrying about ends overlapping.
                 sorted_candidates = sorted(candidates, key=lambda x: x.begin)
                 if sorted_candidates:
-                    stuff_to_add = []
+                    stuff_to_add: List[int] = []
                     for entry in sorted_candidates:
                         stuff_to_add.extend(range(entry.begin, entry.end))
                     new_max_offset = max(stuff_to_add[-1], max_offset + 1)
@@ -1111,8 +1127,9 @@ class Consumer(Service, ConsumerT):
             #  ^-- gap
             # self._committed_offset[tp] is 31
             # the return value will be None (the same as 31)
-            if self._committed_offset[tp]:
-                if min(acked) - self._committed_offset[tp] > 1:
+            committed_offset = self._committed_offset[tp]
+            if committed_offset:
+                if min(acked) - committed_offset > 1:
                     return None
 
             # Note: acked is always kept sorted.

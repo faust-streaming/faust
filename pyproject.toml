@@ -98,102 +98,30 @@ disallow_untyped_defs = true
 # it can surface new errors, so bump it deliberately.
 python_version = "3.12"
 
-# Type-checking ratchet.
+# The type-checking ratchet is gone: `mypy -p faust` (run by `scripts/check`)
+# now checks all 164 modules in the package with nothing silenced wholesale.
 #
-# `scripts/check` runs `mypy -p faust`, so it has to exit zero.  The package is
-# not clean yet, so the modules that still have errors are silenced here.
-# Everything NOT listed is checked -- today that is 86 of faust's 164 modules,
-# plus every module added from here on.
+# Keep it that way.  If a change makes mypy fail, fix the annotations rather
+# than re-introducing an `ignore_errors` list -- that list was only ever a
+# migration aid, and re-adding one would hide every other error in the module
+# too.  For a single line the checker genuinely gets wrong, use a specific
+# `# type: ignore[code]` with a comment saying why.
 #
-# This list may only shrink.  Do not add a module to it to turn a red build
-# green; fix the annotations instead.  When you clean one up, delete its line
-# in the same pull request so it cannot regress.  To see what is outstanding,
-# comment this section out and run `mypy -p faust`.
+# mypy is pinned in requirements/typecheck.txt because a different version
+# reports a different set of errors; bump it deliberately.
+
+# Every setting in `faust.types.settings.settings` is a method with a docstring and
+# no body, decorated with `@sections.<Section>.setting(...)`.  The decorator throws
+# the function away and returns a `params.Param` descriptor built from its name,
+# docstring and return annotation, so the body is never executed -- but mypy sees a
+# function declaring a non-None return type and never returning, and reports
+# `empty-body` for all ~100 of them.  The check does not apply to this pattern.
 #
-# Regenerating it requires the pinned mypy from requirements/typecheck.txt; a
-# different version reports a different set.
+# Note this disables one error code, not the module: every OTHER error code is
+# still reported here, so new mistakes in it are caught.
 [[tool.mypy.overrides]]
-module = [
-  "faust",
-  "faust.agents.agent",
-  "faust.app._attached",
-  "faust.app.base",
-  "faust.app.router",
-  "faust.assignor.client_assignment",
-  "faust.assignor.partition_assignor",
-  "faust.auth",
-  "faust.channels",
-  "faust.cli.base",
-  "faust.cli.worker",
-  "faust.contrib.sentry",
-  "faust.events",
-  "faust.livecheck.app",
-  "faust.livecheck.case",
-  "faust.livecheck.signals",
-  "faust.models.base",
-  "faust.models.fields",
-  "faust.models.record",
-  "faust.models.typing",
-  "faust.sensors.base",
-  "faust.sensors.datadog",
-  "faust.sensors.distributed_tracing",
-  "faust.sensors.monitor",
-  "faust.sensors.prometheus",
-  "faust.sensors.statsd",
-  "faust.serializers.codecs",
-  "faust.serializers.schemas",
-  "faust.stores.aerospike",
-  "faust.stores.base",
-  "faust.stores.rocksdb",
-  "faust.streams",
-  "faust.tables.base",
-  "faust.tables.globaltable",
-  "faust.tables.manager",
-  "faust.tables.objects",
-  "faust.tables.recovery",
-  "faust.tables.sets",
-  "faust.tables.table",
-  "faust.topics",
-  "faust.transport.conductor",
-  "faust.transport.consumer",
-  "faust.transport.drivers.aiokafka",
-  "faust.transport.drivers.confluent",
-  "faust.transport.producer",
-  "faust.transport.utils",
-  "faust.types.agents",
-  "faust.types.app",
-  "faust.types.auth",
-  "faust.types.channels",
-  "faust.types.codecs",
-  "faust.types.models",
-  "faust.types.sensors",
-  "faust.types.serializers",
-  "faust.types.settings.params",
-  "faust.types.settings.settings",
-  "faust.types.stores",
-  "faust.types.streams",
-  "faust.types.tables",
-  "faust.types.topics",
-  "faust.types.transports",
-  "faust.types.tuples",
-  "faust.types.web",
-  "faust.utils._opentracing",
-  "faust.utils.agent_stopper",
-  "faust.utils.codegen",
-  "faust.utils.cron",
-  "faust.utils.terminal.tables",
-  "faust.utils.tracing",
-  "faust.utils.venusian",
-  "faust.web.base",
-  "faust.web.blueprints",
-  "faust.web.cache.backends.redis",
-  "faust.web.cache.cache",
-  "faust.web.drivers.aiohttp",
-  "faust.web.views",
-  "faust.windows",
-  "faust.worker",
-]
-ignore_errors = true
+module = ["faust.types.settings.settings"]
+disable_error_code = ["empty-body"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

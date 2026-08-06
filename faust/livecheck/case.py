@@ -125,7 +125,7 @@ class Case(Service):
         probability: Optional[float] = None,
         warn_stalled_after: Optional[Seconds] = None,
         active: Optional[bool] = None,
-        signals: Iterable[BaseSignal] = None,
+        signals: Optional[Iterable[BaseSignal]] = None,
         test_expires: Optional[Seconds] = None,
         frequency: Optional[Seconds] = None,
         realtime_logs: Optional[bool] = None,

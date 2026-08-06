@@ -27,7 +27,9 @@ class Registry(RegistryT):
     """
 
     def __init__(
-        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+        self,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: CodecArg = "json",
     ) -> None:
         self.key_serializer = key_serializer
         self.value_serializer = value_serializer
@@ -37,7 +39,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         key: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> K:
         """Deserialize message key.
 
@@ -81,7 +83,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         value: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> Any:
         """Deserialize value.
 
@@ -128,7 +130,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         key: K,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         skip: IsInstanceArg = (bytes,),
     ) -> Optional[bytes]:
         """Serialize key.
@@ -157,7 +159,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         value: V,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         skip: IsInstanceArg = (bytes,),
     ) -> Optional[bytes]:
         """Serialize value.

@@ -23,6 +23,7 @@ from typing import (
     Optional,
     Set,
     Tuple,
+    Type,
     Union,
     cast,
 )
@@ -47,7 +48,7 @@ DEFAULT_TARGET_FILE_SIZE_BASE = 67108864
 DEFAULT_BLOCK_CACHE_SIZE = 2 * 1024**3
 DEFAULT_BLOCK_CACHE_COMPRESSED_SIZE = 500 * 1024**2
 DEFAULT_BLOOM_FILTER_SIZE = 3
-ERRORS_ROCKS_IO_ERROR = (
+ERRORS_ROCKS_IO_ERROR: Type[Exception] = (
     Exception  # use general exception to avoid missing exception issues
 )
 
@@ -261,9 +262,16 @@ class Store(base.SerializedStore):
         if not self.url.path:
             self.url /= self.table_name
         self.options = options or {}
-        self.read_only = self.options.pop("read_only", read_only)
+        # XXX `options` is typed `Mapping` (no `.pop`), but this deliberately
+        # aliases and mutates the caller's dict -- `Collection.options` -- so
+        # the keys below are gone for anyone who reads it afterwards.  A second
+        # Store built from the same table (ChangeloggedObjectManager builds one
+        # besides `Collection.data`) therefore silently falls back to the
+        # defaults for `read_only`/`driver`.  Copying instead would change that
+        # behaviour, so the aliasing is kept and the errors are silenced here.
+        self.read_only = self.options.pop("read_only", read_only)  # type: ignore[attr-defined]  # noqa: E501
 
-        self.driver = self.options.pop("driver", driver)
+        self.driver = self.options.pop("driver", driver)  # type: ignore[attr-defined]
         if self.driver == "rocksdict":
             self.use_rocksdict = True
         elif self.driver == "python-rocksdb":
@@ -328,9 +336,7 @@ class Store(base.SerializedStore):
 
         """
         if not self.use_rocksdict and self._backup_engine:
-            partition = tp
-            if isinstance(tp, TP):
-                partition = tp.partition
+            partition = tp.partition if isinstance(tp, TP) else tp
             try:
                 if flush:
                     db = await self._try_open_db_for_partition(partition)
@@ -363,9 +369,7 @@ class Store(base.SerializedStore):
 
         """
         if not self.use_rocksdict and self._backup_engine:
-            partition = tp
-            if isinstance(tp, TP):
-                partition = tp.partition
+            partition = tp.partition if isinstance(tp, TP) else tp
             if latest:
                 self._backup_engine.restore_latest_backup(
                     str(self.partition_path(partition)), self._backup_path
@@ -490,12 +494,11 @@ class Store(base.SerializedStore):
 
     def _get(self, key: bytes) -> Optional[bytes]:
         event = current_event()
-        partition_from_message = (
+        if (
             event is not None
             and not self.table.is_global
             and not self.table.use_partitioner
-        )
-        if partition_from_message:
+        ):
             partition = event.message.partition
             db = self._db_for_partition(partition)
             value = db.get(key)
@@ -642,12 +645,11 @@ class Store(base.SerializedStore):
 
     def _contains(self, key: bytes) -> bool:
         event = current_event()
-        partition_from_message = (
+        if (
             event is not None
             and not self.table.is_global
             and not self.table.use_partitioner
-        )
-        if partition_from_message:
+        ):
             partition = event.message.partition
             db = self._db_for_partition(partition)
             value = db.get(key)
@@ -676,7 +678,11 @@ class Store(base.SerializedStore):
 
     def _dbs_for_actives(self) -> Iterator[DB]:
         actives = self.app.assignor.assigned_actives()
-        topic = self.table.changelog_topic_name
+        # `changelog_topic_name` is a property of the concrete
+        # `faust.tables.base.Collection`, but is missing from the
+        # `CollectionT` interface (which only declares the private
+        # `_changelog_topic_name()` method).
+        topic = self.table.changelog_topic_name  # type: ignore[attr-defined]
         for partition, db in self._dbs.items():
             tp = TP(topic=topic, partition=partition)
             # for global tables, keys from all
