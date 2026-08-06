@@ -162,15 +162,8 @@ class Consumer(ThreadDelegateConsumer):
         await super().on_stop()
 
     def verify_event_path(self, now: float, tp: TP) -> None:
-        # XXX broken: neither ConsumerThread nor ConfluentConsumerThread
-        # implements verify_event_path, so this raises AttributeError on
-        # every tick of the commit livelock detector
-        # (faust.transport.consumer.Consumer._commit_livelock_detector ->
-        # verify_all_partitions_active).  Livelock detection is therefore
-        # dead for this driver.  Not fixed here: adding a no-op stub would
-        # change runtime behaviour, and a real implementation belongs in
-        # ConfluentConsumerThread.
-        return self._thread.verify_event_path(now, tp)  # type: ignore[attr-defined]
+        """Verify the path of an event, if this is not working."""
+        return self._thread.verify_event_path(now, tp)
 
 
 class AsyncConsumer:
@@ -298,6 +291,15 @@ class ConfluentConsumerThread(ConsumerThread):
         )
 
     def close(self) -> None: ...
+
+    def verify_event_path(self, now: float, tp: TP) -> None:
+        """Verify the path of an event.
+
+        Livelock detection is not implemented for this driver, so this is
+        a no-op, matching the stub in
+        :meth:`faust.transport.consumer.Consumer.verify_event_path`.
+        """
+        return None
 
     async def subscribe(self, topics: Iterable[str]) -> None:
         # XXX pattern does not work :/

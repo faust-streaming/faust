@@ -197,6 +197,15 @@ class TestConsumer:
         consumer.verify_event_path(303.3, TP1)
         consumer._thread.verify_event_path.assert_called_once_with(303.3, TP1)
 
+    def test_verify_event_path__real_thread_is_a_noop(self, *, consumer, cthread):
+        # Regression: the commit livelock detector calls verify_event_path
+        # on every tick (Consumer._commit_livelock_detector ->
+        # verify_all_partitions_active).  With the real thread in place --
+        # not a Mock -- this used to raise AttributeError because neither
+        # ConsumerThread nor ConfluentConsumerThread defined the method.
+        consumer._thread = cthread
+        assert consumer.verify_event_path(303.3, TP1) is None
+
 
 class TestAsyncConsumer:
     @pytest.fixture()
@@ -384,6 +393,11 @@ class TestConfluentConsumerThread:
         partition = cthread.key_partition("topic", b"key")
         assert 0 <= partition < 3
 
+    def test_verify_event_path__is_a_noop(self, *, cthread):
+        # Livelock detection is not implemented for this driver, but the
+        # method must exist -- Consumer.verify_event_path delegates to it.
+        assert cthread.verify_event_path(303.3, TP1) is None
+
     def test_topic_partitions(self, *, cthread):
         assert cthread.topic_partitions("topic") is None
 
@@ -460,9 +474,17 @@ class TestProducer:
         producer._producer_thread._ensure_producer.return_value = low_level_producer
         low_level_producer.list_topics.return_value = metadata
         tp = producer.key_partition("topic", b"key")
+
         assert tp.topic == "topic"
         assert 0 <= tp.partition < 2
         low_level_producer.list_topics.assert_called_once_with("topic")
+
+    def test_key_partition__not_started(self, *, producer, app):
+        thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
+        thread._producer = None
+        producer._producer_thread = thread
+        with pytest.raises(RuntimeError):
+            producer.key_partition("topic", b"key")
 
 
 class TestProducerThread:
