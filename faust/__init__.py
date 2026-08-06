@@ -28,7 +28,7 @@ if sys.version_info < (3, 8):
 else:
     from importlib.metadata import version
 
-from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, List, Mapping, NamedTuple, Optional, Sequence, Tuple
 
 __version__ = version("faust-streaming")
 __author__ = "Robinhood Markets, Inc."
@@ -52,20 +52,43 @@ version_info_t = VersionInfo  # XXX compat
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
-_match = re.match(r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$", __version__)
-if _match is None:  # pragma: no cover
-    raise RuntimeError("THIS IS A BROKEN RELEASE!")
-_temp = _match.groups()
-# XXX This is broken and so is the public ``faust.version_info``: the regex
-# yields the strings ``(prefix, version, suffix)``, which land positionally in
-# the ``(major, minor, micro)`` int fields.  So ``.major`` is the ``'v'``
-# prefix or :const:`None`, ``.minor`` is the entire version string and
-# ``.micro`` is the suffix -- e.g. ``VersionInfo(major=None,
-# minor='0.11.5', micro='')`` instead of ``(0, 11, 5)``.
-# Left as-is because fixing it changes what ``faust.VERSION`` holds.
-VERSION = version_info = VersionInfo(*_temp)  # type: ignore[arg-type]
-del _match
-del _temp
+_VERSION_RE = re.compile(r"^v?(?P<version>[^+]*)(?P<suffix>.*)$")
+_VERSION_PART_RE = re.compile(r"^(\d+)(.*)$")
+
+
+def _parse_version(version_string: str) -> VersionInfo:
+    """Parse a version string into a :class:`VersionInfo` tuple.
+
+    The leading dotted numbers become ``major``, ``minor`` and ``micro``
+    (missing components default to ``0``), and whatever remains -- such as
+    the ``dev1+g1234`` of ``0.11.5.dev1+g1234`` -- becomes ``releaselevel``.
+
+    Never raises: an unparsable version simply ends up as the
+    ``releaselevel`` of ``VersionInfo(0, 0, 0)``.
+    """
+    match = _VERSION_RE.match(version_string)
+    if match is None:  # pragma: no cover
+        version, suffix = version_string, ""
+    else:
+        version, suffix = match.group("version"), match.group("suffix")
+    numbers: List[int] = []
+    parts = version.split(".")
+    while parts and len(numbers) < 3:
+        part_match = _VERSION_PART_RE.match(parts[0])
+        if part_match is None:
+            break
+        numbers.append(int(part_match.group(1)))
+        parts.pop(0)
+        trailing = part_match.group(2)
+        if trailing:  # e.g. the ``rc1`` of ``0.11.5rc1``
+            parts.insert(0, trailing)
+            break
+    major, minor, micro = (numbers + [0, 0, 0])[:3]
+    releaselevel = ".".join(parts) + suffix
+    return VersionInfo(major, minor, micro, releaselevel or None)
+
+
+VERSION = version_info = _parse_version(__version__)
 del re
 
 
@@ -307,5 +330,6 @@ new_module.__dict__.update(
         "version_info_t": version_info_t,
         "version_info": version_info,
         "VERSION": VERSION,
+        "_parse_version": _parse_version,
     }
 )
