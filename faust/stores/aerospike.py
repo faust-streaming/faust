@@ -151,8 +151,7 @@ class AeroSpikeStore(base.SerializedStore):
 
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in set for "  # type: ignore[str-bytes-safe]  # noqa: E501
-                f"table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in set for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
@@ -173,8 +172,7 @@ class AeroSpikeStore(base.SerializedStore):
             )
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in delete for "  # type: ignore[str-bytes-safe]  # noqa: E501
-                f"table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in delete for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
@@ -264,9 +262,7 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _contains for table "  # type: ignore[str-bytes-safe]  # noqa: E501
-                f"{self.table_name} exception "
-                f"{ex} key {key}"
+                f"FaustAerospikeException Error in _contains for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
