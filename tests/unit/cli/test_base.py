@@ -21,6 +21,7 @@ from faust.cli.base import (
     find_app,
     option,
 )
+from faust.cli.completion import completion
 from faust.types._env import CONSOLE_PORT
 from tests.helpers import AsyncMock
 
@@ -490,7 +491,21 @@ class Test_Command:
         assert command.console_port == CONSOLE_PORT
 
 
+def test_appcommand__require_app_false__runs_without_app():
+    # `faust completion` sets require_app = False, so it must run
+    # when no app was given with -A.
+    assert completion.require_app is False
+    with patch("faust.cli.completion.click_completion") as cc:
+        cc.get_code.return_value = "# completion code"
+        exitcode, stdout, stderr = call_command("completion")
+    assert exitcode == 0
+    assert "# completion code" in stdout.getvalue()
+
+
 class Test_AppCommand:
+    class NoAppRequiredCommand(AppCommand):
+        require_app = False
+
     @pytest.fixture()
     def ctx(self):
         return Mock(name="ctx")
@@ -498,6 +513,43 @@ class Test_AppCommand:
     @pytest.fixture()
     def command(self, *, app, ctx):
         return AppCommand(app=app, ctx=ctx)
+
+    @pytest.fixture()
+    def no_app_command(self, *, ctx):
+        # a ``require_app = False`` command invoked without ``-A``.
+        ctx.find_root.return_value.app = None
+        ctx.ensure_object.return_value.app = None
+        return self.NoAppRequiredCommand(ctx=ctx)
+
+    def test_init__no_app_when_not_required(self, *, no_app_command):
+        assert no_app_command._app is None
+        assert no_app_command.key_serializer is None
+        assert no_app_command.value_serializer is None
+
+    def test_init__serializers_without_app(self, *, ctx):
+        ctx.find_root.return_value.app = None
+        ctx.ensure_object.return_value.app = None
+        command = self.NoAppRequiredCommand(
+            ctx=ctx,
+            key_serializer="raw",
+            value_serializer="json",
+        )
+        assert command.key_serializer == "raw"
+        assert command.value_serializer == "json"
+
+    def test_app__raises_when_missing(self, *, no_app_command):
+        with pytest.raises(no_app_command.UsageError):
+            no_app_command.app
+
+    def test_blocking_timeout__no_app(self, *, no_app_command):
+        no_app_command.blocking_timeout = None
+        assert no_app_command.blocking_timeout == 0.0
+        no_app_command.blocking_timeout = 32.41
+        assert no_app_command.blocking_timeout == 32.41
+
+    @pytest.mark.asyncio
+    async def test_on_stop__no_app(self, *, no_app_command):
+        await no_app_command.on_stop()
 
     def test_finalize_app__str(self, *, command):
         command._app_from_str = Mock()
