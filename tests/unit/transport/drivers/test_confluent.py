@@ -196,6 +196,15 @@ class TestConsumer:
         consumer.verify_event_path(303.3, TP1)
         consumer._thread.verify_event_path.assert_called_once_with(303.3, TP1)
 
+    def test_verify_event_path__real_thread_is_a_noop(self, *, consumer, cthread):
+        # Regression: the commit livelock detector calls verify_event_path
+        # on every tick (Consumer._commit_livelock_detector ->
+        # verify_all_partitions_active).  With the real thread in place --
+        # not a Mock -- this used to raise AttributeError because neither
+        # ConsumerThread nor ConfluentConsumerThread defined the method.
+        consumer._thread = cthread
+        assert consumer.verify_event_path(303.3, TP1) is None
+
 
 class TestAsyncConsumer:
     @pytest.fixture()
@@ -383,6 +392,11 @@ class TestConfluentConsumerThread:
         partition = cthread.key_partition("topic", b"key")
         assert 0 <= partition < 3
 
+    def test_verify_event_path__is_a_noop(self, *, cthread):
+        # Livelock detection is not implemented for this driver, but the
+        # method must exist -- Consumer.verify_event_path delegates to it.
+        assert cthread.verify_event_path(303.3, TP1) is None
+
     def test_topic_partitions(self, *, cthread):
         assert cthread.topic_partitions("topic") is None
 
@@ -441,16 +455,33 @@ class TestProducer:
         # create_topic short-circuits (XXX) -- must not raise.
         assert await producer.create_topic("topic", 3, 1) is None
 
-    def test_key_partition(self, *, producer):
+    def test_key_partition(self, *, producer, app):
+        # Regression: key_partition used to read
+        # ``self._producer_thread.producer``, which is the *Faust* producer
+        # and has no ``list_topics``.  Use a real ProducerThread here so
+        # that mistake raises AttributeError instead of being absorbed by a
+        # Mock.
+        thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
         metadata = Mock(name="metadata")
         topic_meta = Mock()
         topic_meta.partitions = {0: 1, 1: 1}
         metadata.topics = {"topic": topic_meta}
-        producer._producer_thread.producer = Mock()
-        producer._producer_thread.producer.list_topics.return_value = metadata
+        thread._producer = Mock(name="confluent_kafka.Producer")
+        thread._producer.list_topics.return_value = metadata
+        producer._producer_thread = thread
+
         tp = producer.key_partition("topic", b"key")
+
+        thread._producer.list_topics.assert_called_once_with("topic")
         assert tp.topic == "topic"
         assert 0 <= tp.partition < 2
+
+    def test_key_partition__not_started(self, *, producer, app):
+        thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
+        thread._producer = None
+        producer._producer_thread = thread
+        with pytest.raises(RuntimeError):
+            producer.key_partition("topic", b"key")
 
 
 class TestProducerThread:
