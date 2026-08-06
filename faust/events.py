@@ -28,7 +28,10 @@ else:
 USE_EXISTING_KEY = object()
 USE_EXISTING_VALUE = object()
 USE_EXISTING_HEADERS = object()
-USE_EXISTING_TIMESTAMP = object()
+#: Sentinel for ``Event.forward(timestamp=...)``.  Cast to ``float`` so the
+#: signature callers see stays ``Optional[float]``; the value itself is only
+#: ever compared with ``is``, never used as a number.
+USE_EXISTING_TIMESTAMP = cast(float, object())
 
 
 class Event(EventT):
