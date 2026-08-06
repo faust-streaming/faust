@@ -41,15 +41,25 @@ from .monitor import Monitor, TPOffsetMapping
 try:
     from opentelemetry import metrics as otel_metrics
 except ImportError:  # pragma: no cover
-    otel_metrics = None
+    # ``otel_metrics`` doubles as a module and as an "is the optional extra
+    # installed?" sentinel (see ``OpenTelemetryMonitor.meter``), so the name is
+    # rebound to None when the import fails.  mypy binds it to the module type
+    # at the import statement and has no way to widen it to Optional
+    # afterwards; same pattern, and same ignore, as ``sensors/prometheus.py``.
+    otel_metrics = None  # type: ignore[assignment]
 
 if typing.TYPE_CHECKING:  # pragma: no cover
+    # ``Gauge`` is the synchronous gauge added in opentelemetry-api 1.23.0 --
+    # the floor this extra pins.  It is still provisional upstream: the class
+    # is *named* ``Gauge`` (``Meter.create_gauge`` is annotated as returning
+    # it) but ``opentelemetry.metrics`` only ever exported it under the
+    # underscore name, so that is what has to be imported.
     from opentelemetry.metrics import (
         Counter,
-        Gauge,
         Histogram,
         Meter,
         UpDownCounter,
+        _Gauge as Gauge,
     )
 else:
 
