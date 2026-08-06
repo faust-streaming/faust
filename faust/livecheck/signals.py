@@ -70,7 +70,12 @@ class BaseSignal(Generic[VT]):
     async def _wait_for_resolved(self, *, timeout: Optional[float] = None) -> None:
         app = self.case.app
         app._can_resolve.clear()
-        await app.wait(app._can_resolve, timeout=timeout)
+        # mode's ``WaitArgT`` only lists ``mode.utils.locks.Event``, but
+        # ``Service.wait_first`` calls ``.wait()`` on anything that is not
+        # already awaitable, so an :class:`asyncio.Event` works identically.
+        # ``timeout`` is declared ``Seconds`` even though mode's own default
+        # for it is ``None`` and it explicitly handles ``None``.
+        await app.wait(app._can_resolve, timeout=timeout)  # type: ignore[arg-type]
 
     def _get_current_value(self, key: Any) -> SignalEvent:
         return self.case.app._resolved_signals[self._index_key(key)]
@@ -139,7 +144,13 @@ class Signal(BaseSignal[VT]):
         test = runner.test
         assert test
         k: Any = test.id if key is None else key
-        timeout_s = want_seconds(timeout)
+        # ``timeout`` is genuinely optional here: ``want_seconds(None)`` returns
+        # :const:`None` (its ``singledispatch`` fallback returns the argument
+        # unchanged), so this stays equivalent while keeping the optionality
+        # visible to callees that have to handle "no timeout".
+        timeout_s: Optional[float] = (
+            want_seconds(timeout) if timeout is not None else None
+        )
         await runner.on_signal_wait(self, timeout=timeout_s)
         time_start = monotonic()
         event = await self._wait_for_message_by_key(key=k, timeout=timeout_s)

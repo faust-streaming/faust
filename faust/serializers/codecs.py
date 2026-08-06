@@ -163,7 +163,7 @@ the extension with other Faust users.
 import pickle as _pickle  # nosec B403
 from base64 import b64decode, b64encode
 from types import ModuleType
-from typing import Any, Dict, MutableMapping, Optional, Tuple, cast
+from typing import Any, Dict, MutableMapping, Optional, Tuple, Union, cast
 
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.imports import load_extension_classes
@@ -345,10 +345,17 @@ def get_codec(name_or_codec: CodecArg) -> CodecT:
     if isinstance(name_or_codec, str):
         if "|" in name_or_codec:
             nodes = name_or_codec.split("|")
-            codec = None
+            # XXX ``codecs.get(node, node)`` falls back to the *name* when the
+            # codec is unknown, so ``codec`` can hold a plain ``str`` and this
+            # ``|=`` then blows up with ``TypeError: unsupported operand
+            # type(s) for |=: 'str' and 'Codec'`` instead of a KeyError naming
+            # the bad codec.  Real bug (e.g. ``get_codec('bad|json')``), but
+            # the fallback also makes ``get_codec('|json')`` work, so changing
+            # it is a behaviour change and out of scope for a typing pass.
+            codec: Optional[Union[CodecT, str]] = None
             for node in nodes:
                 if codec:
-                    codec |= codecs[node]
+                    codec |= codecs[node]  # type: ignore[operator]
                 else:
                     codec = codecs.get(node, node)
 

@@ -30,7 +30,7 @@ OnValueDecodeErrorFun = Callable[[Exception, Message], Awaitable[None]]
 async def _noop_decode_error(exc: Exception, message: Message) -> None: ...
 
 
-class Schema(SchemaT):
+class Schema(SchemaT[KT, VT]):
     def __init__(
         self,
         *,

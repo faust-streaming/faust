@@ -81,6 +81,7 @@ from faust.transport.consumer import (
 )
 from faust.types import (
     TP,
+    AppT,
     ConsumerMessage,
     FutureMessage,
     HeadersArg,
@@ -171,7 +172,7 @@ Has not committed %r (last commit %s).
 """.strip()
 
 
-def __canon_host(host, default):
+def __canon_host(host: Optional[str], default: str) -> str:
     """Ensure host is correctly formatted for aiokafka. That means IPv6
     addresses must enclosed in squared brackets.
     """
@@ -194,8 +195,8 @@ def server_list(urls: List[URL], default_port: int) -> List[str]:
 class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type: ignore
     # kafka's ridiculous class based callback interface makes this hacky.
 
-    def __init__(self, thread: ConsumerThread) -> None:
-        self._thread: ConsumerThread = thread
+    def __init__(self, thread: "AIOKafkaConsumerThread") -> None:
+        self._thread: "AIOKafkaConsumerThread" = thread
 
     def on_partitions_revoked(self, revoked: Iterable[_TopicPartition]) -> Awaitable:
         """Call when partitions are being revoked."""
@@ -229,7 +230,11 @@ class Consumer(ThreadDelegateConsumer):
         ConsumerStoppedError,
     )
 
-    def _new_consumer_thread(self) -> ConsumerThread:
+    #: Narrows :attr:`ThreadDelegateConsumer._thread` to the thread type
+    #: this consumer actually creates in :meth:`_new_consumer_thread`.
+    _thread: "AIOKafkaConsumerThread"
+
+    def _new_consumer_thread(self) -> "AIOKafkaConsumerThread":
         return AIOKafkaConsumerThread(self, loop=self.loop, beacon=self.beacon)
 
     async def create_topic(
@@ -298,16 +303,22 @@ class Consumer(ThreadDelegateConsumer):
 class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: Optional[asyncio.Queue] = None
-    _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    #: The Faust producer this thread borrows its configuration from
+    #: (not an :class:`aiokafka.AIOKafkaProducer`) -- always set by __init__.
+    #: The ``= None`` class-level default is kept exactly as it was rather
+    #: than dropped, so ``ThreadedProducer._default_producer`` stays readable
+    #: on the class; the annotation is non-Optional because every instance
+    #: has a real Producer by the time anything uses it.
+    _default_producer: "Producer" = None  # type: ignore[assignment]
     _push_events_task: Optional[asyncio.Task] = None
-    app: None
+    app: AppT
     stopped: bool
     _shutdown_initiated: bool = False
 
     def __init__(
         self,
-        default_producer,
-        app,
+        default_producer: "Producer",
+        app: AppT,
         *,
         executor: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -324,7 +335,17 @@ class ThreadedProducer(ServiceThread):
         self._default_producer = default_producer
         self.app = app
 
-    def _shutdown_thread(self) -> None:
+    # XXX broken: this synchronous method overrides the coroutine
+    # ``mode.threads.ServiceThread._shutdown_thread``, breaking mode's
+    # contract.  ``ServiceThread._serve()`` ends with
+    # ``finally: await self._shutdown_thread()``, so ``await None`` raises
+    # TypeError on every shutdown of this thread.  The base implementation
+    # (on_thread_stop, stopping children/futures/exit stacks, set_shutdown)
+    # therefore never runs; the shutdown event only gets set because
+    # ``_start_thread`` catches that TypeError and calls ``set_shutdown()``
+    # before re-raising it.  Not fixed here: making it ``async`` changes
+    # runtime behaviour, which is out of scope for this annotation pass.
+    def _shutdown_thread(self) -> None:  # type: ignore[override]
         # Ensure that the shutdown process is initiated only once
         if not self._shutdown_initiated:
             asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
@@ -333,7 +354,12 @@ class ThreadedProducer(ServiceThread):
         """Wait for producer to finish transmitting all buffered messages."""
         while True:
             try:
-                msg = self.event_queue.get_nowait()
+                # ``event_queue`` is created in ``on_start``, and flushing is
+                # only reachable once the thread has started.  cast, not
+                # assert: an assert would turn the AttributeError this raises
+                # when unset into an AssertionError, and vanishes under
+                # ``python -O``.
+                msg = cast(asyncio.Queue, self.event_queue).get_nowait()
             except QueueEmpty:
                 break
             else:
@@ -375,15 +401,22 @@ class ThreadedProducer(ServiceThread):
             while not self._push_events_task.done():
                 await asyncio.sleep(0.1)
 
-    async def push_events(self):
+    async def push_events(self) -> None:
         while not self.stopped:
+            # ``event_queue`` is created by ``on_start`` before this task is
+            # scheduled.  cast, not assert: this runs per message, and an
+            # assert would both change the exception type and disappear
+            # under ``python -O``.
             try:
-                event = await asyncio.wait_for(self.event_queue.get(), timeout=0.1)
+                event = await asyncio.wait_for(
+                    cast(asyncio.Queue, self.event_queue).get(), timeout=0.1
+                )
             except asyncio.TimeoutError:
                 continue
 
             self.app.sensors.on_threaded_producer_buffer_processed(
-                app=self.app, size=self.event_queue.qsize()
+                app=self.app,
+                size=cast(asyncio.Queue, self.event_queue).qsize(),
             )
             await self.publish_message(event)
 
@@ -407,7 +440,11 @@ class ThreadedProducer(ServiceThread):
             timestamp,
             partition,
         )
-        producer = self._producer
+        # The underlying producer is created by ``on_start``, and messages
+        # are only published by tasks started after that.  cast, not assert:
+        # this runs per message, and an assert would both change the
+        # exception type and disappear under ``python -O``.
+        producer = cast(aiokafka.AIOKafkaProducer, self._producer)
         state = self.app.sensors.on_send_initiated(
             producer,
             topic,
@@ -428,7 +465,16 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            fut.message.channel._on_published(
+            # XXX broken: ``_on_published`` is not on the ChannelT interface
+            # (it is implemented by faust.topics.Topic), and worse, the call
+            # below is missing an argument.  Topic._on_published
+            # (faust/topics.py:463) is
+            # ``_on_published(self, fut, message, producer, state)`` -- ``fut``
+            # is a required positional parameter holding the send future, and
+            # nothing is passed for it here, so this raises TypeError at
+            # runtime and ``publish_message(..., wait=True)`` can never
+            # succeed.  Behaviour left untouched in this annotation-only pass.
+            fut.message.channel._on_published(  # type: ignore[attr-defined]
                 message=fut, state=state, producer=producer
             )
             fut.set_result(ret)
@@ -446,7 +492,11 @@ class ThreadedProducer(ServiceThread):
                 ),
             )
             callback = partial(
-                fut.message.channel._on_published,
+                # ``_on_published`` is not on the ChannelT interface; see the
+                # note on the ``wait`` branch above.  This branch does supply
+                # the required positional ``fut``: add_done_callback passes
+                # the completed future as the first positional argument.
+                fut.message.channel._on_published,  # type: ignore[attr-defined]
                 message=fut,
                 state=state,
                 producer=producer,
@@ -470,7 +520,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
     def __post_init__(self) -> None:
         consumer = cast(Consumer, self.consumer)
         self._partitioner: PartitionerT = (
-            self.app.conf.producer_partitioner or DefaultPartitioner()
+            # ``Settings.producer_partitioner`` is a ``Param`` descriptor, but
+            # because the setting's *value* type is itself a callable mypy
+            # reads the class attribute as a method and tries to bind ``self``
+            # instead of going through ``Param.__get__`` -- which both fails
+            # and strips the leading ``key`` argument from the result type.
+            self.app.conf.producer_partitioner  # type: ignore[misc,assignment]
+            or DefaultPartitioner()
         )
         self._rebalance_listener = consumer.RebalanceListener(self)
         self._pending_rebalancing_spans = deque()
@@ -954,7 +1010,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         await self.call_thread(self._seek_wait, consumer, partitions)
 
     async def _seek_wait(
-        self, consumer: Consumer, partitions: Mapping[TP, int]
+        self, consumer: aiokafka.AIOKafkaConsumer, partitions: Mapping[TP, int]
     ) -> None:
         for tp, offset in partitions.items():
             self.log.dev("SEEK %r -> %r", tp, offset)
@@ -1119,7 +1175,7 @@ class Producer(base.Producer):
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
     _trn_locks: typing.Dict[str, Lock] = {}
 
-    def create_threaded_producer(self):
+    def create_threaded_producer(self) -> ThreadedProducer:
         return ThreadedProducer(default_producer=self, app=self.app)
 
     def __post_init__(self) -> None:
@@ -1582,8 +1638,19 @@ class Transport(base.Transport):
             else:
                 raise Exception("Controller node is None")
 
+        # (partition_id, [replica broker ids]) pairs -- empty means "let the
+        # broker decide the replica assignment".
+        replica_assignment: List[Tuple[int, List[int]]] = []
         create_topics_args = (
-            [(topic, partitions, replication, [], list(config.items()))],
+            [
+                (
+                    topic,
+                    partitions,
+                    replication,
+                    replica_assignment,
+                    list(config.items()),
+                )
+            ],
             timeout,
             False,
         )

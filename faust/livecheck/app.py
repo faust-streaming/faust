@@ -191,9 +191,13 @@ class LiveCheck(faust.App):
         patches.patch_all()
 
     def _connect_signals(self) -> None:
+        # mode's ``SignalHandlerT`` is ``(sender, /, *args, signal, **kwargs)``
+        # -- the sender has to be positional-only for a handler to match it.
+        # This handler accepts it by name as well, which mode never does but
+        # which the public signature has always allowed.
         AppT.on_produce_message.connect(
-            self.on_produce_attach_test_headers
-        )  # type: ignore
+            self.on_produce_attach_test_headers  # type: ignore[arg-type]
+        )
 
     def on_produce_attach_test_headers(
         self,

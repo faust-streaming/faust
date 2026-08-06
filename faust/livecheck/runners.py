@@ -138,7 +138,9 @@ class TestRunner:
         )
         await self.case.on_test_start(self)
 
-    async def on_signal_wait(self, signal: BaseSignal, timeout: float) -> None:
+    async def on_signal_wait(
+        self, signal: BaseSignal, timeout: Optional[float]
+    ) -> None:
         """Call when the test is waiting for a signal."""
         self.log_info(
             "∆ %r/%r %s (%rs)...",

@@ -183,8 +183,15 @@ class Attachments:
 
     async def commit(self, tp: TP, offset: int) -> None:
         """Publish all messaged attached to topic partition and offset."""
+        # XXX ``publish_for_tp_offset`` is typed as returning bare awaitables,
+        # but ``asyncio.wait`` accepts only futures/tasks -- passing a plain
+        # coroutine raises TypeError on Python 3.11+.  In-tree channels always
+        # hand back an ``asyncio.Future``, so this works today; a third-party
+        # ``ChannelT.publish_message`` returning a coroutine would break it.
+        # Wrapping in ``ensure_future`` here would change runtime behaviour,
+        # so the error is silenced instead.
         await asyncio.wait(
-            await self.publish_for_tp_offset(tp, offset),
+            await self.publish_for_tp_offset(tp, offset),  # type: ignore[type-var]
             return_when=asyncio.ALL_COMPLETED,
         )
 

@@ -454,7 +454,9 @@ class Channel(ChannelT[T]):
 
     async def get(self, *, timeout: Optional[Seconds] = None) -> EventT[T]:
         """Get the next :class:`~faust.Event` received on this channel."""
-        timeout_: float = want_seconds(timeout)
+        timeout_: Optional[float] = (
+            want_seconds(timeout) if timeout is not None else None
+        )
         if timeout_:
             return await asyncio.wait_for(self.queue.get(), timeout=timeout_)
         return await self.queue.get()

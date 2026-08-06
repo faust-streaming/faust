@@ -26,6 +26,7 @@ from typing import (
     Sequence,
     Set,
     Tuple,
+    TypeVar,
     Union,
     cast,
 )
@@ -90,9 +91,16 @@ async def maybe_forward(value: Any, channel: ChannelT) -> Any:
     return value
 
 
-def _tracks_buffer_agen(
-    fun: Callable[..., AsyncIterable],
-) -> Callable[..., AsyncIterable]:
+#: Bound to the decorated function's own type so ``_tracks_buffer_agen`` is
+#: identity-preserving: ``take()`` and friends keep their real parameter lists
+#: and precise ``AsyncGenerator[...]`` return types instead of being erased to
+#: ``Callable[..., AsyncGenerator[Any, None]]``.
+_BufferAgenFun = TypeVar(
+    "_BufferAgenFun", bound=Callable[..., AsyncGenerator[Any, None]]
+)
+
+
+def _tracks_buffer_agen(fun: _BufferAgenFun) -> _BufferAgenFun:
     """Register buffering generators (``take()`` and friends) on the stream.
 
     The cleanup for these generators -- acking consumed events, restoring
@@ -106,12 +114,17 @@ def _tracks_buffer_agen(
     """
 
     @wraps(fun)
-    def _create_agen(self: StreamT, *args: Any, **kwargs: Any) -> AsyncIterable:
+    def _create_agen(
+        self: StreamT, *args: Any, **kwargs: Any
+    ) -> AsyncGenerator[Any, None]:
         agen = fun(self, *args, **kwargs)
         cast("Stream", self)._active_agens.add(agen)
         return agen
 
-    return _create_agen
+    # ``_create_agen`` is a (*args, **kwargs) forwarder, so it cannot be
+    # expressed as the same type as ``fun``; the cast is what keeps the
+    # decorator transparent to callers.
+    return cast(_BufferAgenFun, _create_agen)
 
 
 class _LinkedListDirection(NamedTuple):
@@ -156,7 +169,10 @@ class Stream(StreamT[T_co], Service):
         prefix: str = "",
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
-        Service.__init__(self, loop=loop, beacon=beacon)
+        # mode declares ``beacon: NodeT = None`` -- an implicit-Optional the
+        # checker reads as non-optional -- but Service.__init__ handles
+        # ``beacon is None`` explicitly by rooting a new Node.
+        Service.__init__(self, loop=loop, beacon=beacon)  # type: ignore[arg-type]
         self.app = app
         self.channel = channel
         self.outbox = self.app.FlowControlQueue(
@@ -334,7 +350,9 @@ class Stream(StreamT[T_co], Service):
                 yield self.current_event
 
     @_tracks_buffer_agen
-    async def take(self, max_: int, within: Seconds) -> AsyncIterable[Sequence[T_co]]:
+    async def take(
+        self, max_: int, within: Seconds
+    ) -> AsyncGenerator[Sequence[T_co], None]:
         """Buffer n values at a time and yield a list of buffered values.
 
         Arguments:
@@ -383,7 +401,10 @@ class Stream(StreamT[T_co], Service):
                     # strict wait for buffer to be consumed after buffer full.
                     # If max is 1000, we are not allowed to return 1001 values.
                     buffer_consumed.clear()
-                    await self.wait(buffer_consumed)
+                    # mode types the waitable as ``mode.utils.locks.Event``,
+                    # but Service.wait_first accepts anything with an
+                    # awaitable ``.wait()`` -- asyncio.Event included.
+                    await self.wait(buffer_consumed)  # type: ignore[arg-type]
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
@@ -399,8 +420,13 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it))
         try:
             while not self.should_stop:
-                # wait until buffer full, or timeout
-                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                # wait until buffer full, or timeout.
+                # Same mode annotation gap as in add_to_buffer above, plus
+                # ``timeout: Seconds`` omitting the ``None`` that is mode's
+                # own default and its "wait forever" value.
+                await self.wait_for_stopped(
+                    buffer_full, timeout=timeout  # type: ignore[arg-type]
+                )
                 if buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
@@ -429,7 +455,7 @@ class Stream(StreamT[T_co], Service):
     @_tracks_buffer_agen
     async def take_events(
         self, max_: int, within: Seconds
-    ) -> AsyncIterable[Sequence[EventT]]:
+    ) -> AsyncGenerator[Sequence[EventT], None]:
         """Buffer n events at a time and yield a list of buffered events.
         Arguments:
             max_: Max number of messages to receive. When more than this
@@ -477,7 +503,10 @@ class Stream(StreamT[T_co], Service):
                     # strict wait for buffer to be consumed after buffer full.
                     # If max is 1000, we are not allowed to return 1001 values.
                     buffer_consumed.clear()
-                    await self.wait(buffer_consumed)
+                    # mode types the waitable as ``mode.utils.locks.Event``,
+                    # but Service.wait_first accepts anything with an
+                    # awaitable ``.wait()`` -- asyncio.Event included.
+                    await self.wait(buffer_consumed)  # type: ignore[arg-type]
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
@@ -493,8 +522,13 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it))
         try:
             while not self.should_stop:
-                # wait until buffer full, or timeout
-                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                # wait until buffer full, or timeout.
+                # Same mode annotation gap as in add_to_buffer above, plus
+                # ``timeout: Seconds`` omitting the ``None`` that is mode's
+                # own default and its "wait forever" value.
+                await self.wait_for_stopped(
+                    buffer_full, timeout=timeout  # type: ignore[arg-type]
+                )
                 if buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
@@ -523,7 +557,7 @@ class Stream(StreamT[T_co], Service):
     @_tracks_buffer_agen
     async def take_with_timestamp(
         self, max_: int, within: Seconds, timestamp_field_name: str
-    ) -> AsyncIterable[Sequence[T_co]]:
+    ) -> AsyncGenerator[Sequence[T_co], None]:
         """Buffer n values at a time and yield a list of buffered values with the
            timestamp when the message was added to kafka.
 
@@ -566,8 +600,17 @@ class Stream(StreamT[T_co], Service):
                         buffer_consuming = None
                 event = self.current_event
                 if isinstance(value, dict) and timestamp_field_name:
-                    value[timestamp_field_name] = event.message.timestamp
-                buffer_add(value)
+                    # XXX ``self.current_event`` is Optional, and this reads
+                    # ``event.message`` *before* the ``event is None`` guard
+                    # below: with no current event a dict value dies with
+                    # AttributeError here instead of the intended RuntimeError.
+                    value[timestamp_field_name] = (
+                        event.message.timestamp  # type: ignore[union-attr]
+                    )
+                # XXX ``buffer_add`` also runs before the guard, so a non-dict
+                # value is appended to ``buffer`` and then the RuntimeError
+                # fires, leaving ``buffer`` and ``events`` skewed by one entry.
+                buffer_add(cast(T_co, value))
                 if event is None:
                     raise RuntimeError("Take buffer found current_event is None")
                 event_add(event)
@@ -577,7 +620,10 @@ class Stream(StreamT[T_co], Service):
                     # strict wait for buffer to be consumed after buffer full.
                     # If max is 1000, we are not allowed to return 1001 values.
                     buffer_consumed.clear()
-                    await self.wait(buffer_consumed)
+                    # mode types the waitable as ``mode.utils.locks.Event``,
+                    # but Service.wait_first accepts anything with an
+                    # awaitable ``.wait()`` -- asyncio.Event included.
+                    await self.wait(buffer_consumed)  # type: ignore[arg-type]
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
@@ -593,8 +639,13 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it))
         try:
             while not self.should_stop:
-                # wait until buffer full, or timeout
-                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                # wait until buffer full, or timeout.
+                # Same mode annotation gap as in add_to_buffer above, plus
+                # ``timeout: Seconds`` omitting the ``None`` that is mode's
+                # own default and its "wait forever" value.
+                await self.wait_for_stopped(
+                    buffer_full, timeout=timeout  # type: ignore[arg-type]
+                )
                 if buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
@@ -631,7 +682,7 @@ class Stream(StreamT[T_co], Service):
     @_tracks_buffer_agen
     async def noack_take(
         self, max_: int, within: Seconds
-    ) -> AsyncIterable[Sequence[T_co]]:
+    ) -> AsyncGenerator[Sequence[T_co], None]:
         """
          Buffer n values at a time and yield a list of buffered values.
         :param max_: Max number of messages to receive. When more than this
@@ -685,7 +736,10 @@ class Stream(StreamT[T_co], Service):
                     # If max is 1000, we are not allowed to return 1001
                     # values.
                     buffer_consumed.clear()
-                    await self.wait(buffer_consumed)
+                    # mode types the waitable as ``mode.utils.locks.Event``,
+                    # but Service.wait_first accepts anything with an
+                    # awaitable ``.wait()`` -- asyncio.Event included.
+                    await self.wait(buffer_consumed)  # type: ignore[arg-type]
             except CancelledError:  # pragma: no cover
                 raise
             except Exception as exc:
@@ -701,8 +755,13 @@ class Stream(StreamT[T_co], Service):
         self._enable_passive(cast(ChannelT, channel_it))
         try:
             while not self.should_stop:
-                # wait until buffer full, or timeout
-                await self.wait_for_stopped(buffer_full, timeout=timeout)
+                # wait until buffer full, or timeout.
+                # Same mode annotation gap as in add_to_buffer above, plus
+                # ``timeout: Seconds`` omitting the ``None`` that is mode's
+                # own default and its "wait forever" value.
+                await self.wait_for_stopped(
+                    buffer_full, timeout=timeout  # type: ignore[arg-type]
+                )
                 if buffer:
                     # make sure background thread does not add new items to
                     # buffer while we read.
@@ -1095,7 +1154,7 @@ class Stream(StreamT[T_co], Service):
     def __iter__(self) -> Any:
         return self
 
-    def __next__(self) -> T:
+    def __next__(self) -> T_co:
         raise NotImplementedError("Streams are asynchronous: use `async for`")
 
     def __aiter__(self) -> AsyncIterator[T_co]:  # pragma: no cover
@@ -1308,7 +1367,12 @@ class Stream(StreamT[T_co], Service):
                 # reset to allow calling .start again on next `async for`
                 self.service_reset()
 
-    async def __anext__(self) -> T:  # pragma: no cover
+    # Declaration only: `async for` drives the async generator returned by
+    # ``__aiter__``, never this method, which exists so that ``Stream``
+    # registers as an ``AsyncIterator`` (``collections.abc`` looks for
+    # ``__anext__``).  It cannot be marked abstract -- ``Stream`` is concrete
+    # and instantiated -- so the empty body has to be silenced here.
+    async def __anext__(self) -> T_co:  # type: ignore[empty-body]  # pragma: no cover
         ...
 
     async def ack(self, event: EventT) -> bool:

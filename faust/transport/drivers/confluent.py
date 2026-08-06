@@ -80,7 +80,11 @@ class Consumer(ThreadDelegateConsumer):
 
     logger = logger
 
-    def _new_consumer_thread(self) -> ConsumerThread:
+    #: Narrows :attr:`ThreadDelegateConsumer._thread` to the thread type
+    #: this consumer actually creates in :meth:`_new_consumer_thread`.
+    _thread: "ConfluentConsumerThread"
+
+    def _new_consumer_thread(self) -> "ConfluentConsumerThread":
         return ConfluentConsumerThread(self, loop=self.loop, beacon=self.beacon)
 
     async def create_topic(
@@ -151,7 +155,15 @@ class Consumer(ThreadDelegateConsumer):
         await super().on_stop()
 
     def verify_event_path(self, now: float, tp: TP) -> None:
-        return self._thread.verify_event_path(now, tp)
+        # XXX broken: neither ConsumerThread nor ConfluentConsumerThread
+        # implements verify_event_path, so this raises AttributeError on
+        # every tick of the commit livelock detector
+        # (faust.transport.consumer.Consumer._commit_livelock_detector ->
+        # verify_all_partitions_active).  Livelock detection is therefore
+        # dead for this driver.  Not fixed here: adding a no-op stub would
+        # change runtime behaviour, and a real implementation belongs in
+        # ConfluentConsumerThread.
+        return self._thread.verify_event_path(now, tp)  # type: ignore[attr-defined]
 
 
 class AsyncConsumer:
@@ -283,7 +295,10 @@ class ConfluentConsumerThread(ConsumerThread):
     async def subscribe(self, topics: Iterable[str]) -> None:
         # XXX pattern does not work :/
         await self.cast_thread(
-            self._ensure_consumer().subscribe,
+            # mode types cast_thread/call_thread as taking a coroutine
+            # function, but MethodQueue._process_enqueued runs whatever it
+            # gets through ``maybe_async``, so plain callables work too.
+            self._ensure_consumer().subscribe,  # type: ignore[arg-type]
             topics=list(topics),
             on_assign=self._on_assign,
             on_revoke=self._on_revoke,
@@ -669,7 +684,16 @@ class Producer(base.Producer):
     def key_partition(self, topic: str, key: bytes) -> TP:
         """Return topic and partition destination for key."""
         # Get the partition count for the topic
-        metadata = self._producer_thread.producer.list_topics(topic)
+        # XXX broken: ``ProducerThread.producer`` is the Faust Producer
+        # (i.e. ``self``), not the underlying confluent_kafka.Producer --
+        # that one is ``ProducerThread._producer``.  Faust producers have no
+        # ``list_topics``, so this raises AttributeError and
+        # ``Producer.key_partition`` is dead on arrival for this driver.
+        # Behaviour left untouched in this annotation-only pass; the fix is
+        # to read ``self._producer_thread._producer``.
+        metadata = self._producer_thread.producer.list_topics(  # type: ignore[attr-defined]  # noqa: E501
+            topic
+        )
         partition_count = len(metadata.topics[topic].partitions)
 
         # Calculate the partition number based on the key hash

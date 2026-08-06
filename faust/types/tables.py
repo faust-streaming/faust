@@ -95,6 +95,7 @@ class CollectionT(ServiceT, JoinableT):
     options: Optional[Mapping[str, Any]]
     last_closed_window: float
     use_partitioner: bool
+    synchronize_all_active_partitions: bool
 
     is_global: bool = False
 

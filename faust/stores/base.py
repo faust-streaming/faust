@@ -162,7 +162,9 @@ class SerializedStore(Store[KT, VT]):
         ...
 
     @abc.abstractmethod
-    def _itervalues(self) -> Iterator[bytes]:  # pragma: no cover
+    def _itervalues(self) -> Iterator[Optional[bytes]]:  # pragma: no cover
+        # May yield None: `_values_decoded` feeds each value straight to
+        # `_decode_value`, which accepts `Optional[bytes]`.
         ...
 
     @abc.abstractmethod

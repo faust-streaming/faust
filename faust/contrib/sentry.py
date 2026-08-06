@@ -129,7 +129,7 @@ def setup(
     workers: int = 4,
     max_queue_size: int = 1000,
     loglevel: Optional[int] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     sentry_handler = handler_from_dsn(
         dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs

@@ -20,7 +20,7 @@ from mode import Service
 from mode.threads import ServiceThread
 
 from faust.types import AppT
-from faust.types.web import ResourceOptions as _ResourceOptions
+from faust.types.web import ResourceOptions as _ResourceOptions, View
 from faust.utils import json as _json
 from faust.web import base
 
@@ -31,11 +31,18 @@ _bytes = bytes
 NON_OPTIONS_METHODS = frozenset({"GET", "PUT", "POST", "DELETE"})
 
 
-def _prepare_cors_options(opts: Mapping[str, Any]) -> Mapping[str, ResourceOptions]:
+#: Callers may pass either Faust's own :class:`faust.types.web.ResourceOptions`
+#: namedtuple or an already-converted :mod:`aiohttp_cors` one.
+AnyResourceOptions = Union[_ResourceOptions, ResourceOptions]
+
+
+def _prepare_cors_options(
+    opts: Mapping[str, AnyResourceOptions],
+) -> Mapping[str, ResourceOptions]:
     return {k: _faust_to_aiohttp_options(v) for k, v in opts.items()}
 
 
-def _faust_to_aiohttp_options(opts: ResourceOptions) -> ResourceOptions:
+def _faust_to_aiohttp_options(opts: AnyResourceOptions) -> ResourceOptions:
     if isinstance(opts, _ResourceOptions):
         return ResourceOptions(**opts._asdict())
     return opts
@@ -234,16 +241,25 @@ class Web(base.Web):
         self,
         pattern: str,
         handler: Callable,
-        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
+        cors_options: Optional[Mapping[str, AnyResourceOptions]] = None,
     ) -> None:
         """Add route for web view or handler."""
         async_handler = self._wrap_into_asyncdef(handler)
+        # ``base.Web.route`` types the handler as a bare ``Callable``, but this
+        # driver needs the set of HTTP methods it implements, and ``get_methods``
+        # only exists on :class:`~faust.web.views.View`.
+        # XXX this cast is not guaranteed: ``base.Web.add_view`` does pass a
+        # ``View``, but the public :meth:`faust.web.views.View.route` forwards
+        # any callable straight to here, and such a handler blows up with
+        # ``AttributeError: 'function' object has no attribute 'get_methods'``
+        # on the lines below.
+        view = cast(View, handler)
         if cors_options or self.cors_options:
-            for method in NON_OPTIONS_METHODS & handler.get_methods():
+            for method in NON_OPTIONS_METHODS & view.get_methods():
                 r = self.web_app.router.add_route(method, pattern, async_handler)
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
-            for method in handler.get_methods():
+            for method in view.get_methods():
                 self.web_app.router.add_route(method, pattern, async_handler)
 
     def _wrap_into_asyncdef(self, handler: Callable) -> Callable:
@@ -284,7 +300,11 @@ class Web(base.Web):
         elif isinstance(resp.body, Payload):
             raise NotImplementedError("Does not support Payload")
         else:
-            body = resp.body
+            # aiohttp declares the body as ``bytes | bytearray | Payload |
+            # None``, so ``bytearray`` survives the branches above.  The cast
+            # does not convert it: ``_response_to_bytes`` only feeds the value
+            # to ``bytes.join``, which takes any bytes-like object.
+            body = cast(_bytes, resp.body)
         return self._response_to_bytes(
             resp.status,
             resp.headers,

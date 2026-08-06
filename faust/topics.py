@@ -299,8 +299,11 @@ class Topic(SerializedChannel, TopicT):
         return self._partitions
 
     @partitions.setter
-    def partitions(self, partitions: int) -> None:
+    def partitions(self, partitions: Optional[int]) -> None:
         """Set the number of partitions for this topic.
+
+        :const:`None` means "let the broker decide", which is what
+        ``__init__`` assigns when no ``partitions`` argument is given.
 
         Only used for internal topics, see :attr:`partitions`.
         """

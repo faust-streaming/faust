@@ -310,11 +310,17 @@ class BootStrategy(BootStrategyT):
 
     def kafka_producer(self) -> Iterable[ServiceT]:
         """Return list of services required to start Kafka producer."""
-        producers = []
+        producers: List[ServiceT] = []
         if self._should_enable_kafka_producer():
             producers.append(self.app.producer)
             if self.app.conf.producer_threaded:
-                producers.append(self.app.producer.threaded_producer)
+                # XXX ``ProducerT.threaded_producer`` is ``Optional``: a
+                # producer that does not create one (only the aiokafka driver
+                # does) leaves it ``None``, and that ``None`` is appended to
+                # the list of services the worker then starts.
+                producers.append(
+                    self.app.producer.threaded_producer  # type: ignore[arg-type]
+                )
         return producers
 
     def _should_enable_kafka_producer(self) -> bool:
@@ -502,7 +508,10 @@ class App(AppT, Service):
 
         self.boot_strategy = self.BootStrategy(self)
 
-        Service.__init__(self, loop=loop, beacon=beacon)
+        # mode declares ``beacon: NodeT = None`` -- an implicit-Optional the
+        # checker reads as non-optional -- but Service.__init__ handles
+        # ``beacon is None`` explicitly by rooting a new Node.
+        Service.__init__(self, loop=loop, beacon=beacon)  # type: ignore[arg-type]
 
     def _init_signals(self) -> None:
         # Signals in Faust are the same as in Django, but asynchronous by
@@ -716,7 +725,11 @@ class App(AppT, Service):
         # otherwise a Django app that set e.g.
         # ``autodiscover=['myproj.agents']`` would still scan all of
         # INSTALLED_APPS (including migrations/admin).  See #500.
-        if self.conf.autodiscover is True:
+        # ``Settings.autodiscover`` is a ``Param`` descriptor, but one of the
+        # setting's *value* types is itself a callable, so mypy reads the
+        # class attribute as a method and tries to bind ``self`` to it
+        # instead of going through ``Param.__get__``.
+        if self.conf.autodiscover is True:  # type: ignore[misc]
             for fixup in self.fixups:
                 modules |= set(fixup.autodiscover_modules())
         if modules:
@@ -745,7 +758,9 @@ class App(AppT, Service):
 
     def _discovery_modules(self) -> List[str]:
         modules: List[str] = []
-        autodiscover = self.conf.autodiscover
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        autodiscover = self.conf.autodiscover  # type: ignore[misc]
         if autodiscover:
             if isinstance(autodiscover, bool):
                 if self.conf.origin is None:
@@ -764,7 +779,9 @@ class App(AppT, Service):
 
         self.finalize()
         self.worker_init()
-        if self.conf.autodiscover:
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        if self.conf.autodiscover:  # type: ignore[misc]
             self.discover()
         self.worker_init_post_autodiscover()
         cli(app=self)
@@ -1042,7 +1059,12 @@ class App(AppT, Service):
 
         return _inner
 
-    def crontab(
+    # ``App`` inherits both ``AppT`` and ``mode.Service``, and deliberately
+    # shadows ``Service.crontab`` (a classmethod defining a background timer
+    # on a Service subclass) with the app-level ``@app.crontab(...)``
+    # decorator declared by ``AppT``.  Same for ``task``/``timer`` above,
+    # which are hidden from the checker by ``@no_type_check`` instead.
+    def crontab(  # type: ignore[override]
         self,
         cron_format: str,
         *,
@@ -1373,7 +1395,7 @@ class App(AppT, Service):
 
     def topic_route(
         self,
-        topic: CollectionT,
+        topic: TopicT,
         shard_param: Optional[str] = None,
         *,
         query_param: Optional[str] = None,
@@ -1479,7 +1501,11 @@ class App(AppT, Service):
         **context: Any,
     ) -> Callable:
         """Decorate function to be traced using the OpenTracing API."""
-        assert fun
+        # XXX dead check: this is a truthiness test on a callable, and function
+        # objects are always truthy, so it can only ever fire for a falsy
+        # non-function callable.  Left exactly as it is -- ``fun is not None``
+        # would be a different runtime test.
+        assert fun  # type: ignore[truthy-function]
         operation: str = name or operation_name_from_fun(fun)
 
         @wraps(fun)

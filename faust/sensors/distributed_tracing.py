@@ -14,8 +14,8 @@ except ImportError:  # pragma: no cover
     from faust.utils import _opentracing as opentracing  # type: ignore
     from faust.utils._opentracing import Format, tags
 
-from faust import App, EventT, Sensor, StreamT
-from faust.types import TP, Message, PendingMessage, ProducerT, RecordMetadata
+from faust import EventT, Sensor, StreamT
+from faust.types import TP, AppT, Message, PendingMessage, ProducerT, RecordMetadata
 from faust.types.core import OpenHeadersArg, merge_headers
 from faust.utils.tracing import current_span, set_current_span
 
@@ -23,7 +23,7 @@ logger = get_logger(__name__)
 
 
 class TracingSensor(Sensor):
-    aiohttp_sessions: Dict[str, aiohttp.ClientSession] = None
+    aiohttp_sessions: Optional[Dict[str, aiohttp.ClientSession]] = None
 
     @cached_property
     def app_tracer(self) -> opentracing.Tracer:
@@ -41,7 +41,14 @@ class TracingSensor(Sensor):
 
     # Message received by a consumer.
     def on_message_in(self, tp: TP, offset: int, message: Message) -> None:
-        carrier_headers = {want_str(k): want_str(v) for k, v in message.headers}
+        # XXX ``Message.headers`` is typed ``Optional[HeadersArg]``, i.e. a list
+        # of pairs *or* a Mapping *or* None, but this only handles the list of
+        # pairs: a Mapping iterates its str keys (ValueError/mis-unpack) and
+        # None raises TypeError.  Ignores below cover exactly that gap.
+        carrier_headers = {  # type: ignore[str-unpack]
+            want_str(k): want_str(v)  # type: ignore[type-var]
+            for k, v in message.headers  # type: ignore[union-attr]
+        }
 
         if carrier_headers:
             parent_context = self.app_tracer.extract(
@@ -76,7 +83,9 @@ class TracingSensor(Sensor):
             )
             stream_span.set_tag("stream-concurrency-index", stream.concurrency_index)
             stream_span.set_tag("stream-prefix", stream.prefix)
-            spans = stream_meta.get("stream_spans")
+            spans: Optional[Dict[StreamT, opentracing.Span]] = stream_meta.get(
+                "stream_spans"
+            )
             if spans is None:
                 spans = stream_meta["stream_spans"] = {}
             spans[stream] = stream_span
@@ -170,5 +179,5 @@ class TracingSensor(Sensor):
             logger.warning(f"Exception in trace_inject_headers {ex} ")
             return None
 
-    def on_threaded_producer_buffer_processed(self, app: App, size: int) -> None:
+    def on_threaded_producer_buffer_processed(self, app: AppT, size: int) -> None:
         pass

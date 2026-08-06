@@ -147,7 +147,9 @@ class Model(ModelT):
     #: Set to True if this is an abstract base class.
     __is_abstract__: ClassVar[bool] = True
 
-    __validation_errors__ = None
+    #: Cache of validation errors, populated on first call to
+    #: :meth:`validate`.  :const:`None` means "not validated yet".
+    __validation_errors__: Optional[List[ValidationError]] = None
 
     _pending_finalizers: ClassVar[Optional[List[Callable]]] = None
 

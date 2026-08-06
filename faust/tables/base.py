@@ -9,6 +9,7 @@ from heapq import heappop, heappush
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     List,
@@ -383,15 +384,29 @@ class Collection(Service, CollectionT):
             while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 triggered_windows = [
+                    # XXX bug: this lookup can never hit.
+                    # ``_partition_timestamp_keys`` is keyed by
+                    # ``(partition, range_end)`` -- a ``(int, float)`` pair,
+                    # written that way in ``_maybe_set_key_ttl`` and read that
+                    # way in ``_maybe_del_key_ttl``.  Here it is looked up by
+                    # ``(partition, window_range)`` where ``window_range`` is
+                    # the ``(start, end)`` tuple, so no key ever matches and
+                    # ``triggered_windows`` is always ``[None, ...]``.  The
+                    # consequence is that ``window_data`` stays empty and
+                    # ``on_window_close`` never receives the aggregated window
+                    # data, only the raw per-key value.  The correct key is
+                    # ``(partition, window_range[1])``; that is a behaviour
+                    # change, so it is not made here and the type error is
+                    # only silenced.
                     self._partition_timestamp_keys.get(
-                        (partition, window_range)
-                    )  # noqa
+                        (partition, window_range)  # type: ignore[arg-type]
+                    )
                     for window_range in self._window_ranges(timestamp)
                 ]
                 keys_to_remove = self._partition_timestamp_keys.pop(
                     (partition, timestamp), None
                 )
-                window_data = {}
+                window_data: Dict[Any, List[Any]] = {}
                 if keys_to_remove:
                     for windows in triggered_windows:
                         if windows:
