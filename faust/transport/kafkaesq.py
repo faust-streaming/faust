@@ -25,7 +25,9 @@ the other -- or a Faust app::
     app = faust.App(settings.pop('id'), **settings)
 
 The conversion tables are :pypi:`kafkaesq`'s, installed with the ``kafkaesq``
-bundle::
+bundle:
+
+.. sourcecode:: console
 
     $ pip install "faust-streaming[kafkaesq]"
 

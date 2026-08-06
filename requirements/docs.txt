@@ -1,4 +1,7 @@
 -r requirements.txt
+# autodoc imports every documented module, and the confluent driver
+# imports confluent_kafka at module level.
+-r extras/ckafka.txt
 sphinx<6.0.0
 sphinx-celery
 sphinx-autodoc-typehints

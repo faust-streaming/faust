@@ -705,6 +705,8 @@ class Settings(base.SettingsRegistry):
 
             Limitations: None
 
+            Reference: :mod:`faust.transport.drivers.aiokafka`
+
 
         - ``confluent://``
 
@@ -713,6 +715,63 @@ class Settings(base.SettingsRegistry):
             Limitations: Does not do sticky partition assignment (not
                 suitable for tables), and do not create any necessary internal
                 topics (you have to create them manually).
+
+            Reference: :mod:`faust.transport.drivers.confluent`
+
+        .. _client-config-conversion:
+
+        **Converting client configuration**
+
+        The clients behind these transports spell their configuration
+        differently: :pypi:`aiokafka` takes ``session_timeout_ms``, librdkafka
+        takes ``session.timeout.ms``, and app settings are a third spelling
+        again (:setting:`broker_session_timeout`, in seconds). Install the
+        ``kafkaesq`` bundle:
+
+        .. sourcecode:: console
+
+            $ pip install "faust-streaming[kafkaesq]"
+
+        and :class:`faust.transport.kafkaesq.ClientConfig` converts between
+        them. A librdkafka config -- a Confluent Cloud ``client.properties``,
+        say -- becomes arguments for :class:`faust.App`:
+
+        .. sourcecode:: python
+
+            from faust.transport.kafkaesq import ClientConfig
+
+            config = ClientConfig.from_confluent({
+                'bootstrap.servers': 'kafka.example.com:9092',
+                'group.id': 'billing',
+                'session.timeout.ms': 45000,
+            })
+
+            settings = config.as_app_settings()
+            app = faust.App(settings.pop('id'), **settings)
+
+        and, the other way round, an app's settings configure a plain client
+        that talks to the same brokers:
+
+        .. sourcecode:: python
+
+            from faust.transport.kafkaesq import PRODUCER_SETTINGS, ClientConfig
+
+            config = ClientConfig.from_app(app, PRODUCER_SETTINGS)
+            producer = confluent_kafka.Producer(config.as_confluent())
+            # ... or the same settings as aiokafka kwargs
+            producer = AIOKafkaProducer(**config.as_aiokafka())
+
+        This is a conversion helper, not something the transports use: both
+        configure themselves from your app settings as they always have, and
+        neither needs :pypi:`kafkaesq` installed.
+
+        .. note::
+
+            Authentication is not converted. Faust configures it with a
+            :setting:`broker_credentials` object built at runtime, which no
+            config file can describe, so ``security.protocol``, ``sasl.*``
+            and ``ssl.*`` keys are reported as unmapped when converting to
+            app settings -- set :setting:`broker_credentials` yourself.
         """
 
     @broker.on_set_default  # type: ignore
