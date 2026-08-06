@@ -317,7 +317,7 @@ class OpenTelemetryMonitor(Monitor):
         offset: int,
         stream: StreamT,
         event: EventT,
-        state: Dict = None,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
@@ -438,7 +438,7 @@ class OpenTelemetryMonitor(Monitor):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         super().on_web_request_end(app, request, response, state, view=view)
