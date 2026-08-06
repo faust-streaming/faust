@@ -159,6 +159,7 @@ Transports
     faust.transport.producer
     faust.transport.drivers
     faust.transport.drivers.aiokafka
+    faust.transport.kafkaesq
     faust.transport.utils
 
 Assignor

@@ -57,6 +57,12 @@ Transports
     for using the :pypi:`confluent-kafka` client through the ``confluent://``
     transport.
 
+:``faust[kafkaesq]``:
+    for converting Kafka client configuration between the spellings
+    :pypi:`aiokafka`, :pypi:`confluent-kafka` and Faust app settings use --
+    turning an existing librdkafka config into app settings, or app settings
+    into arguments for a plain client. See :ref:`client-config-conversion`.
+
 Codecs
 ~~~~~~
 
