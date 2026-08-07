@@ -179,6 +179,8 @@ implementation behind a ``try: ... except ImportError``:
 
 With no ``.so`` next to the ``.pyx``, that import fails, the fallback engages
 silently, and the run exercises the pure-Python path no matter what
-``USE_CYTHON`` was set to during ``pip install``.  This applies to the
-``USE_CYTHON: true`` legs of the main test matrix as well, which is why the
-free-threaded job builds in place explicitly.
+``USE_CYTHON`` was set to during ``pip install``.
+
+Set ``FAUST_REQUIRE_CYTHON=1`` to make that a failure rather than a silent
+fallback -- every CI leg that builds the extensions does.  See
+:ref:`developers-cython` for the accelerators in general.
