@@ -12,4 +12,5 @@
 
     overview
     partition_assignor
+    free_threading
 

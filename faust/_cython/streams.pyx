@@ -1,4 +1,5 @@
 # cython: language_level=3
+# cython: freethreading_compatible=True
 from asyncio import sleep
 from time import monotonic
 
