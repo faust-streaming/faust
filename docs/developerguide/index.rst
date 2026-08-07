@@ -12,5 +12,6 @@
 
     overview
     partition_assignor
+    cython
     free_threading
 

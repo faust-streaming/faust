@@ -189,11 +189,28 @@ cdef class StreamIterator:
             return None, channel_value, stream_state
 
     cdef object _try_get_quick_value(self):
+        # Returns (need_slow_get, value), matching how ``next()`` unpacks it.
+        #
+        # Two bugs used to cancel each other out here.  ``chan_queue_empty`` is
+        # the bound ``queue.empty`` *method*, not a call, so ``if
+        # self.chan_queue_empty`` tested a method object -- always truthy --
+        # and this always reported "queue empty, use the slow path".  That made
+        # the ``else`` unreachable, which hid the fact that it returned the
+        # bare value from ``get_nowait()`` instead of the (flag, value) pair
+        # the caller unpacks: had it ever run, ``next()`` would have raised
+        # TypeError, or silently mis-unpacked a two-element value into
+        # ``need_slow_get, channel_value``.
+        #
+        # Both are fixed together; fixing only the condition would activate the
+        # broken return.  streams.py has always had this right (``if
+        # chan_queue_empty():`` ... ``channel_value = chan_quick_get()``), so
+        # this restores the fast path the extension was meant to provide and
+        # brings the two implementations back into agreement.
         if self.chan_is_channel:
             if self.chan_errors:
                 raise self.chan_errors.popleft()
-            if self.chan_queue_empty:
+            if self.chan_queue_empty():
                 return (True, None)
             else:
-                return self.chan_quick_get()
+                return (False, self.chan_quick_get())
         return (True, None)

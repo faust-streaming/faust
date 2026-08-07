@@ -125,7 +125,26 @@ jobs:
           if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
             pip install -r requirements/extras/ckafka.txt
           fi
+      - name: Build the Cython extensions in place
+        # `pip install .` above compiles the extensions into site-packages,
+        # where the tests never see them: pytest runs from the repository
+        # root, so `import faust` resolves to the source tree, and every
+        # accelerated import sits behind `try: ... except ImportError`.  The
+        # fallback engaged silently, so these legs differed from the
+        # `use-cython: false` ones only in whether the build step succeeded --
+        # the compiled code itself was never executed by a single test.
+        #
+        # Building in place puts the .so files next to the .pyx files, which
+        # is what the source-tree import actually picks up.
+        if: matrix.use-cython == 'true'
+        run: USE_CYTHON=1 python setup.py build_ext --inplace
       - name: Run tests
+        # FAUST_REQUIRE_CYTHON turns a silent fallback into a failure, so this
+        # leg cannot quietly go back to testing pure Python if the build stops
+        # producing importable extensions.  See
+        # tests/unit/test_cython_parity.py.
+        env:
+          FAUST_REQUIRE_CYTHON: ${{ matrix.use-cython == 'true' && '1' || '' }}
         run: |
           if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
             # Dedicated confluent leg: run just the confluent driver's unit
@@ -197,6 +216,9 @@ jobs:
         # falling back to one.
         env:
           PYTHON_GIL: '0'
+          # As in the main matrix: fail rather than silently fall back to pure
+          # Python if the extensions stop being importable from the tree.
+          FAUST_REQUIRE_CYTHON: '1'
         run: python -m pytest tests/unit tests/functional -q --no-cov
   test-pypy:
     name: 'Python pypy3.11/Cython: false'
