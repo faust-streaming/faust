@@ -1,4 +1,5 @@
 # cython: language_level=3
+# cython: freethreading_compatible=True
 from asyncio import ALL_COMPLETED, ensure_future, wait
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
