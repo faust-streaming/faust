@@ -7,6 +7,7 @@ from mode.utils.futures import maybe_async, notify
 
 from faust.exceptions import Skip
 from faust.types import ChannelT, EventT
+from faust.utils.optin import cython_optimizations_enabled
 
 
 cdef class StreamIterator:
@@ -56,7 +57,9 @@ cdef class StreamIterator:
         self._skipped_value = self.stream._skipped_value
         # Opt-in: see the `cython_optimizations` setting.  Read once here
         # rather than per message, so the hot path costs a `bint` test.
-        self.cython_optimizations = bool(self.app.conf.cython_optimizations)
+        # Via the helper, not `app.conf.<name>`, so that deprecating the
+        # setting does not emit a warning per stream -- see faust/utils/optin.py.
+        self.cython_optimizations = cython_optimizations_enabled(self.app.conf)
 
         if isinstance(self.channel, ChannelT):
             self.chan_is_channel = True

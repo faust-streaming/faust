@@ -324,6 +324,14 @@ Enable it to get the fast paths::
 
     app = faust.App('myapp', cython_optimizations=True)
 
+This setting is transitional: it is expected to default to ``True`` in
+a later release, then be deprecated and removed, at which point the
+fast paths are simply the behaviour.  See the developer guide for the
+sequence -- and for why faust reads this setting internally through
+:func:`faust.utils.optin.cython_optimizations_enabled` rather than
+directly, which is what keeps the eventual deprecation from warning
+once per stream and once per assigned partition.
+
 .. seealso::
 
     The developer guide's :ref:`developers-cython` page, for what the
