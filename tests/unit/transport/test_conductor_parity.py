@@ -16,9 +16,14 @@ buffer-pressure callbacks, the full-queue path and decode-error propagation.
 The existing conductor tests replace the handler with an ``AsyncMock`` and
 assert it was called, so none of that logic was covered on either side.  The
 duplication has already produced bugs that only differential testing catches --
-see ``docs/developerguide/cython.rst`` -- including one recorded in
-``faust/transport/conductor.py`` as deliberately unfixed, because correcting one
-twin alone would make the two disagree.
+see ``docs/developerguide/cython.rst``.
+
+Note the converse, though: a differential test only finds *divergence*.  The
+``on_topic_buffer_full`` defect (both implementations passed a channel where the
+sensor wanted a ``TP``) kept these comparisons green the whole time it was
+present, because both sides were wrong identically.  Shared mistakes need an
+assertion about the behaviour itself, so a few tests below check what a value
+*is* and not only that both implementations produce the same one.
 
 Both implementations are driven against **the same** conductor and the same
 ``channels`` set, one after the other, rather than against two separately-built
@@ -40,6 +45,7 @@ from typing import Any, Dict, List, Optional, Set
 import pytest
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.sensors import Monitor
 from faust.transport.conductor import Conductor, ConductorHandler
 from faust.types import TP, Message
 from tests.helpers import AsyncMock
@@ -189,7 +195,9 @@ class Harness:
             "delivered": delivered,
             "n_delivered_total": sum(len(v) for v in delivered.values()),
             "n_decodes": len(self.decodes),
-            "buffer_full_sensor": len(self.buffer_full_sensor),
+            # The arguments, not just the count: what gets passed to
+            # `on_topic_buffer_full` is the metric's key.
+            "buffer_full_sensor": list(self.buffer_full_sensor),
             "consumer_buffer_full": len(self.consumer_buffer_full),
             "consumer_buffer_drop": len(self.consumer_buffer_drop),
             "key_decode_errors": sorted(self.key_decode_errors),
@@ -398,6 +406,11 @@ async def test_parity__queue_full_path(harness) -> None:
 
     Filling the queue first drives ``_handle_full``, a separate branch in both
     implementations that also fires the ``on_topic_buffer_full`` sensor.
+
+    The sensor argument is checked explicitly, not just for parity.  Both
+    implementations used to pass the *channel* here, so they agreed with each
+    other and this comparison stayed green while both were wrong -- a shared
+    mistake is exactly what a differential test cannot see.
     """
 
     async def scenario(handler, h):
@@ -414,18 +427,69 @@ async def test_parity__queue_full_path(harness) -> None:
         chan.queue.get_nowait()
         await asyncio.wait_for(pending, timeout=5)
         return {
-            "buffer_full_sensor": len(h.buffer_full_sensor),
-            "consumer_buffer_full": len(h.consumer_buffer_full),
-            "consumer_buffer_drop": len(h.consumer_buffer_drop),
+            "buffer_full_sensor": list(h.buffer_full_sensor),
+            "consumer_buffer_full": list(h.consumer_buffer_full),
+            "consumer_buffer_drop": list(h.consumer_buffer_drop),
             "qsize": chan.queue.qsize(),
             "refcount": message.refcount,
         }
 
     results = await run_both(harness, scenario)
     assert_parity(results)
-    assert results["cython"][
-        "buffer_full_sensor"
-    ], "the full-queue path did not fire the on_topic_buffer_full sensor"
+    reported = results["cython"]["buffer_full_sensor"]
+    assert reported, "the full-queue path did not fire the on_topic_buffer_full sensor"
+    assert all(arg == TP1 for arg in reported), (
+        f"on_topic_buffer_full must be given the TP -- it is the key of "
+        f"Monitor.topic_buffer_full, a Counter[TP], and the pressure-high path "
+        f"already passes one.  Got: {reported}"
+    )
+
+
+@pytest.mark.asyncio
+@pytest.mark.conf(stream_buffer_maxsize=2)
+@pytest.mark.parametrize("impl", IMPLS)
+async def test_monitor_counts_buffer_full_by_tp(app, impl) -> None:
+    """``Monitor.topic_buffer_full`` must be keyed by TP, from either path.
+
+    The counter is a ``Counter[TP]``, and two code paths report into it: the
+    pressure-high callback (which always passed a TP) and the full-queue path
+    (which passed the channel).  The same partition therefore accumulated under
+    two different keys, so per-TP counts were split and ``/stats`` grew a second
+    entry labelled by channel for the same partition.
+
+    Unlike the parity tests, this asserts the behaviour rather than agreement:
+    both implementations made the same mistake, so they agreed with each other
+    throughout.  Runs against the pure-Python conductor too, since the defect
+    was in both.
+    """
+    if impl == "cython" and ConductorHandler is None:
+        pytest.skip("conductor extension not built in place")
+
+    monitor = Monitor()
+    app.sensors.add(monitor)
+
+    h = Harness(app, n_channels=1)
+    # Undo the harness's sensor stub: the real delegate is what is under test.
+    app.sensors.on_topic_buffer_full = monitor.on_topic_buffer_full
+
+    handler = h.build(impl)
+    chan = h.channels[0]
+    for i in range(2):  # stream_buffer_maxsize -> forces the full-queue path
+        chan.queue.put_nowait(f"filler{i}")
+
+    pending = asyncio.ensure_future(handler(h.message()))
+    await asyncio.sleep(0)
+    chan.queue.get_nowait()
+    chan.queue.get_nowait()
+    await asyncio.wait_for(pending, timeout=5)
+
+    assert monitor.topic_buffer_full, "the full-queue path reported nothing"
+    bad = [key for key in monitor.topic_buffer_full if not isinstance(key, TP)]
+    assert not bad, (
+        f"Monitor.topic_buffer_full is a Counter[TP], but the {impl} conductor "
+        f"keyed it by {[type(k).__name__ for k in bad]}: {bad}"
+    )
+    assert monitor.topic_buffer_full[TP1] > 0
 
 
 @requires_cython_conductor

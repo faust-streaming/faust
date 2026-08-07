@@ -61,11 +61,25 @@ repeatedly:
 * **#608**, *"Fix cython stream_event_in to match python impl"* -- shipped, and
   fixed only after the fact.
 
-* ``Conductor.on_topic_buffer_full`` passes a channel where a ``TP`` is
-  expected, so ``Monitor``'s per-TP counts are wrong.  The comment in
-  ``faust/transport/conductor.py`` records that the defect is **deliberately
-  left unfixed**, because fixing one twin alone would make the two disagree.
-  The duplication turned a small bug into one nobody wants to touch.
+* ``Conductor``'s full-queue path passed a channel to
+  ``on_topic_buffer_full`` where a ``TP`` was expected, so
+  ``Monitor.topic_buffer_full`` -- a ``Counter[TP]`` -- was keyed by channel
+  from that path and by ``TP`` from the pressure-high path.  The same
+  partition accumulated under two keys, splitting its count and adding a
+  second ``/stats`` entry for it.
+
+  Both twins had it, so for a long time the comment in
+  ``faust/transport/conductor.py`` recorded the defect as **deliberately left
+  unfixed**: correcting one alone would have made them disagree.  The
+  duplication turned a one-line bug into one nobody wanted to touch.  It is
+  fixed now -- in both, together, which is what the parity suites make safe.
+
+  Worth noting what did *not* catch it: the parity tests were green
+  throughout, because both implementations were wrong in the same way.  A
+  differential test only finds divergence.  Shared mistakes need an assertion
+  about the behaviour itself, which is why the conductor suite now checks that
+  the sensor is handed a ``TP`` rather than only that both sides hand it the
+  same thing.
 
 * ``StreamIterator._try_get_quick_value`` carried two bugs that concealed each
   other.  ``chan_queue_empty`` holds the bound ``queue.empty`` *method*:

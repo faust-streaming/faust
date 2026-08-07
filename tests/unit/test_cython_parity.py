@@ -6,9 +6,9 @@ a Cython one used instead whenever the extension could be built (see
 been enforcing that -- and the duplication has already cost real bugs:
 
 * #608, "Fix cython stream_event_in to match python impl";
-* the ``on_topic_buffer_full`` defect recorded but deliberately left unfixed
-  in ``faust/transport/conductor.py``, because fixing one twin alone would
-  make them disagree;
+* the ``on_topic_buffer_full`` defect that sat recorded but unfixed in
+  ``faust/transport/conductor.py`` for as long as it did precisely because
+  fixing one twin alone would have made them disagree;
 * the ``_try_get_quick_value`` pair fixed alongside this file, where the
   extension's queue fast path was both unreachable and, had it run, wrong.
 

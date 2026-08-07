@@ -114,7 +114,12 @@ cdef class ConductorHandler:
                     delivered.add(channel)
 
     async def _handle_full(self, event, chan, delivered):
-        self.on_topic_buffer_full(chan)
+        # ``self.tp``, not the channel: the sensor takes a ``TP`` (as
+        # ``on_pressure_high`` below passes), and ``Monitor.topic_buffer_full``
+        # is a ``Counter[TP]``.  Passing the channel here keyed part of that
+        # counter by channel instead, so the same partition was counted under
+        # two different keys depending on which path reported it.
+        self.on_topic_buffer_full(self.tp)
         await chan.put(event)
         delivered.add(chan)
 
