@@ -541,6 +541,16 @@ class Test_AppCommand:
         with pytest.raises(no_app_command.UsageError):
             no_app_command.app
 
+    def test_app__is_still_writable(self, *, no_app_command, app):
+        # ``app`` was a plain writable attribute before it became a
+        # property, so the setter has to keep ``command.app = ...``
+        # working for anything that assigned to it.
+        with pytest.raises(no_app_command.UsageError):
+            no_app_command.app
+        no_app_command.app = app
+        assert no_app_command._app is app
+        assert no_app_command.app is app
+
     def test_blocking_timeout__no_app(self, *, no_app_command):
         no_app_command.blocking_timeout = None
         assert no_app_command.blocking_timeout == 0.0
