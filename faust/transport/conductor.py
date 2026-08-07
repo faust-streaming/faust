@@ -164,16 +164,15 @@ class ConductorCompiler:  # pragma: no cover
                             )
                         delivered.add(chan)
                     if full:
-                        for _, dest_chan in full:
-                            # XXX wrong argument: ``SensorT.on_topic_buffer_full``
-                            # takes a ``TP`` (as ``on_pressure_high`` above is
-                            # passed), but a channel is passed here, so
-                            # ``Monitor.topic_buffer_full`` is keyed by channel
-                            # and its per-TP counts are wrong.  The Cython twin
-                            # in ``_cython/conductor.pyx`` has the same bug;
-                            # fixing either alone would make them disagree, so
-                            # the defect is only recorded here, not fixed.
-                            on_topic_buffer_full(dest_chan)  # type: ignore[arg-type]
+                        for _ in full:
+                            # ``tp``, not the channel: the sensor takes a
+                            # ``TP`` (as ``on_pressure_high`` above passes),
+                            # and ``Monitor.topic_buffer_full`` is a
+                            # ``Counter[TP]``.  Passing the channel here keyed
+                            # part of that counter by channel instead, so the
+                            # same partition was counted under two different
+                            # keys depending on which path reported it.
+                            on_topic_buffer_full(tp)
                         await asyncio.wait(
                             [
                                 asyncio.ensure_future(dest_chan.put(dest_event))
