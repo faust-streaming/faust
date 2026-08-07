@@ -20,6 +20,7 @@ cdef class ConductorHandler:
         object wait_until_producer_ebb
         object consumer_on_buffer_full
         object consumer_on_buffer_drop
+        bint cython_optimizations
 
 
     def __init__(self, object conductor, object tp, object channels):
@@ -33,6 +34,9 @@ cdef class ConductorHandler:
         self.acquire_flow_control = self.app.flow_control.acquire
         self.wait_until_producer_ebb = self.app.producer.buffer.wait_until_ebb
         self.consumer = self.app.consumer
+        # Opt-in: see the `cython_optimizations` setting.  Read once per
+        # handler (one per assigned TP), not per message.
+        self.cython_optimizations = bool(self.app.conf.cython_optimizations)
         # We divide `stream_buffer_maxsize` with Queue.pressure_ratio
         # find a limit to the number of messages we will buffer
         # before considering the buffer to be under high pressure.
@@ -89,9 +93,13 @@ cdef class ConductorHandler:
                         event = await chan.decode(message, propagate=True)
                         event_keyid = keyid
                         dest_event = event
-                    elif keyid == event_keyid:
+                    elif self.cython_optimizations and keyid == event_keyid:
                         dest_event = event
                     else:
+                        # Reuse is behind the `cython_optimizations` setting,
+                        # off by default: the repaired path has never run in
+                        # production.  Disabled, every channel deserializes its
+                        # own event, reproducing the released behaviour.
                         dest_event = await chan.decode(message, propagate=True)
                     if not self._put(dest_event, chan, full):
                         continue

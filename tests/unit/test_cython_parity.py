@@ -155,6 +155,7 @@ def _new_iterator(app):
 
 @requires_cython
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 async def test_cython_stream_uses_queue_fast_path(*, app) -> None:
     """The compiled iterator must take the non-blocking queue path.
 
@@ -187,6 +188,7 @@ async def test_cython_stream_uses_queue_fast_path(*, app) -> None:
 
 @requires_cython
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 async def test_cython_stream_falls_back_to_slow_path_when_empty(*, app) -> None:
     """An empty queue must still take the awaiting path.
 
@@ -215,3 +217,32 @@ async def test_cython_stream_falls_back_to_slow_path_when_empty(*, app) -> None:
         pending.cancel()
         with pytest.raises(asyncio.CancelledError):
             await pending
+
+
+@requires_cython
+@pytest.mark.asyncio
+async def test_cython_stream_fast_path_is_off_by_default(*, app) -> None:
+    """Without the opt-in, the iterator behaves as the released versions do.
+
+    `cython_optimizations` defaults to False, so the repaired fast path stays
+    dormant: every value goes through `await Channel.__anext__` exactly as it
+    did before the fix.  No `conf` marker here on purpose -- this is the
+    default an unmodified app gets.
+    """
+    assert app.conf.cython_optimizations is False
+
+    it, queue, anext_calls = _new_iterator(app)
+    for i in range(5):
+        queue.put_nowait(i)
+
+    seen = []
+    for _ in range(5):
+        value, _sensor_state = await asyncio.wait_for(it.next(), timeout=5)
+        seen.append(value)
+
+    # Same values either way; only the route differs.
+    assert seen == [0, 1, 2, 3, 4]
+    assert len(anext_calls) == 5, (
+        f"expected the slow path for all 5 values with the optimizations off, "
+        f"got {len(anext_calls)} awaits: the fast path is no longer opt-in"
+    )

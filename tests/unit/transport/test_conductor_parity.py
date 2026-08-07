@@ -240,6 +240,7 @@ async def run_both(harness: Harness, scenario) -> Dict[str, Any]:
 # ------------------------------------------------------------------ delivery
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [1, 2, 3], indirect=True)
 async def test_parity__fan_out(harness) -> None:
     """Every subscribed channel gets the event, and refcount matches."""
@@ -259,6 +260,7 @@ async def test_parity__fan_out(harness) -> None:
 
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 async def test_parity__no_channels(harness) -> None:
     """A TP with no subscribers must not touch the message."""
     harness.channel_set = set()
@@ -276,6 +278,7 @@ async def test_parity__no_channels(harness) -> None:
 
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [3], indirect=True)
 async def test_parity__multiple_messages(harness) -> None:
     """A batch, to catch state carried between calls."""
@@ -292,6 +295,7 @@ async def test_parity__multiple_messages(harness) -> None:
 
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [2, 4], indirect=True)
 async def test_parity__event_reuse_for_matching_keyid(harness) -> None:
     """Channels with the same (key_type, value_type) share one decode.
@@ -319,6 +323,7 @@ async def test_parity__event_reuse_for_matching_keyid(harness) -> None:
 
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [(2, True), (4, True)], indirect=True)
 async def test_parity__no_reuse_for_differing_keyid(harness) -> None:
     """Channels with different (key_type, value_type) each decode their own.
@@ -348,6 +353,7 @@ async def test_parity__no_reuse_for_differing_keyid(harness) -> None:
 # -------------------------------------------------------------- decode errors
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [1, 3], indirect=True)
 @pytest.mark.parametrize(
     "exc_cls,bucket",
@@ -378,6 +384,7 @@ async def test_parity__decode_error_propagates(harness, exc_cls, bucket) -> None
 
 @requires_cython_conductor
 @pytest.mark.asyncio
+@pytest.mark.conf(cython_optimizations=True)
 @pytest.mark.parametrize("harness", [3], indirect=True)
 async def test_parity__decode_error_on_one_channel(harness) -> None:
     """One channel's decode fails; the rest of the fan-out must match.
@@ -400,7 +407,7 @@ async def test_parity__decode_error_on_one_channel(harness) -> None:
 # ------------------------------------------------------------ buffer pressure
 @requires_cython_conductor
 @pytest.mark.asyncio
-@pytest.mark.conf(stream_buffer_maxsize=2)
+@pytest.mark.conf(cython_optimizations=True, stream_buffer_maxsize=2)
 async def test_parity__queue_full_path(harness) -> None:
     """When a channel queue is full the handler must await ``chan.put``.
 
@@ -494,7 +501,7 @@ async def test_monitor_counts_buffer_full_by_tp(app, impl) -> None:
 
 @requires_cython_conductor
 @pytest.mark.asyncio
-@pytest.mark.conf(stream_buffer_maxsize=8)
+@pytest.mark.conf(cython_optimizations=True, stream_buffer_maxsize=8)
 async def test_parity__pressure_callbacks(harness) -> None:
     """High-pressure and pressure-drop callbacks must fire identically.
 
@@ -518,3 +525,35 @@ async def test_parity__pressure_callbacks(harness) -> None:
 
     results = await run_both(harness, scenario)
     assert_parity(results)
+
+
+@requires_cython_conductor
+@pytest.mark.asyncio
+@pytest.mark.parametrize("harness", [3], indirect=True)
+async def test_event_reuse_is_off_by_default(harness) -> None:
+    """Without the opt-in, the conductor behaves as the released versions do.
+
+    `cython_optimizations` defaults to False, so the repaired reuse stays
+    dormant and every channel deserializes its own event -- exactly as before
+    the fix.  No `conf` marker here on purpose: this is what an unmodified app
+    gets.
+
+    This is also where the Cython and pure-Python conductors legitimately
+    differ, so it is not a parity test.  That divergence is not new; the flag
+    only makes it selectable.
+    """
+    assert harness.app.conf.cython_optimizations is False
+
+    handler = harness.build("cython")
+    message = harness.message()
+    await handler(message)
+    obs = harness.observations(message)
+
+    n = len(harness.channels)
+    assert obs["n_decodes"] == n, (
+        f"expected one decode per channel with the optimizations off, got "
+        f"{obs['n_decodes']} for {n} channels: reuse is no longer opt-in"
+    )
+    # Delivery itself is unchanged -- only how many times the payload is read.
+    assert obs["n_delivered_total"] == n
+    assert obs["refcount"] == n

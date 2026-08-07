@@ -35,6 +35,7 @@ cdef class StreamIterator:
         object topics
         object acks_enabled_for
         object _skipped_value
+        bint cython_optimizations
 
     def __init__(self, object stream):
         self.stream = stream
@@ -53,6 +54,9 @@ cdef class StreamIterator:
         self.unacked = self.consumer._unacked_messages
         self.add_unacked = self.unacked.add
         self._skipped_value = self.stream._skipped_value
+        # Opt-in: see the `cython_optimizations` setting.  Read once here
+        # rather than per message, so the hot path costs a `bint` test.
+        self.cython_optimizations = bool(self.app.conf.cython_optimizations)
 
         if isinstance(self.channel, ChannelT):
             self.chan_is_channel = True
@@ -206,9 +210,16 @@ cdef class StreamIterator:
         # chan_queue_empty():`` ... ``channel_value = chan_quick_get()``), so
         # this restores the fast path the extension was meant to provide and
         # brings the two implementations back into agreement.
+        #
+        # Behind the `cython_optimizations` setting, off by default: the
+        # repaired path has never run in production, so taking it is opt-in.
+        # Disabled, this reproduces the released behaviour exactly -- always
+        # reporting "use the slow path", never reaching `get_nowait()`.
         if self.chan_is_channel:
             if self.chan_errors:
                 raise self.chan_errors.popleft()
+            if not self.cython_optimizations:
+                return (True, None)
             if self.chan_queue_empty():
                 return (True, None)
             else:
