@@ -3,6 +3,7 @@
 from asyncio import ALL_COMPLETED, ensure_future, wait
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.utils.optin import cython_optimizations_enabled
 
 
 cdef class ConductorHandler:
@@ -35,8 +36,10 @@ cdef class ConductorHandler:
         self.wait_until_producer_ebb = self.app.producer.buffer.wait_until_ebb
         self.consumer = self.app.consumer
         # Opt-in: see the `cython_optimizations` setting.  Read once per
-        # handler (one per assigned TP), not per message.
-        self.cython_optimizations = bool(self.app.conf.cython_optimizations)
+        # handler (one per assigned TP), not per message.  Via the helper, not
+        # `app.conf.<name>`, so that deprecating the setting does not emit a
+        # warning per partition -- see faust/utils/optin.py.
+        self.cython_optimizations = cython_optimizations_enabled(self.app.conf)
         # We divide `stream_buffer_maxsize` with Queue.pressure_ratio
         # find a limit to the number of messages we will buffer
         # before considering the buffer to be under high pressure.

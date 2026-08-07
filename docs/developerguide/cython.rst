@@ -68,6 +68,43 @@ configuration in which the two implementations are supposed to agree.  A
 separate test in each suite pins the default-off behaviour, so the historical
 path stays covered too.
 
+.. _cython-optin-lifecycle:
+
+Retiring the setting
+--------------------
+
+The setting is **transitional**.  It exists to make adopting the repaired
+paths a decision rather than something that arrives in an upgrade, and it is
+meant to be removed, not kept.  The intended sequence:
+
+1. **Now** -- ships defaulting to ``False``.  Upgrading changes nothing.
+2. **Default flipped to** ``True`` once there is real-world evidence the
+   repaired paths behave: the parity suites passing is necessary but not
+   sufficient, since they only prove the two implementations agree under test.
+   Record the flip as ``version_changed={'<ver>': 'Enabled by default.'}``.
+3. **Deprecated** -- set ``version_deprecated`` and ``deprecation_reason`` on
+   the setting.  Users who set it explicitly get a warning; nobody else
+   notices.
+4. **Removed** -- delete the setting, both ``bint`` attributes, the branches
+   guarding the fast paths, :mod:`faust.utils.optin`, and the two
+   default-off tests.  At that point the fast paths are simply the behaviour,
+   and the parity suites no longer need a ``conf`` marker.
+
+One thing to know before step 3.
+:meth:`~faust.types.settings.params.Param.__get__` emits a
+:exc:`UserWarning` on *every read* of a deprecated setting, and faust reads
+this one itself -- once per :class:`~faust.Stream`, once per assigned
+partition.  Deprecating it naively would make faust warn at itself, at a rate
+that scales with the deployment, about a setting the user most likely never
+set.
+
+That is why the two extensions read it through
+:func:`faust.utils.optin.cython_optimizations_enabled` rather than
+``app.conf.cython_optimizations``: the helper takes the stored value and so
+stays silent, while user-facing reads still warn, which is the point of
+deprecating it.  ``tests/unit/utils/test_optin.py`` pins both halves, so step 3
+is genuinely a two-line change.
+
 .. _cython-testing:
 
 Testing the compiled code
