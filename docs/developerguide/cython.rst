@@ -85,8 +85,32 @@ repeatedly:
   So the extension quietly did *more* work than the pure-Python code it was
   meant to accelerate, for as long as it has existed.
 
+* ``ConductorHandler`` had **the same shape of fault, independently**.  The
+  conductor deserializes a message once and reuses the event for every channel
+  whose ``(key_type, value_type)`` pair matches.  In the extension,
+  ``event_keyid`` was only ever assigned from ``_decode()``, which returned it
+  *unchanged* on the first pass -- so it stayed ``None`` forever and the reuse
+  branch was dead.  Every subscribed channel re-deserialized the payload.
+
+  That masked a second fault, again: had the keyid ever been set, a mismatched
+  pair fell off the end of ``_decode`` and returned a bare ``None``, which
+  unpacking into two names raises :exc:`TypeError` on.  Fixing the reuse alone
+  would have converted a silent inefficiency into a crash on any topic whose
+  subscribers declare different key or value types.
+
+  It was not only a performance difference.  A channel whose event is reused
+  never calls ``decode`` at all, so a channel that *would* have failed to
+  deserialize raised no error under the pure-Python conductor and raised one
+  under the extension -- changing which channels got the message, and how many
+  acks the message received.
+
 None of these were caught by a test, because until recently no test ever
 imported the compiled modules.
+
+The parity suites are :file:`tests/unit/test_cython_parity.py` (windows, the
+stream iterator's queue fast path) and
+:file:`tests/unit/transport/test_conductor_parity.py` (the conductor's
+per-message fan-out, driven end to end through both implementations).
 
 :file:`tests/unit/test_cython_parity.py` covers both halves: it asserts the
 accelerators are loaded when they are required, and compares the two
