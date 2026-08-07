@@ -24,6 +24,50 @@ import falls back:
 That fallback is what makes the accelerators optional, and it is also the
 single biggest hazard in maintaining them.  This page is about the hazard.
 
+.. _cython-optin:
+
+The ``cython_optimizations`` opt-in
+===================================
+
+Two of the Cython fast paths never ran -- each was guarded by a condition that
+could not become true (see :ref:`cython-drift`).  Repairing them activates code
+that has, by definition, never executed in production, so the repairs are
+behind a setting that defaults to **off**:
+
+.. sourcecode:: python
+
+    app = faust.App('myapp', cython_optimizations=True)
+
+or ``CYTHON_OPTIMIZATIONS=1`` in the environment (``FAUST_CYTHON_OPTIMIZATIONS``
+when :setting:`env_prefix` is set).  With it off, the extensions behave exactly
+as the released versions do.
+
+What it gates:
+
+* ``StreamIterator._try_get_quick_value`` -- taking values already in the
+  channel queue instead of always awaiting.
+* ``ConductorHandler`` event reuse -- decoding a message once and reusing the
+  event across channels with matching key/value types, instead of
+  deserializing once per subscribed channel.
+
+What it does **not** gate: the ``on_topic_buffer_full`` argument fix.  That one
+was wrong in *both* implementations, is not a Cython-specific change, and
+produces a metric that was simply incorrect before -- so it applies
+unconditionally.
+
+One consequence to be aware of.  While the setting is off, the Cython path and
+the pure-Python path genuinely differ.  That is not new -- it is what has
+shipped for years -- and the flag does not introduce the divergence, it makes
+it selectable.  The sharpest case is in the conductor: a reused event is never
+decoded a second time, so a channel whose payload would fail to deserialize
+raises no error when the event is reused, and raises one when it is not.  That
+changes which channels receive a message, and how many acks it takes.
+
+Consequently the parity suites run with the setting **on** -- that is the
+configuration in which the two implementations are supposed to agree.  A
+separate test in each suite pins the default-off behaviour, so the historical
+path stays covered too.
+
 .. _cython-testing:
 
 Testing the compiled code
