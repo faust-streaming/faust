@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import inspect
 import sys
 from typing import Any, Iterator, List, Type
 from faust.types.settings import Settings
@@ -27,9 +28,31 @@ SETTING_TEMPLATE = '''\
 
 class Rst:
 
+    def public_module(self, t: Type) -> str:
+        """The importable module a type should be referenced through.
+
+        ``__module__`` is not always the name the documentation uses.  Python
+        3.13 moved :class:`pathlib.Path` into ``pathlib._local``, so
+        ``__module__`` became a private submodule and the rendered
+        ``:class:`~pathlib._local.Path``` resolved nowhere -- and the reference
+        changed depending on which interpreter ran the generator.
+
+        Walk up the private components and take the shallowest package that
+        still exposes the very same object, so the reference stays public and
+        the output stays identical across versions.
+        """
+        parts = t.__module__.split('.')
+        while len(parts) > 1 and parts[-1].startswith('_'):
+            parts.pop()
+            candidate = '.'.join(parts)
+            module = sys.modules.get(candidate)
+            if module is not None and getattr(module, t.__name__, None) is t:
+                return candidate
+        return t.__module__
+
     def to_ref(self, t: Type) -> str:
         name: str
-        module = t.__module__
+        module = self.public_module(t)
         if module == 'builtins':
             return self._class(t.__name__)
         elif module == 'typing':
@@ -108,42 +131,29 @@ class Rst:
         return f':{name}: {value}'
 
     def normalize_docstring_indent(self, text: str) -> str:
-        # docstring indentation starts at the second line
-        return self.normalize_indent(text, line_start=1)
+        """Dedent a docstring, leaving relative indentation intact.
 
-    def normalize_indent(self, text: str, line_start: int = 0) -> str:
-        lines = text.splitlines()
-        if len(lines) <= 1:
-            return text
-        # take indent to remove from second line,
-        # since first line of docstring is not indented
-        non_whitespace_index: int = 0
-        # find first line with text in it that is not whitespace
-        for line in lines[line_start:]:
-            if line and not line.isspace():
-                # find index of first non-whitespace character
-                for i, c in enumerate(line):
-                    if not c.isspace():
-                        non_whitespace_index = i
-                        break
-                if non_whitespace_index:
-                    break
-        if not non_whitespace_index:
-            return text
-        return '\n'.join(
-            self.strip_space(non_whitespace_index, line)
-            for line in lines
-        )
+        :func:`inspect.cleandoc` rather than the hand-rolled scan this used to
+        do, which was wrong in two ways.
 
-    def strip_space(self, n: int, line: str) -> str:
-        sentinel = False
-        result = []
-        for i, c in enumerate(line):
-            if not c.isspace() or i > n:
-                sentinel = True
-            if sentinel:
-                result.append(c)
-        return ''.join(result)
+        It looked for the first *indented* line after the summary and stripped
+        that much from every line.  On Python 3.12 and older that happened to
+        be the body indent, so it worked.  Python 3.13 strips the common
+        leading whitespace from docstrings at compile time, so by the time the
+        scan runs the body is already flush left and the first indented line it
+        finds is the body of a ``.. warning::`` or ``.. note::`` -- whose
+        indent it then removed, breaking the directive: the content escaped the
+        admonition and rendered as ordinary paragraphs.
+
+        It also stripped one character too many (``i > n`` where ``i >= n`` was
+        meant), which is why directive bodies in the committed reference sit at
+        three spaces rather than four.
+
+        ``cleandoc`` dedents by the *minimum* indent instead, so it is a no-op
+        on an already-dedented docstring and produces byte-identical output on
+        every supported interpreter.
+        """
+        return inspect.cleandoc(text)
 
     def reindent(self, new_indent: int, text: str) -> str:
         return '\n'.join(

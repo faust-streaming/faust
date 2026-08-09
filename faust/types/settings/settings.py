@@ -414,7 +414,7 @@ class Settings(base.SettingsRegistry):
         params.Path,
         env_name="APP_DATADIR",
         default=DATADIR,
-        related_cli_options={"faust": "--datadir"},
+        related_cli_options={"faust": ["--datadir"]},
     )
     def datadir(self, path: Path) -> Path:
         """Application data directory.
@@ -462,7 +462,7 @@ class Settings(base.SettingsRegistry):
         params.Bool,
         env_name="APP_DEBUG",
         default=False,
-        related_cli_options={"faust": "--debug"},
+        related_cli_options={"faust": ["--debug"]},
     )
     def debug(self) -> bool:
         """Use in development to expose sensor information endpoint.
@@ -608,7 +608,7 @@ class Settings(base.SettingsRegistry):
         params.Seconds,
         env_name="BLOCKING_TIMEOUT",
         default=None,
-        related_cli_options={"faust": "--blocking-timeout"},
+        related_cli_options={"faust": ["--blocking-timeout"]},
     )
     def blocking_timeout(self) -> Optional[float]:
         """Blocking timeout (in seconds).
