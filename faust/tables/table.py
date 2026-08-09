@@ -5,6 +5,7 @@ from typing import Any, ClassVar, Optional, Type
 from mode import Seconds
 
 from faust import windows
+from faust.types.stores import StoreT
 from faust.types.tables import KT, VT, TableT, WindowWrapperT
 from faust.types.windows import WindowT
 from faust.utils.terminal.tables import dict_as_ansitable
@@ -17,6 +18,12 @@ __all__ = ["Table"]
 
 class Table(TableT[KT, VT], Collection):
     """Table (non-windowed)."""
+
+    # ``Collection`` provides ``data`` as a read-only property returning the
+    # underlying store, while ``FastUserDict`` (inherited via ``TableT``)
+    # declares it as a plain mapping attribute.  Collection wins the MRO at
+    # runtime; redeclare it here so the two base declarations do not clash.
+    data: StoreT
 
     WindowWrapper: ClassVar[Type[WindowWrapperT]] = wrappers.WindowWrapper
 

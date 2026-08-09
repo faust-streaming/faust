@@ -27,7 +27,7 @@ except ImportError:  # pragma: no cover
 from aiokafka.errors import IllegalStateError
 from mode import Service, get_logger
 from mode.services import WaitArgT
-from mode.utils.times import humanize_seconds, humanize_seconds_ago
+from mode.utils.times import Seconds, humanize_seconds, humanize_seconds_ago
 from yarl import URL
 
 from faust.exceptions import ConsistencyError
@@ -348,7 +348,12 @@ class Recovery(Service):
         active_highwaters = self.active_highwaters
         while not self.should_stop:
             self.log.dev("WAITING FOR NEXT RECOVERY TO START")
-            if await self.wait_for_stopped(self.signal_recovery_start):
+            # mode types the waitable as ``mode.utils.locks.Event``, but
+            # Service.wait_first accepts anything with an awaitable
+            # ``.wait()`` -- asyncio.Event included.
+            if await self.wait_for_stopped(
+                self.signal_recovery_start  # type: ignore[arg-type]
+            ):
                 self.signal_recovery_start.clear()
                 break  # service was stopped
             self.signal_recovery_start.clear()
@@ -598,9 +603,15 @@ class Recovery(Service):
         else:
             return None
 
-    async def _wait(self, coro: WaitArgT, timeout: Optional[int] = None) -> None:
+    async def _wait(self, coro: WaitArgT, timeout: Optional[Seconds] = None) -> None:
         signal = self.signal_recovery_start
-        wait_result = await self.wait_first(coro, signal, timeout=timeout)
+        # mode types the waitable as ``mode.utils.locks.Event``, but
+        # Service.wait_first accepts anything with an awaitable ``.wait()``
+        # -- asyncio.Event included.  ``timeout: Seconds`` also omits the
+        # ``None`` that is mode's own default and its "wait forever" value.
+        wait_result = await self.wait_first(
+            coro, signal, timeout=timeout  # type: ignore[arg-type]
+        )
         if wait_result.stopped:
             # service was stopped.
             raise ServiceStopped()
@@ -774,7 +785,9 @@ class Recovery(Service):
         buffer_sizes = self.buffer_sizes
         processing_times = self._processing_times
 
-        async def _maybe_signal_recovery_end(timeout=False, timeout_count=0) -> None:
+        async def _maybe_signal_recovery_end(
+            timeout: bool = False, timeout_count: int = 0
+        ) -> None:
             # lets wait at least 2 consecutive cycles for the queue to be
             # empty to avoid race conditions between
             # the aiokafka consumer position and draining of the queue
@@ -789,7 +802,7 @@ class Recovery(Service):
                 logger.debug("Setting recovery end")
                 self.signal_recovery_end.set()
 
-        async def detect_aborted_tx():
+        async def detect_aborted_tx() -> None:
             highwaters = self.active_highwaters
             offsets = self.active_offsets
             for tp, highwater in highwaters.items():
@@ -798,7 +811,18 @@ class Recovery(Service):
                     and offsets[tp] is not None
                     and offsets[tp] < highwater
                 ):
-                    if await self.app.consumer.position(tp) >= highwater:
+                    # XXX bug: ConsumerT.position is declared
+                    # ``Optional[int]`` and really does return None when the
+                    # partition has no position yet, so this comparison raises
+                    # TypeError on that path (swallowed by the ``except
+                    # Exception`` in the caller's loop, which then skips the
+                    # aborted-tx fixup).  Guarding for None would change which
+                    # events reach the caller, so the behaviour is kept and
+                    # only the type error is silenced.
+                    if (
+                        await self.app.consumer.position(tp)  # type: ignore[operator]
+                        >= highwater
+                    ):
                         logger.info(f"Aborted tx until highwater for {tp}")
                         offsets[tp] = highwater
 
@@ -852,7 +876,17 @@ class Recovery(Service):
                     buf = buffers[table]
                     buf.append(event)
                     await table.on_changelog_event(event)
-                    if len(buf) >= bufsize:
+                    # XXX bug: the ``else`` branch above only logs a warning
+                    # and falls through, so an event for a TP that is neither
+                    # active nor standby reaches here with ``table``,
+                    # ``offsets`` and ``bufsize`` still holding the PREVIOUS
+                    # iteration's values -- the event is then applied to an
+                    # unrelated table (or raises UnboundLocalError if it is
+                    # the first event of the loop).  That is why ``bufsize``
+                    # is still ``Optional[int]`` here and the comparison can
+                    # raise TypeError.  Fixing it means skipping the untracked
+                    # TP, which is a behaviour change, so it is left as is.
+                    if len(buf) >= bufsize:  # type: ignore[operator]
                         table.apply_changelog_batch(buf)
                         buf.clear()
                         self._last_flush_at = now

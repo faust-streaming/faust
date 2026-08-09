@@ -27,6 +27,9 @@ twine
 wheel
 intervaltree
 -r requirements.txt
+# mypy, pinned for the same reason as the formatters above: `scripts/check`
+# type-checks the faust package, so the lint job needs it installed.
+-r typecheck.txt
 -r extras/datadog.txt
 -r extras/opentracing.txt
 -r extras/redis.txt

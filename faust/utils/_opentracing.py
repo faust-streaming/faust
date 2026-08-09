@@ -9,7 +9,7 @@ is used), which requires the real ``opentracing`` package to be installed.
 This intentionally implements only the small surface Faust touches.
 """
 
-from typing import Any
+from typing import Any, Literal
 
 
 class Span:
@@ -24,7 +24,7 @@ class Span:
     def __enter__(self) -> "Span":
         return self
 
-    def __exit__(self, *exc_info: Any) -> bool:
+    def __exit__(self, *exc_info: Any) -> Literal[False]:
         return False
 
     def finish(self, *args: Any, **kwargs: Any) -> None: ...

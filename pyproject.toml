@@ -91,6 +91,37 @@ combine_as_imports = true
 [tool.mypy]
 ignore_missing_imports = true
 disallow_untyped_defs = true
+# Pinned so the result does not depend on which interpreter runs mypy.  Without
+# it mypy targets the running version, and typeshed differs enough between them
+# that a contributor on 3.10 and the lint job on PYTHON_LATEST would disagree
+# about whether the tree is clean.  Tracks the lint job's interpreter; raising
+# it can surface new errors, so bump it deliberately.
+python_version = "3.12"
+
+# The type-checking ratchet is gone: `mypy -p faust` (run by `scripts/check`)
+# now checks all 164 modules in the package with nothing silenced wholesale.
+#
+# Keep it that way.  If a change makes mypy fail, fix the annotations rather
+# than re-introducing an `ignore_errors` list -- that list was only ever a
+# migration aid, and re-adding one would hide every other error in the module
+# too.  For a single line the checker genuinely gets wrong, use a specific
+# `# type: ignore[code]` with a comment saying why.
+#
+# mypy is pinned in requirements/typecheck.txt because a different version
+# reports a different set of errors; bump it deliberately.
+
+# Every setting in `faust.types.settings.settings` is a method with a docstring and
+# no body, decorated with `@sections.<Section>.setting(...)`.  The decorator throws
+# the function away and returns a `params.Param` descriptor built from its name,
+# docstring and return annotation, so the body is never executed -- but mypy sees a
+# function declaring a non-None return type and never returning, and reports
+# `empty-body` for all ~100 of them.  The check does not apply to this pattern.
+#
+# Note this disables one error code, not the module: every OTHER error code is
+# still reported here, so new mistakes in it are caught.
+[[tool.mypy.overrides]]
+module = ["faust.types.settings.settings"]
+disable_error_code = ["empty-body"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
