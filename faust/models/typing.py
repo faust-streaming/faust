@@ -168,7 +168,7 @@ def _TypeInfo_from_type(typ: Type, *, optional: bool = False) -> TypeInfo:
 
 
 class Variable:
-    def __init__(self, name: str, *, getitem: Any = None) -> None:
+    def __init__(self, name: str, *, getitem: Optional[Any] = None) -> None:
         self.name = name
         self.getitem = getitem
 
@@ -261,7 +261,7 @@ class Node(abc.ABC):
             return _TypeInfo_from_type(typ, optional=True)
         return _TypeInfo_from_type(typ, optional=False)
 
-    def __init__(self, expr: Type, root: "RootNode" = None) -> None:
+    def __init__(self, expr: Type, root: Optional["RootNode"] = None) -> None:
         assert root is not None
         assert root.type is NodeType.ROOT
         self.expr: Type = expr
@@ -366,7 +366,7 @@ class DecimalNode(Node):
         return f"_Decimal_({var})"
 
     @staticmethod
-    def _maybe_coerce(value: Union[str, Decimal] = None) -> Optional[Decimal]:
+    def _maybe_coerce(value: Optional[Union[str, Decimal]] = None) -> Optional[Decimal]:
         if value is not None:
             if not isinstance(value, Decimal):
                 return str_to_decimal(value)
@@ -387,7 +387,9 @@ class DatetimeNode(Node):
         )
         return f"_iso8601_parse_({var})"
 
-    def _maybe_coerce(self, value: Union[str, datetime] = None) -> Optional[datetime]:
+    def _maybe_coerce(
+        self, value: Optional[Union[str, datetime]] = None
+    ) -> Optional[datetime]:
         if value is not None:
             if isinstance(value, str):
                 return self.root.date_parser(value)
@@ -577,9 +579,9 @@ class UserNode(Node):
     def __init__(
         self,
         expr: Type,
-        root: "RootNode" = None,
+        root: Optional["RootNode"] = None,
         *,
-        user_types: CoercionMapping = None,
+        user_types: Optional[CoercionMapping] = None,
         handler: CoercionHandler,
     ) -> None:
         super().__init__(expr, root)
@@ -625,10 +627,10 @@ class RootNode(Node):
     def __init__(
         self,
         expr: Type,
-        root: "RootNode" = None,
+        root: Optional["RootNode"] = None,
         *,
-        user_types: CoercionMapping = None,
-        date_parser: Callable[[Any], datetime] = None,
+        user_types: Optional[CoercionMapping] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
     ) -> None:
         assert self.type == NodeType.ROOT
         self.type_stats = Counter()
@@ -681,8 +683,8 @@ class TypeExpression(RootNode):
         name: str = "expr",
         argument_name: str = "a",
         stacklevel: int = 1,
-        locals: Dict[str, Any] = None,
-        globals: Dict[str, Any] = None,
+        locals: Optional[Dict[str, Any]] = None,
+        globals: Optional[Dict[str, Any]] = None,
     ) -> Callable[[T], T]:
         sourcecode = self.as_string(name=name, argument_name=argument_name)
         if locals is None or globals is None and stacklevel:

@@ -121,7 +121,7 @@ class CacheT(abc.ABC):
         self,
         timeout: Optional[Seconds] = None,
         key_prefix: Optional[str] = None,
-        backend: Union[Type[CacheBackendT], str] = None,
+        backend: Optional[Union[Type[CacheBackendT], str]] = None,
         **kwargs: Any,
     ) -> None: ...
 
@@ -145,7 +145,7 @@ class BlueprintT(abc.ABC):
         timeout: Optional[Seconds] = None,
         include_headers: bool = False,
         key_prefix: Optional[str] = None,
-        backend: Union[Type[CacheBackendT], str] = None,
+        backend: Optional[Union[Type[CacheBackendT], str]] = None,
     ) -> CacheT: ...
 
     @abc.abstractmethod
