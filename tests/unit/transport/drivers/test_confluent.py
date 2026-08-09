@@ -5,7 +5,11 @@ around :pypi:`confluent_kafka` -- with the underlying ``confluent_kafka``
 ``Consumer``/``Producer`` mocked out, so no broker is required.
 """
 
+import os
+import subprocess
+import sys
 from unittest.mock import Mock, patch
+from zlib import crc32
 
 import pytest
 
@@ -26,6 +30,7 @@ from faust.transport.drivers.confluent import (  # noqa: E402
     ProducerProduceFuture,
     ProducerThread,
     Transport,
+    partition_for_key,
     server_list,
 )
 from faust.types import TP  # noqa: E402
@@ -112,6 +117,48 @@ class Test_server_list:
 
         urls = [URL("kafka://h1:9092"), URL("kafka://h2")]
         assert server_list(urls, 9092) == "h1:9092,h2:9092"
+
+
+class Test_partition_for_key:
+    # Fixed vectors: crc32 of the key modulo the partition count, which is
+    # what librdkafka's default ``consistent_random`` partitioner does.
+    # Nothing here may depend on the interpreter's hash seed.
+    @pytest.mark.parametrize(
+        "key,partition_count,expected",
+        [
+            (b"key", 3, 1),
+            (b"key", 16, 9),
+            (b"k1", 16, 9),
+            (b"k2", 16, 3),
+            (b"another-key", 16, 4),
+            # Empty and NULL keys go to the partition crc32(b"") picks.
+            (b"", 16, 0),
+            (None, 16, 0),
+        ],
+    )
+    def test_vectors(self, key, partition_count, expected):
+        assert partition_for_key(key, partition_count) == expected
+
+    def test_is_stable_across_processes(self):
+        # The regression this guards: ``abs(hash(key)) % n``.  Python salts
+        # hash() per process for bytes, so the same key mapped to a
+        # different partition after every restart -- silently breaking the
+        # key-to-host routing that key_partition exists to provide.
+        script = (
+            "from faust.transport.drivers.confluent import partition_for_key;"
+            'print(partition_for_key(b"key", 1024))'
+        )
+        results = {
+            subprocess.run(
+                [sys.executable, "-c", script],
+                capture_output=True,
+                text=True,
+                check=True,
+                env={**os.environ, "PYTHONHASHSEED": seed},
+            ).stdout.strip()
+            for seed in ("0", "1", "12345")
+        }
+        assert results == {str(crc32(b"key") % 1024)}
 
 
 class TestConsumer:
@@ -389,8 +436,8 @@ class TestConfluentConsumerThread:
         metadata = Mock(name="metadata")
         metadata.topics = {"topic": {"partitions": {0: 1, 1: 1, 2: 1}}}
         _consumer.consumer.list_topics.return_value = metadata
-        partition = cthread.key_partition("topic", b"key")
-        assert 0 <= partition < 3
+        # crc32(b"key") % 3 -- a fixed value, not a per-process one.
+        assert cthread.key_partition("topic", b"key") == 1
 
     def test_verify_event_path__is_a_noop(self, *, cthread):
         # Livelock detection is not implemented for this driver, but the
@@ -473,8 +520,10 @@ class TestProducer:
         tp = producer.key_partition("topic", b"key")
 
         thread._producer.list_topics.assert_called_once_with("topic")
-        assert tp.topic == "topic"
-        assert 0 <= tp.partition < 2
+        # crc32(b"key") % 2, the partition librdkafka's default
+        # ``consistent_random`` partitioner would have picked -- a fixed
+        # value, so a per-process hash cannot pass this.
+        assert tp == TP("topic", 1)
 
     def test_key_partition__not_started(self, *, producer, app):
         thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
