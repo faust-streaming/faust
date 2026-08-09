@@ -2,8 +2,15 @@ aiohttp>=3.8.0,<4.0
 aiohttp_cors>=0.7,<2.0
 aiokafka>=0.10.0
 click>=6.7,<8.2
-mode-streaming>=0.4.0
-opentracing>=1.3.0,<=2.4.0
+# >=0.6.0, not >=0.4.0: mode ships PEP 561 type information, so its annotations
+# are part of faust's own type-check surface.  Older releases annotate several
+# helpers less precisely -- `want_seconds(float)` rather than
+# `want_seconds(Seconds)`, `level_name(int)` rather than `level_name(str | int)`
+# -- and `mypy -p faust` reports 38 errors in 14 files against 0.4.1 on a tree
+# that is clean against 0.6.0.  Pinning the floor to the version CI resolves
+# keeps `scripts/check` reproducible, for the same reason mypy itself is pinned
+# in typecheck.txt.
+mode-streaming>=0.6.0
 terminaltables>=3.1,<4.0
 yarl>=1.0,<2.0
 croniter>=0.3.16

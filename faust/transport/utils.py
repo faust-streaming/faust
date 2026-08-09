@@ -57,6 +57,11 @@ class DefaultSchedulingStrategy(SchedulingStrategyT):
         to_remove: Set[str] = set()
         sentinel = object()
         _next = next
+        # Declared up front so the unpacking below has a type to bind to:
+        # ``next(it, sentinel)`` is typed as the join of the buffer's item
+        # type and the sentinel's, which collapses to plain ``object``.
+        tp: TP
+        record: Any
         while index:
             for topic in to_remove:
                 index.pop(topic, None)
@@ -68,11 +73,13 @@ class DefaultSchedulingStrategy(SchedulingStrategyT):
                     # so move that to the outer loop.
                     to_remove.add(topic)
                     continue
-                tp, record = item  # type: ignore
+                # Not the sentinel, so it is a ``TopicBuffer`` item; mypy
+                # cannot narrow an ``is``-comparison against a plain object.
+                tp, record = item  # type: ignore[misc]
                 yield tp, record
 
 
-class TopicBuffer(Iterator):
+class TopicBuffer(Iterator[Tuple[TP, Any]]):
     """Data structure managing the buffer for incoming records in a topic."""
 
     _buffers: Dict[TP, Iterator]

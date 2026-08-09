@@ -3,10 +3,25 @@
 import os
 import re
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
 
 from setuptools import Extension, find_packages, setup
+
+# setuptools, not distutils: distutils was removed from the standard library
+# in Python 3.12 (PEP 632), and `import distutils` only keeps working because
+# setuptools injects a replacement early via its `_distutils_hack`.  That is a
+# compatibility shim, not an API to build on -- and it is not always in place,
+# so on an interpreter without setuptools importable this failed with a bare
+# `ModuleNotFoundError: No module named 'distutils'` before reaching the line
+# above that actually needs setuptools.
+#
+# These are the public equivalents; `setuptools.errors` has exposed them since
+# setuptools 59, well below the >=69 floor in pyproject.toml.
+from setuptools.command.build_ext import build_ext
+from setuptools.errors import (
+    CCompilerError,
+    ExecError,
+    PlatformError,
+)
 
 try:
     from Cython.Build import cythonize
@@ -25,10 +40,12 @@ BUNDLES = {
     "aiomonitor",
     "cchardet",
     "ciso8601",
+    "ckafka",
     "cython",
     "datadog",
     "debug",
     "fast",
+    "opentracing",
     "orjson",
     "prometheus",
     "redis",
@@ -46,8 +63,8 @@ LDFLAGS = []
 LIBRARIES = []
 E_UNSUPPORTED_PYTHON = NAME + " 1.0 requires Python %%s or later!"
 
-if sys.version_info < (3, 8):
-    raise Exception(E_UNSUPPORTED_PYTHON % ("3.8",))  # NOQA
+if sys.version_info < (3, 10):
+    raise Exception(E_UNSUPPORTED_PYTHON % ("3.10",))  # NOQA
 
 from pathlib import Path  # noqa
 
@@ -104,7 +121,7 @@ class ve_build_ext(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
+        except (PlatformError, FileNotFoundError):
             raise BuildFailed()
 
     def build_extension(self, ext):
@@ -112,8 +129,8 @@ class ve_build_ext(build_ext):
             build_ext.build_extension(self, ext)
         except (
             CCompilerError,
-            DistutilsExecError,
-            DistutilsPlatformError,
+            ExecError,
+            PlatformError,
             ValueError,
         ):
             raise BuildFailed()
@@ -197,7 +214,7 @@ def do_setup(**kwargs):
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
         package_data={"faust": ["py.typed"]},
         include_package_data=True,
-        python_requires=">=3.8.0",
+        python_requires=">=3.10.0",
         zip_safe=False,
         install_requires=reqs("requirements.txt"),
         tests_require=reqs("test.txt"),

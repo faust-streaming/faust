@@ -1,5 +1,4 @@
 import asyncio
-import platform
 from unittest.mock import ANY, call, patch
 
 import pytest
@@ -239,6 +238,29 @@ class Test_Agent:
         actor1.cancel.assert_called_once_with()
         actor2.cancel.assert_called_once_with()
 
+    def test_actor_tracebacks(self, *, agent):
+        actor1 = Mock(name="actor1")
+        actor1.traceback.return_value = "traceback for actor1"
+        agent._actors = [actor1]
+        assert agent.actor_tracebacks() == ["traceback for actor1"]
+
+    def test_actor_tracebacks__missing_stack(self, *, agent):
+        # A finished coroutine has no stack frame, and mode raises
+        # RuntimeError("cannot find stack of coroutine").  Collecting
+        # tracebacks (for logging around shutdown/rebalance) must not
+        # let that error escape.  See issue #105.
+        good = Mock(name="good_actor")
+        good.traceback.return_value = "traceback for good"
+        bad = Mock(name="bad_actor")
+        bad.traceback.side_effect = RuntimeError("cannot find stack of coroutine")
+        agent._actors = [good, bad]
+
+        tracebacks = agent.actor_tracebacks()
+
+        assert tracebacks[0] == "traceback for good"
+        assert "Could not extract traceback" in tracebacks[1]
+        assert "cannot find stack of coroutine" in tracebacks[1]
+
     @pytest.mark.asyncio
     async def test_on_partitions_revoked(self, *, agent):
         revoked = {TP("foo", 0)}
@@ -470,7 +492,6 @@ class Test_Agent:
             await agent._execute_actor(coro, Mock(name="aref", autospec=Actor))
         coro.assert_awaited()
 
-    @pytest.mark.skip(reason="Fix is TBD")
     @pytest.mark.asyncio
     async def test_execute_actor__cancelled_running(self, *, agent):
         agent._on_error = AsyncMock(name="on_error")
@@ -954,9 +975,6 @@ class Test_Agent:
     def test_label(self, *, agent):
         assert label(agent)
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-    )
     async def test_context_calls_sink(self, *, agent):
         class SinkCalledException(Exception):
             pass
@@ -968,3 +986,23 @@ class Test_Agent:
         async with agent.test_context() as agent_mock:
             with pytest.raises(SinkCalledException):
                 await agent_mock.put("hello")
+
+    async def test_context__sinkless_agent(self, *, app):
+        # An agent that never yields cannot use sinks, so test_context() used
+        # to raise ImproperlyConfigured("Agent must yield to use sinks") at
+        # startup.  It should now work and still let put(wait=True) return.
+        # See issue #433.
+        processed = []
+
+        @app.agent()
+        async def sinkless(stream):
+            async for value in stream:
+                processed.append(value)
+
+        async with sinkless.test_context() as agent:
+            assert not agent._agent_yields
+            event = await agent.put("hello")
+            assert event.value == "hello"
+
+        assert processed == ["hello"]
+        assert agent.results[0] == "hello"

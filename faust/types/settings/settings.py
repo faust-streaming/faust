@@ -77,35 +77,35 @@ class Settings(base.SettingsRegistry):
         id: str,
         *,
         # Common settings:
-        autodiscover: AutodiscoverArg = None,
-        datadir: typing.Union[str, Path] = None,
-        tabledir: typing.Union[str, Path] = None,
+        autodiscover: Optional[AutodiscoverArg] = None,
+        datadir: Optional[typing.Union[str, Path]] = None,
+        tabledir: Optional[typing.Union[str, Path]] = None,
         debug: Optional[bool] = None,
         env_prefix: Optional[str] = None,
         id_format: Optional[str] = None,
         origin: Optional[str] = None,
-        timezone: typing.Union[str, tzinfo] = None,
+        timezone: Optional[typing.Union[str, tzinfo]] = None,
         version: Optional[int] = None,
         # Agent settings:
-        agent_supervisor: SymbolArg[Type[SupervisorStrategyT]] = None,
+        agent_supervisor: Optional[SymbolArg[Type[SupervisorStrategyT]]] = None,
         # Broker settings:
-        broker: BrokerArg = None,
-        broker_consumer: BrokerArg = None,
-        broker_producer: BrokerArg = None,
+        broker: Optional[BrokerArg] = None,
+        broker_consumer: Optional[BrokerArg] = None,
+        broker_producer: Optional[BrokerArg] = None,
         broker_api_version: Optional[str] = None,
         broker_check_crcs: Optional[bool] = None,
         broker_client_id: Optional[str] = None,
         broker_commit_every: Optional[int] = None,
         broker_commit_interval: Optional[Seconds] = None,
         broker_commit_livelock_soft_timeout: Optional[Seconds] = None,
-        broker_credentials: CredentialsArg = None,
+        broker_credentials: Optional[CredentialsArg] = None,
         broker_heartbeat_interval: Optional[Seconds] = None,
         broker_max_poll_interval: Optional[Seconds] = None,
         broker_max_poll_records: Optional[int] = None,
         broker_rebalance_timeout: Optional[Seconds] = None,
         broker_request_timeout: Optional[Seconds] = None,
         broker_session_timeout: Optional[Seconds] = None,
-        ssl_context: ssl.SSLContext = None,
+        ssl_context: Optional[ssl.SSLContext] = None,
         # Consumer settings:
         consumer_api_version: Optional[str] = None,
         consumer_max_fetch_size: Optional[int] = None,
@@ -114,11 +114,11 @@ class Settings(base.SettingsRegistry):
         consumer_metadata_max_age_ms: Optional[int] = None,
         consumer_connections_max_idle_ms: Optional[int] = None,
         # Topic serialization settings:
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         # Logging settings:
-        logging_config: Mapping = None,
-        loghandlers: List[logging.Handler] = None,
+        logging_config: Optional[Mapping] = None,
+        loghandlers: Optional[List[logging.Handler]] = None,
         # Producer settings:
         producer_acks: Optional[int] = None,
         producer_api_version: Optional[str] = None,
@@ -126,7 +126,7 @@ class Settings(base.SettingsRegistry):
         producer_linger_ms: Optional[int] = None,
         producer_max_batch_size: Optional[int] = None,
         producer_max_request_size: Optional[int] = None,
-        producer_partitioner: SymbolArg[PartitionerT] = None,
+        producer_partitioner: Optional[SymbolArg[PartitionerT]] = None,
         producer_request_timeout: Optional[Seconds] = None,
         producer_threaded: bool = False,
         producer_metadata_max_age_ms: Optional[int] = None,
@@ -137,14 +137,14 @@ class Settings(base.SettingsRegistry):
         reply_to: Optional[str] = None,
         reply_to_prefix: Optional[str] = None,
         # Stream settings:
-        processing_guarantee: Union[str, ProcessingGuarantee] = None,
+        processing_guarantee: Optional[Union[str, ProcessingGuarantee]] = None,
         stream_buffer_maxsize: Optional[int] = None,
         stream_processing_timeout: Optional[Seconds] = None,
         stream_publish_on_commit: Optional[bool] = None,
         stream_recovery_delay: Optional[Seconds] = None,
         stream_wait_empty: Optional[bool] = None,
         # Table settings:
-        store: URLArg = None,
+        store: Optional[URLArg] = None,
         table_cleanup_interval: Optional[Seconds] = None,
         table_key_index_size: Optional[int] = None,
         table_standby_replicas: Optional[int] = None,
@@ -154,43 +154,44 @@ class Settings(base.SettingsRegistry):
         topic_partitions: Optional[int] = None,
         topic_replication_factor: Optional[int] = None,
         # Web server settings:
-        cache: URLArg = None,
-        canonical_url: URLArg = None,
-        web: URLArg = None,
+        cache: Optional[URLArg] = None,
+        canonical_url: Optional[URLArg] = None,
+        web: Optional[URLArg] = None,
         web_bind: Optional[str] = None,
-        web_cors_options: typing.Mapping[str, ResourceOptions] = None,
+        web_application_options: Optional[typing.Mapping[str, typing.Any]] = None,
+        web_cors_options: Optional[typing.Mapping[str, ResourceOptions]] = None,
         web_enabled: Optional[bool] = None,
         web_host: Optional[str] = None,
         web_in_thread: Optional[bool] = None,
         web_port: Optional[int] = None,
-        web_ssl_context: ssl.SSLContext = None,
-        web_transport: URLArg = None,
+        web_ssl_context: Optional[ssl.SSLContext] = None,
+        web_transport: Optional[URLArg] = None,
         # Worker settings:
         worker_redirect_stdouts: Optional[bool] = None,
-        worker_redirect_stdouts_level: Severity = None,
+        worker_redirect_stdouts_level: Optional[Severity] = None,
         # Extension settings:
-        Agent: SymbolArg[Type[AgentT]] = None,
-        ConsumerScheduler: SymbolArg[Type[SchedulingStrategyT]] = None,
-        Event: SymbolArg[Type[EventT]] = None,
-        Schema: SymbolArg[Type[SchemaT]] = None,
-        Stream: SymbolArg[Type[StreamT]] = None,
-        Table: SymbolArg[Type[TableT]] = None,
-        SetTable: SymbolArg[Type[TableT]] = None,
-        GlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-        SetGlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-        TableManager: SymbolArg[Type[TableManagerT]] = None,
-        Serializers: SymbolArg[Type[RegistryT]] = None,
-        Worker: SymbolArg[Type[_WorkerT]] = None,
-        PartitionAssignor: SymbolArg[Type[PartitionAssignorT]] = None,
-        LeaderAssignor: SymbolArg[Type[LeaderAssignorT]] = None,
-        Router: SymbolArg[Type[RouterT]] = None,
-        Topic: SymbolArg[Type[TopicT]] = None,
-        HttpClient: SymbolArg[Type[HttpClientT]] = None,
-        Monitor: SymbolArg[Type[SensorT]] = None,
+        Agent: Optional[SymbolArg[Type[AgentT]]] = None,
+        ConsumerScheduler: Optional[SymbolArg[Type[SchedulingStrategyT]]] = None,
+        Event: Optional[SymbolArg[Type[EventT]]] = None,
+        Schema: Optional[SymbolArg[Type[SchemaT]]] = None,
+        Stream: Optional[SymbolArg[Type[StreamT]]] = None,
+        Table: Optional[SymbolArg[Type[TableT]]] = None,
+        SetTable: Optional[SymbolArg[Type[TableT]]] = None,
+        GlobalTable: Optional[SymbolArg[Type[GlobalTableT]]] = None,
+        SetGlobalTable: Optional[SymbolArg[Type[GlobalTableT]]] = None,
+        TableManager: Optional[SymbolArg[Type[TableManagerT]]] = None,
+        Serializers: Optional[SymbolArg[Type[RegistryT]]] = None,
+        Worker: Optional[SymbolArg[Type[_WorkerT]]] = None,
+        PartitionAssignor: Optional[SymbolArg[Type[PartitionAssignorT]]] = None,
+        LeaderAssignor: Optional[SymbolArg[Type[LeaderAssignorT]]] = None,
+        Router: Optional[SymbolArg[Type[RouterT]]] = None,
+        Topic: Optional[SymbolArg[Type[TopicT]]] = None,
+        HttpClient: Optional[SymbolArg[Type[HttpClientT]]] = None,
+        Monitor: Optional[SymbolArg[Type[SensorT]]] = None,
         # Deprecated settings:
         stream_ack_cancelled_tasks: Optional[bool] = None,
         stream_ack_exceptions: Optional[bool] = None,
-        url: URLArg = None,
+        url: Optional[URLArg] = None,
         **kwargs: Any,
     ) -> None: ...  # replaced by __init_subclass__ in BaseSettings
 
@@ -205,7 +206,7 @@ class Settings(base.SettingsRegistry):
 
     def _init_env_prefix(
         self,
-        env: Mapping[str, str] = None,
+        env: Optional[Mapping[str, str]] = None,
         env_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
@@ -703,6 +704,15 @@ class Settings(base.SettingsRegistry):
             The recommended transport using the :pypi:`aiokafka` client.
 
             Limitations: None
+
+
+        - ``confluent://``
+
+            Experimental transport using the :pypi:`confluent-kafka` client.
+
+            Limitations: Does not do sticky partition assignment (not
+                suitable for tables), and do not create any necessary internal
+                topics (you have to create them manually).
         """
 
     @broker.on_set_default  # type: ignore
@@ -1846,6 +1856,34 @@ class Settings(base.SettingsRegistry):
 
         This option is usually set by :option:`faust worker --web-bind`,
         not by passing it as a keyword argument to :class:`app`.
+        """
+
+    @sections.WebServer.setting(
+        params.Dict[Any],
+        version_introduced="0.11.4",
+    )
+    def web_application_options(self) -> Mapping[str, Any]:
+        """Extra keyword arguments passed to the web framework's application.
+
+        Use this to configure the underlying web application object that the
+        web driver creates.  For the default :pypi:`aiohttp` driver these are
+        forwarded straight to :class:`aiohttp.web.Application`, so you can set
+        things like ``client_max_size`` or install middlewares:
+
+        .. sourcecode:: python
+
+            from aiohttp.web import middleware
+
+            @middleware
+            async def error_middleware(request, handler):
+                ...
+
+            app = App(..., web_application_options={
+                'client_max_size': 1024 ** 2 * 20,
+                'middlewares': [error_middleware],
+            })
+
+        The accepted keys depend on the configured web driver.
         """
 
     @sections.WebServer.setting(
