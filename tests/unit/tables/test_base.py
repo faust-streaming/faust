@@ -554,6 +554,82 @@ class Test_Collection:
         ]
 
     @pytest.mark.asyncio
+    async def test_del_old_keys__scalar_windows_are_not_aggregated(self, *, table):
+        # A counting table (``default=int``) holds ints, which cannot be
+        # concatenated -- aggregating them would raise
+        # ``TypeError: 'int' object is not iterable`` and kill the cleanup
+        # task.  Such keys keep the raw per-key value instead.
+        on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
+
+        table.window = Mock(name="window")
+        table.window.stale.side_effect = lambda timestamp, latest: timestamp <= 20.0
+        self.mock_ranges(table, [(10.0, 20.0), (15.0, 25.0)])
+        table._data = {
+            ("k", (10.0, 20.0)): 2,
+            ("k", (15.0, 25.0)): 1,
+        }
+        table._partition_timestamps = {TP1: [20.0]}
+        table._partition_timestamp_keys = {
+            (TP1, 20.0): {("k", (10.0, 20.0))},
+            (TP1, 25.0): {("k", (15.0, 25.0))},
+        }
+
+        await table._del_old_keys()
+
+        on_window_close.assert_called_once_with(("k", (10.0, 20.0)), 2)
+        assert table.data == {("k", (15.0, 25.0)): 1}
+        assert table.last_closed_window == 10.0
+
+    @pytest.mark.asyncio
+    async def test_del_old_keys__string_windows_are_not_aggregated(self, *, table):
+        # A string is iterable, so aggregating it would not raise -- it
+        # would silently hand the callback a list of characters.
+        on_window_close = table._on_window_close = AsyncMock(name="on_window_close")
+
+        table.window = Mock(name="window")
+        table.window.stale.side_effect = lambda timestamp, latest: timestamp <= 20.0
+        self.mock_ranges(table, [(10.0, 20.0), (15.0, 25.0)])
+        table._data = {
+            ("k", (10.0, 20.0)): "BOO",
+            ("k", (15.0, 25.0)): "MOO",
+        }
+        table._partition_timestamps = {TP1: [20.0]}
+        table._partition_timestamp_keys = {
+            (TP1, 20.0): {("k", (10.0, 20.0))},
+            (TP1, 25.0): {("k", (15.0, 25.0))},
+        }
+
+        await table._del_old_keys()
+
+        on_window_close.assert_called_once_with(("k", (10.0, 20.0)), "BOO")
+
+    @pytest.mark.asyncio
+    async def test_del_old_keys__scalars_with_real_window(self, *, app):
+        # The same, driven by a real window rather than mocked ranges: a
+        # counter table must survive cleanup end to end.
+        on_window_close = AsyncMock(name="on_window_close")
+        window = HoppingWindow(size=10, step=5, expires=10)
+        table = MyTable(
+            app,
+            name="name",
+            window=window,
+            on_window_close=on_window_close,
+        )
+        partition = 0
+        first, second = window.ranges(20.0)
+        table._data = {("k", first): 2, ("k", second): 1}
+        for window_range in (first, second):
+            table._maybe_set_key_ttl(("k", window_range), partition)
+
+        await table._del_old_keys()
+
+        assert not table.data
+        assert on_window_close.call_args_list == [
+            call(("k", first), 2),
+            call(("k", second), 1),
+        ]
+
+    @pytest.mark.asyncio
     async def test_on_window_close__default(self, *, table):
         assert table._on_window_close is None
         await table.on_window_close(("boo", (1.1, 1.4)), "BOO")

@@ -403,9 +403,22 @@ class Collection(Service, CollectionT):
                                 # it is not related to window's timestamp
                                 # windows are in format:
                                 # (key, (window_start, window_end))
-                                window_data.setdefault(processed_window[0], []).extend(
-                                    self.data.get(processed_window, [])
-                                )
+                                #
+                                # Only list values are aggregated across the
+                                # overlapping windows: a list of events is the
+                                # shape this exists to accumulate, and it is
+                                # the only one that can be concatenated without
+                                # inventing semantics.  A counter (``default=int``)
+                                # is not iterable and would raise here; a string
+                                # is iterable and would be shredded into
+                                # characters.  Those keys are left out of
+                                # ``window_data`` and delivered below as the raw
+                                # per-key value instead.
+                                window_value = self.data.get(processed_window)
+                                if isinstance(window_value, list):
+                                    window_data.setdefault(
+                                        processed_window[0], []
+                                    ).extend(window_value)
 
                     for key_to_remove in keys_to_remove:
                         value = self.data.pop(key_to_remove, None)
