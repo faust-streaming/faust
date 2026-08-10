@@ -3,6 +3,7 @@ from contextlib import suppress
 from typing import Any, Awaitable, Callable, Optional, Tuple, cast
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.serializers.codecs import warn_if_unsafe_pickle
 from faust.types.app import AppT
 from faust.types.codecs import CodecArg
 from faust.types.core import K, OpenHeadersArg, V
@@ -63,8 +64,10 @@ class Schema(SchemaT[KT, VT]):
             self.value_type = value_type
         if key_serializer is not None:
             self.key_serializer = key_serializer
+            warn_if_unsafe_pickle(key_serializer)
         if value_serializer is not None:
             self.value_serializer = value_serializer
+            warn_if_unsafe_pickle(value_serializer)
         if self.key_serializer is None and key_type:
             self.key_serializer = _model_serializer(key_type)
         if self.value_serializer is None and value_type:

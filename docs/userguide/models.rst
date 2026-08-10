@@ -1014,6 +1014,8 @@ Supported codecs
 * **raw**     - no encoding/serialization (bytes only).
 * **json**    - :mod:`json` with UTF-8 encoding.
 * **pickle**  - :mod:`pickle` with Base64 encoding (not URL-safe).
+* **pickle_restricted** - :mod:`pickle` with Base64 encoding, restricted at
+  load time to a safe allowlist of classes.
 * **binary**  - Base64 encoding (not URL-safe).
 
 Encodings are not URL-safe if the encoded payload cannot be embedded
@@ -1028,7 +1030,31 @@ directly into a URL query parameter.
     anyone able to write to a topic consumed with
     ``value_serializer="pickle"`` (or ``key_serializer="pickle"``) can
     achieve remote code execution. Only enable the pickle codec for
-    topics where every producer is trusted.
+    topics where every producer is trusted. Faust emits a
+    :class:`~faust.exceptions.SecurityWarning` as soon as an app, topic,
+    or model is configured with ``serializer="pickle"``, and again every
+    time a message is actually unpickled.
+
+    If you need pickle's ability to round-trip arbitrary Python objects
+    but cannot fully trust every producer on the topic, use
+    **pickle_restricted** instead. It deserializes with
+    ``faust.serializers.codecs.RestrictedUnpickler``, which only
+    constructs classes from an explicit allowlist
+    (``RestrictedUnpickler.ALLOWED_CLASSES``, covering common stdlib
+    container/value types by default) and raises
+    :exc:`pickle.UnpicklingError` for anything else -- closing off the
+    ``__reduce__``-based gadgets (``os.system``, ``subprocess.Popen``,
+    etc.) that make plain pickle unsafe. Extend ``ALLOWED_CLASSES`` with
+    your own application types as needed:
+
+    .. sourcecode:: python
+
+        from faust.serializers.codecs import RestrictedUnpickler
+
+        RestrictedUnpickler.ALLOWED_CLASSES = {
+            **RestrictedUnpickler.ALLOWED_CLASSES,
+            "myapp.models": frozenset({"Withdrawal", "Order"}),
+        }
 
 Serialization by name
 ---------------------

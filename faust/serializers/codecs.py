@@ -7,6 +7,8 @@ Supported codecs
 * **json**    - json with UTF-8 encoding.
 * **yaml**    - YAML (safe version)
 * **pickle**  - pickle with base64 encoding (not urlsafe).
+* **pickle_restricted** - pickle with base64 encoding, restricted at load
+  time to a safe allowlist of classes (see :class:`RestrictedUnpickler`).
 * **binary**  - base64 encoding (not urlsafe).
 
 .. warning::
@@ -17,7 +19,10 @@ Supported codecs
     client able to write to a topic consumed with ``value_serializer=
     "pickle"`` (or ``key_serializer="pickle"``) can achieve remote code
     execution in the worker process. Only use the pickle codec for topics
-    where every producer is trusted.
+    where every producer is trusted. If you need pickle's object support
+    but cannot fully trust every producer, use **pickle_restricted**
+    instead, and extend :attr:`RestrictedUnpickler.ALLOWED_CLASSES` with
+    whatever application types you expect to receive.
 
 Serialization by name
 =====================
@@ -170,11 +175,12 @@ At this point may want to publish this on PyPI to share
 the extension with other Faust users.
 """
 
+import io
 import pickle as _pickle  # nosec B403
 import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType
-from typing import Any, Dict, MutableMapping, Optional, Tuple, Union, cast
+from typing import Any, Dict, FrozenSet, MutableMapping, Optional, Tuple, Union, cast
 
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.imports import load_extension_classes
@@ -289,18 +295,55 @@ class yaml(Codec):
         return want_bytes(_yaml.safe_dump(s))
 
 
+#: Warning shown whenever the unrestricted pickle codec is configured
+#: or used to deserialize a message. See :class:`raw_pickle`.
+UNSAFE_PICKLE_WARNING = (
+    "The pickle codec calls pickle.loads() on message data, which can "
+    "execute arbitrary code if the data does not come from a trusted "
+    "producer. Only use value_serializer/key_serializer='pickle' on "
+    "topics where every producer is trusted. If that cannot be "
+    "guaranteed, use the 'pickle_restricted' codec instead, which limits "
+    "unpickling to a safe allowlist of classes."
+)
+
+
+def uses_unsafe_pickle(codec: CodecArg) -> bool:
+    """Return :const:`True` if ``codec`` resolves to the unrestricted pickle codec.
+
+    This is used to warn as soon as an app/topic/model is *configured*
+    to use ``value_serializer="pickle"``/``key_serializer="pickle"``,
+    rather than waiting for the first message to be deserialized.
+    """
+    if isinstance(codec, str):
+        return any(node == "pickle" for node in codec.split("|"))
+    if isinstance(codec, Codec):
+        return any(isinstance(node, raw_pickle) for node in codec.nodes)
+    return False
+
+
+def warn_if_unsafe_pickle(codec: CodecArg, *, stacklevel: int = 2) -> None:
+    """Emit :class:`~faust.exceptions.SecurityWarning` if ``codec`` uses pickle.
+
+    No-op if ``codec`` does not resolve to the unrestricted pickle codec.
+    """
+    if uses_unsafe_pickle(codec):
+        warnings.warn(UNSAFE_PICKLE_WARNING, SecurityWarning, stacklevel=stacklevel + 1)
+
+
 class raw_pickle(Codec):
-    """:mod:`pickle` serializer with no encoding."""
+    """:mod:`pickle` serializer with no encoding.
+
+    .. danger::
+
+        Calls :func:`pickle.loads` on the raw message value with no
+        restrictions. Never use this (or the ``pickle`` codec that wraps
+        it) on a topic where you cannot fully trust every producer -- see
+        :data:`UNSAFE_PICKLE_WARNING`. Prefer :class:`restricted_pickle`
+        (the ``pickle_restricted`` codec) when in doubt.
+    """
 
     def _loads(self, s: bytes) -> Any:
-        warnings.warn(
-            "The pickle codec calls pickle.loads() on message data, which "
-            "can execute arbitrary code if the data does not come from a "
-            "trusted producer. Only use value_serializer/key_serializer="
-            "'pickle' on topics where every producer is trusted.",
-            SecurityWarning,
-            stacklevel=3,
-        )
+        warnings.warn(UNSAFE_PICKLE_WARNING, SecurityWarning, stacklevel=3)
         return _pickle.loads(s)  # nosec B301
 
     def _dumps(self, obj: Any) -> bytes:
@@ -310,6 +353,88 @@ class raw_pickle(Codec):
 def pickle() -> Codec:
     """:mod:`pickle` serializer with base64 encoding."""
     return raw_pickle() | binary()
+
+
+class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
+    """A :class:`pickle.Unpickler` that only constructs allowlisted classes.
+
+    Overrides :meth:`~pickle.Unpickler.find_class` to reject any
+    class/function not listed in :attr:`ALLOWED_CLASSES`, closing off the
+    classic ``__reduce__``-based RCE gadgets (``os.system``,
+    ``subprocess.Popen``, ``builtins.exec``, and friends) that plain
+    :func:`pickle.loads` will happily invoke for untrusted input.
+
+    The default allowlist only covers common stdlib container/value
+    types. Extend :attr:`ALLOWED_CLASSES` (or subclass and override
+    :meth:`find_class`) to allow application-specific types you expect
+    producers to send, for example::
+
+        from faust.serializers.codecs import RestrictedUnpickler
+
+        RestrictedUnpickler.ALLOWED_CLASSES = {
+            **RestrictedUnpickler.ALLOWED_CLASSES,
+            "myapp.models": frozenset({"Withdrawal", "Order"}),
+        }
+    """
+
+    #: Mapping of module name to the class/function names allowed from it.
+    ALLOWED_CLASSES: Dict[str, FrozenSet[str]] = {
+        "builtins": frozenset(
+            {
+                "dict",
+                "list",
+                "set",
+                "frozenset",
+                "tuple",
+                "str",
+                "bytes",
+                "bytearray",
+                "int",
+                "float",
+                "complex",
+                "bool",
+                "object",
+            }
+        ),
+        "collections": frozenset({"OrderedDict", "defaultdict", "deque", "Counter"}),
+        "datetime": frozenset({"datetime", "date", "time", "timedelta", "timezone"}),
+        "decimal": frozenset({"Decimal"}),
+        "uuid": frozenset({"UUID"}),
+    }
+
+    def find_class(self, module: str, name: str) -> Any:
+        """Look up ``module.name``, raising unless it is allowlisted."""
+        allowed = self.ALLOWED_CLASSES.get(module)
+        if allowed is None or name not in allowed:
+            raise _pickle.UnpicklingError(
+                f"Refusing to unpickle disallowed class/function "
+                f"{module}.{name}: not in "
+                "RestrictedUnpickler.ALLOWED_CLASSES. Extend the allowlist "
+                "if this type is expected from your producers, or use the "
+                "unrestricted 'pickle' codec if they are fully trusted."
+            )
+        return super().find_class(module, name)
+
+
+class restricted_pickle(Codec):
+    """:mod:`pickle` serializer with no encoding, restricted to safe classes.
+
+    Like :class:`raw_pickle`, but deserializes using
+    :class:`RestrictedUnpickler` instead of :func:`pickle.loads`, so a
+    payload that tries to construct anything outside the allowlist raises
+    :exc:`pickle.UnpicklingError` instead of running arbitrary code.
+    """
+
+    def _loads(self, s: bytes) -> Any:
+        return RestrictedUnpickler(io.BytesIO(s)).load()
+
+    def _dumps(self, obj: Any) -> bytes:
+        return _pickle.dumps(obj)  # nosec B403
+
+
+def pickle_restricted() -> Codec:
+    """:mod:`pickle` serializer (allowlisted classes) with base64 encoding."""
+    return restricted_pickle() | binary()
 
 
 class binary(Codec):
@@ -336,6 +461,7 @@ class raw(Codec):
 codecs: MutableMapping[str, CodecT] = {
     "json": json(),
     "pickle": pickle(),  # nosec B403
+    "pickle_restricted": pickle_restricted(),
     "binary": binary(),
     "raw": raw(),
     "yaml": yaml(),
