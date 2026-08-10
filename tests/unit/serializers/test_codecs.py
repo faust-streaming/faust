@@ -176,6 +176,70 @@ def test_warn_if_unsafe_pickle() -> None:
         warn_if_unsafe_pickle("json")  # should not raise/warn
 
 
+def test_pickle_restricted_round_trips_bytes_and_bytearray() -> None:
+    val = {"a": bytes(b"hello"), "b": bytearray(b"world")}
+    payload = dumps("pickle_restricted", val)
+    assert loads("pickle_restricted", payload) == val
+
+
+class _BytesAllocationGadget:
+    def __reduce__(self):
+        return (bytes, (2_000_000_000,))
+
+
+class _ByteArrayAllocationGadget:
+    def __reduce__(self):
+        return (bytearray, (2_000_000_000,))
+
+
+def test_pickle_restricted_blocks_bytes_allocation_gadget() -> None:
+    payload = dumps("pickle_restricted", _BytesAllocationGadget())
+    with pytest.raises(pickle.UnpicklingError):
+        loads("pickle_restricted", payload)
+
+
+def test_pickle_restricted_blocks_bytearray_allocation_gadget() -> None:
+    payload = dumps("pickle_restricted", _ByteArrayAllocationGadget())
+    with pytest.raises(pickle.UnpicklingError):
+        loads("pickle_restricted", payload)
+
+
+class _PickleOptions:
+    serializer = "pickle"
+
+
+class _PickleModelType:
+    _options = _PickleOptions()
+
+
+class _JsonOptions:
+    serializer = "json"
+
+
+class _JsonModelType:
+    _options = _JsonOptions()
+
+
+def test_schema_warns_when_value_type_derives_pickle_serializer() -> None:
+    # No explicit value_serializer -- the schema must derive it from
+    # value_type._options.serializer and still warn.
+    with pytest.warns(SecurityWarning):
+        Schema(value_type=_PickleModelType)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SecurityWarning)
+        Schema(value_type=_JsonModelType)
+
+
+def test_schema_warns_when_key_type_derives_pickle_serializer() -> None:
+    with pytest.warns(SecurityWarning):
+        Schema(key_type=_PickleModelType)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", SecurityWarning)
+        Schema(key_type=_JsonModelType)
+
+
 def test_registry_warns_when_configured_with_pickle() -> None:
     with pytest.warns(SecurityWarning):
         Registry(value_serializer="pickle")

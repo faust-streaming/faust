@@ -378,6 +378,15 @@ class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
     """
 
     #: Mapping of module name to the class/function names allowed from it.
+    #:
+    #: ``bytes`` and ``bytearray`` are deliberately excluded even though
+    #: they are safe *value* types: as REDUCE-invoked *callables* they
+    #: each accept a single integer and allocate that many zero bytes
+    #: (``bytearray(2_000_000_000)`` allocates ~2GB from a payload of a
+    #: few dozen bytes), so allowing them here would let an attacker turn
+    #: a tiny message into a memory-exhaustion DoS. Plain bytes/bytearray
+    #: *values* still round-trip fine -- pickle has dedicated opcodes for
+    #: literal bytes/bytearray data that never go through find_class.
     ALLOWED_CLASSES: Dict[str, FrozenSet[str]] = {
         "builtins": frozenset(
             {
@@ -387,8 +396,6 @@ class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
                 "frozenset",
                 "tuple",
                 "str",
-                "bytes",
-                "bytearray",
                 "int",
                 "float",
                 "complex",
@@ -429,7 +436,10 @@ class restricted_pickle(Codec):
         return RestrictedUnpickler(io.BytesIO(s)).load()
 
     def _dumps(self, obj: Any) -> bytes:
-        return _pickle.dumps(obj)  # nosec B403
+        # Protocol 5 gives bytearray values their own opcode (BYTEARRAY8)
+        # instead of falling back to a `bytearray(...)` global + REDUCE,
+        # which RestrictedUnpickler refuses (see ALLOWED_CLASSES above).
+        return _pickle.dumps(obj, protocol=5)  # nosec B403
 
 
 def pickle_restricted() -> Codec:

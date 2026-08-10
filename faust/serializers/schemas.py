@@ -64,14 +64,18 @@ class Schema(SchemaT[KT, VT]):
             self.value_type = value_type
         if key_serializer is not None:
             self.key_serializer = key_serializer
-            warn_if_unsafe_pickle(key_serializer)
         if value_serializer is not None:
             self.value_serializer = value_serializer
-            warn_if_unsafe_pickle(value_serializer)
         if self.key_serializer is None and key_type:
             self.key_serializer = _model_serializer(key_type)
         if self.value_serializer is None and value_type:
             self.value_serializer = _model_serializer(value_type)
+        # Check after model-derived defaults are resolved above, so a
+        # serializer inherited from key_type/value_type (e.g. a Record
+        # declared with `serializer="pickle"`) is also caught, not just
+        # an explicit key_serializer/value_serializer argument.
+        warn_if_unsafe_pickle(self.key_serializer)
+        warn_if_unsafe_pickle(self.value_serializer)
         if allow_empty is not None:
             self.allow_empty = allow_empty
 
