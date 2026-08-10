@@ -606,7 +606,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.Common.setting(
         params.Bool,
-        version_introduced="0.12.2",
+        version_introduced="0.14.0",
         env_name="CYTHON_OPTIMIZATIONS",
         default=False,
     )
