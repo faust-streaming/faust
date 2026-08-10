@@ -9,6 +9,16 @@ Supported codecs
 * **pickle**  - pickle with base64 encoding (not urlsafe).
 * **binary**  - base64 encoding (not urlsafe).
 
+.. warning::
+
+    The **pickle** codec calls :func:`pickle.loads` on the raw message
+    value, which can execute arbitrary code if the data comes from an
+    untrusted source. Kafka topics do not authenticate producers, so any
+    client able to write to a topic consumed with ``value_serializer=
+    "pickle"`` (or ``key_serializer="pickle"``) can achieve remote code
+    execution in the worker process. Only use the pickle codec for topics
+    where every producer is trusted.
+
 Serialization by name
 =====================
 
@@ -161,6 +171,7 @@ the extension with other Faust users.
 """
 
 import pickle as _pickle  # nosec B403
+import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType
 from typing import Any, Dict, MutableMapping, Optional, Tuple, Union, cast
@@ -168,7 +179,7 @@ from typing import Any, Dict, MutableMapping, Optional, Tuple, Union, cast
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.imports import load_extension_classes
 
-from faust.exceptions import ImproperlyConfigured
+from faust.exceptions import ImproperlyConfigured, SecurityWarning
 from faust.types.codecs import CodecArg, CodecT
 from faust.utils import json as _json
 
@@ -282,6 +293,14 @@ class raw_pickle(Codec):
     """:mod:`pickle` serializer with no encoding."""
 
     def _loads(self, s: bytes) -> Any:
+        warnings.warn(
+            "The pickle codec calls pickle.loads() on message data, which "
+            "can execute arbitrary code if the data does not come from a "
+            "trusted producer. Only use value_serializer/key_serializer="
+            "'pickle' on topics where every producer is trusted.",
+            SecurityWarning,
+            stacklevel=3,
+        )
         return _pickle.loads(s)  # nosec B301
 
     def _dumps(self, obj: Any) -> bytes:

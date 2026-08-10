@@ -7,7 +7,7 @@ from hypothesis import given
 from hypothesis.strategies import binary, dictionaries, text
 from mode.utils.compat import want_str
 
-from faust.exceptions import ImproperlyConfigured
+from faust.exceptions import ImproperlyConfigured, SecurityWarning
 from faust.serializers.codecs import (
     Codec,
     binary as _binary,
@@ -93,3 +93,9 @@ def test_raw():
     bits = get_codec("raw").dumps("foo")
     assert isinstance(bits, bytes)
     assert get_codec("raw").loads(bits) == b"foo"
+
+
+def test_pickle_loads_warns_of_security_risk() -> None:
+    payload = dumps("pickle", DATA)
+    with pytest.warns(SecurityWarning):
+        assert loads("pickle", payload) == DATA

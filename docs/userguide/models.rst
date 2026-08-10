@@ -1019,6 +1019,17 @@ Supported codecs
 Encodings are not URL-safe if the encoded payload cannot be embedded
 directly into a URL query parameter.
 
+.. warning::
+
+    The **pickle** codec calls :func:`pickle.loads` on the raw message
+    value. :mod:`pickle` is not a safe format for untrusted input: a
+    malicious payload can execute arbitrary code in the worker process
+    at deserialization time. Kafka does not authenticate producers, so
+    anyone able to write to a topic consumed with
+    ``value_serializer="pickle"`` (or ``key_serializer="pickle"``) can
+    achieve remote code execution. Only enable the pickle codec for
+    topics where every producer is trusted.
+
 Serialization by name
 ---------------------
 
