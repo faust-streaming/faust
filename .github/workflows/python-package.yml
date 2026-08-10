@@ -137,7 +137,9 @@ jobs:
         # Building in place puts the .so files next to the .pyx files, which
         # is what the source-tree import actually picks up.
         if: matrix.use-cython == 'true'
-        run: USE_CYTHON=1 python setup.py build_ext --inplace
+        run: |
+          pip install -r requirements/build.txt
+          USE_CYTHON=1 python setup.py build_ext --inplace
       - name: Run tests
         # FAUST_REQUIRE_CYTHON turns a silent fallback into a failure, so this
         # leg cannot quietly go back to testing pure Python if the build stops
