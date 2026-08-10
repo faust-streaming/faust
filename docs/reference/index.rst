@@ -107,6 +107,7 @@ Sensors
     faust.sensors.base
     faust.sensors.datadog
     faust.sensors.monitor
+    faust.sensors.otel
     faust.sensors.prometheus
     faust.sensors.statsd
 

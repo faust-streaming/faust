@@ -56,7 +56,14 @@ _match = re.match(r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$", __versi
 if _match is None:  # pragma: no cover
     raise RuntimeError("THIS IS A BROKEN RELEASE!")
 _temp = _match.groups()
-VERSION = version_info = VersionInfo(*_temp)
+# XXX This is broken and so is the public ``faust.version_info``: the regex
+# yields the strings ``(prefix, version, suffix)``, which land positionally in
+# the ``(major, minor, micro)`` int fields.  So ``.major`` is the ``'v'``
+# prefix or :const:`None`, ``.minor`` is the entire version string and
+# ``.micro`` is the suffix -- e.g. ``VersionInfo(major=None,
+# minor='0.11.5', micro='')`` instead of ``(0, 11, 5)``.
+# Left as-is because fixing it changes what ``faust.VERSION`` holds.
+VERSION = version_info = VersionInfo(*_temp)  # type: ignore[arg-type]
 del _match
 del _temp
 del re

@@ -1,7 +1,9 @@
 # cython: language_level=3
+# cython: freethreading_compatible=True
 from asyncio import ALL_COMPLETED, ensure_future, wait
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.utils.optin import cython_optimizations_enabled
 
 
 cdef class ConductorHandler:
@@ -19,6 +21,7 @@ cdef class ConductorHandler:
         object wait_until_producer_ebb
         object consumer_on_buffer_full
         object consumer_on_buffer_drop
+        bint cython_optimizations
 
 
     def __init__(self, object conductor, object tp, object channels):
@@ -32,6 +35,11 @@ cdef class ConductorHandler:
         self.acquire_flow_control = self.app.flow_control.acquire
         self.wait_until_producer_ebb = self.app.producer.buffer.wait_until_ebb
         self.consumer = self.app.consumer
+        # Opt-in: see the `cython_optimizations` setting.  Read once per
+        # handler (one per assigned TP), not per message.  Via the helper, not
+        # `app.conf.<name>`, so that deprecating the setting does not emit a
+        # warning per partition -- see faust/utils/optin.py.
+        self.cython_optimizations = cython_optimizations_enabled(self.app.conf)
         # We divide `stream_buffer_maxsize` with Queue.pressure_ratio
         # find a limit to the number of messages we will buffer
         # before considering the buffer to be under high pressure.
@@ -68,10 +76,35 @@ cdef class ConductorHandler:
             full = []
             try:
                 for chan in channels:
-                    event, event_keyid = self._decode(event, chan, event_keyid)
+                    # Deserialize once and reuse the event for every channel
+                    # whose key/value types match, exactly as conductor.py
+                    # does.  `event`/`event_keyid` stay pinned to the first
+                    # channel; a channel with a different type pair gets its
+                    # own event without displacing the pinned one.
+                    #
+                    # This used to go through `_decode()`, which never worked:
+                    # `event_keyid` was only ever assigned from that helper's
+                    # return value, and the helper returned it *unchanged* on
+                    # the first pass, so it stayed None forever and the reuse
+                    # branch was dead -- every channel re-deserialized the
+                    # payload.  That in turn masked a second fault: had the
+                    # keyid ever been set, a mismatch fell off the end of
+                    # `_decode` returning a bare None, and unpacking it into
+                    # two names would have raised TypeError.
+                    keyid = (chan.key_type, chan.value_type)
                     if event is None:
                         event = await chan.decode(message, propagate=True)
-                    if not self._put(event, chan, full):
+                        event_keyid = keyid
+                        dest_event = event
+                    elif self.cython_optimizations and keyid == event_keyid:
+                        dest_event = event
+                    else:
+                        # Reuse is behind the `cython_optimizations` setting,
+                        # off by default: the repaired path has never run in
+                        # production.  Disabled, every channel deserializes its
+                        # own event, reproducing the released behaviour.
+                        dest_event = await chan.decode(message, propagate=True)
+                    if not self._put(dest_event, chan, full):
                         continue
                     delivered.add(chan)
                 if full:
@@ -92,7 +125,12 @@ cdef class ConductorHandler:
                     delivered.add(channel)
 
     async def _handle_full(self, event, chan, delivered):
-        self.on_topic_buffer_full(chan)
+        # ``self.tp``, not the channel: the sensor takes a ``TP`` (as
+        # ``on_pressure_high`` below passes), and ``Monitor.topic_buffer_full``
+        # is a ``Counter[TP]``.  Passing the channel here keyed part of that
+        # counter by channel instead, so the same partition was counted under
+        # two different keys depending on which path reported it.
+        self.on_topic_buffer_full(self.tp)
         await chan.put(event)
         delivered.add(chan)
 
@@ -107,13 +145,6 @@ cdef class ConductorHandler:
     # when the buffer is under high pressure/full.
     def on_pressure_drop(self) -> None:
         self.consumer_on_buffer_drop(self.tp)
-
-    cdef object _decode(self, object event, object channel, object event_keyid):
-        keyid = channel.key_type, channel.value_type
-        if event_keyid is None or event is None:
-            return None, event_keyid
-        if keyid == event_keyid:
-            return event, keyid
 
     cdef bint _put(self,
                    object event,

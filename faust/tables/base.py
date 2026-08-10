@@ -9,6 +9,7 @@ from heapq import heappop, heappush
 from typing import (
     Any,
     Callable,
+    Dict,
     Iterable,
     Iterator,
     List,
@@ -104,21 +105,21 @@ class Collection(Service, CollectionT):
         app: AppT,
         *,
         name: Optional[str] = None,
-        default: Callable[[], Any] = None,
-        store: Union[str, URL] = None,
+        default: Optional[Callable[[], Any]] = None,
+        store: Optional[Union[str, URL]] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         partitions: Optional[int] = None,
         window: Optional[WindowT] = None,
         changelog_topic: Optional[TopicT] = None,
         help: Optional[str] = None,
-        on_recover: RecoverCallback = None,
+        on_recover: Optional[RecoverCallback] = None,
         on_changelog_event: Optional[ChangelogEventCallback] = None,
         recovery_buffer_size: int = 1000,
         standby_buffer_size: Optional[int] = None,
         extra_topic_configs: Optional[Mapping[str, Any]] = None,
-        recover_callbacks: Set[RecoverCallback] = None,
+        recover_callbacks: Optional[Set[RecoverCallback]] = None,
         options: Optional[Mapping[str, Any]] = None,
         use_partitioner: bool = False,
         on_window_close: Optional[WindowCloseCallback] = None,
@@ -267,8 +268,8 @@ class Collection(Service, CollectionT):
         partition: Optional[int],
         key: Any,
         value: Any,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
     ) -> FutureMessage:
         """Send modification event to changelog topic."""
         if key_serializer is None:
@@ -291,8 +292,8 @@ class Collection(Service, CollectionT):
         event: Optional[EventT],
         key: Any,
         value: Any,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
     ) -> None:
         # XXX compat version of send_changelog that needs event argument.
         if event is None:
@@ -387,15 +388,29 @@ class Collection(Service, CollectionT):
             while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 triggered_windows = [
+                    # XXX bug: this lookup can never hit.
+                    # ``_partition_timestamp_keys`` is keyed by
+                    # ``(partition, range_end)`` -- a ``(int, float)`` pair,
+                    # written that way in ``_maybe_set_key_ttl`` and read that
+                    # way in ``_maybe_del_key_ttl``.  Here it is looked up by
+                    # ``(partition, window_range)`` where ``window_range`` is
+                    # the ``(start, end)`` tuple, so no key ever matches and
+                    # ``triggered_windows`` is always ``[None, ...]``.  The
+                    # consequence is that ``window_data`` stays empty and
+                    # ``on_window_close`` never receives the aggregated window
+                    # data, only the raw per-key value.  The correct key is
+                    # ``(partition, window_range[1])``; that is a behaviour
+                    # change, so it is not made here and the type error is
+                    # only silenced.
                     self._partition_timestamp_keys.get(
-                        (partition, window_range)
-                    )  # noqa
+                        (partition, window_range)  # type: ignore[arg-type]
+                    )
                     for window_range in self._window_ranges(timestamp)
                 ]
                 keys_to_remove = self._partition_timestamp_keys.pop(
                     (partition, timestamp), None
                 )
-                window_data = {}
+                window_data: Dict[Any, List[Any]] = {}
                 if keys_to_remove:
                     for windows in triggered_windows:
                         if windows:

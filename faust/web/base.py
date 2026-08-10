@@ -149,7 +149,7 @@ class BlueprintManager:
     _enabled: List[Tuple[str, _BPArg]]
     _active: MutableMapping[str, BlueprintT]
 
-    def __init__(self, initial: _BPList = None) -> None:
+    def __init__(self, initial: Optional[_BPList] = None) -> None:
         self.applied = False
         self._enabled = list(initial) if initial else []
         self._active = {}
@@ -241,7 +241,7 @@ class Web(Service):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create text response, using "text/plain" content-type."""
         ...
@@ -254,7 +254,7 @@ class Web(Service):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
         ...
@@ -267,7 +267,7 @@ class Web(Service):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create new JSON response.
 
@@ -286,7 +286,7 @@ class Web(Service):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create new ``bytes`` response - for binary data."""
         ...
@@ -344,7 +344,7 @@ class Web(Service):
         self,
         pattern: str,
         handler: Callable,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
     ) -> None:
         """Add route for handler."""
         ...
@@ -369,7 +369,7 @@ class Web(Service):
         view_cls: Type[View],
         *,
         prefix: str = "",
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
     ) -> View:
         """Add route for view."""
         view: View = view_cls(self.app, self)

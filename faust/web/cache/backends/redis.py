@@ -23,11 +23,18 @@ try:
 except ImportError:  # pragma: no cover
     # ``on_start`` (and the module-level ``if redis is None`` guards) key off
     # ``redis`` being ``None`` when the library is missing; bind both names so
-    # the guard fires instead of raising ``NameError``.
-    redis = aredis = None  # noqa
+    # the guard fires instead of raising ``NameError``.  mypy has no way to
+    # express "this module name may be ``None`` when the import failed", so the
+    # sentinel assignment has to be excused here.
+    redis = aredis = None  # type: ignore[assignment]  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from redis import StrictRedis as _RedisClientT
+    from redis.asyncio import Redis as _AsyncRedis, RedisCluster as _AsyncRedisCluster
+
+    # The backend awaits every command, so the clients it builds are the
+    # asyncio ones.  ``RedisCluster`` is not a subclass of ``Redis``, they only
+    # share the (command-less) ``AbstractRedis`` base, hence the union.
+    _RedisClientT = Union[_AsyncRedis, _AsyncRedisCluster]
 else:
 
     class _RedisClientT: ...  # noqa
@@ -100,10 +107,12 @@ class CacheBackend(base.CacheBackend):
             }
 
     async def _get(self, key: str) -> Optional[bytes]:
-        value: Optional[bytes] = await self.client.get(key)
-        if value is not None:
+        # Clients created with ``decode_responses`` hand back ``str``, so the
+        # reply is not necessarily ``bytes``; ``want_bytes`` normalises it.
+        value: Union[bytes, str, None] = await self.client.get(key)
+        if isinstance(value, str):
             return want_bytes(value)
-        return None
+        return value
 
     async def _set(
         self, key: str, value: bytes, timeout: Optional[float] = None

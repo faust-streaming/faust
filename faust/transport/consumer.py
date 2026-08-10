@@ -93,7 +93,7 @@ from faust.types.transports import (
     TransactionManagerT,
     TransportT,
 )
-from faust.types.tuples import FutureMessage
+from faust.types.tuples import FutureMessage, ack_lock
 from faust.utils import terminal
 from faust.utils.functional import consecutive_numbers
 from faust.utils.tracing import traced_from_parent_span
@@ -179,7 +179,13 @@ class Fetcher(Service):
             if self.app.rebalancing:
                 self.log.info("Restarting on rebalance")
                 await self.crash(exc)
-                self.supervisor.wakeup()
+                # XXX ``ServiceT.supervisor`` is ``Optional`` and nothing here
+                # guarantees the fetcher was adopted by a supervisor, so this
+                # raises AttributeError when it was not.  Left unguarded on
+                # purpose: ``wakeup()`` is what restarts the fetcher after a
+                # rebalance crash, and skipping it would silently leave the
+                # fetcher dead instead of failing loudly.
+                self.supervisor.wakeup()  # type: ignore[union-attr]
         finally:
             self.set_shutdown()
 
@@ -486,7 +492,14 @@ class Consumer(Service, ConsumerT):
         self.not_waiting_next_records.set()
         self._reset_state()
         super().__init__(loop=loop, **kwargs)
-        self.transactions = self.transport.create_transaction_manager(
+        # Every concrete transport provides ``create_transaction_manager``
+        # (see ``faust.transport.base.Transport``), but the ``TransportT``
+        # interface in ``faust/types/transports.py`` does not declare it
+        # next to ``create_consumer``/``create_producer``/``create_conductor``.
+        create_transaction_manager = (
+            self.transport.create_transaction_manager  # type: ignore[attr-defined]
+        )
+        self.transactions = create_transaction_manager(
             consumer=self,
             producer=self.app.producer,
             beacon=self.beacon,
@@ -764,7 +777,10 @@ class Consumer(Service, ConsumerT):
         self, timeout: float
     ) -> Tuple[Optional[RecordMap], Optional[Set[TP]]]:
         if not self.flow_active:
-            await self.wait(self.can_resume_flow)
+            # mode types the waitable as ``mode.utils.locks.Event``, but
+            # Service.wait_first accepts anything with an awaitable
+            # ``.wait()`` -- asyncio.Event included.
+            await self.wait(self.can_resume_flow)  # type: ignore[arg-type]
 
         try:
             # Set signal that _wait_next_records is waiting on the fetcher service.
@@ -808,25 +824,33 @@ class Consumer(Service, ConsumerT):
 
     def ack(self, message: Message) -> bool:
         """Mark message as being acknowledged by stream."""
-        if not message.acked:
-            message.acked = True
-            tp = message.tp
-            offset = message.offset
-            if self.app.topics.acks_enabled_for(message.topic):
-                committed = self._committed_offset[tp]
-                try:
-                    if committed is None or offset >= committed:
-                        acked_index = self._acked_index[tp]
-                        if offset not in acked_index:
-                            self._unacked_messages.discard(message)
-                            acked_index.add(offset)
-                            acked_for_tp = self._acked[tp]
-                            acked_for_tp.append(offset)
-                            self._n_acked += 1
-                            return True
-                finally:
-                    notify(self._waiting_for_ack)
-        return False
+        # Under `ack_lock` for the same reason `Message.ack` is: the
+        # `acked` test-and-set and the bookkeeping below have to be one
+        # step.  `_acked_index`, `_acked` and `_n_acked` are shared by every
+        # message, so two threads finishing different messages race here
+        # even though neither races on a message.  Reentrant, so the common
+        # route in -- `Message.ack` -> `ConsumerMessage.on_final_ack` -> here
+        # -- costs a recursive acquire rather than deadlocking.
+        with ack_lock:
+            if not message.acked:
+                message.acked = True
+                tp = message.tp
+                offset = message.offset
+                if self.app.topics.acks_enabled_for(message.topic):
+                    committed = self._committed_offset[tp]
+                    try:
+                        if committed is None or offset >= committed:
+                            acked_index = self._acked_index[tp]
+                            if offset not in acked_index:
+                                self._unacked_messages.discard(message)
+                                acked_index.add(offset)
+                                acked_for_tp = self._acked[tp]
+                                acked_for_tp.append(offset)
+                                self._n_acked += 1
+                                return True
+                    finally:
+                        notify(self._waiting_for_ack)
+            return False
 
     async def _wait_for_ack(self, timeout: float) -> None:
         # arm future so that `ack()` can wake us up
@@ -910,7 +934,7 @@ class Consumer(Service, ConsumerT):
     def verify_recovery_event_path(self, now: float, tp: TP) -> None: ...
 
     async def commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Maybe commit the offset for all or specific topics.
 
@@ -954,7 +978,7 @@ class Consumer(Service, ConsumerT):
 
     @Service.transitions_to(CONSUMER_COMMITTING)
     async def force_commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool:
         """Force offset commit."""
         sensor_state = self.app.sensors.on_commit_initiated(self)
@@ -1058,7 +1082,7 @@ class Consumer(Service, ConsumerT):
         return did_commit
 
     def _filter_tps_with_pending_acks(
-        self, topics: TPorTopicSet = None
+        self, topics: Optional[TPorTopicSet] = None
     ) -> Iterator[TP]:
         return (
             tp
@@ -1096,7 +1120,7 @@ class Consumer(Service, ConsumerT):
                 # start without worrying about ends overlapping.
                 sorted_candidates = sorted(candidates, key=lambda x: x.begin)
                 if sorted_candidates:
-                    stuff_to_add = []
+                    stuff_to_add: List[int] = []
                     for entry in sorted_candidates:
                         stuff_to_add.extend(range(entry.begin, entry.end))
                     new_max_offset = max(stuff_to_add[-1], max_offset + 1)
@@ -1111,8 +1135,9 @@ class Consumer(Service, ConsumerT):
             #  ^-- gap
             # self._committed_offset[tp] is 31
             # the return value will be None (the same as 31)
-            if self._committed_offset[tp]:
-                if min(acked) - self._committed_offset[tp] > 1:
+            committed_offset = self._committed_offset[tp]
+            if committed_offset:
+                if min(acked) - committed_offset > 1:
                     return None
 
             # Note: acked is always kept sorted.
