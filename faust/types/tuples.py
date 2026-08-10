@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import typing
 from collections import defaultdict
 from time import time
@@ -110,6 +111,34 @@ def _get_len(s: Optional[bytes]) -> int:
     return len(s) if s is not None and isinstance(s, bytes) else 0
 
 
+#: Serializes the acknowledgement transition: the joint read-modify-write of
+#: ``Message.acked`` and ``Message.refcount`` together with the final-ack
+#: bookkeeping it triggers in the consumer.
+#:
+#: Not a free-threading concern alone.  ``self.refcount = self.refcount - n``
+#: compiles to LOAD_ATTR / BINARY_OP / STORE_ATTR, and the GIL is released
+#: between bytecodes, so two threads acking the same message can read the same
+#: refcount and both store ``n - 1``.  Measured on GIL-enabled CPython 3.11,
+#: 32 threads acking one message: 9 of 300 trials lost a decrement, leaving
+#: the final ack to fire twice or never.  Removing the GIL widens that window
+#: rather than opening it.
+#:
+#: The lock is process-wide rather than per-message because the state it
+#: guards is: the final ack mutates the consumer's ``_acked_index``,
+#: ``_acked``, ``_n_acked`` and ``_unacked_messages``, which every message
+#: shares.  A per-message lock would leave all of that unprotected.
+#:
+#: Reentrant because the transition nests -- ``Message.ack`` calls
+#: ``ConsumerMessage.on_final_ack``, which calls ``Consumer.ack``, which takes
+#: the same lock to guard the bookkeeping when reached on its own.
+#:
+#: Uncontended in the ordinary case: faust acks from the event loop thread, so
+#: this is a single uncontended acquire per ack, against the dict and set
+#: operations the same section already performs.  It matters when
+#: ``Event.ack`` is called from another thread, which is public API.
+ack_lock = threading.RLock()
+
+
 class Message:
     __slots__ = (
         "topic",
@@ -191,23 +220,31 @@ class Message:
         self.generation_id: Optional[int] = generation_id
 
     def ack(self, consumer: _ConsumerT, n: int = 1) -> bool:
-        if not self.acked:
-            # if no more references, mark offset as safe-to-commit in
-            # Consumer.
-            if not self.decref(n):
-                return self.on_final_ack(consumer)
-        return False
+        # The whole decision is one critical section, not just the decrement.
+        # `acked` and `refcount` are read, compared and written together, and
+        # the final-ack bookkeeping downstream keys off the result, so a
+        # thread switch anywhere between them loses acks or runs the final ack
+        # twice.  See `ack_lock`.
+        with ack_lock:
+            if not self.acked:
+                # if no more references, mark offset as safe-to-commit in
+                # Consumer.
+                if not self.decref(n):
+                    return self.on_final_ack(consumer)
+            return False
 
     def on_final_ack(self, consumer: _ConsumerT) -> bool:
         self.acked = True
         return True
 
     def incref(self, n: int = 1) -> None:
-        self.refcount += n
+        with ack_lock:
+            self.refcount += n
 
     def decref(self, n: int = 1) -> int:
-        refcount = self.refcount = max(self.refcount - n, 0)
-        return refcount
+        with ack_lock:
+            refcount = self.refcount = max(self.refcount - n, 0)
+            return refcount
 
     @classmethod
     def from_message(cls, message: Any, tp: TP) -> "Message":

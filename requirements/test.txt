@@ -19,6 +19,7 @@ pytest-forked
 pytest-picked
 pytest-cov
 pytest-random-order>=0.5.4
+pytest-run-parallel>=0.10.0
 pytest<8
 python-dateutil>=2.8
 pytz>=2018.7
@@ -27,6 +28,11 @@ twine
 wheel
 intervaltree
 -r requirements.txt
+# setuptools and Cython, so a test environment can build the extension
+# modules in place rather than only through pip's isolated build.  See
+# build.txt: without them `python setup.py build_ext --inplace` either dies
+# on the setuptools import or silently builds nothing.
+-r build.txt
 # mypy, pinned for the same reason as the formatters above: `scripts/check`
 # type-checks the faust package, so the lint job needs it installed.
 -r typecheck.txt
