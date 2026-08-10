@@ -226,9 +226,10 @@ class Test_FieldDescriptorBase:
     def test_active_base_is_one_of_the_two(self):
         from faust.models import fields as f
 
-        assert f._FieldDescriptorBase in (
-            f._PyFieldDescriptorBase,
-            getattr(f, "_FieldDescriptorBase"),
+        active_base = f._FieldDescriptorBase
+        assert active_base is f._PyFieldDescriptorBase or (
+            active_base.__module__ == "faust.models._cython.fields"
+            and active_base.__name__ == "FieldDescriptorBase"
         )
         assert issubclass(FieldDescriptor, f._FieldDescriptorBase)
 
