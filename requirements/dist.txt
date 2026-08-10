@@ -3,12 +3,17 @@ packaging
 pre-commit
 pydocstyle
 pytest-sugar
-setuptools>=30.3.0,<69.0.0
+# `scripts/build` builds the sdist and wheel through `python -m build`, which
+# needs the frontend itself plus the backend it invokes.  The setuptools pin
+# used to live here as `>=30.3.0,<69.0.0`, which directly contradicted the
+# `setuptools>=69` that pyproject.toml's `[build-system].requires` asks for --
+# an environment built from this file could not run the project's own build.
+build
+-r build.txt
 sphinx-autobuild
 sphinx2rst>=1.0
 tox>=2.3.1
 twine
 vulture
-wheel>=0.29.0
 intervaltree
 importlib-metadata; python_version<'3.8'
