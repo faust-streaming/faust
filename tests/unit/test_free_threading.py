@@ -20,6 +20,7 @@ check).
 
 import importlib.util
 import sys
+import sysconfig
 
 import pytest
 
@@ -38,16 +39,30 @@ def _gil_disabled() -> bool:
     return is_gil_enabled is not None and not is_gil_enabled()
 
 
-#: Applied to every test below: there is nothing to assert unless this is a
-#: free-threaded interpreter that still has the GIL off by the time the suite
-#: runs.  Note the GIL can be re-enabled by *any* import that happened earlier
-#: (a dependency's extension, for instance), which is exactly the condition
-#: this file exists to detect -- but it can only be attributed to faust when
-#: faust's own modules are the ones being imported, so the checks below import
-#: them in a subprocess.
+def _free_threaded_build() -> bool:
+    """Is this interpreter a free-threaded (PEP 703) build?
+
+    A property of the *build*, so it does not change as modules are imported.
+    That is what makes it the right gate: the GIL's current state is not, and
+    gating on that state would let this file switch itself off.
+    """
+    return bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
+
+#: Applied to every test below: there is nothing to assert on an interpreter
+#: built with the GIL, and nothing to build there either.
+#:
+#: Deliberately *not* gated on whether the GIL is currently disabled.  Any
+#: import can re-enable it -- a dependency's extension, a pytest plugin -- and
+#: that is the very condition this file exists to detect, so treating it as a
+#: skip condition would make the checks vanish exactly when they are needed and
+#: take the CI step green with them.  `test_test_runner_still_has_gil_disabled`
+#: below reports that state as a failure instead, and the subprocess checks
+#: keep running regardless, since a fresh interpreter is unaffected by whatever
+#: this one imported.
 requires_free_threading = pytest.mark.skipif(
-    not _gil_disabled(),
-    reason="not running on a free-threaded interpreter with the GIL disabled",
+    not _free_threaded_build(),
+    reason="not a free-threaded (PEP 703) build",
 )
 
 
@@ -83,6 +98,30 @@ def _import_in_subprocess(modules: list) -> "tuple":
         env=env,
     )
     return proc.stdout.strip() == "1", proc.stderr
+
+
+@requires_free_threading
+def test_test_runner_still_has_gil_disabled() -> None:
+    """The pytest process itself must still have the GIL off.
+
+    Nothing in the suite currently re-enables it, and this exists so that
+    stays true: if a dependency or pytest plugin starts importing an
+    extension that has not declared `Py_mod_gil`, the whole run has silently
+    stopped testing free-threading, and every other check in this file is
+    measuring an interpreter that no longer matches what CI claims to cover.
+
+    This is reported here, once, as a failure.  The checks below deliberately
+    do not depend on it -- they import into a fresh subprocess, so they stay
+    meaningful even when this one fails, and between them they name the
+    module responsible.
+    """
+    assert not sys._is_gil_enabled(), (
+        "the GIL was re-enabled before the tests ran, so this process is no "
+        "longer exercising free-threading.  Something imported an extension "
+        "that has not declared `Py_mod_gil = Py_MOD_GIL_NOT_USED` -- run "
+        "`python -W always -c 'import <suspect>'` to see the RuntimeWarning "
+        "naming it.  Note PYTHON_GIL=0 masks this."
+    )
 
 
 @requires_free_threading
