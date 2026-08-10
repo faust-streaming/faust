@@ -290,7 +290,7 @@ the second version is 2, and so on.
 :type: :class:`bool`
 :default: :const:`False`
 :environment: :envvar:`CYTHON_OPTIMIZATIONS`
-:version-introduced: 0.12.2
+:version-introduced: 0.14.0
 
 Enable the repaired fast paths in the Cython extensions.
 
