@@ -7,6 +7,7 @@ from mode.utils.futures import maybe_async, notify
 
 from faust.exceptions import Skip
 from faust.types import ChannelT, EventT
+from faust.types.tuples import ack_lock
 from faust.utils.optin import cython_optimizations_enabled
 
 
@@ -119,30 +120,39 @@ cdef class StreamIterator:
         last_stream_to_ack = False
         if do_ack and event is not None:
             message = event.message
-            if not message.acked:
-                refcount = message.refcount
-                refcount -= 1
-                if refcount < 0:
-                    refcount = 0
-                message.refcount = refcount
-                if not refcount:
-                    message.acked = True
-                    tp = message.tp
-                    offset = message.offset
-                    if self.acks_enabled_for(message.topic):
-                        committed = consumer._committed_offset[tp]
-                        try:
-                            if committed is None or offset >= committed:
-                                acked_index = consumer._acked_index[tp]
-                                if offset not in acked_index:
-                                    self.unacked.discard(message)
-                                    acked_index.add(offset)
-                                    acked_for_tp = consumer._acked[tp]
-                                    acked_for_tp.append(offset)
-                                    consumer._n_acked += 1
-                                    last_stream_to_ack = True
-                        finally:
-                            notify(consumer._waiting_for_ack)
+            # `ack_lock`, for the same reason the pure-Python twin takes it.
+            # This path inlines both `Message.ack` and `Consumer.ack` rather
+            # than calling them, so it does not inherit their locking and has
+            # to establish the same critical section itself -- otherwise the
+            # accelerated path would be the one that loses acks.
+            #
+            # The sensor callbacks below stay outside it: they are user code,
+            # they can be slow, and they do not touch the state being guarded.
+            with ack_lock:
+                if not message.acked:
+                    refcount = message.refcount
+                    refcount -= 1
+                    if refcount < 0:
+                        refcount = 0
+                    message.refcount = refcount
+                    if not refcount:
+                        message.acked = True
+                        tp = message.tp
+                        offset = message.offset
+                        if self.acks_enabled_for(message.topic):
+                            committed = consumer._committed_offset[tp]
+                            try:
+                                if committed is None or offset >= committed:
+                                    acked_index = consumer._acked_index[tp]
+                                    if offset not in acked_index:
+                                        self.unacked.discard(message)
+                                        acked_index.add(offset)
+                                        acked_for_tp = consumer._acked[tp]
+                                        acked_for_tp.append(offset)
+                                        consumer._n_acked += 1
+                                        last_stream_to_ack = True
+                            finally:
+                                notify(consumer._waiting_for_ack)
             tp = event.message.tp
             offset = event.message.offset
             self.on_stream_event_out(

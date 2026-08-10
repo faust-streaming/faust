@@ -103,16 +103,19 @@ GIL anyway -- which is what the CI job does -- but that is an assertion that
 
 .. _free-threading-races:
 
-Latent races that free-threading would expose
-=============================================
+Races that free-threading exposes
+=================================
 
 Because everything runs on one event loop, Faust relies in places on
 read-modify-write sequences that are not atomic.  The event loop serializes
 them today, so they are not bugs in normal use, but they *are* the code that
 would break first if any of it were ever driven from more than one thread.
 
-The clearest example is message reference counting, in
-:meth:`faust.types.tuples.Message.ack`:
+The clearest example was message reference counting, in
+:meth:`faust.types.tuples.Message.ack`.  It is **fixed** -- see
+:ref:`free-threading-ack-lock` below -- and is kept here because the shape
+recurs and because the measurements say something useful about which of these
+sequences are actually dangerous:
 
 .. sourcecode:: python
 
@@ -126,19 +129,60 @@ The clearest example is message reference counting, in
         refcount = self.refcount = max(self.refcount - n, 0)   # not atomic
         return refcount
 
-With 16 threads acking the same message on a free-threaded interpreter, the
-decrements are lost and the final ack -- the one that marks the offset
-safe-to-commit -- either fires more than once or never fires at all.  The same
-sequence is duplicated in :file:`faust/_cython/streams.pyx` (``after()``),
-:file:`faust/streams.py` and :file:`faust/transport/consumer.py`.
+With 32 threads acking the same message the decrements are lost and the final
+ack -- the one that marks the offset safe-to-commit -- either fires more than
+once or never fires at all.  The same sequence is duplicated in
+:file:`faust/_cython/streams.pyx` (``after()``) and
+:file:`faust/transport/consumer.py`.
 
 This is reachable from public API: :meth:`faust.Event.ack` is documented for
-callers to use, and nothing stops a user calling it from a thread.  It is
-*not* reachable from Faust's own code paths, all of which ack from the event
-loop.  Fixing it means either a lock on the ack path -- which is hot, and would
-cost every single-threaded user -- or documenting that acking is event-loop-only.
-That decision is deliberately left open; it is recorded here so it is not
-rediscovered from scratch.
+callers to use, and nothing stops a user calling it from a thread.  It is not
+reachable from Faust's own code paths, all of which ack from the event loop.
+
+The important correction to the earlier reading of this: **it was never a
+free-threading-only bug.**  The GIL is released between bytecodes, so
+``self.refcount = self.refcount - n`` -- ``LOAD_ATTR``, ``BINARY_OP``,
+``STORE_ATTR`` -- can interleave on an ordinary GIL build too.  Measured with
+:func:`sys.setswitchinterval` turned down, on GIL-enabled CPython 3.11:
+
+===========================  =================  ==================
+path                         GIL build (3.11)   free-threaded 3.13t
+===========================  =================  ==================
+``Message.ack`` (Python)     13 / 200 lost      races
+``after()`` (compiled)       0 / 200            6 / 50 lost
+===========================  =================  ==================
+
+The compiled path is the free-threading-specific one, and for a reason worth
+remembering: compiled code does not return through the eval loop, so with a
+GIL held nothing can switch threads *inside* that C function and the sequence
+is atomic by accident.  Take the GIL away and the accident goes with it.  The
+inverse of the intuition -- the Cython path looked like the safer one.
+
+.. _free-threading-ack-lock:
+
+The fix: ``ack_lock``
+---------------------
+
+:data:`faust.types.tuples.ack_lock` serializes the whole transition: the
+``acked`` test-and-set, the ``refcount`` decrement, and the final-ack
+bookkeeping in the consumer that follows from it.  All three paths take it --
+:meth:`Message.ack`, :meth:`Consumer.ack`, and ``StreamIterator.after``, which
+inlines the other two and so has to take it independently.
+
+It is process-wide rather than per-message because the state it guards is:
+the final ack mutates ``_acked_index``, ``_acked``, ``_n_acked`` and
+``_unacked_messages``, which every message shares.  It is reentrant because
+the transition nests (``Message.ack`` -> ``on_final_ack`` -> ``Consumer.ack``).
+
+On the cost, which was the reason this was left open: Faust acks from the
+event loop thread, so the ordinary case is one uncontended acquire per ack,
+against the dict and set operations the same critical section already
+performs.  It is contended only when a caller acks from another thread --
+which is exactly the case that was broken.
+
+:file:`tests/unit/test_ack_concurrency.py` covers all three paths and fails
+without the lock; see the note there on why the compiled check can only fail
+on a free-threaded interpreter.
 
 .. _free-threading-dev-env:
 
