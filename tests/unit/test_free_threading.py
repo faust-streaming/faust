@@ -18,6 +18,7 @@ CPython (and on the ``USE_CYTHON=false`` legs, where there is nothing to
 check).
 """
 
+import importlib.util
 import sys
 
 import pytest
@@ -88,7 +89,8 @@ def _import_in_subprocess(modules: list) -> "tuple":
 @pytest.mark.parametrize("module", CYTHON_MODULES)
 def test_extension_does_not_re_enable_gil(module: str) -> None:
     """Importing a faust extension must leave the GIL disabled."""
-    pytest.importorskip(module, reason="built without Cython (USE_CYTHON=false)")
+    if importlib.util.find_spec(module) is None:
+        pytest.skip(f"{module} is not built (USE_CYTHON=false)")
 
     gil_enabled, stderr = _import_in_subprocess([module])
 

@@ -31,7 +31,7 @@ intervaltree
 # modules in place rather than only through pip's isolated build.  See
 # build.txt: without them `python setup.py build_ext --inplace` either dies
 # on the setuptools import or silently builds nothing.
--r build.txt
+pytest-run-parallel>=0.10.0
 # mypy, pinned for the same reason as the formatters above: `scripts/check`
 # type-checks the faust package, so the lint job needs it installed.
 -r typecheck.txt
