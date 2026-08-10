@@ -148,7 +148,7 @@ async def faust_app_running(
     if finalize:
         app.finalize()
     if discover is None:
-        discover = bool(app.conf.autodiscover)
+        discover = bool(getattr(app.conf, "autodiscover", False))
     if discover:
         app.discover()
 

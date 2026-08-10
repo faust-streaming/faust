@@ -59,7 +59,7 @@ Notes
 """
 
 import typing
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any, Dict, List, Mapping, Optional
 
 from mode import get_logger
 
@@ -136,7 +136,7 @@ def _build_getter() -> Any:
         matching the behaviour of the aiokafka instrumentation.
         """
 
-        def get(self, carrier: Any, key: str) -> Optional[Sequence[str]]:
+        def get(self, carrier: Any, key: str) -> Optional[List[str]]:
             for item_key, value in _kafka_headers_as_list(carrier):
                 if item_key == key and value is not None:
                     if isinstance(value, bytes):
@@ -229,7 +229,7 @@ class OpenTelemetrySensor(Sensor):
         offset: int,
         stream: StreamT,
         event: EventT,
-        state: Dict = None,
+        state: Optional[Dict[Any, Any]] = None,
     ) -> None:
         """Detach the context and end the span."""
         if not state:
