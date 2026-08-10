@@ -34,7 +34,13 @@ try:
         generate_latest,
     )
 except ImportError:  # pragma: no cover
-    prometheus_client = None
+    # XXX ``prometheus_client`` doubles as a module and as a "is the optional
+    # extra installed?" sentinel (see ``setup_prometheus_sensors``), so the
+    # name is rebound to None when the import fails.  mypy binds the name to
+    # the module type at the import statement and has no way to widen it to
+    # Optional afterwards; the defect is the module-as-sentinel pattern, not
+    # this assignment.
+    prometheus_client = None  # type: ignore[assignment]
 
 
 __all__ = ["setup_prometheus_sensors"]
@@ -326,9 +332,13 @@ class FaustMetrics(NamedTuple):
             self.topic_partition_offset_commited,
         ]
         for metric in metrics:
+            # XXX ``MetricWrapperBase.collect`` is annotated ``Iterable[Metric]``
+            # even though every implementation returns a list, so subscripting
+            # it is unchecked: with a driver that really returns a lazy
+            # iterable this would raise TypeError at runtime.
             topics_partitions = frozenset(
                 (sample.labels["topic"], sample.labels["partition"])
-                for sample in metric.collect()[0].samples
+                for sample in metric.collect()[0].samples  # type: ignore[index]
             )
             for topic, partition in topics_partitions:
                 metric.remove(topic, partition)
@@ -339,8 +349,11 @@ class FaustMetrics(NamedTuple):
             self.topic_messages_sent,
         ]
         for metric in metrics:
+            # XXX see ``_clear_topic_partition_related_metrics``: ``collect()``
+            # is typed ``Iterable[Metric]`` but indexed as a sequence.
             topics = frozenset(
-                sample.labels["topic"] for sample in metric.collect()[0].samples
+                sample.labels["topic"]
+                for sample in metric.collect()[0].samples  # type: ignore[index]
             )
             for topic in topics:
                 metric.remove(topic)
@@ -410,7 +423,7 @@ class PrometheusMonitor(Monitor):
         offset: int,
         stream: StreamT,
         event: EventT,
-        state: typing.Dict = None,
+        state: Optional[typing.Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
@@ -555,7 +568,7 @@ class PrometheusMonitor(Monitor):
         response: typing.Optional[web.Response],
         state: typing.Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         super().on_web_request_end(app, request, response, state, view=view)

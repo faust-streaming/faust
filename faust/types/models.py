@@ -146,7 +146,7 @@ class ModelT(base):  # type: ignore
     @classmethod
     @abc.abstractmethod
     def from_data(
-        cls, data: Any, *, preferred_type: Type["ModelT"] = None
+        cls, data: Any, *, preferred_type: Optional[Type["ModelT"]] = None
     ) -> "ModelT": ...
 
     @classmethod
@@ -155,15 +155,15 @@ class ModelT(base):  # type: ignore
         cls,
         s: bytes,
         *,
-        default_serializer: CodecArg = None,  # XXX use serializer
-        serializer: CodecArg = None,
+        default_serializer: Optional[CodecArg] = None,  # XXX use serializer
+        serializer: Optional[CodecArg] = None,
     ) -> "ModelT": ...
 
     @abc.abstractmethod
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     @abc.abstractmethod
-    def dumps(self, *, serializer: CodecArg = None) -> bytes: ...
+    def dumps(self, *, serializer: Optional[CodecArg] = None) -> bytes: ...
 
     @abc.abstractmethod
     def derive(self, *objects: "ModelT", **fields: Any) -> "ModelT": ...
@@ -206,10 +206,10 @@ class FieldDescriptorT(Generic[T]):
         type: Optional[Type[T]] = None,
         model: Optional[Type[ModelT]] = None,
         required: bool = True,
-        default: T = None,
-        parent: "FieldDescriptorT" = None,
+        default: Optional[T] = None,
+        parent: Optional["FieldDescriptorT"] = None,
         exclude: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
         **kwargs: Any,
     ) -> None:
         # we have to do this in __init__ or mypy will think

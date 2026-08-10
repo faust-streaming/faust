@@ -35,7 +35,14 @@ class Router(RouterT):
         """Return the URL of web server that processes the key in a topics."""
         topic_name = topic.get_topic_name()
         k = topic.prepare_key(key, None)[0]
-        return self._assignor.external_key_store(topic_name, k)
+        # XXX PartitionAssignorT does not declare external_key_store(); only the
+        # concrete faust.assignor.partition_assignor.PartitionAssignor defines
+        # it.  Settings.PartitionAssignor lets users plug in their own assignor,
+        # and any subclass of PartitionAssignorT that does not happen to define
+        # this method will raise AttributeError right here.
+        return self._assignor.external_key_store(  # type: ignore[attr-defined]
+            topic_name, k
+        )
 
     def table_metadata(self, table_name: str) -> HostToPartitionMap:
         """Return metadata stored for table in the partition assignor."""
@@ -49,7 +56,12 @@ class Router(RouterT):
 
     def external_topics_metadata(self) -> HostToPartitionMap:
         """Return metadata stored for all external topics in the partition assignor."""
-        return self._assignor.external_topics_metadata()
+        # XXX PartitionAssignorT does not declare external_topics_metadata();
+        # only the concrete faust.assignor.partition_assignor.PartitionAssignor
+        # defines it.  Settings.PartitionAssignor lets users plug in their own
+        # assignor, and any subclass of PartitionAssignorT that does not happen
+        # to define this method will raise AttributeError right here.
+        return self._assignor.external_topics_metadata()  # type: ignore[attr-defined]
 
     @classmethod
     def _get_table_topic(cls, table: CollectionT) -> str:
