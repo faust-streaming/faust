@@ -93,7 +93,7 @@ from faust.types.transports import (
     TransactionManagerT,
     TransportT,
 )
-from faust.types.tuples import FutureMessage
+from faust.types.tuples import FutureMessage, ack_lock
 from faust.utils import terminal
 from faust.utils.functional import consecutive_numbers
 from faust.utils.tracing import traced_from_parent_span
@@ -824,25 +824,33 @@ class Consumer(Service, ConsumerT):
 
     def ack(self, message: Message) -> bool:
         """Mark message as being acknowledged by stream."""
-        if not message.acked:
-            message.acked = True
-            tp = message.tp
-            offset = message.offset
-            if self.app.topics.acks_enabled_for(message.topic):
-                committed = self._committed_offset[tp]
-                try:
-                    if committed is None or offset >= committed:
-                        acked_index = self._acked_index[tp]
-                        if offset not in acked_index:
-                            self._unacked_messages.discard(message)
-                            acked_index.add(offset)
-                            acked_for_tp = self._acked[tp]
-                            acked_for_tp.append(offset)
-                            self._n_acked += 1
-                            return True
-                finally:
-                    notify(self._waiting_for_ack)
-        return False
+        # Under `ack_lock` for the same reason `Message.ack` is: the
+        # `acked` test-and-set and the bookkeeping below have to be one
+        # step.  `_acked_index`, `_acked` and `_n_acked` are shared by every
+        # message, so two threads finishing different messages race here
+        # even though neither races on a message.  Reentrant, so the common
+        # route in -- `Message.ack` -> `ConsumerMessage.on_final_ack` -> here
+        # -- costs a recursive acquire rather than deadlocking.
+        with ack_lock:
+            if not message.acked:
+                message.acked = True
+                tp = message.tp
+                offset = message.offset
+                if self.app.topics.acks_enabled_for(message.topic):
+                    committed = self._committed_offset[tp]
+                    try:
+                        if committed is None or offset >= committed:
+                            acked_index = self._acked_index[tp]
+                            if offset not in acked_index:
+                                self._unacked_messages.discard(message)
+                                acked_index.add(offset)
+                                acked_for_tp = self._acked[tp]
+                                acked_for_tp.append(offset)
+                                self._n_acked += 1
+                                return True
+                    finally:
+                        notify(self._waiting_for_ack)
+            return False
 
     async def _wait_for_ack(self, timeout: float) -> None:
         # arm future so that `ack()` can wake us up

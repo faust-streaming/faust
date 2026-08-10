@@ -19,6 +19,7 @@ pytest-forked
 pytest-picked
 pytest-cov
 pytest-random-order>=0.5.4
+pytest-run-parallel>=0.10.0
 pytest<8
 python-dateutil>=2.8
 pytz>=2018.7

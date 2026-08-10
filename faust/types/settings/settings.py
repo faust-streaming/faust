@@ -605,6 +605,59 @@ class Settings(base.SettingsRegistry):
         """
 
     @sections.Common.setting(
+        params.Bool,
+        version_introduced="0.14.0",
+        env_name="CYTHON_OPTIMIZATIONS",
+        default=False,
+    )
+    def cython_optimizations(self) -> bool:
+        """Enable the repaired fast paths in the Cython extensions.
+
+        Disabled by default, and has no effect at all unless the optional
+        Cython extension modules were built.
+
+        Faust ships a few hot paths twice: a pure-Python implementation, and a
+        Cython one used instead when the extensions are available.  Two of the
+        Cython fast paths never actually ran -- each was guarded by a condition
+        that could not become true -- so for years the extensions quietly did
+        more work than the Python they were meant to accelerate:
+
+        * ``StreamIterator`` always awaited the channel rather than taking
+          values already sitting in the queue, and
+        * ``ConductorHandler`` re-deserialized the payload once per subscribed
+          channel instead of decoding once and reusing the event.
+
+        Both are repaired, but the repaired code has by definition never run in
+        production, so it is opt-in.  Leaving this ``False`` keeps the
+        extensions behaving exactly as the released versions do.
+
+        Note this makes the Cython path differ from the pure-Python path while
+        disabled -- which has always been true; the flag does not introduce the
+        divergence, it just makes it selectable.  The most visible difference is
+        in the conductor: a reused event is never decoded again, so a channel
+        whose payload would fail to deserialize raises no error when the event
+        is reused, and does when it is not.  That changes which channels receive
+        a message and how many acks it takes.
+
+        Enable it to get the fast paths::
+
+            app = faust.App('myapp', cython_optimizations=True)
+
+        This setting is transitional: it is expected to default to ``True`` in
+        a later release, then be deprecated and removed, at which point the
+        fast paths are simply the behaviour.  See the developer guide for the
+        sequence -- and for why faust reads this setting internally through
+        :func:`faust.utils.optin.cython_optimizations_enabled` rather than
+        directly, which is what keeps the eventual deprecation from warning
+        once per stream and once per assigned partition.
+
+        .. seealso::
+
+            The developer guide's :ref:`developers-cython` page, for what the
+            two faults were and how the implementations are held level.
+        """
+
+    @sections.Common.setting(
         params.Seconds,
         env_name="BLOCKING_TIMEOUT",
         default=None,
