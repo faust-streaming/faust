@@ -3,10 +3,25 @@
 import os
 import re
 import sys
-from distutils.command.build_ext import build_ext
-from distutils.errors import CCompilerError, DistutilsExecError, DistutilsPlatformError
 
 from setuptools import Extension, find_packages, setup
+
+# setuptools, not distutils: distutils was removed from the standard library
+# in Python 3.12 (PEP 632), and `import distutils` only keeps working because
+# setuptools injects a replacement early via its `_distutils_hack`.  That is a
+# compatibility shim, not an API to build on -- and it is not always in place,
+# so on an interpreter without setuptools importable this failed with a bare
+# `ModuleNotFoundError: No module named 'distutils'` before reaching the line
+# above that actually needs setuptools.
+#
+# These are the public equivalents; `setuptools.errors` has exposed them since
+# setuptools 59, well below the >=69 floor in pyproject.toml.
+from setuptools.command.build_ext import build_ext
+from setuptools.errors import (
+    CCompilerError,
+    ExecError,
+    PlatformError,
+)
 
 try:
     from Cython.Build import cythonize
@@ -106,7 +121,7 @@ class ve_build_ext(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except (DistutilsPlatformError, FileNotFoundError):
+        except (PlatformError, FileNotFoundError):
             raise BuildFailed()
 
     def build_extension(self, ext):
@@ -114,8 +129,8 @@ class ve_build_ext(build_ext):
             build_ext.build_extension(self, ext)
         except (
             CCompilerError,
-            DistutilsExecError,
-            DistutilsPlatformError,
+            ExecError,
+            PlatformError,
             ValueError,
         ):
             raise BuildFailed()
@@ -190,8 +205,13 @@ with open("README.md") as readme_file:
 def do_setup(**kwargs):
     setup(
         name="faust-streaming",
+        # No `setup_requires=["setuptools_scm"]` alongside this.  That option
+        # is resolved by `dist.fetch_build_eggs()`, the easy_install-era
+        # installer setuptools now warns about on every invocation, and it is
+        # redundant: setuptools_scm is declared in `[build-system].requires`,
+        # so a PEP 517 build already has it, and requirements/build.txt
+        # provides it for a direct `setup.py` call.
         use_scm_version=True,
-        setup_requires=["setuptools_scm"],
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
@@ -202,7 +222,11 @@ def do_setup(**kwargs):
         python_requires=">=3.10.0",
         zip_safe=False,
         install_requires=reqs("requirements.txt"),
-        tests_require=reqs("test.txt"),
+        # No `tests_require=reqs("test.txt")` either.  It only ever fed
+        # `setup.py test` -- the command setuptools 72.0.0 deleted, taking
+        # `setuptools.command.test` with it -- so setuptools has been
+        # reporting it as `Unknown distribution option` and dropping it on the
+        # floor.  requirements/test.txt is what installs the test dependencies.
         extras_require=extras_require(),
         entry_points={
             "console_scripts": [
