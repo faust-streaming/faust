@@ -249,7 +249,13 @@ jobs:
           pip install .
       - name: Run tests
         if: steps.install.outcome == 'success'
-        run: scripts/tests
+        # `scripts/tests` also runs bandit after pytest, which is redundant in
+        # this advisory leg and pushes the already-slower PyPy run into the job
+        # timeout. Run pytest directly here, and stop at the first failure so a
+        # red job reports the real test error instead of a timeout.
+        run: >
+          python -m pytest tests/unit tests/functional tests/integration
+          tests/meticulous tests/regression -x
       - name: Enforce coverage
         if: steps.install.outcome == 'success'
         uses: codecov/codecov-action@v5

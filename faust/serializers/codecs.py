@@ -177,6 +177,7 @@ the extension with other Faust users.
 
 import io
 import pickle as _pickle  # nosec B403
+import pickletools
 import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType
@@ -203,6 +204,10 @@ __all__ = [
     "dumps",
     "loads",
 ]
+
+
+_STACK_MARK = object()
+_STACK_PLACEHOLDER = object()
 
 
 class Codec(CodecT):
@@ -411,16 +416,113 @@ class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
 
     def find_class(self, module: str, name: str) -> Any:
         """Look up ``module.name``, raising unless it is allowlisted."""
-        allowed = self.ALLOWED_CLASSES.get(module)
-        if allowed is None or name not in allowed:
-            raise _pickle.UnpicklingError(
-                f"Refusing to unpickle disallowed class/function "
-                f"{module}.{name}: not in "
-                "RestrictedUnpickler.ALLOWED_CLASSES. Extend the allowlist "
-                "if this type is expected from your producers, or use the "
-                "unrestricted 'pickle' codec if they are fully trusted."
-            )
+        _restricted_pickle_check_global(module, name, self.ALLOWED_CLASSES)
         return super().find_class(module, name)
+
+
+def _restricted_pickle_check_global(
+    module: str,
+    name: str,
+    allowed_classes: MutableMapping[str, FrozenSet[str]],
+) -> None:
+    allowed = allowed_classes.get(module)
+    if allowed is None or name not in allowed:
+        raise _pickle.UnpicklingError(
+            f"Refusing to unpickle disallowed class/function "
+            f"{module}.{name}: not in "
+            "RestrictedUnpickler.ALLOWED_CLASSES. Extend the allowlist "
+            "if this type is expected from your producers, or use the "
+            "unrestricted 'pickle' codec if they are fully trusted."
+        )
+
+
+def _restricted_pickle_pop_mark(stack: list) -> None:
+    while stack:
+        if stack.pop() is _STACK_MARK:
+            return
+    raise _pickle.UnpicklingError("Malformed pickle stream: MARK not found")
+
+
+def _restricted_pickle_memoize(
+    memo: MutableMapping[int, Any], next_index: int, value: Any
+) -> int:
+    memo[next_index] = value
+    return next_index + 1
+
+
+def _restricted_pickle_validate_globals(
+    payload: bytes,
+    allowed_classes: MutableMapping[str, FrozenSet[str]],
+) -> None:
+    # PyPy's unpickler can load STACK_GLOBAL payloads without consulting an
+    # overridden find_class(), so pre-scan the pickle bytecode and reject any
+    # disallowed globals before unpickling executes them.
+    stack = []
+    memo: Dict[int, Any] = {}
+    next_memo_index = 0
+    for opcode, arg, _pos in pickletools.genops(payload):
+        name = opcode.name
+        if name in {"SHORT_BINUNICODE", "BINUNICODE", "BINUNICODE8", "UNICODE"}:
+            stack.append(arg)
+        elif name == "GLOBAL":
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: GLOBAL missing module/name"
+                )
+            module, _, global_name = arg.partition(" ")
+            _restricted_pickle_check_global(module, global_name, allowed_classes)
+            stack.append(_STACK_PLACEHOLDER)
+        elif name == "STACK_GLOBAL":
+            try:
+                global_name = stack.pop()
+                module = stack.pop()
+            except IndexError as exc:
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: STACK_GLOBAL underflow"
+                ) from exc
+            if not isinstance(module, str) or not isinstance(global_name, str):
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: STACK_GLOBAL expected module/name strings"
+                )
+            _restricted_pickle_check_global(module, global_name, allowed_classes)
+            stack.append(_STACK_PLACEHOLDER)
+        elif name in {"PUT", "BINPUT", "LONG_BINPUT"}:
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    f"Malformed pickle stream: {name} missing memo index"
+                )
+            memo_index = int(arg)
+            memo[memo_index] = stack[-1]
+            next_memo_index = max(next_memo_index, memo_index + 1)
+        elif name in {"GET", "BINGET", "LONG_BINGET"}:
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    f"Malformed pickle stream: {name} missing memo index"
+                )
+            stack.append(memo[int(arg)])
+        elif name == "MEMOIZE":
+            next_memo_index = _restricted_pickle_memoize(
+                memo, next_memo_index, stack[-1]
+            )
+        else:
+            before = [item.name for item in opcode.stack_before]
+            if "mark" in before:
+                _restricted_pickle_pop_mark(stack)
+                for _ in range(before.index("mark")):
+                    if not stack:
+                        raise _pickle.UnpicklingError(
+                            f"Malformed pickle stream: {name} underflow"
+                        )
+                    stack.pop()
+            else:
+                for _ in before:
+                    if not stack:
+                        raise _pickle.UnpicklingError(
+                            f"Malformed pickle stream: {name} underflow"
+                        )
+                    stack.pop()
+            for item in opcode.stack_after:
+                stack.append(_STACK_MARK if item.name == "mark" else _STACK_PLACEHOLDER)
 
 
 class restricted_pickle(Codec):
@@ -433,6 +535,7 @@ class restricted_pickle(Codec):
     """
 
     def _loads(self, s: bytes) -> Any:
+        _restricted_pickle_validate_globals(s, RestrictedUnpickler.ALLOWED_CLASSES)
         return RestrictedUnpickler(io.BytesIO(s)).load()
 
     def _dumps(self, obj: Any) -> bytes:
