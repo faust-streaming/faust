@@ -98,6 +98,13 @@ extensions = [
         extra_link_args=LDFLAGS,
     ),
     Extension(
+        "faust.models._cython.fields",
+        ["faust/models/_cython/fields" + ext],
+        libraries=LIBRARIES,
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
+    Extension(
         "faust.transport._cython.conductor",
         ["faust/transport/_cython/conductor" + ext],
         libraries=LIBRARIES,
