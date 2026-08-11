@@ -1,0 +1,3 @@
+# Keep Fickling in its own optional extra so users can opt into this scanner
+# and maintainers can swap in another implementation if needed.
+fickling>=0.1.12,<0.2
