@@ -19,12 +19,22 @@ try:
     import redis.asyncio as aredis
     import redis.exceptions
 
-    redis.client.Redis
+    redis.asyncio.client.Redis
 except ImportError:  # pragma: no cover
-    aredis = None  # noqa
+    # ``on_start`` (and the module-level ``if redis is None`` guards) key off
+    # ``redis`` being ``None`` when the library is missing; bind both names so
+    # the guard fires instead of raising ``NameError``.  mypy has no way to
+    # express "this module name may be ``None`` when the import failed", so the
+    # sentinel assignment has to be excused here.
+    redis = aredis = None  # type: ignore[assignment]  # noqa
 
 if typing.TYPE_CHECKING:  # pragma: no cover
-    from redis import StrictRedis as _RedisClientT
+    from redis.asyncio import Redis as _AsyncRedis, RedisCluster as _AsyncRedisCluster
+
+    # The backend awaits every command, so the clients it builds are the
+    # asyncio ones.  ``RedisCluster`` is not a subclass of ``Redis``, they only
+    # share the (command-less) ``AbstractRedis`` base, hence the union.
+    _RedisClientT = Union[_AsyncRedis, _AsyncRedisCluster]
 else:
 
     class _RedisClientT: ...  # noqa
@@ -84,19 +94,25 @@ class CacheBackend(base.CacheBackend):
         self._client_by_scheme = self._init_schemes()
 
     def _init_schemes(self) -> Mapping[str, Type[_RedisClientT]]:
-        if redis is None:  # pragma: no cover
+        if aredis is None:  # pragma: no cover
             return {}
         else:
+            # Use the asyncio clients: ``_get``/``_set``/``_delete`` await the
+            # client, so the synchronous ``redis.StrictRedis`` would raise
+            # "object ... can't be used in 'await' expression" against a real
+            # server (it only appeared to work because the tests mock it).
             return {
-                RedisScheme.SINGLE_NODE.value: redis.StrictRedis,
-                RedisScheme.CLUSTER.value: redis.RedisCluster,
+                RedisScheme.SINGLE_NODE.value: aredis.StrictRedis,
+                RedisScheme.CLUSTER.value: aredis.RedisCluster,
             }
 
     async def _get(self, key: str) -> Optional[bytes]:
-        value: Optional[bytes] = await self.client.get(key)
-        if value is not None:
+        # Clients created with ``decode_responses`` hand back ``str``, so the
+        # reply is not necessarily ``bytes``; ``want_bytes`` normalises it.
+        value: Union[bytes, str, None] = await self.client.get(key)
+        if isinstance(value, str):
             return want_bytes(value)
-        return None
+        return value
 
     async def _set(
         self, key: str, value: bytes, timeout: Optional[float] = None
@@ -116,6 +132,12 @@ class CacheBackend(base.CacheBackend):
                 "Redis cache backend requires `pip install redis`"
             )
         await self.connect()
+
+    async def on_stop(self) -> None:
+        """Call when Redis backend stops -- close the client connections."""
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
 
     async def connect(self) -> None:
         """Connect to Redis/Redis Cluster server."""
