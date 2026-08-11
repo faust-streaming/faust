@@ -1,4 +1,5 @@
 import inspect
+import os
 import sys
 from datetime import datetime
 from decimal import Decimal, DecimalTuple
@@ -17,7 +18,6 @@ from typing import (
     cast,
 )
 
-from mode.utils.objects import cached_property
 from mode.utils.text import pluralize
 
 from faust.exceptions import ValidationError
@@ -26,6 +26,8 @@ from faust.utils import iso8601
 
 from .tags import Tag
 from .typing import NodeType, TypeExpression
+
+NO_CYTHON = bool(os.environ.get("NO_CYTHON", False))
 
 __all__ = [
     "TYPE_TO_FIELD",
@@ -54,7 +56,51 @@ def _is_concrete_model(typ: Optional[Type] = None) -> bool:
     )
 
 
-class FieldDescriptor(FieldDescriptorT[T]):
+class _PyFieldDescriptorBase:
+    """Pure-Python read path for :class:`FieldDescriptor`.
+
+    Split out so it can be swapped for a Cython implementation.  ``__get__``
+    runs on every access to every field of every model instance, which makes
+    it the hottest method in the model layer.
+    """
+
+    field: str
+    required: bool
+    lazy_coercion: bool
+    _to_python: Optional[Callable[[T], T]]
+
+    def __get__(self, instance: Any, owner: Type) -> Any:
+        # class attribute accessed
+        if instance is None:
+            return self
+
+        field = self.field
+        instance_dict = instance.__dict__
+        to_python = self._to_python
+        value = instance_dict[field]
+        if self.lazy_coercion and to_python is not None:
+            evaluated_fields: Set[str]
+            evaluated_fields = instance.__evaluated_fields__
+            if field not in evaluated_fields:
+                if value is not None or self.required:
+                    value = instance_dict[field] = to_python(value)
+                evaluated_fields.add(field)
+        return value
+
+
+if not NO_CYTHON:  # pragma: no cover
+    try:
+        from ._cython.fields import FieldDescriptorBase as _FieldDescriptorBase
+    except ImportError:
+        _FieldDescriptorBase = _PyFieldDescriptorBase  # type: ignore[misc,assignment]
+else:  # pragma: no cover
+    _FieldDescriptorBase = _PyFieldDescriptorBase  # type: ignore[misc,assignment]
+
+
+class FieldDescriptor(  # type: ignore[misc,valid-type]
+    _FieldDescriptorBase,
+    FieldDescriptorT[T],
+):
     """Describes a field.
 
     Used for every field in Record so that they can be used in join's
@@ -126,6 +172,13 @@ class FieldDescriptor(FieldDescriptorT[T]):
     #: Field may be tagged with Secret/Sensitive/etc.
     tag: Optional[Type[Tag]]
 
+    #: Set when reading this field has to coerce the value on access,
+    #: rather than at construction time.  Read on every field access.
+    lazy_coercion: bool
+
+    #: Model types reachable from this field's type expression.
+    related_models: Set[Type[ModelT]]
+
     _to_python: Optional[Callable[[T], T]]
     _expr: Optional[TypeExpression]
 
@@ -166,10 +219,22 @@ class FieldDescriptor(FieldDescriptorT[T]):
         self.tag = tag
         self._to_python = None
         self._expr = None
+        # Plain attributes rather than cached_property.  mode's
+        # cached_property defines __set__, which makes it a *data*
+        # descriptor, so every read goes through the descriptor protocol
+        # instead of short-circuiting to the instance dict -- and
+        # lazy_coercion is read on every single model field access.
+        # Both are filled in by on_model_attached() once _expr exists;
+        # until then a descriptor has no _to_python either, so the False
+        # default cannot change what __get__ does.
+        self.lazy_coercion = False
+        self.related_models = set()
 
     def on_model_attached(self) -> None:
-        self._expr = self._prepare_type_expression()
+        expr = self._expr = self._prepare_type_expression()
         self._to_python = self._compile_type_expression()
+        self.related_models = expr.found_types[NodeType.MODEL]
+        self.lazy_coercion = expr.has_generic_types or expr.has_models
 
     def _prepare_type_expression(self) -> TypeExpression:
         expr = TypeExpression(
@@ -248,24 +313,6 @@ class FieldDescriptor(FieldDescriptorT[T]):
         if typ is not None and _is_concrete_model(typ):
             typ._contribute_field_descriptors(self, typ._options, parent=self)
 
-    def __get__(self, instance: Any, owner: Type) -> Any:
-        # class attribute accessed
-        if instance is None:
-            return self
-
-        field = self.field
-        instance_dict = instance.__dict__
-        to_python = self._to_python
-        value = instance_dict[field]
-        if self.lazy_coercion and to_python is not None:
-            evaluated_fields: Set[str]
-            evaluated_fields = instance.__evaluated_fields__
-            if field not in evaluated_fields:
-                if value is not None or self.required:
-                    value = instance_dict[field] = to_python(value)
-                evaluated_fields.add(field)
-        return value
-
     def should_coerce(self, value: Any, coerce: Optional[bool] = None) -> bool:
         c = coerce if coerce is not None else self.coerce
         return c and (self.required or value is not None)
@@ -303,16 +350,6 @@ class FieldDescriptor(FieldDescriptorT[T]):
     def ident(self) -> str:
         """Return the fields identifier."""
         return f"{self.model.__name__}.{self.field}"
-
-    @cached_property
-    def related_models(self) -> Set[Type[ModelT]]:
-        assert self._expr is not None
-        return self._expr.found_types[NodeType.MODEL]
-
-    @cached_property
-    def lazy_coercion(self) -> bool:
-        assert self._expr is not None
-        return self._expr.has_generic_types or self._expr.has_models
 
 
 class BooleanField(FieldDescriptor[bool]):

@@ -63,6 +63,10 @@ Codecs
 :``faust[yaml]``:
     for using YAML and the :pypi:`PyYAML` library in streams.
 
+:``faust[fickling]``:
+    for using the optional :pypi:`fickling` scanner with the
+    ``pickle_fickling`` codec.
+
 Optimization
 ~~~~~~~~~~~~
 
@@ -80,6 +84,9 @@ Sensors
 
 :``faust[prometheus]``:
     for using the Prometheus Faust monitor.
+
+:``faust[opentelemetry]``:
+    for using the OpenTelemetry Faust monitor.
 
 :``faust[sentry]``:
     for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
