@@ -45,6 +45,7 @@ BUNDLES = {
     "datadog",
     "debug",
     "fast",
+    "fickling",
     "opentelemetry",
     "opentracing",
     "orjson",

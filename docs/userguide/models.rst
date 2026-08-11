@@ -1016,6 +1016,8 @@ Supported codecs
 * **pickle**  - :mod:`pickle` with Base64 encoding (not URL-safe).
 * **pickle_restricted** - :mod:`pickle` with Base64 encoding, restricted at
   load time to a safe allowlist of classes.
+* **pickle_fickling** - :mod:`pickle` with Base64 encoding, checked by
+  :pypi:`fickling` before load time.
 * **binary**  - Base64 encoding (not URL-safe).
 
 Encodings are not URL-safe if the encoded payload cannot be embedded
@@ -1055,6 +1057,62 @@ directly into a URL query parameter.
             **RestrictedUnpickler.ALLOWED_CLASSES,
             "myapp.models": frozenset({"Withdrawal", "Order"}),
         }
+
+    Faust also provides **pickle_fickling** as an optional third-party
+    scanner for applications that want Fickling's pickle analysis instead
+    of Faust's built-in allowlist. Install the extra before using it:
+
+    .. sourcecode:: console
+
+        $ pip install "faust-streaming[fickling]"
+
+    You can then configure the codec by name:
+
+    .. sourcecode:: python
+
+        app = faust.App(
+            "orders",
+            broker="kafka://localhost",
+            value_serializer="pickle_fickling",
+        )
+
+    ``pickle_fickling`` uses Fickling's default maximum acceptable
+    severity, ``fickling.loader.Severity.LIKELY_SAFE``. To choose a
+    different tolerance, pass one of Fickling's severity constants to the
+    codec factory and provide that codec object to Faust:
+
+    .. sourcecode:: python
+
+        import faust
+        from fickling.loader import Severity
+        from faust.serializers.codecs import pickle_fickling
+
+        app = faust.App(
+            "orders",
+            broker="kafka://localhost",
+            value_serializer=pickle_fickling(
+                max_acceptable_severity=Severity.SUSPICIOUS,
+            ),
+        )
+
+    Fickling currently defines these severities, ordered from strictest to
+    most tolerant:
+
+    * ``Severity.LIKELY_SAFE``
+    * ``Severity.POSSIBLY_UNSAFE``
+    * ``Severity.SUSPICIOUS``
+    * ``Severity.LIKELY_UNSAFE``
+    * ``Severity.LIKELY_OVERTLY_MALICIOUS``
+    * ``Severity.OVERTLY_MALICIOUS``
+
+    Choose the lowest tolerance that supports your trusted payloads. Higher
+    tolerances allow more pickle programs to run.
+
+    Fickling support is kept in its own optional dependency and adapter
+    module, ``faust.serializers._fickling``. This boundary is intentional:
+    if Fickling has a bug, dependency issue, or policy mismatch for your
+    deployment, Faust users and maintainers can switch this codec to another
+    implementation without changing the rest of the serializer library.
 
 Serialization by name
 ---------------------
