@@ -63,6 +63,10 @@ Codecs
 :``faust[yaml]``:
     for using YAML and the :pypi:`PyYAML` library in streams.
 
+:``faust[fickling]``:
+    for using the optional :pypi:`fickling` scanner with the
+    ``pickle_fickling`` codec.
+
 Optimization
 ~~~~~~~~~~~~
 

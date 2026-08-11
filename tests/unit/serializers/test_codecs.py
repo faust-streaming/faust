@@ -1,5 +1,8 @@
 import base64
+import importlib
 import pickle
+import sys
+import types
 import warnings
 from typing import Mapping
 from unittest.mock import patch
@@ -9,6 +12,7 @@ from hypothesis import given
 from hypothesis.strategies import binary, dictionaries, text
 from mode.utils.compat import want_str
 
+import faust.serializers._fickling as fickling_codec
 from faust.exceptions import ImproperlyConfigured, SecurityWarning
 from faust.serializers.codecs import (
     Codec,
@@ -20,6 +24,7 @@ from faust.serializers.codecs import (
     get_codec,
     json,
     loads,
+    pickle_fickling,
     register,
     uses_unsafe_pickle,
     warn_if_unsafe_pickle,
@@ -107,6 +112,102 @@ def test_pickle_loads_warns_of_security_risk() -> None:
     payload = dumps("pickle", DATA)
     with pytest.warns(SecurityWarning):
         assert loads("pickle", payload) == DATA
+
+
+def _install_fake_fickling(monkeypatch, loads, unsafe_file_error) -> None:
+    fake_fickling = types.ModuleType("fickling")
+    fake_fickling.__path__ = []
+    fake_loader = types.ModuleType("fickling.loader")
+    fake_loader.loads = loads
+    fake_exception = types.ModuleType("fickling.exception")
+    fake_exception.UnsafeFileError = unsafe_file_error
+    monkeypatch.setitem(sys.modules, "fickling", fake_fickling)
+    monkeypatch.setitem(sys.modules, "fickling.loader", fake_loader)
+    monkeypatch.setitem(sys.modules, "fickling.exception", fake_exception)
+
+
+def test_pickle_fickling_requires_optional_dependency(monkeypatch) -> None:
+    real_import_module = importlib.import_module
+    fickling_modules = {"fickling.loader", "fickling.exception"}
+
+    def import_module(name: str):
+        if name in fickling_modules:
+            raise ImportError(name)
+        return real_import_module(name)
+
+    monkeypatch.setattr(fickling_codec.importlib, "import_module", import_module)
+
+    payload = dumps("pickle_fickling", DATA)
+    with pytest.raises(ImproperlyConfigured, match=r"faust-streaming\[fickling\]"):
+        loads("pickle_fickling", payload)
+
+
+def test_pickle_fickling_uses_fickling_loads(monkeypatch) -> None:
+    class FakeUnsafeFileError(Exception):
+        pass
+
+    calls = []
+
+    def fake_loads(payload: bytes, **kwargs):
+        calls.append((payload, kwargs))
+        return pickle.loads(payload)
+
+    _install_fake_fickling(monkeypatch, fake_loads, FakeUnsafeFileError)
+
+    payload = dumps("pickle_fickling", DATA)
+    assert loads("pickle_fickling", payload) == DATA
+    assert calls == [(base64.b64decode(payload), {})]
+
+
+def test_pickle_fickling_configures_max_acceptable_severity(monkeypatch) -> None:
+    class FakeUnsafeFileError(Exception):
+        pass
+
+    class FakeSeverity:
+        SUSPICIOUS = object()
+
+    calls = []
+
+    def fake_loads(payload: bytes, **kwargs):
+        calls.append((payload, kwargs))
+        return pickle.loads(payload)
+
+    _install_fake_fickling(monkeypatch, fake_loads, FakeUnsafeFileError)
+
+    codec = pickle_fickling(max_acceptable_severity=FakeSeverity.SUSPICIOUS)
+    payload = codec.dumps(DATA)
+    assert codec.loads(payload) == DATA
+    assert calls == [
+        (
+            base64.b64decode(payload),
+            {"max_acceptable_severity": FakeSeverity.SUSPICIOUS},
+        )
+    ]
+
+
+def test_pickle_fickling_converts_fickling_rejections(monkeypatch) -> None:
+    class FakeUnsafeFileError(Exception):
+        pass
+
+    def fake_loads(payload: bytes, **kwargs):
+        raise FakeUnsafeFileError("blocked")
+
+    _install_fake_fickling(monkeypatch, fake_loads, FakeUnsafeFileError)
+
+    payload = dumps("pickle_fickling", DATA)
+    with pytest.raises(
+        pickle.UnpicklingError, match="Fickling rejected unsafe pickle payload"
+    ):
+        loads("pickle_fickling", payload)
+
+
+def test_pickle_fickling_blocks_known_malicious_payload_when_installed() -> None:
+    pytest.importorskip("fickling")
+    payload = base64.b64encode(b"cos\nsystem\n(S'echo hello world'\ntR.")
+    with pytest.raises(
+        pickle.UnpicklingError, match="Fickling rejected unsafe pickle payload"
+    ):
+        loads("pickle_fickling", payload)
 
 
 class _EvilPayload:
