@@ -11,7 +11,7 @@ from faust.exceptions import KeyDecodeError, ValueDecodeError
 from faust.types import K, ModelArg, ModelT, V
 from faust.types.serializers import RegistryT
 
-from .codecs import CodecArg, dumps, loads
+from .codecs import CodecArg, dumps, loads, warn_if_unsafe_pickle
 
 __all__ = ["Registry"]
 
@@ -27,17 +27,21 @@ class Registry(RegistryT):
     """
 
     def __init__(
-        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+        self,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: CodecArg = "json",
     ) -> None:
         self.key_serializer = key_serializer
         self.value_serializer = value_serializer
+        warn_if_unsafe_pickle(key_serializer)
+        warn_if_unsafe_pickle(value_serializer)
 
     def loads_key(
         self,
         typ: Optional[ModelArg],
         key: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> K:
         """Deserialize message key.
 
@@ -81,7 +85,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         value: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> Any:
         """Deserialize value.
 
@@ -128,7 +132,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         key: K,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         skip: IsInstanceArg = (bytes,),
     ) -> Optional[bytes]:
         """Serialize key.
@@ -157,7 +161,7 @@ class Registry(RegistryT):
         typ: Optional[ModelArg],
         value: V,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         skip: IsInstanceArg = (bytes,),
     ) -> Optional[bytes]:
         """Serialize value.

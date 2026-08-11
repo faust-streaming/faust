@@ -336,7 +336,11 @@ class Worker(mode.Worker):
 
     def autodiscover(self) -> None:
         """Autodiscover modules and files to find @agent decorators, etc."""
-        if self.app.conf.autodiscover:
+        # ``Settings.autodiscover`` is a class-level setting descriptor typed as
+        # ``AutodiscoverArg``, and that union contains ``Callable[[], ...]``.
+        # mypy therefore tries to bind ``self`` to it on attribute access;
+        # the setting is a plain value, not a method.
+        if self.app.conf.autodiscover:  # type: ignore[misc]
             self.app.discover()
 
     def _setproctitle(self, info: str, *, ident: str = PSIDENT) -> None:

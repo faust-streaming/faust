@@ -17,6 +17,18 @@ env:
   PIP_DISABLE_PIP_VERSION_CHECK: '1'
   PIP_NO_PYTHON_VERSION_WARNING: '1'
   PYTHON_LATEST: '3.12'
+# One run per pull request at a time: a new push supersedes the run of the
+# commit it replaces, so the ~45 job-minutes of a full matrix are not spent
+# validating a commit nobody will ever merge.
+#
+# Cancellation is deliberately limited to `pull_request`.  Every other event
+# gets its own group and always runs to completion: a cancelled `merge_group`
+# candidate would stall the merge queue, a cancelled `release` would skip
+# publishing, and `push` runs on master are what seed the caches everything
+# else restores from.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   lint:
     name: Check linting
@@ -31,6 +43,17 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_LATEST }}
           cache: pip
+          # Hash every requirements file the workflow installs from, not just
+          # the default `**/requirements.txt`.  The pins this job actually
+          # installs live in test.txt, which pulls requirements.txt and several
+          # extras/ files in via `-r`; with the default pattern the key never
+          # moved when those changed, so the entry could neither be refreshed
+          # (a hit never re-saves) nor serve the packages that were added.
+          # Every job here uses the same list so they all share one entry per
+          # interpreter instead of each warming a partial one.
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       - run: |
           python -m pip install build
           python -m pip install -r requirements/test.txt
@@ -89,7 +112,12 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
-          cache-dependency-path: requirements/test.txt
+          # See the lint job: test.txt alone leaves the key unchanged when the
+          # transitively-included pins move, and the confluent legs below
+          # install extras/ckafka.txt on top of it.
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       - name: Install dependencies
         run: |
           pip install -r requirements/test.txt
@@ -97,7 +125,26 @@ jobs:
           if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
             pip install -r requirements/extras/ckafka.txt
           fi
+      - name: Build the Cython extensions in place
+        # `pip install .` above compiles the extensions into site-packages,
+        # where the tests never see them: pytest runs from the repository
+        # root, so `import faust` resolves to the source tree, and every
+        # accelerated import sits behind `try: ... except ImportError`.  The
+        # fallback engaged silently, so these legs differed from the
+        # `use-cython: false` ones only in whether the build step succeeded --
+        # the compiled code itself was never executed by a single test.
+        #
+        # Building in place puts the .so files next to the .pyx files, which
+        # is what the source-tree import actually picks up.
+        if: matrix.use-cython == 'true'
+        run: USE_CYTHON=1 python setup.py build_ext --inplace
       - name: Run tests
+        # FAUST_REQUIRE_CYTHON turns a silent fallback into a failure, so this
+        # leg cannot quietly go back to testing pure Python if the build stops
+        # producing importable extensions.  See
+        # tests/unit/test_cython_parity.py.
+        env:
+          FAUST_REQUIRE_CYTHON: ${{ matrix.use-cython == 'true' && '1' || '' }}
         run: |
           if [ "${{ matrix.kafka-driver }}" = "confluent" ]; then
             # Dedicated confluent leg: run just the confluent driver's unit
@@ -110,6 +157,69 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+  test-freethreading:
+    name: 'Python ${{ matrix.python-version }} (free-threaded)'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The two interpreters `[tool.cibuildwheel]` publishes free-threaded
+        # wheels for.  Keep the two lists in step: a version we ship a wheel
+        # for is a version this job has to cover.
+        python-version: ['3.13t', '3.14t']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
+      - name: Install dependencies
+        # Not requirements/test.txt: parts of it cannot be built on a
+        # free-threaded interpreter at all (twine -> cffi, and hypothesis'
+        # PyO3 extension on 3.13t).  freethreading.txt is that list minus the
+        # ones that fail, and documents each omission.
+        run: |
+          pip install -r requirements/freethreading.txt
+          pip install 'Cython>=3.1' setuptools setuptools_scm
+          # Editable, unlike the other jobs' `pip install .`.  pytest runs from
+          # the repo root, so `import faust` resolves to the source tree either
+          # way -- but the suite also needs the distribution *metadata* to
+          # exist, because `faust/__init__.py` does
+          # `version("faust-streaming")` at import time.  An editable install
+          # registers that metadata against the tree the tests actually import,
+          # instead of a second copy in site-packages that nothing loads.
+          USE_CYTHON=1 pip install -e . --no-build-isolation
+      - name: Build the Cython extensions in place
+        # The extensions have to sit next to the .pyx files or they are never
+        # imported: `faust/streams.py` and friends pull their accelerated
+        # implementation in behind `try: ... except ImportError`, so a missing
+        # .so silently falls back to pure Python and the job would test
+        # something other than what it thinks.  This is also what lets
+        # tests/unit/test_free_threading.py import the extensions rather than
+        # skipping.
+        run: USE_CYTHON=1 python setup.py build_ext --inplace
+      - name: Verify the extensions did not silently re-enable the GIL
+        # Fails loudly if an extension is missing `freethreading_compatible`,
+        # rather than leaving it to a RuntimeWarning nobody reads.  Runs
+        # before the suite so the cause is obvious when it breaks.
+        run: python -m pytest tests/unit/test_free_threading.py -v --no-cov
+      - name: Run tests
+        # PYTHON_GIL=0 keeps the GIL off for the whole run even if some
+        # *dependency* re-enables it (aiokafka's _crecords does, today), so
+        # the suite really is exercised without a GIL rather than quietly
+        # falling back to one.
+        env:
+          PYTHON_GIL: '0'
+          # As in the main matrix: fail rather than silently fall back to pure
+          # Python if the extensions stop being importable from the tree.
+          FAUST_REQUIRE_CYTHON: '1'
+        run: python -m pytest tests/unit tests/functional -q --no-cov
   test-pypy:
     name: 'Python pypy3.11/Cython: false'
     runs-on: ubuntu-latest
@@ -128,7 +238,9 @@ jobs:
         with:
           python-version: pypy3.11
           cache: pip
-          cache-dependency-path: requirements/test.txt
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       - name: Install dependencies
         id: install
         continue-on-error: true
@@ -137,12 +249,13 @@ jobs:
           pip install .
       - name: Run tests
         if: steps.install.outcome == 'success'
-        run: scripts/tests
-      - name: Enforce coverage
-        if: steps.install.outcome == 'success'
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+        # `scripts/tests` also runs bandit after pytest, and pytest coverage on
+        # PyPy is expensive enough to push this advisory leg into the timeout.
+        # Run pytest directly without coverage, and stop at the first failure so
+        # a red job reports the real test error instead of a timeout.
+        run: >
+          python -m pytest tests/unit tests/functional tests/integration
+          tests/meticulous tests/regression -x --no-cov
   test-integration:
     name: 'Integration (Kafka ${{ matrix.kafka-version }})'
     runs-on: ubuntu-latest
@@ -166,7 +279,11 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: requirements/test.txt
+          # This job also installs extras/ckafka.txt, which the old
+          # test.txt-only key did not cover.
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       # Run Kafka as a plain container (not a GH `services:` container) so its
       # very chatty broker log stays inside the container -- retrievable on
       # demand via `docker logs` -- and the job log shows the pytest output.
@@ -240,7 +357,9 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: requirements/test.txt
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       - name: Install dependencies
         run: |
           pip install -r requirements/test.txt
@@ -254,7 +373,10 @@ jobs:
   check:  # This job does nothing and is only used for the branch protection
     name: ✅ Ensure the required checks passing
     if: always()
-    needs: [lint, test-pytest]
+    # test-freethreading gates too: `[tool.cibuildwheel]` publishes cp313t and
+    # cp314t wheels, and a wheel we ship should not be able to go out on a red
+    # run.  (The integration jobs stay out of this list -- they are advisory.)
+    needs: [lint, test-pytest, test-freethreading]
     runs-on: ubuntu-latest
     steps:
       - name: Decide whether the needed jobs succeeded or failed
@@ -298,6 +420,14 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v5
+        with:
+          # Pin the interpreter (the step previously took whatever the runner
+          # image shipped) so the pip cache below has a stable key.
+          python-version: ${{ env.PYTHON_LATEST }}
+          cache: pip
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
       - name: Build sdist
         # Use `python -m build`, not the deprecated `setup.py sdist`, so the
         # sdist is named with the normalized project name
