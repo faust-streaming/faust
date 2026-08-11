@@ -30,7 +30,9 @@ class RegistryT(abc.ABC):
 
     @abc.abstractmethod
     def __init__(
-        self, key_serializer: CodecArg = None, value_serializer: CodecArg = "json"
+        self,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: CodecArg = "json",
     ) -> None: ...
 
     @abc.abstractmethod
@@ -39,7 +41,7 @@ class RegistryT(abc.ABC):
         typ: Optional[_ModelArg],
         key: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> K: ...
 
     @abc.abstractmethod
@@ -48,17 +50,21 @@ class RegistryT(abc.ABC):
         typ: Optional[_ModelArg],
         value: Optional[bytes],
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> Any: ...
 
     @abc.abstractmethod
     def dumps_key(
-        self, typ: Optional[_ModelArg], key: K, *, serializer: CodecArg = None
+        self, typ: Optional[_ModelArg], key: K, *, serializer: Optional[CodecArg] = None
     ) -> Optional[bytes]: ...
 
     @abc.abstractmethod
     def dumps_value(
-        self, typ: Optional[_ModelArg], value: V, *, serializer: CodecArg = None
+        self,
+        typ: Optional[_ModelArg],
+        value: V,
+        *,
+        serializer: Optional[CodecArg] = None,
     ) -> Optional[bytes]: ...
 
 
@@ -74,10 +80,10 @@ class SchemaT(Generic[KT, VT]):
     def __init__(
         self,
         *,
-        key_type: _ModelArg = None,
-        value_type: _ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[_ModelArg] = None,
+        value_type: Optional[_ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None: ...
 
@@ -85,10 +91,10 @@ class SchemaT(Generic[KT, VT]):
     def update(
         self,
         *,
-        key_type: _ModelArg = None,
-        value_type: _ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[_ModelArg] = None,
+        value_type: Optional[_ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None: ...
 
@@ -99,7 +105,7 @@ class SchemaT(Generic[KT, VT]):
         message: _Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> KT: ...
 
     @abc.abstractmethod
@@ -109,7 +115,7 @@ class SchemaT(Generic[KT, VT]):
         message: _Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> VT: ...
 
     @abc.abstractmethod
@@ -118,7 +124,7 @@ class SchemaT(Generic[KT, VT]):
         app: _AppT,
         key: K,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]: ...
 
@@ -128,7 +134,7 @@ class SchemaT(Generic[KT, VT]):
         app: _AppT,
         value: V,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]: ...
 

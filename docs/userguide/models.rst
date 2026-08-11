@@ -1014,10 +1014,105 @@ Supported codecs
 * **raw**     - no encoding/serialization (bytes only).
 * **json**    - :mod:`json` with UTF-8 encoding.
 * **pickle**  - :mod:`pickle` with Base64 encoding (not URL-safe).
+* **pickle_restricted** - :mod:`pickle` with Base64 encoding, restricted at
+  load time to a safe allowlist of classes.
+* **pickle_fickling** - :mod:`pickle` with Base64 encoding, checked by
+  :pypi:`fickling` before load time.
 * **binary**  - Base64 encoding (not URL-safe).
 
 Encodings are not URL-safe if the encoded payload cannot be embedded
 directly into a URL query parameter.
+
+.. warning::
+
+    The **pickle** codec calls :func:`pickle.loads` on the raw message
+    value. :mod:`pickle` is not a safe format for untrusted input: a
+    malicious payload can execute arbitrary code in the worker process
+    at deserialization time. Kafka does not authenticate producers, so
+    anyone able to write to a topic consumed with
+    ``value_serializer="pickle"`` (or ``key_serializer="pickle"``) can
+    achieve remote code execution. Only enable the pickle codec for
+    topics where every producer is trusted. Faust emits a
+    :class:`~faust.exceptions.SecurityWarning` as soon as an app, topic,
+    or model is configured with ``serializer="pickle"``, and again every
+    time a message is actually unpickled.
+
+    If you need pickle's ability to round-trip arbitrary Python objects
+    but cannot fully trust every producer on the topic, use
+    **pickle_restricted** instead. It deserializes with
+    ``faust.serializers.codecs.RestrictedUnpickler``, which only
+    constructs classes from an explicit allowlist
+    (``RestrictedUnpickler.ALLOWED_CLASSES``, covering common stdlib
+    container/value types by default) and raises
+    :exc:`pickle.UnpicklingError` for anything else -- closing off the
+    ``__reduce__``-based gadgets (``os.system``, ``subprocess.Popen``,
+    etc.) that make plain pickle unsafe. Extend ``ALLOWED_CLASSES`` with
+    your own application types as needed:
+
+    .. sourcecode:: python
+
+        from faust.serializers.codecs import RestrictedUnpickler
+
+        RestrictedUnpickler.ALLOWED_CLASSES = {
+            **RestrictedUnpickler.ALLOWED_CLASSES,
+            "myapp.models": frozenset({"Withdrawal", "Order"}),
+        }
+
+    Faust also provides **pickle_fickling** as an optional third-party
+    scanner for applications that want Fickling's pickle analysis instead
+    of Faust's built-in allowlist. Install the extra before using it:
+
+    .. sourcecode:: console
+
+        $ pip install "faust-streaming[fickling]"
+
+    You can then configure the codec by name:
+
+    .. sourcecode:: python
+
+        app = faust.App(
+            "orders",
+            broker="kafka://localhost",
+            value_serializer="pickle_fickling",
+        )
+
+    ``pickle_fickling`` uses Fickling's default maximum acceptable
+    severity, ``fickling.loader.Severity.LIKELY_SAFE``. To choose a
+    different tolerance, pass one of Fickling's severity constants to the
+    codec factory and provide that codec object to Faust:
+
+    .. sourcecode:: python
+
+        import faust
+        from fickling.loader import Severity
+        from faust.serializers.codecs import pickle_fickling
+
+        app = faust.App(
+            "orders",
+            broker="kafka://localhost",
+            value_serializer=pickle_fickling(
+                max_acceptable_severity=Severity.SUSPICIOUS,
+            ),
+        )
+
+    Fickling currently defines these severities, ordered from strictest to
+    most tolerant:
+
+    * ``Severity.LIKELY_SAFE``
+    * ``Severity.POSSIBLY_UNSAFE``
+    * ``Severity.SUSPICIOUS``
+    * ``Severity.LIKELY_UNSAFE``
+    * ``Severity.LIKELY_OVERTLY_MALICIOUS``
+    * ``Severity.OVERTLY_MALICIOUS``
+
+    Choose the lowest tolerance that supports your trusted payloads. Higher
+    tolerances allow more pickle programs to run.
+
+    Fickling support is kept in its own optional dependency and adapter
+    module, ``faust.serializers._fickling``. This boundary is intentional:
+    if Fickling has a bug, dependency issue, or policy mismatch for your
+    deployment, Faust users and maintainers can switch this codec to another
+    implementation without changing the rest of the serializer library.
 
 Serialization by name
 ---------------------
