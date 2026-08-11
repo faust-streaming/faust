@@ -177,7 +177,7 @@ the extension with other Faust users.
 
 import io
 import pickle as _pickle  # nosec B403
-import pickletools
+import pickletools  # nosec B403
 import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType

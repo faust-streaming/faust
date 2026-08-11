@@ -13,6 +13,7 @@ from faust.exceptions import ImproperlyConfigured, SecurityWarning
 from faust.serializers.codecs import (
     Codec,
     RestrictedUnpickler,
+    _restricted_pickle_validate_globals,
     binary as _binary,
     codecs,
     dumps,
@@ -202,6 +203,65 @@ def test_pickle_restricted_blocks_bytearray_allocation_gadget() -> None:
     payload = dumps("pickle_restricted", _ByteArrayAllocationGadget())
     with pytest.raises(pickle.UnpicklingError):
         loads("pickle_restricted", payload)
+
+
+def _loads_raw_restricted_pickle(payload: bytes) -> object:
+    return loads("pickle_restricted", base64.b64encode(payload))
+
+
+def test_pickle_restricted_validates_protocol_0_global_opcode() -> None:
+    assert _loads_raw_restricted_pickle(b"cbuiltins\nlist\n.") is list
+
+
+def test_pickle_restricted_validates_put_and_get_memo_opcodes() -> None:
+    assert _loads_raw_restricted_pickle(b"Vbuiltins\np0\ng0\n.") == "builtins"
+
+
+@pytest.mark.parametrize(
+    "payload,error",
+    [
+        (b"e.", "MARK not found"),
+        (b"(e.", "APPENDS underflow"),
+        (b".", "STOP underflow"),
+        (b"\x80\x05\x93.", "STACK_GLOBAL underflow"),
+        (
+            b"\x80\x05K\x01K\x02\x93.",
+            "STACK_GLOBAL expected module/name strings",
+        ),
+    ],
+)
+def test_pickle_restricted_rejects_malformed_stack_global_payloads(
+    payload: bytes, error: str
+) -> None:
+    with pytest.raises(pickle.UnpicklingError, match=error):
+        _loads_raw_restricted_pickle(payload)
+
+
+class _PickleOpcode:
+    def __init__(self, name: str) -> None:
+        self.name = name
+        self.stack_before = []
+        self.stack_after = []
+
+
+@pytest.mark.parametrize(
+    "opcode,error",
+    [
+        ("GLOBAL", "GLOBAL missing module/name"),
+        ("PUT", "PUT missing memo index"),
+        ("GET", "GET missing memo index"),
+    ],
+)
+def test_restricted_pickle_scanner_rejects_missing_opcode_arguments(
+    monkeypatch, opcode: str, error: str
+) -> None:
+    monkeypatch.setattr(
+        "faust.serializers.codecs.pickletools.genops",
+        lambda payload: [(_PickleOpcode(opcode), None, 0)],
+    )
+
+    with pytest.raises(pickle.UnpicklingError, match=error):
+        _restricted_pickle_validate_globals(b"", RestrictedUnpickler.ALLOWED_CLASSES)
 
 
 class _PickleOptions:
