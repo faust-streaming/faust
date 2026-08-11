@@ -16,5 +16,13 @@ yarl>=1.0,<2.0
 croniter>=0.3.16
 mypy_extensions
 venusian==3.1.0
-intervaltree
+# >=3.2.0: every earlier release published an sdist only, so installing it had
+# to run its setup.py -- which imported `setuptools.command.test`, removed in
+# setuptools 72.0.0 (2024-07-29).  Since pip and uv provision the newest
+# setuptools into the isolated build environment, installing faust started
+# failing on this dependency the day that release shipped (issue #638).
+# 3.2.0 drops setup.py for a hatchling backend and publishes wheels, so
+# neither half of that can recur.  The floor matters because a lock or
+# constraint file can still resolve an older one.
+intervaltree>=3.2.0
 six
