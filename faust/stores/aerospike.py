@@ -2,7 +2,7 @@
 
 import time
 import typing
-from typing import Any, Dict, Iterator, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Union
 
 try:  # pragma: no cover
     import aerospike
@@ -40,8 +40,9 @@ class AeroSpikeStore(base.SerializedStore):
     """Aerospike table storage."""
 
     client: Client
+    namespace: str
     ttl: int
-    policies: typing.Mapping[str, Any]
+    policies: Optional[typing.Mapping[str, Any]]
     BIN_KEY = "value_key"
     USERNAME_KEY: str = "user"
     HOSTS_KEY: str = "hosts"
@@ -56,14 +57,20 @@ class AeroSpikeStore(base.SerializedStore):
         url: Union[str, URL],
         app: AppT,
         table: CollectionT,
-        options: typing.Mapping[str, Any] = None,
+        options: Optional[typing.Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         try:
-            self.client = AeroSpikeStore.get_aerospike_client(options)
-            self.namespace = options.get(self.NAMESPACE_KEY, "")
-            self.ttl = options.get(self.TTL_KEY, aerospike.TTL_NEVER_EXPIRE)
-            self.policies = options.get(self.POLICIES_KEY, None)
+            # XXX `options` is declared Optional but is used unconditionally:
+            # constructing this store without options raises AttributeError
+            # ('NoneType' has no attribute 'get') from inside
+            # get_aerospike_client, re-raised by the handler below.  That is
+            # the existing behaviour; adding a guard here would change the
+            # exception raised, so the errors are silenced instead.
+            self.client = AeroSpikeStore.get_aerospike_client(options)  # type: ignore[arg-type]  # noqa: E501
+            self.namespace = options.get(self.NAMESPACE_KEY, "")  # type: ignore[union-attr]  # noqa: E501
+            self.ttl = options.get(self.TTL_KEY, aerospike.TTL_NEVER_EXPIRE)  # type: ignore[union-attr]  # noqa: E501
+            self.policies = options.get(self.POLICIES_KEY, None)  # type: ignore[union-attr]  # noqa: E501
             table.use_partitioner = True
         except Exception as ex:
             self.logger.error(f"Error configuring aerospike client {ex}")
@@ -71,7 +78,7 @@ class AeroSpikeStore(base.SerializedStore):
         super().__init__(url, app, table, **kwargs)
 
     @staticmethod
-    def get_aerospike_client(aerospike_config: Dict[Any, Any]) -> Client:
+    def get_aerospike_client(aerospike_config: typing.Mapping[str, Any]) -> Client:
         """Try to get Aerospike client instance."""
         global aerospike_client
         if aerospike_client:
@@ -95,26 +102,41 @@ class AeroSpikeStore(base.SerializedStore):
                 raise e
 
     def _get(self, key: bytes) -> Optional[bytes]:
-        key = (self.namespace, self.table_name, key)
+        # XXX the ``key`` parameter is declared ``bytes`` but is reused as the
+        # ``(namespace, set, key)`` tuple Aerospike expects, and then rebound
+        # again from the client's return value so the handlers below report
+        # the key Aerospike echoed back rather than the one constructed here.
+        # Both rebinds are load-bearing for the logged/raised messages, so the
+        # errors are silenced rather than the code split up.  ``str-bytes-safe``
+        # below is a consequence of the same lie: mypy still believes ``key`` is
+        # ``bytes`` in the handlers, where it actually holds a tuple.
+        key = (self.namespace, self.table_name, key)  # type: ignore[assignment]
         fun = self.client.get
         try:
-            (key, meta, bins) = self.aerospike_fun_call_with_retry(fun=fun, key=key)
+            key, meta, bins = self.aerospike_fun_call_with_retry(fun=fun, key=key)
             if bins:
                 return bins[self.BIN_KEY]
             return None
         except aerospike.exception.RecordNotFound as ex:
-            self.log.debug(f"key not found {key} exception {ex}")
-            raise KeyError(f"key not found {key}")
+            self.log.debug(f"key not found {key} exception {ex}")  # type: ignore[str-bytes-safe]  # noqa: E501
+            raise KeyError(f"key not found {key}")  # type: ignore[str-bytes-safe]
         except Exception as ex:
             self.log.error(
-                f"Error in set for table {self.table_name} exception {ex} key {key}"
+                f"Error in set for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
     def _set(self, key: bytes, value: Optional[bytes]) -> None:
         try:
             fun = self.client.put
-            key = (self.namespace, self.table_name, key)
+            # XXX ``key`` is declared ``bytes`` but rebound to the
+            # ``(namespace, set, key)`` tuple Aerospike expects.  The rebind
+            # must stay inside the ``try`` so a failure building the tuple is
+            # still logged and re-raised by the handler below, so the error is
+            # silenced rather than hoisted into a separate variable.  The
+            # ``str-bytes-safe`` ignore below follows from the same lie: mypy
+            # still believes ``key`` is ``bytes`` where it holds a tuple.
+            key = (self.namespace, self.table_name, key)  # type: ignore[assignment]
             vt = {self.BIN_KEY: value}
             self.aerospike_fun_call_with_retry(
                 fun=fun,
@@ -129,23 +151,28 @@ class AeroSpikeStore(base.SerializedStore):
 
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in set for "
-                f"table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in set for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
     def _del(self, key: bytes) -> None:
         try:
-            key = (self.namespace, self.table_name, key)
+            # XXX ``key`` is declared ``bytes`` but rebound to the
+            # ``(namespace, set, key)`` tuple Aerospike expects.  The rebind
+            # must stay inside the ``try`` so a failure building the tuple is
+            # still logged and re-raised by the handler below, so the error is
+            # silenced rather than hoisted into a separate variable.  The
+            # ``str-bytes-safe`` ignores below follow from the same lie: mypy
+            # still believes ``key`` is ``bytes`` where it holds a tuple.
+            key = (self.namespace, self.table_name, key)  # type: ignore[assignment]
             self.aerospike_fun_call_with_retry(fun=self.client.remove, key=key)
         except aerospike.exception.RecordNotFound as ex:
             self.log.debug(
-                f"Error in delete for table {self.table_name} exception {ex} key {key}"
+                f"Error in delete for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in delete for "
-                f"table {self.table_name} exception {ex} key {key}"
+                f"FaustAerospikeException Error in delete for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
@@ -165,7 +192,7 @@ class AeroSpikeStore(base.SerializedStore):
             )
             raise ex
 
-    def _itervalues(self) -> Iterator[bytes]:
+    def _itervalues(self) -> Iterator[Optional[bytes]]:
         try:
             fun = self.client.scan
 
@@ -173,10 +200,11 @@ class AeroSpikeStore(base.SerializedStore):
                 fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
-                (key, meta, bins) = result
+                key, meta, bins = result
                 if bins:
                     yield bins[self.BIN_KEY]
                 else:
+                    # A record without the value bin has no value.
                     yield None
         except Exception as ex:
             self.log.error(
@@ -193,8 +221,8 @@ class AeroSpikeStore(base.SerializedStore):
                 fun=fun, namespace=self.namespace, set=self.table_name
             )
             for result in scan.results():
-                (key_data, meta, bins) = result
-                (ns, set, policy, key) = key_data
+                key_data, meta, bins = result
+                ns, set, policy, key = key_data
 
                 if bins:
                     bins = bins[self.BIN_KEY]
@@ -213,8 +241,17 @@ class AeroSpikeStore(base.SerializedStore):
     def _contains(self, key: bytes) -> bool:
         try:
             if self.app.conf.store_check_exists:
-                key = (self.namespace, self.table_name, key)
-                (key, meta) = self.aerospike_fun_call_with_retry(
+                # XXX ``key`` is declared ``bytes`` but rebound to the
+                # ``(namespace, set, key)`` tuple Aerospike expects, then
+                # rebound again from the client's return value.  Both rebinds
+                # must stay inside this branch: the tuple is only built when
+                # ``store_check_exists`` is set, and the handler below logs
+                # whichever value ``key`` currently holds.  So the error is
+                # silenced rather than the construction hoisted out.  The
+                # ``str-bytes-safe`` ignore below follows from the same lie:
+                # mypy still believes ``key`` is ``bytes`` in that handler.
+                key = (self.namespace, self.table_name, key)  # type: ignore[assignment]  # noqa: E501
+                key, meta = self.aerospike_fun_call_with_retry(
                     fun=self.client.exists, key=key
                 )
                 if meta:
@@ -225,9 +262,7 @@ class AeroSpikeStore(base.SerializedStore):
                 return True
         except Exception as ex:
             self.log.error(
-                f"FaustAerospikeException Error in _contains for table "
-                f"{self.table_name} exception "
-                f"{ex} key {key}"
+                f"FaustAerospikeException Error in _contains for table {self.table_name} exception {ex} key {key}"  # type: ignore[str-bytes-safe]  # noqa: E501
             )
             raise ex
 
@@ -254,7 +289,9 @@ class AeroSpikeStore(base.SerializedStore):
         """
         return None
 
-    def aerospike_fun_call_with_retry(self, fun, *args, **kwargs):
+    def aerospike_fun_call_with_retry(
+        self, fun: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """Call function and retry until Aerospike throws exception."""
         f_tries = self.app.conf.aerospike_retries_on_exception
         f_delay = self.app.conf.aerospike_sleep_seconds_between_retries_on_exception

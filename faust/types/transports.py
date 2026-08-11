@@ -32,6 +32,8 @@ from .topics import TopicT
 from .tuples import TP, FutureMessage, Message, RecordMetadata
 
 if typing.TYPE_CHECKING:
+    from mode.threads import ServiceThread
+
     from .app import AppT as _AppT
 else:
 
@@ -113,6 +115,12 @@ class ProducerT(ServiceT):
     ssl_context: Optional[ssl.SSLContext]
     partitioner: Optional[PartitionerT]
     request_timeout: float
+
+    #: The driver's threaded producer, created by ``Producer.__init__`` when
+    #: the :setting:`producer_threaded` setting is enabled, and ``None``
+    #: otherwise.  Quoted so this core types module keeps its import graph:
+    #: ``mode.threads`` is imported for type checking only.
+    threaded_producer: Optional["ServiceThread"]
 
     @abc.abstractmethod
     def __init__(
@@ -357,7 +365,7 @@ class ConsumerT(ServiceT):
 
     @abc.abstractmethod
     async def commit(
-        self, topics: TPorTopicSet = None, start_new_transaction: bool = True
+        self, topics: Optional[TPorTopicSet] = None, start_new_transaction: bool = True
     ) -> bool: ...
 
     @abc.abstractmethod

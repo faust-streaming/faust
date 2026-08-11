@@ -33,7 +33,12 @@ class Sensor(SensorT, Service):
         return None
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Event was acknowledged by stream.
 
@@ -127,7 +132,7 @@ class Sensor(SensorT, Service):
         ...
 
     def on_web_request_start(
-        self, app: AppT, request: web.Request, *, view: web.View = None
+        self, app: AppT, request: web.Request, *, view: Optional[web.View] = None
     ) -> Dict:
         """Web server started working on request."""
         return {"time_start": monotonic()}
@@ -139,7 +144,7 @@ class Sensor(SensorT, Service):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         ...
@@ -188,7 +193,12 @@ class SensorDelegate(SensorDelegateT):
         }
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         sensor_state = state or {}
@@ -299,7 +309,7 @@ class SensorDelegate(SensorDelegateT):
             sensor.on_rebalance_end(app, state[sensor])
 
     def on_web_request_start(
-        self, app: AppT, request: web.Request, *, view: web.View = None
+        self, app: AppT, request: web.Request, *, view: Optional[web.View] = None
     ) -> Dict:
         """Web server started working on request."""
         return {
@@ -314,7 +324,7 @@ class SensorDelegate(SensorDelegateT):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         for sensor in self._sensors:

@@ -72,6 +72,55 @@ in ``app.monitor``:
             # emit how many events are being processed every second.
             print(app.monitor.events_s)
 
+.. _sensor-opentelemetry:
+
+Reporting metrics to OpenTelemetry
+==================================
+
+The :class:`~faust.sensors.otel.OpenTelemetryMonitor` reports the same metrics
+as the Statsd and Datadog monitors, but through the `OpenTelemetry`_ metrics
+API, so they can be exported to any OpenTelemetry-compatible backend (OTLP,
+Prometheus, the console, ...).  Install the extra:
+
+.. sourcecode:: console
+
+    $ pip install "faust[opentelemetry]"
+
+Faust depends only on ``opentelemetry-api``; every instrument is a cheap no-op
+until *your application* configures a global ``MeterProvider`` with the exporter
+of your choice.  Unlike Statsd -- which bakes dimensions such as topic and
+partition into the metric *name* -- the OpenTelemetry monitor follows the
+OpenTelemetry conventions and dimensions each instrument by *attributes*
+(``topic``, ``partition``, ``stream``, ``table``, ...).
+
+Configure a ``MeterProvider`` once at startup and set ``app.monitor``:
+
+.. sourcecode:: python
+
+    import faust
+    from opentelemetry import metrics
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import (
+        ConsoleMetricExporter,
+        PeriodicExportingMetricReader,
+    )
+    from faust.sensors.otel import OpenTelemetryMonitor
+
+    # Swap ConsoleMetricExporter for an OTLP/Prometheus exporter.
+    reader = PeriodicExportingMetricReader(ConsoleMetricExporter())
+    metrics.set_meter_provider(MeterProvider(metric_readers=[reader]))
+
+    app = faust.App('example', broker='kafka://localhost:9092')
+    app.monitor = OpenTelemetryMonitor()
+
+The monitor emits counters (e.g. ``faust.messages.received``,
+``faust.events.total``), up/down counters for in-flight work
+(``faust.messages.active``, ``faust.events.active``), millisecond latency
+histograms (``faust.send.latency``, ``faust.events.runtime``, ...) and gauges
+for the latest read/committed/end offsets per topic-partition.
+
+.. _`OpenTelemetry`: https://opentelemetry.io/
+
 .. _monitor-reference:
 
 Monitor API Reference

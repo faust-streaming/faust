@@ -42,7 +42,10 @@ from typing import (
     no_type_check,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping
@@ -307,11 +310,17 @@ class BootStrategy(BootStrategyT):
 
     def kafka_producer(self) -> Iterable[ServiceT]:
         """Return list of services required to start Kafka producer."""
-        producers = []
+        producers: List[ServiceT] = []
         if self._should_enable_kafka_producer():
             producers.append(self.app.producer)
             if self.app.conf.producer_threaded:
-                producers.append(self.app.producer.threaded_producer)
+                # XXX ``ProducerT.threaded_producer`` is ``Optional``: a
+                # producer that does not create one (only the aiokafka driver
+                # does) leaves it ``None``, and that ``None`` is appended to
+                # the list of services the worker then starts.
+                producers.append(
+                    self.app.producer.threaded_producer  # type: ignore[arg-type]
+                )
         return producers
 
     def _should_enable_kafka_producer(self) -> bool:
@@ -453,8 +462,8 @@ class App(AppT, Service):
         self,
         id: str,
         *,
-        monitor: Monitor = None,
-        config_source: Any = None,
+        monitor: Optional[Monitor] = None,
+        config_source: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         beacon: Optional[NodeT] = None,
         **options: Any,
@@ -499,7 +508,10 @@ class App(AppT, Service):
 
         self.boot_strategy = self.BootStrategy(self)
 
-        Service.__init__(self, loop=loop, beacon=beacon)
+        # mode declares ``beacon: NodeT = None`` -- an implicit-Optional the
+        # checker reads as non-optional -- but Service.__init__ handles
+        # ``beacon is None`` explicitly by rooting a new Node.
+        Service.__init__(self, loop=loop, beacon=beacon)  # type: ignore[arg-type]
 
     def _init_signals(self) -> None:
         # Signals in Faust are the same as in Django, but asynchronous by
@@ -695,7 +707,7 @@ class App(AppT, Service):
     def discover(
         self,
         *extra_modules: str,
-        categories: Iterable[str] = None,
+        categories: Optional[Iterable[str]] = None,
         ignore: Iterable[Any] = SCAN_IGNORE,
     ) -> None:
         """Discover decorators in packages."""
@@ -705,8 +717,21 @@ class App(AppT, Service):
             categories = self.SCAN_CATEGORIES
         modules = set(self._discovery_modules())
         modules |= set(extra_modules)
-        for fixup in self.fixups:
-            modules |= set(fixup.autodiscover_modules())
+        # Fixup-provided autodiscovery (e.g. the Django fixup scanning every
+        # app in INSTALLED_APPS) only applies to the blanket
+        # ``autodiscover=True`` mode -- as documented on the Django fixup.
+        # When the user passes an explicit module list (or a callable),
+        # respect it and do not additionally pull in every fixup module,
+        # otherwise a Django app that set e.g.
+        # ``autodiscover=['myproj.agents']`` would still scan all of
+        # INSTALLED_APPS (including migrations/admin).  See #500.
+        # ``Settings.autodiscover`` is a ``Param`` descriptor, but one of the
+        # setting's *value* types is itself a callable, so mypy reads the
+        # class attribute as a method and tries to bind ``self`` to it
+        # instead of going through ``Param.__get__``.
+        if self.conf.autodiscover is True:  # type: ignore[misc]
+            for fixup in self.fixups:
+                modules |= set(fixup.autodiscover_modules())
         if modules:
             scanner = venusian.Scanner()
             for name in modules:
@@ -733,7 +758,9 @@ class App(AppT, Service):
 
     def _discovery_modules(self) -> List[str]:
         modules: List[str] = []
-        autodiscover = self.conf.autodiscover
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        autodiscover = self.conf.autodiscover  # type: ignore[misc]
         if autodiscover:
             if isinstance(autodiscover, bool):
                 if self.conf.origin is None:
@@ -752,7 +779,9 @@ class App(AppT, Service):
 
         self.finalize()
         self.worker_init()
-        if self.conf.autodiscover:
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        if self.conf.autodiscover:  # type: ignore[misc]
             self.discover()
         self.worker_init_post_autodiscover()
         cli(app=self)
@@ -761,12 +790,12 @@ class App(AppT, Service):
     def topic(
         self,
         *topics: str,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[SchemaT] = None,
         key_type: Optional[ModelArg] = None,
         value_type: Optional[ModelArg] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
@@ -844,12 +873,12 @@ class App(AppT, Service):
 
     def agent(
         self,
-        channel: Union[str, ChannelT[_T]] = None,
+        channel: Optional[Union[str, ChannelT[_T]]] = None,
         *,
         name: Optional[str] = None,
         concurrency: int = 1,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
-        sink: Iterable[SinkT] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
+        sink: Optional[Iterable[SinkT]] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
         **kwargs: Any,
@@ -916,7 +945,11 @@ class App(AppT, Service):
 
     @no_type_check
     def task(
-        self, fun: TaskArg = None, *, on_leader: bool = False, traced: bool = True
+        self,
+        fun: Optional[TaskArg] = None,
+        *,
+        on_leader: bool = False,
+        traced: bool = True,
     ) -> TaskDecoratorRet:
         """Define an async def function to be started with the app.
 
@@ -1026,11 +1059,16 @@ class App(AppT, Service):
 
         return _inner
 
-    def crontab(
+    # ``App`` inherits both ``AppT`` and ``mode.Service``, and deliberately
+    # shadows ``Service.crontab`` (a classmethod defining a background timer
+    # on a Service subclass) with the app-level ``@app.crontab(...)``
+    # decorator declared by ``AppT``.  Same for ``task``/``timer`` above,
+    # which are hidden from the checker by ``@no_type_check`` instead.
+    def crontab(  # type: ignore[override]
         self,
         cron_format: str,
         *,
-        timezone: tzinfo = None,
+        timezone: Optional[tzinfo] = None,
         on_leader: bool = False,
         traced: bool = True,
     ) -> Callable:
@@ -1134,7 +1172,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1181,7 +1219,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1287,7 +1325,7 @@ class App(AppT, Service):
         path: str,
         *,
         base: Type[View] = View,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
         name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         """Decorate view to be included in the web server."""
@@ -1359,7 +1397,7 @@ class App(AppT, Service):
 
     def topic_route(
         self,
-        topic: CollectionT,
+        topic: TopicT,
         shard_param: Optional[str] = None,
         *,
         query_param: Optional[str] = None,
@@ -1465,7 +1503,11 @@ class App(AppT, Service):
         **context: Any,
     ) -> Callable:
         """Decorate function to be traced using the OpenTracing API."""
-        assert fun
+        # XXX dead check: this is a truthiness test on a callable, and function
+        # objects are always truthy, so it can only ever fire for a falsy
+        # non-function callable.  Left exactly as it is -- ``fun is not None``
+        # would be a different runtime test.
+        assert fun  # type: ignore[truthy-function]
         operation: str = name or operation_name_from_fun(fun)
 
         @wraps(fun)
@@ -1492,14 +1534,14 @@ class App(AppT, Service):
     async def send(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Send event to channel/topic.
