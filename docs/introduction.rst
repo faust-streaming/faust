@@ -151,18 +151,18 @@ What do I need?
 ==================
 
 .. sidebar:: Version Requirements
-    :subtitle: Faust version 1.0 runs on
+    :subtitle: Faust runs on
 
     **Core**
 
-    - Python 3.8 or later.
+    - Python 3.10 or later.
     - Kafka 0.10.1 or later.
 
     **Extensions**
 
     - RocksDB 5.0 or later, :pypi:`python-rocksdb`
 
-Faust requires Python 3.8 or later, and a running Kafka broker.
+Faust requires Python 3.10 or later, and a running Kafka broker.
 
 There's no plan to support earlier Python versions.
 Please get in touch if this is something you want to work on.
@@ -176,7 +176,7 @@ Extensions
 +--------------+-------------+--------------------------------------------------+
 | ``rocksdb``  | 5.0         | ``pip install faust-streaming[rocksdb]``         |
 +--------------+-------------+--------------------------------------------------+
-| ``redis``    | aredis 1.1  | ``pip install faust-streaming[redis]``           |
+| ``redis``    | redis-py    | ``pip install faust-streaming[redis]``           |
 +--------------+-------------+--------------------------------------------------+
 | ``datadog``  | 0.20.0      | ``pip install faust-streaming[datadog]``         |
 +--------------+-------------+--------------------------------------------------+

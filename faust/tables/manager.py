@@ -144,7 +144,12 @@ class TableManager(Service, TableManagerT):
 
     async def wait_until_tables_registered(self) -> None:
         if not self.app.producer_only and not self.app.client_only:
-            await self.wait_for_stopped(self._tables_registered)
+            # mode types the waitable as ``mode.utils.locks.Event``, but
+            # Service.wait_first accepts anything with an awaitable
+            # ``.wait()`` -- asyncio.Event included.
+            await self.wait_for_stopped(
+                self._tables_registered  # type: ignore[arg-type]
+            )
 
     async def _update_channels(self) -> None:
         self._tables_finalized.set()
@@ -207,5 +212,8 @@ class TableManager(Service, TableManagerT):
             and not self.app.producer_only
             and not self.app.client_only
         ):
-            return await self.wait_for_stopped(self.recovery.completed)
+            # Same mode annotation gap as in wait_until_tables_registered.
+            return await self.wait_for_stopped(
+                self.recovery.completed  # type: ignore[arg-type]
+            )
         return False

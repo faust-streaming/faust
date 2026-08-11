@@ -1,0 +1,2 @@
+opentelemetry-api>=1.23.0
+opentelemetry-sdk>=1.23.0

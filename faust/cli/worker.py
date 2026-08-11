@@ -88,7 +88,7 @@ class worker(AppCommand):
         web_port: Optional[int],
         web_bind: Optional[str],
         web_host: Optional[str],
-        web_transport: URL,
+        web_transport: Optional[URL],
         **kwargs: Any,
     ) -> None:
         self.app.conf.web_enabled = with_web
@@ -101,9 +101,13 @@ class worker(AppCommand):
         if web_transport is not None:
             self.app.conf.web_transport = web_transport
         if web_port is not None or web_host is not None:
-            self.app.conf.canonical_url = (
-                f"http://{self.app.conf.web_host}:{self.app.conf.web_port}"
-            )
+            # XXX ``canonical_url`` accepts ``URLArg`` (str or URL) at runtime
+            # -- ``params.URL.to_python`` wraps it -- but the setting
+            # descriptor is declared with only its *output* type
+            # (``def canonical_url(self) -> URL``), so mypy sees the setter as
+            # accepting URL alone.  The defect is in the settings descriptor
+            # typing, not here; assigning a str is supported behaviour.
+            self.app.conf.canonical_url = f"http://{self.app.conf.web_host}:{self.app.conf.web_port}"  # type: ignore[assignment]  # noqa: E501
 
     @property
     def _Worker(self) -> Type[Worker]:
