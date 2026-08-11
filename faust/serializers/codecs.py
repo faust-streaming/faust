@@ -457,6 +457,10 @@ def _restricted_pickle_validate_globals(
     # PyPy's unpickler can load STACK_GLOBAL payloads without consulting an
     # overridden find_class(), so pre-scan the pickle bytecode and reject any
     # disallowed globals before unpickling executes them.
+    # Also normalize malformed-pickle failures here because pure-Python and
+    # alternate runtime implementations can otherwise raise implementation
+    # details instead of UnpicklingError; see:
+    # https://github.com/python/cpython/issues/141749
     stack = []
     memo: Dict[int, Any] = {}
     next_memo_index = 0
