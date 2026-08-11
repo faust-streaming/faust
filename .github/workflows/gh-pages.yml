@@ -8,21 +8,99 @@ on:
   release:
     types: [created]
     branches: [master]
+env:
+  FORCE_COLOR: '1'  # Make tools pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: '1'
+  PIP_NO_PYTHON_VERSION_WARNING: '1'
+  PYTHON_LATEST: '3.12'
+# Same policy as the CI/CD workflow: a new push to a pull request supersedes
+# the docs build of the commit it replaces, while `push` and `release` runs --
+# the ones that seed the cache and publish the site -- always run to
+# completion.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     name: Build docs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-python@v5
+      # Checkout first: the pip cache key below hashes the requirements files,
+      # which have to be on disk before `setup-python` runs.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # otherwise, you will failed to push refs to dest repo
+      - uses: actions/setup-python@v5
+        with:
+          # Pin the interpreter -- the step used to take whatever the runner
+          # image shipped -- and cache the wheels.  Sphinx and its extensions
+          # were previously downloaded from PyPI on every single run.
+          python-version: ${{ env.PYTHON_LATEST }}
+          cache: pip
+          cache-dependency-path: |
+            requirements/*.txt
+            requirements/extras/*.txt
+      # Sphinx builds incrementally: given its doctree cache and the HTML tree
+      # it wrote last time, it only re-reads and re-writes the documents whose
+      # sources changed -- including the `faust` modules autodoc imports, which
+      # it records as dependencies.  Restoring both turns the ~2 minute
+      # from-scratch build into the delta for this branch.  A Sphinx upgrade or
+      # a conf.py change invalidates the environment on its own, so a full
+      # rebuild still happens whenever the build itself changes.
+      #
+      # Saving is restricted to master pushes on purpose.  The primary key
+      # covers the package sources, so nearly every pull request misses it and
+      # would write a fresh multi-megabyte entry; against the repository-wide
+      # 10 GB cache budget that churn would evict the pip caches every few
+      # days.  Pull requests read the newest master entry instead -- usually
+      # only a commit or two behind -- and write nothing.
+      - name: Restore the Sphinx build cache
+        id: sphinx-cache
+        # Releases are what gets published: build those from scratch rather
+        # than on top of a doctree cache.
+        if: github.event_name != 'release'
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            docs/_build/doctrees
+            Documentation
+          key: >-
+            sphinx-${{ runner.os }}-py${{ env.PYTHON_LATEST }}-${{ hashFiles(
+            'docs/**', 'faust/**/*.py', 'requirements/docs.txt',
+            'requirements/requirements.txt', 'README.md', 'CHANGELOG.md') }}
+          restore-keys: |
+            sphinx-${{ runner.os }}-py${{ env.PYTHON_LATEST }}-
+      # `make docs` builds into docs/_build/html and then moves the result to
+      # Documentation/ (which is what the cache holds), so put the previous
+      # output back where Sphinx expects to find it before building.
+      - name: Seed the Sphinx output directory from the cache
+        run: |
+          if [ -d Documentation ]; then
+            mkdir -p docs/_build
+            rm -rf docs/_build/html
+            mv Documentation docs/_build/html
+          fi
       - name: Install runtime dependencies
+        # The docs import faust for autodoc but never touch the compiled
+        # accelerators, so skip building the C extensions here.
+        env:
+          NO_CYTHON: '1'
         run: |
           pip install .
           pip install -r requirements/docs.txt
       - name: Install doc build deps and build with Sphinx
         run: make docs
+      - name: Save the Sphinx build cache
+        if: >-
+          github.event_name == 'push'
+          && github.ref == 'refs/heads/master'
+          && steps.sphinx-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            docs/_build/doctrees
+            Documentation
+          key: ${{ steps.sphinx-cache.outputs.cache-primary-key }}
       - name: Upload artifacts
         uses: actions/upload-pages-artifact@v3
         with:

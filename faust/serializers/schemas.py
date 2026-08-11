@@ -3,6 +3,7 @@ from contextlib import suppress
 from typing import Any, Awaitable, Callable, Optional, Tuple, cast
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.serializers.codecs import warn_if_unsafe_pickle
 from faust.types.app import AppT
 from faust.types.codecs import CodecArg
 from faust.types.core import K, OpenHeadersArg, V
@@ -30,14 +31,14 @@ OnValueDecodeErrorFun = Callable[[Exception, Message], Awaitable[None]]
 async def _noop_decode_error(exc: Exception, message: Message) -> None: ...
 
 
-class Schema(SchemaT):
+class Schema(SchemaT[KT, VT]):
     def __init__(
         self,
         *,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None:
         self.update(
@@ -51,10 +52,10 @@ class Schema(SchemaT):
     def update(
         self,
         *,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         allow_empty: Optional[bool] = None,
     ) -> None:
         if key_type is not None:
@@ -69,6 +70,12 @@ class Schema(SchemaT):
             self.key_serializer = _model_serializer(key_type)
         if self.value_serializer is None and value_type:
             self.value_serializer = _model_serializer(value_type)
+        # Check after model-derived defaults are resolved above, so a
+        # serializer inherited from key_type/value_type (e.g. a Record
+        # declared with `serializer="pickle"`) is also caught, not just
+        # an explicit key_serializer/value_serializer argument.
+        warn_if_unsafe_pickle(self.key_serializer)
+        warn_if_unsafe_pickle(self.value_serializer)
         if allow_empty is not None:
             self.allow_empty = allow_empty
 
@@ -78,7 +85,7 @@ class Schema(SchemaT):
         message: Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> KT:
         if loads is None:
             loads = app.serializers.loads_key
@@ -97,7 +104,7 @@ class Schema(SchemaT):
         message: Message,
         *,
         loads: Optional[Callable] = None,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
     ) -> VT:
         if loads is None:
             loads = app.serializers.loads_value
@@ -108,7 +115,12 @@ class Schema(SchemaT):
         )
 
     def dumps_key(
-        self, app: AppT, key: K, *, serializer: CodecArg = None, headers: OpenHeadersArg
+        self,
+        app: AppT,
+        key: K,
+        *,
+        serializer: Optional[CodecArg] = None,
+        headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_key(
             self.key_type,
@@ -122,7 +134,7 @@ class Schema(SchemaT):
         app: AppT,
         value: V,
         *,
-        serializer: CodecArg = None,
+        serializer: Optional[CodecArg] = None,
         headers: OpenHeadersArg,
     ) -> Tuple[Any, OpenHeadersArg]:
         payload = app.serializers.dumps_value(

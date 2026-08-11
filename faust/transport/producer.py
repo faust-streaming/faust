@@ -23,9 +23,18 @@ logger = get_logger(__name__)
 
 
 class ProducerBuffer(Service, ProducerBufferT):
+    #: Set by :class:`Producer` right after the buffer is created,
+    #: so it is only ``None`` for a buffer that was never attached
+    #: to a producer.
     app: Optional[AppT] = None
     max_messages = 100
     queue: Optional[asyncio.Queue] = None
+
+    #: The transport driver's threaded producer.  Only assigned by
+    #: :class:`Producer` when the :setting:`producer_threaded` setting is
+    #: enabled -- annotation only, so that on a buffer that never got one
+    #: the attribute is still missing rather than ``None``.
+    threaded_producer: Optional[ServiceThread]
 
     def __post_init__(self) -> None:
         self.pending = asyncio.Queue()
@@ -37,11 +46,24 @@ class ProducerBuffer(Service, ProducerBufferT):
         The message will be eventually produced, you can await
         the future to wait for that to happen.
         """
-        if self.app.conf.producer_threaded:
+        # ``app`` is Optional because ``Producer.__init__`` only fills it in
+        # after creating the buffer.  Narrowed with ``cast`` rather than an
+        # ``assert``: this is the per-message hot path, and an assert would
+        # both swap the AttributeError raised by a half-built buffer for an
+        # AssertionError and disappear under ``python -O``.
+        app = cast(AppT, self.app)
+        if app.conf.producer_threaded:
+            # Likewise Optional: only set when :setting:`producer_threaded`
+            # is enabled, which is the branch we are in.
+            threaded_producer = cast(ServiceThread, self.threaded_producer)
             if not self.queue:
-                self.queue = self.threaded_producer.event_queue
+                # ``event_queue`` is not part of the ``ServiceThread``
+                # interface: it belongs to the driver's threaded producer
+                # (e.g. aiokafka's ``ThreadedProducer``), which lives in a
+                # module this one cannot import without a cycle.
+                self.queue = threaded_producer.event_queue  # type: ignore[attr-defined]
             asyncio.run_coroutine_threadsafe(
-                self.queue.put(fut), self.threaded_producer.thread_loop
+                self.queue.put(fut), threaded_producer.thread_loop
             )
         else:
             self.pending.put_nowait(fut)
@@ -106,12 +128,18 @@ class ProducerBuffer(Service, ProducerBufferT):
     @property
     def size(self) -> int:
         """Current buffer size (messages waiting to be produced)."""
-        if self.app.conf.producer_threaded:
+        # See ``put()``: ``app`` is Optional only because it is assigned right
+        # after construction; ``cast`` keeps the original AttributeError
+        # behaviour instead of an assert that ``python -O`` would remove.
+        app = cast(AppT, self.app)
+        if app.conf.producer_threaded:
             if not self.queue:
                 return 0
-            queue_items = self.queue._queue  # type: ignore
+            # ``Queue._queue`` is a CPython implementation detail (the
+            # underlying deque) that typeshed does not describe.
+            queue_items = self.queue._queue  # type: ignore[attr-defined]
         else:
-            queue_items = self.pending._queue
+            queue_items = self.pending._queue  # type: ignore[attr-defined]
         queue_items = cast(list, queue_items)
         return len(queue_items)
 
@@ -142,13 +170,25 @@ class Producer(Service, ProducerT):
         self.request_timeout = conf.producer_request_timeout
         self.ssl_context = conf.ssl_context
         self.credentials = conf.broker_credentials
-        self.partitioner = conf.producer_partitioner
+        # ``Settings.producer_partitioner`` is a ``Param`` descriptor, but
+        # because the setting's *value* type is itself a callable mypy reads
+        # the class attribute as a method and tries to bind ``self`` instead
+        # of going through ``Param.__get__`` -- which both fails and strips
+        # the leading ``key`` argument from the result type.
+        self.partitioner = conf.producer_partitioner  # type: ignore[misc,assignment]
         api_version = self._api_version = conf.producer_api_version
         assert api_version is not None
         super().__init__(loop=loop, **kwargs)
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
         if conf.producer_threaded:
-            self.threaded_producer = self.create_threaded_producer()
+            # XXX ``create_threaded_producer`` is not defined here or on
+            # ``ProducerT``; only the aiokafka driver implements it.  With the
+            # confluent driver (faust/transport/drivers/confluent.py) this line
+            # raises AttributeError, so :setting:`producer_threaded` is simply
+            # broken there.
+            self.threaded_producer = (
+                self.create_threaded_producer()  # type: ignore[attr-defined]
+            )
             self.buffer.threaded_producer = self.threaded_producer
         self.buffer.app = self.app
 

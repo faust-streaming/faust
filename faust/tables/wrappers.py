@@ -327,7 +327,7 @@ class WindowWrapper(WindowWrapperT):
         self,
         table: TableT,
         *,
-        relative_to: RelativeArg = None,
+        relative_to: Optional[RelativeArg] = None,
         key_index: bool = False,
         key_index_table: Optional[TableT] = None,
     ) -> None:

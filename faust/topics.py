@@ -98,10 +98,10 @@ class Topic(SerializedChannel, TopicT):
         app: AppT,
         *,
         topics: Optional[Sequence[str]] = None,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         is_iterator: bool = False,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
@@ -112,8 +112,8 @@ class Topic(SerializedChannel, TopicT):
         internal: bool = False,
         config: Optional[Mapping[str, Any]] = None,
         queue: Optional[ThrowableQueue] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         maxsize: Optional[int] = None,
         root: Optional[ChannelT] = None,
         active_partitions: Optional[Set[TP]] = None,
@@ -159,14 +159,14 @@ class Topic(SerializedChannel, TopicT):
     async def send(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -202,14 +202,14 @@ class Topic(SerializedChannel, TopicT):
     def send_soon(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
         eager_partitioning: bool = False,
@@ -299,8 +299,11 @@ class Topic(SerializedChannel, TopicT):
         return self._partitions
 
     @partitions.setter
-    def partitions(self, partitions: int) -> None:
+    def partitions(self, partitions: Optional[int]) -> None:
         """Set the number of partitions for this topic.
+
+        :const:`None` means "let the broker decide", which is what
+        ``__init__`` assigns when no ``partitions`` argument is given.
 
         Only used for internal topics, see :attr:`partitions`.
         """
@@ -324,10 +327,10 @@ class Topic(SerializedChannel, TopicT):
         *,
         topics: Optional[Sequence[str]] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
