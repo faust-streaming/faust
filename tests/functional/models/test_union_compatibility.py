@@ -54,10 +54,6 @@ JSON_PASSTHROUGH_UNIONS = [
 
 
 @pytest.mark.parametrize("annotation", JSON_PASSTHROUGH_UNIONS)
-@pytest.mark.xfail(
-    reason="mode#80: Faust does not yet pass through heterogeneous JSON unions",
-    strict=True,
-)
 def test_json_native_heterogeneous_unions_compile(annotation):
     """JSON-shaped heterogeneous unions should be safe pass-through fields."""
     converter = TypeExpression(annotation).as_function()
@@ -65,10 +61,6 @@ def test_json_native_heterogeneous_unions_compile(annotation):
         assert converter(value) == value
 
 
-@pytest.mark.xfail(
-    reason="mode#80: class creation currently rejects the reported PEP 604 union",
-    strict=True,
-)
 def test_issue_80_record_declaration_regression():
     """Exercise the exact model declaration reported in mode issue #80."""
 
@@ -90,7 +82,8 @@ def test_issue_80_record_declaration_regression():
         list[Child] | dict[str, Child],
     ],
 )
-def test_ambiguous_or_coercion_sensitive_unions_remain_unsupported(annotation):
-    """Do not hide unions that require runtime type selection or coercion."""
-    with pytest.raises(NotImplementedError, match="Union of types"):
-        TypeExpression(annotation).as_function()
+def test_heterogeneous_unions_pass_through_without_coercion(annotation):
+    """Heterogeneous unions pass values through without runtime coercion."""
+    converter = TypeExpression(annotation).as_function()
+    value = {"payload": "unchanged"}
+    assert converter(value) is value
