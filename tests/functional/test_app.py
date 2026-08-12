@@ -970,6 +970,13 @@ class Test_BootStrategy:
         assert not BootStrategy(app, enable_web=False).web_server()
         assert BootStrategy(app, enable_web=None).web_server()
 
+    def test_custom_web_server_replaces_legacy_components(self, *, app):
+        @app.web_server
+        class CustomWeb(mode.Service): ...
+
+        assert not BootStrategy(app, enable_web=True).web_server()
+        assert "web" not in app.__dict__
+
     def test_disable_kafka(self, *, app):
         class B(BootStrategy):
             enable_kafka = False

@@ -227,7 +227,14 @@ class Agent(AgentT, Service):
                 "Agent concurrency must be 1 when using isolated partitions"
             )
         self.use_reply_headers = use_reply_headers
-        Service.__init__(self, loop=app.loop)
+        # Do *not* pass ``loop=app.loop`` here.  Agents are declared at module
+        # scope (``@app.agent(...)``), so reading ``app.loop`` at this point
+        # pins the App to whatever loop ``mode``'s ``get_event_loop()`` finds --
+        # at import time that is a loop nobody will ever run.  ``mode.Service``
+        # binds ``self.loop`` lazily on first access, which happens inside
+        # ``_default_start()``, i.e. in the loop that actually runs the app.
+        # See issues #322, #435 and #448.
+        Service.__init__(self)
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services dependencies required to start agent."""

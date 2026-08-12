@@ -37,6 +37,7 @@ from mode import Service, ServiceT, Worker
 from mode.utils import text
 from mode.utils.compat import want_bytes
 from mode.utils.imports import import_from_cwd, symbol_by_name
+from mode.utils.loops import get_event_loop
 from mode.worker import exiting
 
 from faust.types import AppT, CodecArg, ModelT
@@ -644,7 +645,11 @@ class Command(abc.ABC):  # noqa: B024
 
     def run_using_worker(self, *args: Any, **kwargs: Any) -> NoReturn:
         """Execute command using :class:`faust.Worker`."""
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        # ``get_event_loop_policy().get_event_loop()`` raises on Python 3.14
+        # when no loop is current, and nothing has created one by this point:
+        # declaring agents and tables no longer resolves a loop.  mode's
+        # helper keeps the historical get-or-create behaviour across versions.
+        loop = get_event_loop()
         args = self.args + args
         kwargs = {**self.kwargs, **kwargs}
         service = self.as_service(loop, *args, **kwargs)
@@ -663,7 +668,7 @@ class Command(abc.ABC):  # noqa: B024
         return Service.from_awaitable(
             self.execute(*args, **kwargs),
             name=type(self).__name__,
-            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
+            loop=loop or get_event_loop(),
         )
 
     def worker_for_service(
@@ -682,7 +687,7 @@ class Command(abc.ABC):  # noqa: B024
             console_port=self.console_port,
             redirect_stdouts=self.redirect_stdouts or False,
             redirect_stdouts_level=self.redirect_stdouts_level,
-            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
+            loop=loop or get_event_loop(),
             daemon=self.daemon,
             override_logging=self.override_logging,
         )

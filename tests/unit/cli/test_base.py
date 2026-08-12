@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import os
@@ -9,6 +10,7 @@ from unittest.mock import Mock, call, patch
 import click
 import pytest
 from mode import Worker
+from mode.utils import loops as mode_loops
 
 from faust.cli import AppCommand, Command, call_command
 from faust.cli.base import (
@@ -349,6 +351,44 @@ class Test_Command:
                     get_event_loop.return_value,
                 )
                 worker.execute_from_commandline.assert_called_once_with()
+
+    def test_run_using_worker_without_a_current_loop(self, *, command):
+        """The CLI must create its own loop when none is set.
+
+        Nothing sets a current event loop before the CLI runs -- declaring
+        agents and tables deliberately does not resolve one -- and from Python
+        3.14 ``get_event_loop_policy().get_event_loop()`` raises instead of
+        creating one.  Emulated here by clearing the current loop, which makes
+        every supported version raise on the old code path.
+        """
+        command.as_service = Mock()
+        command.worker_for_service = Mock()
+        worker = command.worker_for_service.return_value
+        worker.execute_from_commandline.side_effect = KeyError()
+
+        # Clearing the current loop is global state, and mode caches its own
+        # resolved loop in a thread local.  Both have to be put back, and any
+        # loop this test causes to be created has to be closed, or later tests
+        # inherit a loop that is not running and hang on it.
+        previous_loop = asyncio.get_event_loop_policy().get_event_loop()
+        previous_mode_loop = getattr(mode_loops._current_loop, "loop", None)
+        asyncio.set_event_loop(None)
+        if hasattr(mode_loops._current_loop, "loop"):
+            del mode_loops._current_loop.loop
+        try:
+            with pytest.raises(KeyError):  # i.e. got as far as the worker
+                command.run_using_worker()
+            used_loop = command.as_service.call_args[0][0]
+            assert isinstance(used_loop, asyncio.AbstractEventLoop)
+        finally:
+            if used_loop is not previous_loop and not used_loop.is_closed():
+                used_loop.close()
+            if previous_mode_loop is None:
+                if hasattr(mode_loops._current_loop, "loop"):
+                    del mode_loops._current_loop.loop
+            else:
+                mode_loops._current_loop.loop = previous_mode_loop
+            asyncio.set_event_loop(previous_loop)
 
     def test_on_worker_created(self, *, command):
         assert command.on_worker_created(Mock(name="worker")) is None

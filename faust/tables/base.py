@@ -127,7 +127,11 @@ class Collection(Service, CollectionT):
         synchronize_all_active_partitions: bool = False,
         **kwargs: Any,
     ) -> None:
-        Service.__init__(self, loop=app.loop, **kwargs)
+        # Do *not* pass ``loop=app.loop`` here: tables are declared at module
+        # scope, and reading ``app.loop`` before a loop is running pins the App
+        # to a loop that will never be run.  ``mode.Service`` late-binds the
+        # loop on first access.  See the note in ``faust.agents.agent``.
+        Service.__init__(self, **kwargs)
         self.app = app
         self.name = cast(str, name)  # set lazily so CAN BE NONE!
         self.default = default
