@@ -442,6 +442,12 @@ class TestProducer:
         # create_topic short-circuits (XXX) -- must not raise.
         assert await producer.create_topic("topic", 3, 1) is None
 
+    def test___init____producer_threaded(self, app):
+        app.conf.producer_threaded = True
+        producer = Producer(app.transport)
+        assert producer.threaded_producer is producer._producer_thread
+        assert producer.buffer.threaded_producer is producer._producer_thread
+
     def test_create_threaded_producer__uses_existing_thread(self, *, producer):
         assert producer.create_threaded_producer() is producer._producer_thread
 
