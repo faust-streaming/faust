@@ -32,6 +32,7 @@ from mode.utils.futures import stampede
 from mode.utils.objects import cached_property
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
+from yarl import URL
 
 from .agents import AgentFun, AgentManagerT, AgentT, SinkT
 from .assignor import PartitionAssignorT
@@ -93,6 +94,7 @@ __all__ = [
 
 TaskArg = Union[Callable[["AppT"], Awaitable], Callable[[], Awaitable]]
 _T = TypeVar("_T")
+_WebServerT = TypeVar("_WebServerT", bound=Union[ServiceT, Type[ServiceT]])
 
 
 class TracerT(abc.ABC):
@@ -145,6 +147,9 @@ class BootStrategyT:
     @abc.abstractmethod
     def producer_only(self) -> Iterable[ServiceT]: ...
 
+    @abc.abstractmethod
+    def _should_enable_web(self) -> bool: ...
+
 
 class AppT(ServiceT):
     """Abstract type for the Faust application.
@@ -157,6 +162,8 @@ class AppT(ServiceT):
 
     BootStrategy: ClassVar[Type[BootStrategyT]]
     boot_strategy: BootStrategyT
+
+    _web_server_service: Optional[Union[ServiceT, Type[ServiceT]]]
 
     #: Set to true when the app is finalized (can read configuration).
     finalized: bool = False
@@ -316,6 +323,17 @@ class AppT(ServiceT):
 
     @abc.abstractmethod
     def service(self, cls: Type[ServiceT]) -> Type[ServiceT]: ...
+
+    @abc.abstractmethod
+    def web_server(self, service: _WebServerT) -> _WebServerT: ...
+
+    @property
+    @abc.abstractmethod
+    def web_server_url(self) -> URL: ...
+
+    @property
+    @abc.abstractmethod
+    def web_server_driver_version(self) -> str: ...
 
     @abc.abstractmethod
     def stream(

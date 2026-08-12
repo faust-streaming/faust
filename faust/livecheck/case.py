@@ -186,7 +186,11 @@ class Case(Service):
         # signal attributes have the correct signal instance.
         self.__dict__.update(self.signals)
 
-        Service.__init__(self, loop=app.loop, **kwargs)
+        # Do *not* pass ``loop=app.loop`` here: cases are declared at module
+        # scope, and reading ``app.loop`` before a loop is running pins the App
+        # to a loop that will never be run.  ``mode.Service`` late-binds the
+        # loop on first access.  See the note in ``faust.agents.agent``.
+        Service.__init__(self, **kwargs)
 
     @Service.timer(10.0)
     async def _sampler(self) -> None:
