@@ -170,9 +170,6 @@ archs = ["auto64"]
 # Only musllinux stays skipped (unrelated to free-threading).
 skip = ["*musllinux*"]
 
-# cibuildwheel builds cp314t by default but needs to be told to build cp313t.
-enable = ["cpython-freethreading"]
-
 # >=3.1 for the `freethreading_compatible` directive.  Older Cython ignores
 # unknown directives instead of failing, so a lower version here would quietly
 # produce extensions that re-enable the GIL -- see the note in
