@@ -11,7 +11,7 @@ from faust.exceptions import KeyDecodeError, ValueDecodeError
 from faust.types import K, ModelArg, ModelT, V
 from faust.types.serializers import RegistryT
 
-from .codecs import CodecArg, dumps, loads
+from .codecs import CodecArg, dumps, loads, warn_if_unsafe_pickle
 
 __all__ = ["Registry"]
 
@@ -33,6 +33,8 @@ class Registry(RegistryT):
     ) -> None:
         self.key_serializer = key_serializer
         self.value_serializer = value_serializer
+        warn_if_unsafe_pickle(key_serializer)
+        warn_if_unsafe_pickle(value_serializer)
 
     def loads_key(
         self,

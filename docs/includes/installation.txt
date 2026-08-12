@@ -63,6 +63,10 @@ Codecs
 :``faust[yaml]``:
     for using YAML and the :pypi:`PyYAML` library in streams.
 
+:``faust[fickling]``:
+    for using the optional :pypi:`fickling` scanner with the
+    ``pickle_fickling`` codec.
+
 Optimization
 ~~~~~~~~~~~~
 
@@ -81,8 +85,31 @@ Sensors
 :``faust[prometheus]``:
     for using the Prometheus Faust monitor.
 
+:``faust[opentelemetry]``:
+    for using the OpenTelemetry Faust monitor.
+
 :``faust[sentry]``:
     for reporting worker errors to Sentry via :pypi:`sentry-sdk`.
+
+:``faust[opentracing]``:
+    for distributed tracing via :pypi:`opentracing`.  Deprecated upstream in
+    March 2026; prefer ``faust[opentelemetry]`` for new work.
+
+:``faust[opentelemetry]``:
+    for distributed tracing via :pypi:`opentelemetry-api`, including
+    continuing a trace from Kafka message headers into your agents.  See
+    :ref:`guide-asgi`.
+
+Web
+~~~
+
+:``faust[asgi]``:
+    for serving any ASGI application as the worker's web application, via
+    :pypi:`uvicorn`.  See :ref:`guide-asgi`.
+
+:``faust[fastapi]``:
+    installs the ASGI integration plus :pypi:`fastapi`.
+    See :ref:`guide-asgi`.
 
 Event Loops
 ~~~~~~~~~~~

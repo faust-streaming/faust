@@ -36,8 +36,10 @@ if os.environ.get("NO_CYTHON"):
 
 NAME = "faust"
 BUNDLES = {
+    "aerospike",
     "aiodns",
     "aiomonitor",
+    "asgi",
     "cchardet",
     "ciso8601",
     "ckafka",
@@ -45,6 +47,9 @@ BUNDLES = {
     "datadog",
     "debug",
     "fast",
+    "fastapi",
+    "fickling",
+    "opentelemetry",
     "opentracing",
     "orjson",
     "prometheus",
@@ -92,6 +97,13 @@ extensions = [
     Extension(
         "faust._cython.streams",
         ["faust/_cython/streams" + ext],
+        libraries=LIBRARIES,
+        extra_compile_args=CFLAGS,
+        extra_link_args=LDFLAGS,
+    ),
+    Extension(
+        "faust.models._cython.fields",
+        ["faust/models/_cython/fields" + ext],
         libraries=LIBRARIES,
         extra_compile_args=CFLAGS,
         extra_link_args=LDFLAGS,
@@ -215,7 +227,12 @@ def do_setup(**kwargs):
         description=meta["doc"],
         long_description=long_description,
         long_description_content_type="text/markdown",
-        packages=find_packages(exclude=["examples", "ez_setup", "tests", "tests.*"]),
+        # "examples.*" matters as much as "examples": without it the example
+        # sub-packages are installed into site-packages under an ``examples``
+        # namespace, which is not something a library should claim.
+        packages=find_packages(
+            exclude=["examples", "examples.*", "ez_setup", "tests", "tests.*"]
+        ),
         # PEP-561: https://www.python.org/dev/peps/pep-0561/
         package_data={"faust": ["py.typed"]},
         include_package_data=True,

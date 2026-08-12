@@ -3,6 +3,7 @@ from contextlib import suppress
 from typing import Any, Awaitable, Callable, Optional, Tuple, cast
 
 from faust.exceptions import KeyDecodeError, ValueDecodeError
+from faust.serializers.codecs import warn_if_unsafe_pickle
 from faust.types.app import AppT
 from faust.types.codecs import CodecArg
 from faust.types.core import K, OpenHeadersArg, V
@@ -69,6 +70,12 @@ class Schema(SchemaT[KT, VT]):
             self.key_serializer = _model_serializer(key_type)
         if self.value_serializer is None and value_type:
             self.value_serializer = _model_serializer(value_type)
+        # Check after model-derived defaults are resolved above, so a
+        # serializer inherited from key_type/value_type (e.g. a Record
+        # declared with `serializer="pickle"`) is also caught, not just
+        # an explicit key_serializer/value_serializer argument.
+        warn_if_unsafe_pickle(self.key_serializer)
+        warn_if_unsafe_pickle(self.value_serializer)
         if allow_empty is not None:
             self.allow_empty = allow_empty
 

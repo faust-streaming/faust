@@ -142,7 +142,7 @@ class worker(AppCommand):
                     ("id", app.conf.id),
                     ("transport", f"{app.conf.broker} {transport_extra}"),
                     ("store", f"{app.conf.store}"),
-                    ("web", f"{app.web.url}") if app.conf.web_enabled else None,
+                    ("web", f"{app.web_server_url}") if app.conf.web_enabled else None,
                     ("log", f"{logfile} ({loglevel})"),
                     ("pid", f"{os.getpid()}"),
                     ("hostname", f"{socket.gethostname()}"),
@@ -150,7 +150,7 @@ class worker(AppCommand):
                     self._human_cython_info(),
                     ("drivers", ""),
                     ("  transport", app.transport.driver_version),
-                    ("  web", app.web.driver_version),
+                    ("  web", app.web_server_driver_version),
                     ("datadir", f"{str(app.conf.datadir.absolute()):<40}"),
                     ("appdir", f"{str(app.conf.appdir.absolute()):<40}"),
                 ],
@@ -176,7 +176,7 @@ class worker(AppCommand):
     def _driver_versions(self, app: AppT) -> List[str]:
         return [
             app.transport.driver_version,
-            app.web.driver_version,
+            app.web_server_driver_version,
         ]
 
     def faust_ident(self) -> str:

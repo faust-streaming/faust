@@ -55,6 +55,7 @@ from mode.utils.logging import flight_recorder, get_logger
 from mode.utils.objects import cached_property, qualname, shortlabel
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
+from yarl import URL
 
 from faust import transport
 from faust.agents import AgentFun, AgentManager, AgentT, ReplyConsumer, SinkT
@@ -131,6 +132,7 @@ __all__ = ["App", "BootStrategy"]
 logger = get_logger(__name__)
 
 _T = TypeVar("_T")
+_WebServerT = TypeVar("_WebServerT", bound=Union[ServiceT, Type[ServiceT]])
 
 #: Format string for ``repr(app)``.
 APP_REPR_FINALIZED = """
@@ -367,6 +369,11 @@ class BootStrategy(BootStrategyT):
     def web_server(self) -> Iterable[ServiceT]:
         """Return list of web-server services."""
         if self._should_enable_web():
+            # A framework supplied through ``App.web_server`` is started as a
+            # runtime dependency after table recovery.  Do not construct the
+            # legacy faust.web/aiohttp stack as a second HTTP server.
+            if self.app._web_server_service is not None:
+                return []
             return list(self.web_components()) + [self.app.web]
         return []
 
@@ -447,6 +454,11 @@ class App(AppT, Service):
     _extra_services: List[Type[ServiceT]]
     _extra_service_instances: Optional[List[ServiceT]] = None
 
+    # A framework-neutral replacement for the legacy faust.web/aiohttp
+    # service.  It starts after table recovery and is gated by web_enabled.
+    _web_server_service: Optional[Union[ServiceT, Type[ServiceT]]] = None
+    _web_server_service_instance: Optional[ServiceT] = None
+
     # See faust/app/_attached.py
     _attachments: Attachments
 
@@ -494,6 +506,10 @@ class App(AppT, Service):
 
         # Any additional services added using the @app.service decorator.
         self._extra_services = []
+
+        # A custom framework may replace the built-in aiohttp server.
+        self._web_server_service = None
+        self._web_server_service_instance = None
 
         # The configuration source object/module passed to ``config_by_object``
         # for introspectio purposes.
@@ -605,6 +621,10 @@ class App(AppT, Service):
             # Add all asyncio.Tasks, like timers, etc.
             await self.on_started_init_extra_tasks()
 
+            # A user-facing HTTP server must not accept table-backed requests
+            # until recovery has completed.
+            await self.on_started_init_web_server()
+
             # Start user-provided services.
             await self.on_started_init_extra_services()
 
@@ -630,6 +650,18 @@ class App(AppT, Service):
                 await self.on_init_extra_service(service)
                 for service in self._extra_services
             ]
+
+    async def on_started_init_web_server(self) -> None:
+        """Start the configured framework-neutral web server, if any."""
+        service = self._web_server_service
+        if (
+            service is not None
+            and self._web_server_service_instance is None
+            and self.boot_strategy._should_enable_web()
+        ):
+            self._web_server_service_instance = await self.on_init_extra_service(
+                service
+            )
 
     async def on_init_extra_service(
         self, service: Union[ServiceT, Type[ServiceT]]
@@ -701,7 +733,11 @@ class App(AppT, Service):
 
     def worker_init_post_autodiscover(self) -> None:
         """Init worker after autodiscover."""
-        self.web.init_server()
+        # A custom server owns its own application and routes.  Avoid touching
+        # ``self.web`` here, since that would create aiohttp even when it has
+        # been replaced.
+        if self._web_server_service is None:
+            self.web.init_server()
         self.on_worker_init.send()
 
     def discover(
@@ -1136,6 +1172,52 @@ class App(AppT, Service):
         venusian.attach(cls, category=SCAN_SERVICE)
         self._extra_services.append(cls)
         return cls
+
+    def web_server(self, service: _WebServerT) -> _WebServerT:
+        """Register the service that owns this worker's HTTP server.
+
+        The service replaces the legacy :mod:`faust.web` aiohttp stack and is
+        started after table recovery.  It may host any web framework; Faust
+        only requires a :class:`mode.Service` instance or subclass.
+
+        Use :func:`faust.contrib.asgi.serve_asgi` for an ASGI application, or
+        register a framework-specific service directly::
+
+            @app.web_server
+            class Web(Service):
+                async def on_start(self):
+                    ...
+        """
+        current = self._web_server_service
+        if current is not None and current is not service:
+            raise ImproperlyConfigured("A web server is already registered")
+        self._web_server_service = service
+        return service
+
+    @property
+    def web_server_url(self) -> URL:
+        """Return the URL advertised for the active web server."""
+        service = self._web_server_service
+        if service is not None:
+            get_url = getattr(service, "get_web_url", None)
+            if callable(get_url):
+                return URL(get_url())
+            url = getattr(service, "web_url", None)
+            return URL(url) if url is not None else self.conf.canonical_url
+        return self.web.url
+
+    @property
+    def web_server_driver_version(self) -> str:
+        """Return the active web server's driver description."""
+        service = self._web_server_service
+        if service is not None:
+            version = getattr(service, "driver_version", None)
+            if version is not None:
+                return str(version)
+            if inspect.isclass(service):
+                return service.__name__
+            return type(service).__name__
+        return self.web.driver_version
 
     def is_leader(self) -> bool:
         """Return :const:`True` if we are in leader worker process."""
@@ -1848,13 +1930,16 @@ class App(AppT, Service):
         return self.transport.create_conductor(beacon=None)
 
     def _new_transport(self) -> TransportT:
+        # No ``loop=`` argument: the transport is reachable from import-time
+        # code (``app.topics`` -> ``_new_conductor`` -> ``app.transport``), so
+        # it resolves its loop lazily instead.  See ``faust.transport.base``.
         return transport.by_url(self.conf.broker_consumer[0])(
-            self.conf.broker_consumer, self, loop=self.loop
+            self.conf.broker_consumer, self
         )
 
     def _new_producer_transport(self) -> TransportT:
         return transport.by_url(self.conf.broker_producer[0])(
-            self.conf.broker_producer, self, loop=self.loop
+            self.conf.broker_producer, self
         )
 
     def _new_cache_backend(self) -> CacheBackendT:
@@ -2032,9 +2117,10 @@ class App(AppT, Service):
     @cached_property
     def tables(self) -> TableManagerT:
         """Map of available tables, and the table manager service."""
+        # No ``loop=``: tables are declared at module scope, so this property
+        # runs before any loop is running.  ``mode.Service`` late-binds.
         manager = self.conf.TableManager(  # type: ignore
             app=self,
-            loop=self.loop,
             beacon=self.beacon,
         )
         return cast(TableManagerT, manager)

@@ -11,6 +11,54 @@ https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
 resumes the Keep a Changelog format.
 -->
 
+## [Unreleased]
+
+### Added
+- Per-endpoint feature flags for the built-in web endpoints:
+  `web_stats_enabled`, `web_graph_enabled`, `web_router_enabled`,
+  `web_tables_enabled` and `web_metrics_enabled`. Previously `debug` was the
+  only control, and it enabled the statistics and graph endpoints together,
+  while `/router` and `/table` could not be turned off at all — even though
+  `/table` serves table *data* over HTTP. The statistics and graph flags take
+  their default from `debug`, so behaviour is unchanged unless you set them.
+- New `/performance/` endpoint (`web_metrics_enabled`, off by default)
+  returning throughput, latency percentiles, consumer lag and table statistics
+  as JSON. Consumer lag and latency percentiles are computed here — `Monitor`
+  tracks read and log-end offsets but never derives lag, and keeps raw latency
+  deques rather than summaries. Needs no extra dependency, and is independent
+  of both `debug` and `faust.sensors.prometheus`. Custom frameworks can expose
+  the same payload with `faust.sensors.metrics.performance_metrics()`.
+- Framework-neutral web servers: `App.web_server()` accepts any `mode.Service`
+  as a replacement for the legacy `faust.web`/aiohttp stack. The custom server
+  starts after table recovery and obeys `web_enabled`/`--without-web`.
+- `faust.contrib.asgi`: co-host any ASGI application with the worker, in one
+  process and one event loop. `faust_lifespan()` runs Faust from an ASGI
+  lifespan; `FaustLifespanMiddleware` supplies lifespan support to Django and
+  other ASGI applications without a lifespan hook; `serve_asgi()` installs the
+  ASGI app as the worker's only web server. New `faust[asgi]` extra;
+  `faust[fastapi]` adds FastAPI as well.
+- `faust.contrib.opentelemetry`: OpenTelemetry tracing. `setup_opentelemetry()`
+  continues a trace from Kafka message headers into your agents — the hop
+  `opentelemetry-instrumentation-aiokafka` cannot bridge, because Faust's
+  consumer runs in its own thread. FastAPI apps are instrumented automatically
+  when an SDK is configured. New `faust[opentelemetry]` extra.
+- New userguide page: *FastAPI and other ASGI applications*.
+
+### Fixed
+- Faust apps no longer resolve an event loop when agents, tables or the
+  transport are declared at import time. Previously that pinned the app to a
+  loop that was never run, so starting it from `asyncio.run()` — as uvicorn
+  does — failed with "Please create objects with the same loop as running with"
+  or "Task ... got Future ... attached to a different loop" (#322, #435, #448).
+- `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
+  shipped without the matching `BUNDLES` entry in `setup.py`, despite being
+  advertised in the README. A new test guards both directions of that mapping.
+
+### Changed
+- The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
+  name shadowed the real `fastapi` package when running the sibling
+  `examples/fastapi_example.py`, so neither example could be run as documented.
+
 ## [v0.12.1](https://github.com/faust-streaming/faust/releases/tag/v0.12.1) - 2026-07-19
 
 [Compare with v0.12.0](https://github.com/faust-streaming/faust/compare/v0.12.0...v0.12.1)
