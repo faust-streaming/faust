@@ -2079,7 +2079,7 @@ This option can also be set using :option:`faust worker --without-web`.
 ``web_graph_enabled``
 ---------------------
 
-.. versionadded:: 0.13
+.. versionadded:: 0.15.0
 
 :type: :class:`bool`
 :default (alias to setting): :setting:`debug`
@@ -2103,7 +2103,7 @@ was gated before this setting existed.
 ``web_metrics_enabled``
 -----------------------
 
-.. versionadded:: 0.13
+.. versionadded:: 0.15.0
 
 :type: :class:`bool`
 :default: :const:`False`
@@ -2130,7 +2130,7 @@ a deliberate choice.
 ``web_router_enabled``
 ----------------------
 
-.. versionadded:: 0.13
+.. versionadded:: 0.15.0
 
 :type: :class:`bool`
 :default: :const:`True`
@@ -2156,7 +2156,7 @@ are what makes :meth:`@table_route` work across nodes.
 ``web_stats_enabled``
 ---------------------
 
-.. versionadded:: 0.13
+.. versionadded:: 0.15.0
 
 :type: :class:`bool`
 :default (alias to setting): :setting:`debug`
@@ -2183,7 +2183,7 @@ When disabled, ``/`` serves the plain production index instead.
 ``web_tables_enabled``
 ----------------------
 
-.. versionadded:: 0.13
+.. versionadded:: 0.15.0
 
 :type: :class:`bool`
 :default: :const:`True`

@@ -1998,7 +1998,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced="0.13",
+        version_introduced="0.15.0",
         env_name="APP_WEB_STATS_ENABLED",
         default_alias="debug",
     )
@@ -2021,7 +2021,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced="0.13",
+        version_introduced="0.15.0",
         env_name="APP_WEB_GRAPH_ENABLED",
         default_alias="debug",
     )
@@ -2041,7 +2041,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced="0.13",
+        version_introduced="0.15.0",
         env_name="APP_WEB_ROUTER_ENABLED",
         default=True,
     )
@@ -2063,7 +2063,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced="0.13",
+        version_introduced="0.15.0",
         env_name="APP_WEB_TABLES_ENABLED",
         default=True,
     )
@@ -2081,7 +2081,7 @@ class Settings(base.SettingsRegistry):
 
     @sections.WebServer.setting(
         params.Bool,
-        version_introduced="0.13",
+        version_introduced="0.15.0",
         env_name="APP_WEB_METRICS_ENABLED",
         default=False,
     )
