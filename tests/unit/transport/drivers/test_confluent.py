@@ -5,7 +5,11 @@ around :pypi:`confluent_kafka` -- with the underlying ``confluent_kafka``
 ``Consumer``/``Producer`` mocked out, so no broker is required.
 """
 
+import os
+import subprocess
+import sys
 from unittest.mock import Mock, patch
+from zlib import crc32
 
 import pytest
 
@@ -26,6 +30,7 @@ from faust.transport.drivers.confluent import (  # noqa: E402
     ProducerProduceFuture,
     ProducerThread,
     Transport,
+    partition_for_key,
     server_list,
 )
 from faust.types import TP  # noqa: E402
@@ -114,6 +119,48 @@ class Test_server_list:
         assert server_list(urls, 9092) == "h1:9092,h2:9092"
 
 
+class Test_partition_for_key:
+    # Fixed vectors: crc32 of the key modulo the partition count, which is
+    # what librdkafka's default ``consistent_random`` partitioner does.
+    # Nothing here may depend on the interpreter's hash seed.
+    @pytest.mark.parametrize(
+        "key,partition_count,expected",
+        [
+            (b"key", 3, 1),
+            (b"key", 16, 9),
+            (b"k1", 16, 9),
+            (b"k2", 16, 3),
+            (b"another-key", 16, 4),
+            # Empty and NULL keys go to the partition crc32(b"") picks.
+            (b"", 16, 0),
+            (None, 16, 0),
+        ],
+    )
+    def test_vectors(self, key, partition_count, expected):
+        assert partition_for_key(key, partition_count) == expected
+
+    def test_is_stable_across_processes(self):
+        # The regression this guards: ``abs(hash(key)) % n``.  Python salts
+        # hash() per process for bytes, so the same key mapped to a
+        # different partition after every restart -- silently breaking the
+        # key-to-host routing that key_partition exists to provide.
+        script = (
+            "from faust.transport.drivers.confluent import partition_for_key;"
+            'print(partition_for_key(b"key", 1024))'
+        )
+        results = {
+            subprocess.run(
+                [sys.executable, "-c", script],
+                capture_output=True,
+                text=True,
+                check=True,
+                env={**os.environ, "PYTHONHASHSEED": seed},
+            ).stdout.strip()
+            for seed in ("0", "1", "12345")
+        }
+        assert results == {str(crc32(b"key") % 1024)}
+
+
 class TestConsumer:
     def test__new_consumer_thread(self, *, consumer):
         thread = Consumer._new_consumer_thread(consumer)
@@ -195,6 +242,15 @@ class TestConsumer:
     def test_verify_event_path(self, *, consumer):
         consumer.verify_event_path(303.3, TP1)
         consumer._thread.verify_event_path.assert_called_once_with(303.3, TP1)
+
+    def test_verify_event_path__real_thread_is_a_noop(self, *, consumer, cthread):
+        # Regression: the commit livelock detector calls verify_event_path
+        # on every tick (Consumer._commit_livelock_detector ->
+        # verify_all_partitions_active).  With the real thread in place --
+        # not a Mock -- this used to raise AttributeError because neither
+        # ConsumerThread nor ConfluentConsumerThread defined the method.
+        consumer._thread = cthread
+        assert consumer.verify_event_path(303.3, TP1) is None
 
 
 class TestAsyncConsumer:
@@ -380,8 +436,13 @@ class TestConfluentConsumerThread:
         metadata = Mock(name="metadata")
         metadata.topics = {"topic": {"partitions": {0: 1, 1: 1, 2: 1}}}
         _consumer.consumer.list_topics.return_value = metadata
-        partition = cthread.key_partition("topic", b"key")
-        assert 0 <= partition < 3
+        # crc32(b"key") % 3 -- a fixed value, not a per-process one.
+        assert cthread.key_partition("topic", b"key") == 1
+
+    def test_verify_event_path__is_a_noop(self, *, cthread):
+        # Livelock detection is not implemented for this driver, but the
+        # method must exist -- Consumer.verify_event_path delegates to it.
+        assert cthread.verify_event_path(303.3, TP1) is None
 
     def test_topic_partitions(self, *, cthread):
         assert cthread.topic_partitions("topic") is None
@@ -441,16 +502,35 @@ class TestProducer:
         # create_topic short-circuits (XXX) -- must not raise.
         assert await producer.create_topic("topic", 3, 1) is None
 
-    def test_key_partition(self, *, producer):
+    def test_key_partition(self, *, producer, app):
+        # Regression: key_partition used to read
+        # ``self._producer_thread.producer``, which is the *Faust* producer
+        # and has no ``list_topics``.  Use a real ProducerThread here so
+        # that mistake raises AttributeError instead of being absorbed by a
+        # Mock.
+        thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
         metadata = Mock(name="metadata")
         topic_meta = Mock()
         topic_meta.partitions = {0: 1, 1: 1}
         metadata.topics = {"topic": topic_meta}
-        producer._producer_thread.producer = Mock()
-        producer._producer_thread.producer.list_topics.return_value = metadata
+        thread._producer = Mock(name="confluent_kafka.Producer")
+        thread._producer.list_topics.return_value = metadata
+        producer._producer_thread = thread
+
         tp = producer.key_partition("topic", b"key")
-        assert tp.topic == "topic"
-        assert 0 <= tp.partition < 2
+
+        thread._producer.list_topics.assert_called_once_with("topic")
+        # crc32(b"key") % 2, the partition librdkafka's default
+        # ``consistent_random`` partitioner would have picked -- a fixed
+        # value, so a per-process hash cannot pass this.
+        assert tp == TP("topic", 1)
+
+    def test_key_partition__not_started(self, *, producer, app):
+        thread = ProducerThread(producer, loop=app.loop, beacon=producer.beacon)
+        thread._producer = None
+        producer._producer_thread = thread
+        with pytest.raises(RuntimeError):
+            producer.key_partition("topic", b"key")
 
 
 class TestProducerThread:

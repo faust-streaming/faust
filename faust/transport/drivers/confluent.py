@@ -19,6 +19,7 @@ from typing import (
     Type,
     cast,
 )
+from zlib import crc32
 
 import confluent_kafka
 from confluent_kafka import KafkaException, TopicPartition as _TopicPartition
@@ -73,6 +74,34 @@ def server_list(urls: List[URL], default_port: int) -> str:
     return ",".join(
         [f"{u.host or default_host}:{u.port or default_port}" for u in urls]
     )
+
+
+def partition_for_key(key: Optional[bytes], partition_count: int) -> int:
+    """Return the partition librdkafka would pick for ``key``.
+
+    librdkafka's default topic partitioner is ``consistent_random``:
+    ``crc32(key) % partition_count``, with empty and NULL keys assigned a
+    random partition instead.  This driver never overrides ``partitioner``,
+    so that is the partitioner every keyed record produced through it is
+    laid out by, and reproducing it here is what makes
+    :meth:`Producer.key_partition` agree with where the records actually
+    land -- which is the whole point of the method, since
+    :meth:`faust.assignor.partition_assignor.PartitionAssignor.key_store`
+    routes a request for a key to the worker owning that partition.
+
+    Empty and NULL keys get partition ``crc32(b"") % partition_count``, i.e.
+    ``0``: there is no deterministic answer to reproduce for the random case,
+    and this matches librdkafka's non-random ``consistent`` partitioner.
+
+    Note this is deliberately *not* the Java client's murmur2, which is what
+    :mod:`faust.transport.drivers.aiokafka` uses -- each driver has to mirror
+    the partitioner of the library that will actually do the producing.
+
+    Python's builtin :func:`hash` cannot be used here.  It is salted per
+    process for :class:`bytes`, so the same key would resolve to a different
+    partition after every restart, in every worker.
+    """
+    return crc32(key or b"") % partition_count
 
 
 class Consumer(ThreadDelegateConsumer):
@@ -155,15 +184,8 @@ class Consumer(ThreadDelegateConsumer):
         await super().on_stop()
 
     def verify_event_path(self, now: float, tp: TP) -> None:
-        # XXX broken: neither ConsumerThread nor ConfluentConsumerThread
-        # implements verify_event_path, so this raises AttributeError on
-        # every tick of the commit livelock detector
-        # (faust.transport.consumer.Consumer._commit_livelock_detector ->
-        # verify_all_partitions_active).  Livelock detection is therefore
-        # dead for this driver.  Not fixed here: adding a no-op stub would
-        # change runtime behaviour, and a real implementation belongs in
-        # ConfluentConsumerThread.
-        return self._thread.verify_event_path(now, tp)  # type: ignore[attr-defined]
+        """Verify the path of an event, if this is not working."""
+        return self._thread.verify_event_path(now, tp)
 
 
 class AsyncConsumer:
@@ -291,6 +313,15 @@ class ConfluentConsumerThread(ConsumerThread):
         )
 
     def close(self) -> None: ...
+
+    def verify_event_path(self, now: float, tp: TP) -> None:
+        """Verify the path of an event.
+
+        Livelock detection is not implemented for this driver, so this is
+        a no-op, matching the stub in
+        :meth:`faust.transport.consumer.Consumer.verify_event_path`.
+        """
+        return None
 
     async def subscribe(self, topics: Iterable[str]) -> None:
         # XXX pattern does not work :/
@@ -450,10 +481,7 @@ class ConfluentConsumerThread(ConsumerThread):
     ) -> Optional[int]:
         metadata = self._ensure_consumer().consumer.list_topics(topic)
         partition_count = len(metadata.topics[topic]["partitions"])
-
-        # Calculate the partition number based on the key hash
-        key_bytes = str(key).encode("utf-8")
-        return abs(hash(key_bytes)) % partition_count
+        return partition_for_key(key, partition_count)
 
 
 class ProducerProduceFuture(asyncio.Future):
@@ -684,23 +712,12 @@ class Producer(base.Producer):
     def key_partition(self, topic: str, key: bytes) -> TP:
         """Return topic and partition destination for key."""
         # Get the partition count for the topic
-        # XXX broken: ``ProducerThread.producer`` is the Faust Producer
-        # (i.e. ``self``), not the underlying confluent_kafka.Producer --
-        # that one is ``ProducerThread._producer``.  Faust producers have no
-        # ``list_topics``, so this raises AttributeError and
-        # ``Producer.key_partition`` is dead on arrival for this driver.
-        # Behaviour left untouched in this annotation-only pass; the fix is
-        # to read ``self._producer_thread._producer``.
-        metadata = self._producer_thread.producer.list_topics(  # type: ignore[attr-defined]  # noqa: E501
-            topic
-        )
+        _producer = self._producer_thread._producer
+        if _producer is None:
+            raise RuntimeError("Producer not started")
+        metadata = _producer.list_topics(topic)
         partition_count = len(metadata.topics[topic].partitions)
-
-        # Calculate the partition number based on the key hash
-        key_bytes = str(key).encode("utf-8")
-        partition = abs(hash(key_bytes)) % partition_count
-
-        return TP(topic, partition)
+        return TP(topic, partition_for_key(key, partition_count))
 
 
 class Transport(base.Transport):

@@ -11,6 +11,12 @@ click>=6.7,<8.4
 # keeps `scripts/check` reproducible, for the same reason mypy itself is pinned
 # in typecheck.txt.
 mode-streaming>=0.6.0
+# `faust/__init__.py` parses `__version__` with `packaging.version.Version`
+# rather than hand-rolled regexes.  aiokafka already requires packaging, so
+# this is already installed everywhere faust is; declare it anyway, because
+# faust imports it directly and must not depend on a transitive dep staying
+# put.  `Version.major`/`.minor`/`.micro` need >=20.0.
+packaging>=20.0
 terminaltables>=3.1,<4.0
 yarl>=1.0,<2.0
 croniter>=0.3.16
