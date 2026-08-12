@@ -79,6 +79,35 @@ jobs:
         # a missing confluent_kafka -- actually run.
         kafka-driver: ['aiokafka']
         include:
+          # Python 3.15.  `allow-prereleases` below resolves this to whatever
+          # pre-release the runner image publishes -- 3.15.0rc1 at the time of
+          # writing, and 3.15.0 final once it ships, with no change needed
+          # here.  Same shape as a stable row: Cython on and off, plus a
+          # confluent leg.
+          #
+          # Advisory (`experimental: true` -> `continue-on-error`) for two
+          # reasons.  The pre-release one is the same as everywhere else: rc2
+          # and final are still to come.  The specific one is that faust does
+          # not import at all on 3.15 until mode-streaming ships the fix for
+          # `typing._eval_type`, whose `type_params` argument became a required
+          # positional in 3.15 -- every faust Record model resolves its
+          # annotations through `mode.utils.objects.annotations`, so collection
+          # dies before the first test runs.  The fix is on mode's master; this
+          # leg goes green once a mode-streaming release carries it (bump the
+          # floor in requirements/requirements.txt then, and move these entries
+          # into the matrix above to make 3.15 required).
+          - python-version: '3.15'
+            use-cython: 'true'
+            experimental: true
+            kafka-driver: 'aiokafka'
+          - python-version: '3.15'
+            use-cython: 'false'
+            experimental: true
+            kafka-driver: 'aiokafka'
+          - python-version: '3.15'
+            use-cython: 'false'
+            experimental: true
+            kafka-driver: 'confluent'
           # confluent driver: broker-less unit tests over a pure-Python
           # wrapper, so one leg per Python version (Cython off) is enough.
           - python-version: '3.10'
@@ -111,6 +140,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          # Required by the 3.15 rows: a bare `3.15` matches stable releases
+          # only and fails with "Version 3.15 was not found in the local
+          # cache".  Safe for every other row -- it widens `3.X` to
+          # `~3.X.0-0`, and a pre-release only wins when no stable release
+          # satisfies the spec, so 3.10-3.14 still resolve to their newest
+          # stable patch.
+          allow-prereleases: true
           cache: pip
           # See the lint job: test.txt alone leaves the key unchanged when the
           # transitively-included pins move, and the confluent legs below
@@ -403,7 +439,15 @@ jobs:
         # cibuildwheel 2.21.3 predates CPython 3.14, so `build = "cp3*"`
         # stopped at cp313 and no 3.14 wheels were published (issue #715).
         # 4.x builds 3.14 by default and still supports cp310-cp313.
-        uses: pypa/cibuildwheel@v4.1.0
+        #
+        # 4.2.0 is the first pin that knows about CPython 3.15, and it builds
+        # cp315 by default -- no `CIBW_ENABLE: cpython-prerelease` needed,
+        # because cibuildwheel gates a Python behind that group only until its
+        # first release candidate (the ABI is frozen at rc1, so a wheel built
+        # against 3.15.0rc1 is forward-compatible with 3.15.0 final).  The
+        # `cp31?t-*` skip in pyproject.toml's [tool.cibuildwheel] keeps this
+        # to cp315, without cp315t, matching the other versions.
+        uses: pypa/cibuildwheel@v4.2.0
       - uses: actions/upload-artifact@v4
         with:
           name: cibw-wheels-${{ matrix.os }}
