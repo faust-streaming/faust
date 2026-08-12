@@ -82,6 +82,7 @@ from faust.transport.consumer import (
 from faust.types import (
     TP,
     AppT,
+    ChannelT,
     ConsumerMessage,
     FutureMessage,
     HeadersArg,
@@ -463,17 +464,12 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            # ``_on_published`` is the done-callback for the non-waiting
-            # branch: it takes the send future positionally and reads the
-            # result off it.  There is no such future here -- ``send_and_wait``
-            # has already resolved to ``ret`` -- so complete the message
-            # directly, exactly as ``Topic.publish_message(wait=True)`` does
-            # via ``_finalize_message``.
+            # ``send_and_wait`` has already resolved the broker-side
+            # operation.  Let the channel own Faust-level completion,
+            # including callback invocation and async callback handling.
             self.app.sensors.on_send_completed(producer, state, ret)
-            fut.set_result(ret)
-            if fut.message.callback:
-                fut.message.callback(fut)
-            return fut
+            channel = cast(ChannelT, fut.message.channel)
+            return await channel._finalize_message(fut, ret)
         else:
             fut2 = cast(
                 asyncio.Future,
