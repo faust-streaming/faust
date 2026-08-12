@@ -6,6 +6,7 @@ import pytest
 import faust
 from faust.contrib.asgi import (
     AsgiService,
+    FaustLifespanMiddleware,
     LoopMismatch,
     _disable_signal_handling,
     bind_to_running_loop,
@@ -191,6 +192,109 @@ class Test_faust_lifespan:
 
         async with lifespan():
             app.maybe_start.assert_called_once_with()
+
+
+class Test_FaustLifespanMiddleware:
+    @staticmethod
+    async def run_lifespan(middleware):
+        messages = iter(
+            [
+                {"type": "lifespan.startup"},
+                {"type": "lifespan.shutdown"},
+            ]
+        )
+        sent = []
+
+        async def receive():
+            return next(messages)
+
+        async def send(message):
+            sent.append(message)
+
+        await middleware({"type": "lifespan"}, receive, send)
+        return sent
+
+    async def test_owns_lifespan_for_django_style_apps(self, *, app):
+        app.maybe_start = Mock(side_effect=lambda: _started(True))
+        app.stop = Mock(side_effect=lambda: _completed_future())
+
+        async def django_app(scope, receive, send):
+            raise AssertionError("Django must not receive the lifespan scope")
+
+        middleware = FaustLifespanMiddleware(django_app, app, discover=False)
+
+        assert await self.run_lifespan(middleware) == [
+            {"type": "lifespan.startup.complete"},
+            {"type": "lifespan.shutdown.complete"},
+        ]
+        app.maybe_start.assert_called_once_with()
+        app.stop.assert_called_once_with()
+
+    async def test_delegates_http_unchanged(self, *, app):
+        calls = []
+
+        async def django_app(scope, receive, send):
+            calls.append((scope, receive, send))
+
+        middleware = FaustLifespanMiddleware(django_app, app)
+        scope = {"type": "http", "path": "/"}
+        receive = Mock(name="receive")
+        send = Mock(name="send")
+
+        await middleware(scope, receive, send)
+
+        assert calls == [(scope, receive, send)]
+        assert app._loop is None
+
+    async def test_reports_startup_failure(self, *, app):
+        async def fail_to_start():
+            raise RuntimeError("cannot start Faust")
+
+        app.maybe_start = Mock(side_effect=fail_to_start)
+        middleware = FaustLifespanMiddleware(Mock(), app, discover=False)
+
+        sent = await self.run_lifespan(middleware)
+
+        assert sent == [
+            {
+                "type": "lifespan.startup.failed",
+                "message": "cannot start Faust",
+            }
+        ]
+
+    async def test_reports_shutdown_failure(self, *, app):
+        async def fail_to_stop():
+            raise RuntimeError("cannot stop Faust")
+
+        app.maybe_start = Mock(side_effect=lambda: _started(True))
+        app.stop = Mock(side_effect=fail_to_stop)
+        middleware = FaustLifespanMiddleware(Mock(), app, discover=False)
+
+        sent = await self.run_lifespan(middleware)
+
+        assert sent == [
+            {"type": "lifespan.startup.complete"},
+            {
+                "type": "lifespan.shutdown.failed",
+                "message": "cannot stop Faust",
+            },
+        ]
+
+    async def test_rejects_invalid_lifespan_message(self, *, app):
+        app.maybe_start = Mock(side_effect=lambda: _started(False))
+        sent = []
+
+        async def receive():
+            return {"type": "http.request"}
+
+        async def send(message):
+            sent.append(message)
+
+        middleware = FaustLifespanMiddleware(Mock(), app, discover=False)
+        await middleware({"type": "lifespan"}, receive, send)
+
+        assert sent[0]["type"] == "lifespan.startup.failed"
+        assert "lifespan.startup" in sent[0]["message"]
 
 
 class Test_serve_asgi:

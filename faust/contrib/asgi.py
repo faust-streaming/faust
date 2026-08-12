@@ -61,6 +61,7 @@ else:
 __all__ = [
     "LoopMismatch",
     "AsgiService",
+    "FaustLifespanMiddleware",
     "bind_to_running_loop",
     "faust_app_running",
     "faust_lifespan",
@@ -204,8 +205,8 @@ def faust_lifespan(
 
     @asynccontextmanager
     async def lifespan(*args: Any, **lifespan_kwargs: Any) -> AsyncIterator[None]:
-        # ASGI hands the application object to the lifespan handler, which is
-        # the thing OpenTelemetry needs to wrap.
+        # Framework adapters such as Starlette pass the application object to
+        # the lifespan handler, which is the thing OpenTelemetry needs to wrap.
         if args:
             maybe_instrument_opentelemetry(args[0], opentelemetry)
         async with faust_app_running(app, **kwargs):
@@ -214,6 +215,67 @@ def faust_lifespan(
             yield
 
     return lifespan
+
+
+class FaustLifespanMiddleware:
+    """Add Faust startup and shutdown to an ASGI application.
+
+    This is the framework-neutral alternative to :func:`faust_lifespan` for
+    applications that do not expose a lifespan-constructor hook.  Django is
+    the common example::
+
+        from django.core.asgi import get_asgi_application
+        from faust.contrib.asgi import FaustLifespanMiddleware
+
+        django_app = get_asgi_application()
+        application = FaustLifespanMiddleware(django_app, faust_app)
+
+    HTTP and WebSocket scopes are passed to ``asgi_app`` unchanged.  The
+    middleware owns the ASGI lifespan scope, starting Faust before reporting
+    startup complete and stopping it before reporting shutdown complete.
+
+    Use :func:`faust_lifespan` instead when the inner framework already has a
+    lifespan that must also run.  This middleware intentionally does not pass
+    lifespan events to the inner application, which is what makes it suitable
+    for Django and other ASGI applications without lifespan support.
+    """
+
+    def __init__(self, asgi_app: Any, faust_app: AppT, **kwargs: Any) -> None:
+        self.asgi_app = asgi_app
+        self.faust_app = faust_app
+        self.faust_options = kwargs
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope.get("type") != "lifespan":
+            await self.asgi_app(scope, receive, send)
+            return
+
+        phase = "startup"
+        try:
+            message = await receive()
+            self._expect(message, "lifespan.startup")
+            async with faust_app_running(self.faust_app, **self.faust_options):
+                await send({"type": "lifespan.startup.complete"})
+                phase = "shutdown"
+                message = await receive()
+                self._expect(message, "lifespan.shutdown")
+        except Exception as exc:
+            await send(
+                {
+                    "type": f"lifespan.{phase}.failed",
+                    "message": str(exc),
+                }
+            )
+        else:
+            await send({"type": "lifespan.shutdown.complete"})
+
+    @staticmethod
+    def _expect(message: Any, expected: str) -> None:
+        actual = message.get("type") if isinstance(message, Mapping) else None
+        if actual != expected:
+            raise RuntimeError(
+                f"Expected ASGI message {expected!r}, received {actual!r}"
+            )
 
 
 @contextlib.contextmanager

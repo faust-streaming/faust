@@ -57,6 +57,46 @@ Litestar, Django ASGI, or any other ASGI callable. Use
 ``faust-streaming[asgi]`` when your selected framework is already installed
 and you only need the ASGI server integration.
 
+.. _asgi-django:
+
+Django and applications without a lifespan hook
+================================================
+
+Django exposes a standard ASGI callable through
+:func:`django.core.asgi.get_asgi_application`, but it does not accept the
+constructor-level lifespan handler used in the FastAPI example. Wrap that
+callable in :class:`FaustLifespanMiddleware` in the project's ``asgi.py``:
+
+.. sourcecode:: python
+
+    import os
+
+    from django.core.asgi import get_asgi_application
+    from faust.contrib.asgi import FaustLifespanMiddleware
+
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "myproject.settings")
+    django_application = get_asgi_application()
+
+    from myproject.faust import app as faust_app
+
+    application = FaustLifespanMiddleware(django_application, faust_app)
+
+Run the combined application with any ASGI server:
+
+.. sourcecode:: console
+
+    $ uvicorn myproject.asgi:application
+
+The middleware implements the standard ASGI lifespan protocol. It starts
+Faust before replying with ``lifespan.startup.complete`` and stops Faust
+before replying with ``lifespan.shutdown.complete``. HTTP and WebSocket
+scopes pass to Django unchanged, and Faust never imports Django.
+
+The wrapper owns the lifespan scope instead of forwarding it to the inner
+application. Use :func:`faust_lifespan` or :func:`faust_app_running` when the
+selected framework already has startup and shutdown work that must be
+composed with Faust.
+
 .. _asgi-one-loop:
 
 One process, one event loop

@@ -33,8 +33,10 @@ resumes the Keep a Changelog format.
   starts after table recovery and obeys `web_enabled`/`--without-web`.
 - `faust.contrib.asgi`: co-host any ASGI application with the worker, in one
   process and one event loop. `faust_lifespan()` runs Faust from an ASGI
-  lifespan; `serve_asgi()` installs the ASGI app as the worker's only web
-  server. New `faust[asgi]` extra; `faust[fastapi]` adds FastAPI as well.
+  lifespan; `FaustLifespanMiddleware` supplies lifespan support to Django and
+  other ASGI applications without a lifespan hook; `serve_asgi()` installs the
+  ASGI app as the worker's only web server. New `faust[asgi]` extra;
+  `faust[fastapi]` adds FastAPI as well.
 - `faust.contrib.opentelemetry`: OpenTelemetry tracing. `setup_opentelemetry()`
   continues a trace from Kafka message headers into your agents — the hop
   `opentelemetry-instrumentation-aiokafka` cannot bridge, because Faust's
