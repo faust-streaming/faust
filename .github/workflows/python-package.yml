@@ -249,12 +249,13 @@ jobs:
           pip install .
       - name: Run tests
         if: steps.install.outcome == 'success'
-        run: scripts/tests
-      - name: Enforce coverage
-        if: steps.install.outcome == 'success'
-        uses: codecov/codecov-action@v5
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+        # `scripts/tests` also runs bandit after pytest, and pytest coverage on
+        # PyPy is expensive enough to push this advisory leg into the timeout.
+        # Run pytest directly without coverage, and stop at the first failure so
+        # a red job reports the real test error instead of a timeout.
+        run: >
+          python -m pytest tests/unit tests/functional tests/integration
+          tests/meticulous tests/regression -x --no-cov
   test-integration:
     name: 'Integration (Kafka ${{ matrix.kafka-version }})'
     runs-on: ubuntu-latest
