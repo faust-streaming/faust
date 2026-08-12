@@ -1,4 +1,25 @@
-Directory Layout
+Django and Faust
+================
+
+ASGI co-hosting
+---------------
+
+The Django and Faust applications can run together on one asyncio event loop::
+
+    $ uvicorn proj.asgi:application
+
+``proj/asgi.py`` wraps Django's standard ``get_asgi_application()`` callable
+with ``FaustLifespanMiddleware``. The wrapper starts Faust before the ASGI
+server accepts requests and stops it during ASGI shutdown. HTTP and WebSocket
+scopes are still handled entirely by Django.
+
+The separate Faust worker entry point remains available when Django and Faust
+should run as different processes::
+
+    $ proj-faust worker -l info
+
+Directory layout
+----------------
 
 - ``proj/``
 
