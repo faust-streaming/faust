@@ -1895,7 +1895,11 @@ class Settings(base.SettingsRegistry):
         default="aiohttp://",
     )
     def web(self) -> URL:
-        """Web server driver to use."""
+        """Legacy :mod:`faust.web` driver to use.
+
+        This setting is ignored when the application registers a
+        framework-neutral server with :meth:`faust.App.web_server`.
+        """
 
     @sections.WebServer.setting(
         params.Str,

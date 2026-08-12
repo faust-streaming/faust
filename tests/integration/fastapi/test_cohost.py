@@ -12,7 +12,7 @@ from unittest.mock import Mock
 import pytest
 
 import faust
-from faust.contrib.fastapi import faust_lifespan
+from faust.contrib.asgi import faust_lifespan
 
 fastapi = pytest.importorskip("fastapi")
 httpx = pytest.importorskip("httpx")

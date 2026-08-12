@@ -17,7 +17,7 @@ from fastapi import FastAPI
 from my_faust.app import faust_app
 from my_faust.timer import router as timer_router
 
-from faust.contrib.fastapi import serve_asgi
+from faust.contrib.asgi import serve_asgi
 
 # ``faust -A worker_main`` looks for an attribute named ``app``.
 app = faust_app

@@ -39,6 +39,7 @@ BUNDLES = {
     "aerospike",
     "aiodns",
     "aiomonitor",
+    "asgi",
     "cchardet",
     "ciso8601",
     "ckafka",

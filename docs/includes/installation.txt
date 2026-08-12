@@ -98,15 +98,18 @@ Sensors
 :``faust[opentelemetry]``:
     for distributed tracing via :pypi:`opentelemetry-api`, including
     continuing a trace from Kafka message headers into your agents.  See
-    :ref:`guide-fastapi`.
+    :ref:`guide-asgi`.
 
 Web
 ~~~
 
+:``faust[asgi]``:
+    for serving any ASGI application as the worker's web application, via
+    :pypi:`uvicorn`.  See :ref:`guide-asgi`.
+
 :``faust[fastapi]``:
-    for co-hosting a FastAPI (or any ASGI) application in the same process
-    and event loop as the Faust worker, via :pypi:`uvicorn`.
-    See :ref:`guide-fastapi`.
+    installs the ASGI integration plus :pypi:`fastapi`.
+    See :ref:`guide-asgi`.
 
 Event Loops
 ~~~~~~~~~~~

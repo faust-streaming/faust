@@ -463,6 +463,16 @@ class Test_App:
         app.worker_init_post_autodiscover()
         on_worker_init.assert_called_once_with(app, signal=app.on_worker_init)
 
+    def test_worker_init_custom_web_server_does_not_construct_aiohttp(self, *, app):
+        app.web = Mock(name="legacy_web")
+
+        @app.web_server
+        class CustomWeb(Service): ...
+
+        app.worker_init_post_autodiscover()
+
+        app.web.init_server.assert_not_called()
+
     def test_discover(self, *, app):
         # With an explicit module list, fixup-provided modules (e.g. Django's
         # INSTALLED_APPS) must NOT be pulled in -- the user's list is honored
@@ -819,6 +829,22 @@ class Test_App:
         class Foo(Service): ...
 
         assert Foo in app._extra_services
+
+    def test_web_server(self, *, app):
+        @app.web_server
+        class Web(Service):
+            driver_version = "custom=1"
+            web_url = "http://127.0.0.1:7000"
+
+        assert app._web_server_service is Web
+        assert app.web_server(Web) is Web
+        assert app.web_server_driver_version == "custom=1"
+        assert str(app.web_server_url) == "http://127.0.0.1:7000"
+
+        class OtherWeb(Service): ...
+
+        with pytest.raises(ImproperlyConfigured):
+            app.web_server(OtherWeb)
 
     def test_is_leader(self, *, app):
         app._leader_assignor = Mock(

@@ -1,4 +1,4 @@
-"""Regression tests for co-hosting Faust with an ASGI server (FastAPI).
+"""Regression tests for co-hosting Faust with an ASGI server.
 
 Faust apps are declared at module scope, but under an ASGI server such as
 uvicorn the app is *started* from a loop created later by :func:`asyncio.run`.
@@ -33,7 +33,7 @@ def declared_app():
     pin the app.
     """
     app = faust.App(
-        "test-fastapi-cohost",
+        "test-asgi-cohost",
         store="memory://",
         cache="memory://",
     )

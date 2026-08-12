@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 import faust
-from faust.contrib.fastapi import (
+from faust.contrib.asgi import (
     AsgiService,
     LoopMismatch,
     _disable_signal_handling,
@@ -20,7 +20,7 @@ from faust.exceptions import ImproperlyConfigured
 @pytest.fixture()
 def app():
     """An app declared the way a module declares one -- no loop running."""
-    return faust.App("test-contrib-fastapi", store="memory://", cache="memory://")
+    return faust.App("test-contrib-asgi", store="memory://", cache="memory://")
 
 
 def _completed_future(result=None):
@@ -33,6 +33,12 @@ def _completed_future(result=None):
 def _started(value):
     """Stand-in for ``App.maybe_start()``, which returns "did I start it?"."""
     return _completed_future(value)
+
+
+def test_fastapi_module_is_a_compatibility_alias():
+    from faust.contrib.fastapi import AsgiService as FastApiAsgiService
+
+    assert FastApiAsgiService is AsgiService
 
 
 class Test_bind_to_running_loop:
@@ -188,7 +194,7 @@ class Test_faust_lifespan:
 
 
 class Test_serve_asgi:
-    def test_registers_an_extra_service(self, *, app):
+    def test_registers_the_primary_web_service(self, *, app):
         asgi_app = Mock(name="asgi_app")
 
         cls = serve_asgi(app, asgi_app, host="127.0.0.1", port=9001, workers=2)
@@ -197,14 +203,38 @@ class Test_serve_asgi:
         assert cls.asgi_app is asgi_app
         assert cls.host == "127.0.0.1"
         assert cls.port == 9001
+        assert str(cls.get_web_url()) == "http://127.0.0.1:9001"
         assert cls.uvicorn_options == {"workers": 2}
-        assert cls in app._extra_services
+        assert app._web_server_service is cls
+        assert cls not in app._extra_services
 
     def test_defaults(self, *, app):
         cls = serve_asgi(app, Mock(name="asgi_app"))
 
-        assert cls.port == 8000
+        assert cls.host is None
+        assert cls.port is None
+        service = cls()
+        assert service.host == app.conf.web_bind
+        assert service.port == app.conf.web_port
         assert cls.uvicorn_options == {}
+
+    def test_worker_web_settings_are_late_bound(self, *, app):
+        cls = serve_asgi(app, Mock(name="asgi_app"))
+
+        app.conf.web_bind = "127.0.0.2"
+        app.conf.web_port = 7001
+        app.conf.canonical_url = "http://api.example.com:7001"
+
+        service = cls()
+        assert service.host == "127.0.0.2"
+        assert service.port == 7001
+        assert str(app.web_server_url) == "http://api.example.com:7001"
+
+    def test_replaces_the_legacy_web_stack(self, *, app):
+        serve_asgi(app, Mock(name="asgi_app"))
+
+        assert not list(app.boot_strategy.web_server())
+        assert "web" not in app.__dict__
 
 
 class Test_AsgiService:
@@ -346,9 +376,7 @@ class Test_maybe_instrument_opentelemetry:
         asgi_app = Mock(name="asgi_app")
         lifespan = faust_lifespan(app, discover=False)
 
-        with patch(
-            "faust.contrib.fastapi.maybe_instrument_opentelemetry"
-        ) as instrument:
+        with patch("faust.contrib.asgi.maybe_instrument_opentelemetry") as instrument:
             async with lifespan(asgi_app):
                 pass
 
@@ -359,9 +387,7 @@ class Test_maybe_instrument_opentelemetry:
         asgi_app = Mock(name="asgi_app")
         lifespan = faust_lifespan(app, discover=False, opentelemetry=False)
 
-        with patch(
-            "faust.contrib.fastapi.maybe_instrument_opentelemetry"
-        ) as instrument:
+        with patch("faust.contrib.asgi.maybe_instrument_opentelemetry") as instrument:
             async with lifespan(asgi_app):
                 pass
 

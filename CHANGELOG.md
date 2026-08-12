@@ -26,11 +26,15 @@ resumes the Keep a Changelog format.
   as JSON. Consumer lag and latency percentiles are computed here — `Monitor`
   tracks read and log-end offsets but never derives lag, and keeps raw latency
   deques rather than summaries. Needs no extra dependency, and is independent
-  of both `debug` and `faust.sensors.prometheus`.
-- `faust.contrib.fastapi`: co-host a FastAPI (or any ASGI) application with the
-  worker, in one process and one event loop. `faust_lifespan()` runs Faust from
-  an ASGI lifespan, `serve_asgi()` serves your app from inside `faust worker`.
-  New `faust[fastapi]` extra.
+  of both `debug` and `faust.sensors.prometheus`. Custom frameworks can expose
+  the same payload with `faust.sensors.metrics.performance_metrics()`.
+- Framework-neutral web servers: `App.web_server()` accepts any `mode.Service`
+  as a replacement for the legacy `faust.web`/aiohttp stack. The custom server
+  starts after table recovery and obeys `web_enabled`/`--without-web`.
+- `faust.contrib.asgi`: co-host any ASGI application with the worker, in one
+  process and one event loop. `faust_lifespan()` runs Faust from an ASGI
+  lifespan; `serve_asgi()` installs the ASGI app as the worker's only web
+  server. New `faust[asgi]` extra; `faust[fastapi]` adds FastAPI as well.
 - `faust.contrib.opentelemetry`: OpenTelemetry tracing. `setup_opentelemetry()`
   continues a trace from Kafka message headers into your agents — the hop
   `opentelemetry-instrumentation-aiokafka` cannot bridge, because Faust's

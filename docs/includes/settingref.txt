@@ -1957,7 +1957,9 @@ Advanced Web Server Settings
 :type: :class:`str` / :class:`~yarl.URL`
 :default: ``'aiohttp://'``
 
-Web server driver to use.
+Legacy :mod:`faust.web` driver to use. This setting is ignored when the
+application registers a framework-neutral server with
+:meth:`faust.App.web_server`.
 
 .. setting:: web_application_options
 

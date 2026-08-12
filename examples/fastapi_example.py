@@ -21,7 +21,7 @@ from typing import Union
 from fastapi import FastAPI
 
 import faust
-from faust.contrib.fastapi import faust_app_running
+from faust.contrib.asgi import faust_app_running
 
 
 def fake_answer_to_everything_ml_model(x: float):

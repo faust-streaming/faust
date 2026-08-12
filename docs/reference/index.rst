@@ -54,6 +54,7 @@ Contrib
     :maxdepth: 1
 
     faust.contrib
+    faust.contrib.asgi
     faust.contrib.fastapi
     faust.contrib.opentelemetry
     faust.contrib.sentry
@@ -106,6 +107,7 @@ Sensors
     faust.sensors
     faust.sensors.base
     faust.sensors.datadog
+    faust.sensors.metrics
     faust.sensors.monitor
     faust.sensors.otel
     faust.sensors.prometheus

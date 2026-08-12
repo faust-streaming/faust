@@ -1,16 +1,16 @@
-.. _guide-fastapi:
+.. _guide-asgi:
 
 =================================================
- FastAPI and other ASGI applications
+ Pluggable web frameworks and ASGI
 =================================================
 
-.. module:: faust.contrib.fastapi
+.. module:: faust.contrib.asgi
 
 .. contents::
     :local:
     :depth: 2
 
-.. _fastapi-basics:
+.. _asgi-basics:
 
 Basics
 ======
@@ -22,7 +22,7 @@ produce to a Kafka topic directly:
 
     import faust
     from fastapi import FastAPI
-    from faust.contrib.fastapi import faust_lifespan
+    from faust.contrib.asgi import faust_lifespan
 
     faust_app = faust.App("hello", broker="kafka://localhost:9092")
     greetings = faust_app.topic("greetings", value_type=str)
@@ -51,10 +51,13 @@ Install the optional dependencies with:
 
     $ pip install "faust-streaming[fastapi]"
 
-Nothing in :mod:`faust.contrib.fastapi` imports :pypi:`fastapi` or
-:pypi:`starlette`, so it works equally well with Starlette, Quart or Litestar.
+Nothing in :mod:`faust.contrib.asgi` imports :pypi:`fastapi` or
+:pypi:`starlette`, so it works equally well with FastAPI, Starlette, Quart,
+Litestar, Django ASGI, or any other ASGI callable. Use
+``faust-streaming[asgi]`` when your selected framework is already installed
+and you only need the ASGI server integration.
 
-.. _fastapi-one-loop:
+.. _asgi-one-loop:
 
 One process, one event loop
 ===========================
@@ -90,7 +93,7 @@ that is actually running before starting it, so this cannot happen.
     naming the likely cause, rather than letting it fail later and less
     legibly.
 
-.. _fastapi-composing:
+.. _asgi-composing:
 
 Composing with your own lifespan
 ================================
@@ -101,7 +104,7 @@ context manager :func:`faust_lifespan` is built from:
 .. sourcecode:: python
 
     from contextlib import asynccontextmanager
-    from faust.contrib.fastapi import faust_app_running
+    from faust.contrib.asgi import faust_app_running
 
     @asynccontextmanager
     async def lifespan(api: FastAPI):
@@ -115,7 +118,7 @@ context manager :func:`faust_lifespan` is built from:
 The app is started with ``maybe_start()``, so this composes safely with an app
 that is already running, and will not stop one it did not start.
 
-.. _fastapi-worker:
+.. _asgi-worker:
 
 Running under ``faust worker``
 ==============================
@@ -125,19 +128,20 @@ your ASGI application on its own loop.
 
 .. sourcecode:: python
 
-    from faust.contrib.fastapi import serve_asgi
+    from faust.contrib.asgi import serve_asgi
 
     api = FastAPI()
-    serve_asgi(faust_app, api, port=8000)
+    serve_asgi(faust_app, api)
 
 .. sourcecode:: console
 
     $ faust -A myapp worker -l info
 
-:func:`serve_asgi` registers the server as an app service, so it starts only
-once the app is up -- after table recovery has finished, which is when it is
-actually safe to serve traffic.  Extra keyword arguments are passed through to
-:class:`uvicorn.Config`.
+:func:`serve_asgi` makes the ASGI application the worker's web application. It
+replaces the legacy aiohttp server, starts only after table recovery has
+finished, and obeys :setting:`web_enabled` and ``--without-web``. By default it
+binds to :setting:`web_bind` and :setting:`web_port`; extra keyword arguments
+are passed through to :class:`uvicorn.Config`.
 
 .. admonition:: ``faust -A`` looks for ``app``
 
@@ -151,25 +155,48 @@ actually safe to serve traffic.  Extra keyword arguments are passed through to
     Naming the FastAPI object ``app`` -- the FastAPI convention -- is what
     makes ``faust -A`` fail to find your app.
 
-.. _fastapi-web-server:
+.. _asgi-web-server:
 
-Faust's own web server
-======================
+Replacing ``faust.web``
+=======================
 
-Faust ships its own :pypi:`aiohttp` server for ``@app.page``, table routing and
-``/metrics``.  It is independent of anything here and keeps listening on
-``web_port`` (6066 by default).  Two servers in one process is fine; if you do
-not want Faust's, turn it off:
+Faust keeps its aiohttp-based :mod:`faust.web` stack as the compatibility
+default, but applications are no longer required to use it. Registering a web
+server service replaces that stack completely:
 
 .. sourcecode:: python
 
-    app = faust.App("myapp", web_enabled=False)
+    from mode import Service
 
-There is no ASGI *driver* for Faust's own views -- ``@app.page`` and
-``@app.table_route`` are still served by aiohttp.  This page is about
-co-hosting your application, not about replacing that.
+    @faust_app.web_server
+    class MyFrameworkServer(Service):
+        async def on_start(self):
+            # Start Sanic, Tornado, or another framework here.
+            ...
 
-.. _fastapi-opentelemetry:
+        async def on_stop(self):
+            ...
+
+Faust only owns the service lifecycle. The service owns its framework,
+application object, routes, and HTTP server. It starts after table recovery,
+uses the same event loop as the worker, and is disabled by the same
+``web_enabled`` switch as the compatibility server.
+
+:func:`serve_asgi` is the ready-made implementation of this hook for ASGI.
+Because the framework now owns routing, ``@app.page``, ``@app.table_route``,
+and Faust's built-in aiohttp endpoints are not mounted when a custom server is
+registered. Define their replacements in your chosen framework. The new
+performance payload is framework-neutral, so it can be exposed directly:
+
+.. sourcecode:: python
+
+    from faust.sensors.metrics import performance_metrics
+
+    @api.get("/performance")
+    async def performance():
+        return performance_metrics(faust_app)
+
+.. _asgi-opentelemetry:
 
 OpenTelemetry
 =============
@@ -226,7 +253,7 @@ resulting trace reads:
     Note also that the OpenTracing bridge was deprecated upstream in March
     2026; new work should target OpenTelemetry directly.
 
-.. _fastapi-examples:
+.. _asgi-examples:
 
 Examples
 ========
@@ -241,7 +268,7 @@ Two complete examples ship with Faust:
     their own modules.  ``main.py`` is served by uvicorn; ``worker_main.py``
     shows the same API served from inside ``faust worker``.
 
-.. _fastapi-caveats:
+.. _asgi-caveats:
 
 Caveats
 =======
@@ -262,4 +289,3 @@ Caveats
   It is untested in a co-hosted process and is not supported here yet.
 * ``uvicorn --reload`` and ``--workers`` fork or re-exec the process.  Faust
   is not designed to be forked; use a single worker.
-* Faust's own web views stay on aiohttp, as described above.

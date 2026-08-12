@@ -22,7 +22,7 @@ from fastapi import FastAPI
 from my_faust.app import faust_app
 from my_faust.timer import router as timer_router
 
-from faust.contrib.fastapi import faust_lifespan
+from faust.contrib.asgi import faust_lifespan
 
 # ``faust_lifespan`` binds the app to uvicorn's event loop, runs autodiscovery
 # (the app sets ``autodiscover``), starts it, and stops it on shutdown.
