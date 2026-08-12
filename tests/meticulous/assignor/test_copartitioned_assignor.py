@@ -1,4 +1,5 @@
 import copy
+import platform
 from collections import Counter
 from typing import MutableMapping
 
@@ -8,7 +9,13 @@ from hypothesis.strategies import integers
 from faust.assignor.client_assignment import CopartitionedAssignment
 from faust.assignor.copartitioned_assignor import CopartitionedAssignor
 
-TEST_DEADLINE = 4000
+# PyPy runs these property tests several times slower than CPython, and the
+# largest generated cases (hundreds of clients x hundreds of partitions) land
+# either side of a 4s deadline from run to run.  Hypothesis reports that as
+# FlakyFailure ("failed on the first call but did not on a subsequent one"),
+# so the deadline is raised there rather than dropped everywhere -- CPython
+# keeps the tighter bound that makes it a useful performance guard.
+TEST_DEADLINE = 20000 if platform.python_implementation() == "PyPy" else 4000
 
 
 _topics = {"foo", "bar", "baz"}

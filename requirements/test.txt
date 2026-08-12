@@ -19,6 +19,7 @@ pytest-forked
 pytest-picked
 pytest-cov
 pytest-random-order>=0.5.4
+pytest-run-parallel>=0.10.0
 pytest<8
 python-dateutil>=2.8
 pytz>=2018.7
@@ -27,11 +28,27 @@ twine
 wheel
 intervaltree
 -r requirements.txt
+# setuptools and Cython, so a test environment can build the extension
+# modules in place rather than only through pip's isolated build.  See
+# build.txt: without them `python setup.py build_ext --inplace` either dies
+# on the setuptools import or silently builds nothing.
+-r build.txt
 # mypy, pinned for the same reason as the formatters above: `scripts/check`
 # type-checks the faust package, so the lint job needs it installed.
 -r typecheck.txt
 -r extras/datadog.txt
+-r extras/opentelemetry.txt
 -r extras/opentracing.txt
+# The API+SDK only (pure Python, no fastapi): enough to cover
+# faust.contrib.opentelemetry's sensor.  The instrumentation packages in
+# extras/opentelemetry.txt pull in fastapi and are left to that extra.
+opentelemetry-api>=1.20.0
+opentelemetry-sdk>=1.20.0
+# uvicorn's only dependencies are click (already required by faust) and h11,
+# both pure Python -- cheap enough to cover faust.contrib.asgi's server
+# construction on every matrix leg.  fastapi itself is not added here: it
+# pulls in pydantic-core, which has no wheel for every leg.
+uvicorn>=0.27.0
 -r extras/redis.txt
 -r extras/statsd.txt
 -r extras/yaml.txt
