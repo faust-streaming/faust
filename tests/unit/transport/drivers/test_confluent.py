@@ -5,6 +5,7 @@ around :pypi:`confluent_kafka` -- with the underlying ``confluent_kafka``
 ``Consumer``/``Producer`` mocked out, so no broker is required.
 """
 
+import asyncio
 from unittest.mock import Mock, patch
 
 import pytest
@@ -441,16 +442,21 @@ class TestProducer:
         # create_topic short-circuits (XXX) -- must not raise.
         assert await producer.create_topic("topic", 3, 1) is None
 
+    def test_create_threaded_producer__uses_existing_thread(self, *, producer):
+        assert producer.create_threaded_producer() is producer._producer_thread
+
     def test_key_partition(self, *, producer):
         metadata = Mock(name="metadata")
         topic_meta = Mock()
         topic_meta.partitions = {0: 1, 1: 1}
         metadata.topics = {"topic": topic_meta}
-        producer._producer_thread.producer = Mock()
-        producer._producer_thread.producer.list_topics.return_value = metadata
+        low_level_producer = Mock(name="confluent_kafka.Producer")
+        producer._producer_thread._ensure_producer.return_value = low_level_producer
+        low_level_producer.list_topics.return_value = metadata
         tp = producer.key_partition("topic", b"key")
         assert tp.topic == "topic"
         assert 0 <= tp.partition < 2
+        low_level_producer.list_topics.assert_called_once_with("topic")
 
 
 class TestProducerThread:
@@ -467,6 +473,8 @@ class TestProducerThread:
         with patch.object(mod.confluent_kafka, "Producer") as P:
             await producer_thread.on_start()
         assert producer_thread._producer is P.return_value
+        assert producer_thread.event_queue is not None
+        assert producer_thread._stopping is False
 
     @pytest.mark.asyncio
     async def test_flush(self, *, producer_thread):
@@ -484,6 +492,31 @@ class TestProducerThread:
         producer_thread._producer = Mock(name="_producer")
         await producer_thread.on_thread_stop()
         producer_thread._producer.flush.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_on_thread_stop__drains_event_queue(self, *, producer_thread):
+        producer_thread._producer = Mock(name="_producer")
+        producer_thread.event_queue = asyncio.Queue()
+        fut = Mock(name="future_message")
+        fut.message.channel.publish_message = AsyncMock()
+        await producer_thread.event_queue.put(fut)
+
+        await producer_thread.on_thread_stop()
+
+        fut.message.channel.publish_message.assert_awaited_once_with(fut, wait=False)
+        producer_thread._producer.flush.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_push_events__publishes_buffered_message(self, *, producer_thread):
+        producer_thread.event_queue = asyncio.Queue()
+        producer_thread._stopping = True
+        fut = Mock(name="future_message")
+        fut.message.channel.publish_message = AsyncMock()
+        await producer_thread.event_queue.put(fut)
+
+        await producer_thread._push_events()
+
+        fut.message.channel.publish_message.assert_awaited_once_with(fut, wait=False)
 
     def test_produce__with_partition(self, *, producer_thread):
         producer_thread._producer = Mock(name="_producer")
