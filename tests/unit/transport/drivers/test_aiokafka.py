@@ -1978,7 +1978,7 @@ class TestThreadedProducer(ProducerBaseTest):
         record_metadata = Mock(name="RecordMetadata")
         mocked_producer.send_and_wait = AsyncMock(return_value=record_metadata)
         threaded_producer.app.sensors = Mock(name="sensors")
-        callback = Mock(name="callback")
+        callback = AsyncMock(name="callback")
         await threaded_producer.start()
         try:
             fut = await threaded_producer.publish_message(
@@ -1998,7 +1998,7 @@ class TestThreadedProducer(ProducerBaseTest):
                 ),
             )
             assert fut.result() is record_metadata
-            callback.assert_called_once_with(fut)
+            callback.assert_awaited_once_with(fut)
             threaded_producer.app.sensors.on_send_completed.assert_called_once_with(
                 mocked_producer,
                 threaded_producer.app.sensors.on_send_initiated.return_value,
