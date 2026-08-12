@@ -75,8 +75,22 @@ jobs:
             benchmark-summary.md
           if-no-files-found: ignore
 
-      - name: Store benchmark history
+      - name: Check benchmark history branch
+        id: benchmark-history-branch
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Skipping benchmark history upload because branch 'gh-pages' does not exist."
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Store benchmark history
+        if: >-
+          github.event_name == 'push'
+          && github.ref == 'refs/heads/master'
+          && steps.benchmark-history-branch.outputs.available == 'true'
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: Faust core benchmarks
