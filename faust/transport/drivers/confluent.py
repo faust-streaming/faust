@@ -39,7 +39,14 @@ from faust.transport.consumer import (
     ensure_TP,
     ensure_TPset,
 )
-from faust.types import TP, AppT, ConsumerMessage, HeadersArg, RecordMetadata
+from faust.types import (
+    TP,
+    AppT,
+    ConsumerMessage,
+    FutureMessage,
+    HeadersArg,
+    RecordMetadata,
+)
 from faust.types.transports import (
     ConsumerT,
     PartitionsAssignedCallback,
@@ -479,6 +486,8 @@ class ProducerThread(QueueServiceThread):
     transport: "Transport"
     _producer: Optional[_Producer] = None
     _flush_soon: Optional[asyncio.Future] = None
+    event_queue: Optional[asyncio.Queue] = None
+    _stopping: bool = False
 
     def __init__(self, producer: "Producer", **kwargs: Any) -> None:
         self.producer = producer
@@ -487,6 +496,8 @@ class ProducerThread(QueueServiceThread):
         super().__init__(**kwargs)
 
     async def on_start(self) -> None:
+        self.event_queue = asyncio.Queue()
+        self._stopping = False
         self._producer = confluent_kafka.Producer(
             {
                 "bootstrap.servers": server_list(
@@ -502,8 +513,31 @@ class ProducerThread(QueueServiceThread):
             self._producer.flush()
 
     async def on_thread_stop(self) -> None:
+        self._stopping = True
+        queue = self.event_queue
+        if queue is not None:
+            while not queue.empty():
+                await self._publish_buffered(queue.get_nowait())
         if self._producer is not None:
             self._producer.flush()
+
+    async def _publish_buffered(self, fut: FutureMessage) -> None:
+        await fut.message.channel.publish_message(fut, wait=False)
+
+    @Service.task
+    async def _push_events(self) -> None:
+        queue = cast(asyncio.Queue, self.event_queue)
+        while not self._stopping or not queue.empty():
+            try:
+                fut = await asyncio.wait_for(queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
+            await self._publish_buffered(fut)
+
+    def _ensure_producer(self) -> _Producer:
+        if self._producer is None:
+            raise RuntimeError("Producer not started")
+        return self._producer
 
     def produce(
         self,
@@ -517,10 +551,9 @@ class ProducerThread(QueueServiceThread):
         # here would paper over that bug rather than fix it.
         on_delivery: Callable,
     ) -> None:
-        if self._producer is None:
-            raise RuntimeError("Producer not started")
+        producer = self._ensure_producer()
         if partition is not None:
-            self._producer.produce(
+            producer.produce(
                 topic,
                 key,
                 value,
@@ -528,7 +561,7 @@ class ProducerThread(QueueServiceThread):
                 on_delivery=on_delivery,
             )
         else:
-            self._producer.produce(
+            producer.produce(
                 topic,
                 key,
                 value,
@@ -572,6 +605,10 @@ class Producer(base.Producer):
     def __post_init__(self) -> None:
         self._producer_thread = ProducerThread(self, loop=self.loop, beacon=self.beacon)
         self._quick_produce = self._producer_thread.produce
+
+    def create_threaded_producer(self) -> ProducerThread:
+        """Use the driver's producer thread for Faust's threaded buffer."""
+        return self._producer_thread
 
     async def _on_irrecoverable_error(self, exc: BaseException) -> None:
         consumer = self.transport.app.consumer
@@ -683,17 +720,8 @@ class Producer(base.Producer):
 
     def key_partition(self, topic: str, key: bytes) -> TP:
         """Return topic and partition destination for key."""
-        # Get the partition count for the topic
-        # XXX broken: ``ProducerThread.producer`` is the Faust Producer
-        # (i.e. ``self``), not the underlying confluent_kafka.Producer --
-        # that one is ``ProducerThread._producer``.  Faust producers have no
-        # ``list_topics``, so this raises AttributeError and
-        # ``Producer.key_partition`` is dead on arrival for this driver.
-        # Behaviour left untouched in this annotation-only pass; the fix is
-        # to read ``self._producer_thread._producer``.
-        metadata = self._producer_thread.producer.list_topics(  # type: ignore[attr-defined]  # noqa: E501
-            topic
-        )
+        producer = self._producer_thread._ensure_producer()
+        metadata = producer.list_topics(topic)
         partition_count = len(metadata.topics[topic].partitions)
 
         # Calculate the partition number based on the key hash
