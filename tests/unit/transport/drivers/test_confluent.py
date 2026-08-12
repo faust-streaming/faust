@@ -520,7 +520,7 @@ class TestProducerThread:
         fut.message.channel.publish_message = AsyncMock()
         await producer_thread.event_queue.put(fut)
 
-        await producer_thread._push_events()
+        await ProducerThread._push_events.fun(producer_thread)
 
         fut.message.channel.publish_message.assert_awaited_once_with(fut, wait=False)
 
