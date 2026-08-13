@@ -448,7 +448,7 @@ jobs:
         # `cp31?t-*` skip in pyproject.toml's [tool.cibuildwheel] keeps this
         # to cp315, without cp315t, matching the other versions.
         uses: pypa/cibuildwheel@v4.2.0
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: cibw-wheels-${{ matrix.os }}
           path: ./wheelhouse/*.whl
@@ -480,7 +480,7 @@ jobs:
         run: >
           pip3 install build pkgconfig cython --upgrade &&
           python3 -m build --sdist --outdir dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         name: Upload build artifacts
         with:
           name: cibw-sdist
