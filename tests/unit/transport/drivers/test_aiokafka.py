@@ -1943,7 +1943,9 @@ class TestThreadedProducer(ProducerBaseTest):
                 wait=True,
                 fut_other=FutureMessage(
                     PendingMessage(
-                        channel=Mock(),
+                        # ``_finalize_message`` is a coroutine on every real
+                        # channel, so the stand-in has to be awaitable too.
+                        channel=Mock(_finalize_message=AsyncMock()),
                         key="Test",
                         value="Test",
                         partition=None,
