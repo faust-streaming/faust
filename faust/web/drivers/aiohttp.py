@@ -20,7 +20,7 @@ from mode import Service
 from mode.threads import ServiceThread
 
 from faust.types import AppT
-from faust.types.web import ResourceOptions as _ResourceOptions
+from faust.types.web import ResourceOptions as _ResourceOptions, View
 from faust.utils import json as _json
 from faust.web import base
 
@@ -31,11 +31,18 @@ _bytes = bytes
 NON_OPTIONS_METHODS = frozenset({"GET", "PUT", "POST", "DELETE"})
 
 
-def _prepare_cors_options(opts: Mapping[str, Any]) -> Mapping[str, ResourceOptions]:
+#: Callers may pass either Faust's own :class:`faust.types.web.ResourceOptions`
+#: namedtuple or an already-converted :mod:`aiohttp_cors` one.
+AnyResourceOptions = Union[_ResourceOptions, ResourceOptions]
+
+
+def _prepare_cors_options(
+    opts: Mapping[str, AnyResourceOptions],
+) -> Mapping[str, ResourceOptions]:
     return {k: _faust_to_aiohttp_options(v) for k, v in opts.items()}
 
 
-def _faust_to_aiohttp_options(opts: ResourceOptions) -> ResourceOptions:
+def _faust_to_aiohttp_options(opts: AnyResourceOptions) -> ResourceOptions:
     if isinstance(opts, _ResourceOptions):
         return ResourceOptions(**opts._asdict())
     return opts
@@ -89,7 +96,9 @@ class Web(base.Web):
 
     def __init__(self, app: AppT, **kwargs: Any) -> None:
         super().__init__(app, **kwargs)
-        self.web_app: Application = Application()
+        self.web_app: Application = Application(
+            **(app.conf.web_application_options or {})
+        )
         self.cors_options = _prepare_cors_options(app.conf.web_cors_options or {})
         self._runner: AppRunner = AppRunner(self.web_app, access_log=None)
         self._transport_handlers = {
@@ -132,7 +141,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create text response, using "text/plain" content-type."""
         response = Response(
@@ -151,7 +160,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create HTML response from string, ``text/html`` content-type."""
         return self.text(
@@ -169,7 +178,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Any:
         """Create new JSON response.
 
@@ -180,15 +189,22 @@ class Web(base.Web):
         """
         ctype = content_type or "application/json"
         payload: Any = _json.dumps(value)
-        # normal json returns str, orjson returns bytes
+        # normal json returns str, orjson returns bytes.
+        # The str path goes through Response(text=...), which makes aiohttp
+        # append "; charset=utf-8" to the content-type; the bytes path uses
+        # Response(body=...), which does not -- so set the charset explicitly
+        # to keep JSON responses consistent regardless of the JSON backend
+        # (see #557).
         if isinstance(payload, bytes):
-            return self.bytes(
-                payload,
+            response = Response(
+                body=payload,
                 content_type=ctype,
+                charset="utf-8",
                 status=status,
                 reason=reason,
                 headers=headers,
             )
+            return cast(base.Response, response)
         else:
             return self.text(
                 payload,
@@ -205,7 +221,7 @@ class Web(base.Web):
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> base.Response:
         """Create new ``bytes`` response - for binary data."""
         response = Response(
@@ -225,16 +241,25 @@ class Web(base.Web):
         self,
         pattern: str,
         handler: Callable,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, AnyResourceOptions]] = None,
     ) -> None:
         """Add route for web view or handler."""
         async_handler = self._wrap_into_asyncdef(handler)
+        # ``base.Web.route`` types the handler as a bare ``Callable``, but this
+        # driver needs the set of HTTP methods it implements, and ``get_methods``
+        # only exists on :class:`~faust.web.views.View`.
+        # XXX this cast is not guaranteed: ``base.Web.add_view`` does pass a
+        # ``View``, but the public :meth:`faust.web.views.View.route` forwards
+        # any callable straight to here, and such a handler blows up with
+        # ``AttributeError: 'function' object has no attribute 'get_methods'``
+        # on the lines below.
+        view = cast(View, handler)
         if cors_options or self.cors_options:
-            for method in NON_OPTIONS_METHODS & handler.get_methods():
+            for method in NON_OPTIONS_METHODS & view.get_methods():
                 r = self.web_app.router.add_route(method, pattern, async_handler)
                 self.cors.add(r, _prepare_cors_options(cors_options or {}))
         else:
-            for method in handler.get_methods():
+            for method in view.get_methods():
                 self.web_app.router.add_route(method, pattern, async_handler)
 
     def _wrap_into_asyncdef(self, handler: Callable) -> Callable:
@@ -275,7 +300,11 @@ class Web(base.Web):
         elif isinstance(resp.body, Payload):
             raise NotImplementedError("Does not support Payload")
         else:
-            body = resp.body
+            # aiohttp declares the body as ``bytes | bytearray | Payload |
+            # None``, so ``bytearray`` survives the branches above.  The cast
+            # does not convert it: ``_response_to_bytes`` only feeds the value
+            # to ``bytes.join``, which takes any bytes-like object.
+            body = cast(_bytes, resp.body)
         return self._response_to_bytes(
             resp.status,
             resp.headers,

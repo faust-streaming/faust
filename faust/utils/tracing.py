@@ -7,7 +7,10 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import shortlabel
 
 __all__ = [
@@ -41,7 +44,7 @@ def noop_span() -> opentracing.Span:
 
 
 def finish_span(
-    span: Optional[opentracing.Span], *, error: BaseException = None
+    span: Optional[opentracing.Span], *, error: Optional[BaseException] = None
 ) -> None:
     """Finish span, and optionally set error tag."""
     if span is not None:
@@ -66,7 +69,7 @@ def operation_name_from_fun(fun: Any) -> str:
 
 
 def traced_from_parent_span(
-    parent_span: opentracing.Span = None,
+    parent_span: Optional[opentracing.Span] = None,
     callback: Optional[Callable] = None,
     **extra_context: Any,
 ) -> Callable:

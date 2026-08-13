@@ -42,7 +42,10 @@ from typing import (
     no_type_check,
 )
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import Seconds, Service, ServiceT, SupervisorStrategyT, want_seconds
 from mode.utils.aiter import aiter
 from mode.utils.collections import force_mapping
@@ -52,6 +55,7 @@ from mode.utils.logging import flight_recorder, get_logger
 from mode.utils.objects import cached_property, qualname, shortlabel
 from mode.utils.queues import FlowControlEvent, ThrowableQueue
 from mode.utils.types.trees import NodeT
+from yarl import URL
 
 from faust import transport
 from faust.agents import AgentFun, AgentManager, AgentT, ReplyConsumer, SinkT
@@ -128,6 +132,7 @@ __all__ = ["App", "BootStrategy"]
 logger = get_logger(__name__)
 
 _T = TypeVar("_T")
+_WebServerT = TypeVar("_WebServerT", bound=Union[ServiceT, Type[ServiceT]])
 
 #: Format string for ``repr(app)``.
 APP_REPR_FINALIZED = """
@@ -307,11 +312,17 @@ class BootStrategy(BootStrategyT):
 
     def kafka_producer(self) -> Iterable[ServiceT]:
         """Return list of services required to start Kafka producer."""
-        producers = []
+        producers: List[ServiceT] = []
         if self._should_enable_kafka_producer():
             producers.append(self.app.producer)
             if self.app.conf.producer_threaded:
-                producers.append(self.app.producer.threaded_producer)
+                # XXX ``ProducerT.threaded_producer`` is ``Optional``: a
+                # producer that does not create one (only the aiokafka driver
+                # does) leaves it ``None``, and that ``None`` is appended to
+                # the list of services the worker then starts.
+                producers.append(
+                    self.app.producer.threaded_producer  # type: ignore[arg-type]
+                )
         return producers
 
     def _should_enable_kafka_producer(self) -> bool:
@@ -358,6 +369,11 @@ class BootStrategy(BootStrategyT):
     def web_server(self) -> Iterable[ServiceT]:
         """Return list of web-server services."""
         if self._should_enable_web():
+            # A framework supplied through ``App.web_server`` is started as a
+            # runtime dependency after table recovery.  Do not construct the
+            # legacy faust.web/aiohttp stack as a second HTTP server.
+            if self.app._web_server_service is not None:
+                return []
             return list(self.web_components()) + [self.app.web]
         return []
 
@@ -438,6 +454,11 @@ class App(AppT, Service):
     _extra_services: List[Type[ServiceT]]
     _extra_service_instances: Optional[List[ServiceT]] = None
 
+    # A framework-neutral replacement for the legacy faust.web/aiohttp
+    # service.  It starts after table recovery and is gated by web_enabled.
+    _web_server_service: Optional[Union[ServiceT, Type[ServiceT]]] = None
+    _web_server_service_instance: Optional[ServiceT] = None
+
     # See faust/app/_attached.py
     _attachments: Attachments
 
@@ -453,8 +474,8 @@ class App(AppT, Service):
         self,
         id: str,
         *,
-        monitor: Monitor = None,
-        config_source: Any = None,
+        monitor: Optional[Monitor] = None,
+        config_source: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         beacon: Optional[NodeT] = None,
         **options: Any,
@@ -486,6 +507,10 @@ class App(AppT, Service):
         # Any additional services added using the @app.service decorator.
         self._extra_services = []
 
+        # A custom framework may replace the built-in aiohttp server.
+        self._web_server_service = None
+        self._web_server_service_instance = None
+
         # The configuration source object/module passed to ``config_by_object``
         # for introspectio purposes.
         self._config_source = config_source
@@ -499,7 +524,10 @@ class App(AppT, Service):
 
         self.boot_strategy = self.BootStrategy(self)
 
-        Service.__init__(self, loop=loop, beacon=beacon)
+        # mode declares ``beacon: NodeT = None`` -- an implicit-Optional the
+        # checker reads as non-optional -- but Service.__init__ handles
+        # ``beacon is None`` explicitly by rooting a new Node.
+        Service.__init__(self, loop=loop, beacon=beacon)  # type: ignore[arg-type]
 
     def _init_signals(self) -> None:
         # Signals in Faust are the same as in Django, but asynchronous by
@@ -593,6 +621,10 @@ class App(AppT, Service):
             # Add all asyncio.Tasks, like timers, etc.
             await self.on_started_init_extra_tasks()
 
+            # A user-facing HTTP server must not accept table-backed requests
+            # until recovery has completed.
+            await self.on_started_init_web_server()
+
             # Start user-provided services.
             await self.on_started_init_extra_services()
 
@@ -618,6 +650,18 @@ class App(AppT, Service):
                 await self.on_init_extra_service(service)
                 for service in self._extra_services
             ]
+
+    async def on_started_init_web_server(self) -> None:
+        """Start the configured framework-neutral web server, if any."""
+        service = self._web_server_service
+        if (
+            service is not None
+            and self._web_server_service_instance is None
+            and self.boot_strategy._should_enable_web()
+        ):
+            self._web_server_service_instance = await self.on_init_extra_service(
+                service
+            )
 
     async def on_init_extra_service(
         self, service: Union[ServiceT, Type[ServiceT]]
@@ -689,13 +733,17 @@ class App(AppT, Service):
 
     def worker_init_post_autodiscover(self) -> None:
         """Init worker after autodiscover."""
-        self.web.init_server()
+        # A custom server owns its own application and routes.  Avoid touching
+        # ``self.web`` here, since that would create aiohttp even when it has
+        # been replaced.
+        if self._web_server_service is None:
+            self.web.init_server()
         self.on_worker_init.send()
 
     def discover(
         self,
         *extra_modules: str,
-        categories: Iterable[str] = None,
+        categories: Optional[Iterable[str]] = None,
         ignore: Iterable[Any] = SCAN_IGNORE,
     ) -> None:
         """Discover decorators in packages."""
@@ -705,8 +753,21 @@ class App(AppT, Service):
             categories = self.SCAN_CATEGORIES
         modules = set(self._discovery_modules())
         modules |= set(extra_modules)
-        for fixup in self.fixups:
-            modules |= set(fixup.autodiscover_modules())
+        # Fixup-provided autodiscovery (e.g. the Django fixup scanning every
+        # app in INSTALLED_APPS) only applies to the blanket
+        # ``autodiscover=True`` mode -- as documented on the Django fixup.
+        # When the user passes an explicit module list (or a callable),
+        # respect it and do not additionally pull in every fixup module,
+        # otherwise a Django app that set e.g.
+        # ``autodiscover=['myproj.agents']`` would still scan all of
+        # INSTALLED_APPS (including migrations/admin).  See #500.
+        # ``Settings.autodiscover`` is a ``Param`` descriptor, but one of the
+        # setting's *value* types is itself a callable, so mypy reads the
+        # class attribute as a method and tries to bind ``self`` to it
+        # instead of going through ``Param.__get__``.
+        if self.conf.autodiscover is True:  # type: ignore[misc]
+            for fixup in self.fixups:
+                modules |= set(fixup.autodiscover_modules())
         if modules:
             scanner = venusian.Scanner()
             for name in modules:
@@ -733,7 +794,9 @@ class App(AppT, Service):
 
     def _discovery_modules(self) -> List[str]:
         modules: List[str] = []
-        autodiscover = self.conf.autodiscover
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        autodiscover = self.conf.autodiscover  # type: ignore[misc]
         if autodiscover:
             if isinstance(autodiscover, bool):
                 if self.conf.origin is None:
@@ -752,7 +815,9 @@ class App(AppT, Service):
 
         self.finalize()
         self.worker_init()
-        if self.conf.autodiscover:
+        # See the note in ``discover()``: mypy mistakes this setting for a
+        # method because one of its value types is a callable.
+        if self.conf.autodiscover:  # type: ignore[misc]
             self.discover()
         self.worker_init_post_autodiscover()
         cli(app=self)
@@ -761,12 +826,12 @@ class App(AppT, Service):
     def topic(
         self,
         *topics: str,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[SchemaT] = None,
         key_type: Optional[ModelArg] = None,
         value_type: Optional[ModelArg] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
@@ -844,12 +909,12 @@ class App(AppT, Service):
 
     def agent(
         self,
-        channel: Union[str, ChannelT[_T]] = None,
+        channel: Optional[Union[str, ChannelT[_T]]] = None,
         *,
         name: Optional[str] = None,
         concurrency: int = 1,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
-        sink: Iterable[SinkT] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
+        sink: Optional[Iterable[SinkT]] = None,
         isolated_partitions: bool = False,
         use_reply_headers: bool = True,
         **kwargs: Any,
@@ -916,7 +981,11 @@ class App(AppT, Service):
 
     @no_type_check
     def task(
-        self, fun: TaskArg = None, *, on_leader: bool = False, traced: bool = True
+        self,
+        fun: Optional[TaskArg] = None,
+        *,
+        on_leader: bool = False,
+        traced: bool = True,
     ) -> TaskDecoratorRet:
         """Define an async def function to be started with the app.
 
@@ -1026,11 +1095,16 @@ class App(AppT, Service):
 
         return _inner
 
-    def crontab(
+    # ``App`` inherits both ``AppT`` and ``mode.Service``, and deliberately
+    # shadows ``Service.crontab`` (a classmethod defining a background timer
+    # on a Service subclass) with the app-level ``@app.crontab(...)``
+    # decorator declared by ``AppT``.  Same for ``task``/``timer`` above,
+    # which are hidden from the checker by ``@no_type_check`` instead.
+    def crontab(  # type: ignore[override]
         self,
         cron_format: str,
         *,
-        timezone: tzinfo = None,
+        timezone: Optional[tzinfo] = None,
         on_leader: bool = False,
         traced: bool = True,
     ) -> Callable:
@@ -1099,6 +1173,52 @@ class App(AppT, Service):
         self._extra_services.append(cls)
         return cls
 
+    def web_server(self, service: _WebServerT) -> _WebServerT:
+        """Register the service that owns this worker's HTTP server.
+
+        The service replaces the legacy :mod:`faust.web` aiohttp stack and is
+        started after table recovery.  It may host any web framework; Faust
+        only requires a :class:`mode.Service` instance or subclass.
+
+        Use :func:`faust.contrib.asgi.serve_asgi` for an ASGI application, or
+        register a framework-specific service directly::
+
+            @app.web_server
+            class Web(Service):
+                async def on_start(self):
+                    ...
+        """
+        current = self._web_server_service
+        if current is not None and current is not service:
+            raise ImproperlyConfigured("A web server is already registered")
+        self._web_server_service = service
+        return service
+
+    @property
+    def web_server_url(self) -> URL:
+        """Return the URL advertised for the active web server."""
+        service = self._web_server_service
+        if service is not None:
+            get_url = getattr(service, "get_web_url", None)
+            if callable(get_url):
+                return URL(get_url())
+            url = getattr(service, "web_url", None)
+            return URL(url) if url is not None else self.conf.canonical_url
+        return self.web.url
+
+    @property
+    def web_server_driver_version(self) -> str:
+        """Return the active web server's driver description."""
+        service = self._web_server_service
+        if service is not None:
+            version = getattr(service, "driver_version", None)
+            if version is not None:
+                return str(version)
+            if inspect.isclass(service):
+                return service.__name__
+            return type(service).__name__
+        return self.web.driver_version
+
     def is_leader(self) -> bool:
         """Return :const:`True` if we are in leader worker process."""
         return self._leader_assignor.is_leader()
@@ -1134,7 +1254,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1179,7 +1299,7 @@ class App(AppT, Service):
         self,
         name: str,
         *,
-        default: Callable[[], Any] = None,
+        default: Optional[Callable[[], Any]] = None,
         window: Optional[WindowT] = None,
         partitions: Optional[int] = None,
         help: Optional[str] = None,
@@ -1285,7 +1405,7 @@ class App(AppT, Service):
         path: str,
         *,
         base: Type[View] = View,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
         name: Optional[str] = None,
     ) -> Callable[[PageArg], Type[View]]:
         """Decorate view to be included in the web server."""
@@ -1357,7 +1477,7 @@ class App(AppT, Service):
 
     def topic_route(
         self,
-        topic: CollectionT,
+        topic: TopicT,
         shard_param: Optional[str] = None,
         *,
         query_param: Optional[str] = None,
@@ -1463,7 +1583,11 @@ class App(AppT, Service):
         **context: Any,
     ) -> Callable:
         """Decorate function to be traced using the OpenTracing API."""
-        assert fun
+        # XXX dead check: this is a truthiness test on a callable, and function
+        # objects are always truthy, so it can only ever fire for a falsy
+        # non-function callable.  Left exactly as it is -- ``fun is not None``
+        # would be a different runtime test.
+        assert fun  # type: ignore[truthy-function]
         operation: str = name or operation_name_from_fun(fun)
 
         @wraps(fun)
@@ -1490,14 +1614,14 @@ class App(AppT, Service):
     async def send(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Send event to channel/topic.
@@ -1806,13 +1930,16 @@ class App(AppT, Service):
         return self.transport.create_conductor(beacon=None)
 
     def _new_transport(self) -> TransportT:
+        # No ``loop=`` argument: the transport is reachable from import-time
+        # code (``app.topics`` -> ``_new_conductor`` -> ``app.transport``), so
+        # it resolves its loop lazily instead.  See ``faust.transport.base``.
         return transport.by_url(self.conf.broker_consumer[0])(
-            self.conf.broker_consumer, self, loop=self.loop
+            self.conf.broker_consumer, self
         )
 
     def _new_producer_transport(self) -> TransportT:
         return transport.by_url(self.conf.broker_producer[0])(
-            self.conf.broker_producer, self, loop=self.loop
+            self.conf.broker_producer, self
         )
 
     def _new_cache_backend(self) -> CacheBackendT:
@@ -1990,9 +2117,10 @@ class App(AppT, Service):
     @cached_property
     def tables(self) -> TableManagerT:
         """Map of available tables, and the table manager service."""
+        # No ``loop=``: tables are declared at module scope, so this property
+        # runs before any loop is running.  ``mode.Service`` late-binds.
         manager = self.conf.TableManager(  # type: ignore
             app=self,
-            loop=self.loop,
             beacon=self.beacon,
         )
         return cast(TableManagerT, manager)

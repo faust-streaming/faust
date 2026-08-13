@@ -1,5 +1,7 @@
-# Native OpenTelemetry tracing (see docs/adr/0001-native-opentelemetry-tracing.md).
-# Faust's tracing core depends only on the API; the SDK is included so apps can
-# configure an exporter out of the box.
-opentelemetry-api>=1.20.0
-opentelemetry-sdk>=1.20.0
+opentelemetry-api>=1.23.0
+# The native tracing core in faust/utils/otel_tracing.py needs only the API
+# (see docs/adr/0001-native-opentelemetry-tracing.md); the SDK is included so
+# apps can configure an exporter out of the box.
+opentelemetry-sdk>=1.23.0
+opentelemetry-instrumentation-fastapi>=0.45b0
+opentelemetry-instrumentation-aiokafka>=0.45b0

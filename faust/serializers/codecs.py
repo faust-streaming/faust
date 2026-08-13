@@ -7,7 +7,26 @@ Supported codecs
 * **json**    - json with UTF-8 encoding.
 * **yaml**    - YAML (safe version)
 * **pickle**  - pickle with base64 encoding (not urlsafe).
+* **pickle_restricted** - pickle with base64 encoding, restricted at load
+  time to a safe allowlist of classes (see :class:`RestrictedUnpickler`).
+* **pickle_fickling** - pickle with base64 encoding, checked at load time by
+  the optional Fickling pickle scanner. Pass Fickling's
+  ``fickling.loader.Severity`` constants to ``max_acceptable_severity`` when
+  constructing the codec to choose a different tolerance.
 * **binary**  - base64 encoding (not urlsafe).
+
+.. warning::
+
+    The **pickle** codec calls :func:`pickle.loads` on the raw message
+    value, which can execute arbitrary code if the data comes from an
+    untrusted source. Kafka topics do not authenticate producers, so any
+    client able to write to a topic consumed with ``value_serializer=
+    "pickle"`` (or ``key_serializer="pickle"``) can achieve remote code
+    execution in the worker process. Only use the pickle codec for topics
+    where every producer is trusted. If you need pickle's object support
+    but cannot fully trust every producer, use **pickle_restricted**
+    instead, and extend :attr:`RestrictedUnpickler.ALLOWED_CLASSES` with
+    whatever application types you expect to receive.
 
 Serialization by name
 =====================
@@ -160,15 +179,27 @@ At this point may want to publish this on PyPI to share
 the extension with other Faust users.
 """
 
+import io
 import pickle as _pickle  # nosec B403
+import pickletools  # nosec B403
+import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType
-from typing import Any, Dict, MutableMapping, Optional, Tuple, cast
+from typing import (
+    Any,
+    Dict,
+    FrozenSet,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.imports import load_extension_classes
 
-from faust.exceptions import ImproperlyConfigured
+from faust.exceptions import ImproperlyConfigured, SecurityWarning
 from faust.types.codecs import CodecArg, CodecT
 from faust.utils import json as _json
 
@@ -188,6 +219,10 @@ __all__ = [
 ]
 
 
+_STACK_MARK = object()
+_STACK_PLACEHOLDER = object()
+
+
 class Codec(CodecT):
     """Base class for codecs."""
 
@@ -205,7 +240,9 @@ class Codec(CodecT):
     #: preserve keyword arguments in copies.
     kwargs: Dict
 
-    def __init__(self, children: Tuple[CodecT, ...] = None, **kwargs: Any) -> None:
+    def __init__(
+        self, children: Optional[Tuple[CodecT, ...]] = None, **kwargs: Any
+    ) -> None:
         self.children = children or ()
         self.nodes = (self,) + self.children
         self.kwargs = kwargs
@@ -276,10 +313,55 @@ class yaml(Codec):
         return want_bytes(_yaml.safe_dump(s))
 
 
+#: Warning shown whenever the unrestricted pickle codec is configured
+#: or used to deserialize a message. See :class:`raw_pickle`.
+UNSAFE_PICKLE_WARNING = (
+    "The pickle codec calls pickle.loads() on message data, which can "
+    "execute arbitrary code if the data does not come from a trusted "
+    "producer. Only use value_serializer/key_serializer='pickle' on "
+    "topics where every producer is trusted. If that cannot be "
+    "guaranteed, use the 'pickle_restricted' codec instead, which limits "
+    "unpickling to a safe allowlist of classes."
+)
+
+
+def uses_unsafe_pickle(codec: CodecArg) -> bool:
+    """Return :const:`True` if ``codec`` resolves to the unrestricted pickle codec.
+
+    This is used to warn as soon as an app/topic/model is *configured*
+    to use ``value_serializer="pickle"``/``key_serializer="pickle"``,
+    rather than waiting for the first message to be deserialized.
+    """
+    if isinstance(codec, str):
+        return any(node == "pickle" for node in codec.split("|"))
+    if isinstance(codec, Codec):
+        return any(isinstance(node, raw_pickle) for node in codec.nodes)
+    return False
+
+
+def warn_if_unsafe_pickle(codec: CodecArg, *, stacklevel: int = 2) -> None:
+    """Emit :class:`~faust.exceptions.SecurityWarning` if ``codec`` uses pickle.
+
+    No-op if ``codec`` does not resolve to the unrestricted pickle codec.
+    """
+    if uses_unsafe_pickle(codec):
+        warnings.warn(UNSAFE_PICKLE_WARNING, SecurityWarning, stacklevel=stacklevel + 1)
+
+
 class raw_pickle(Codec):
-    """:mod:`pickle` serializer with no encoding."""
+    """:mod:`pickle` serializer with no encoding.
+
+    .. danger::
+
+        Calls :func:`pickle.loads` on the raw message value with no
+        restrictions. Never use this (or the ``pickle`` codec that wraps
+        it) on a topic where you cannot fully trust every producer -- see
+        :data:`UNSAFE_PICKLE_WARNING`. Prefer :class:`restricted_pickle`
+        (the ``pickle_restricted`` codec) when in doubt.
+    """
 
     def _loads(self, s: bytes) -> Any:
+        warnings.warn(UNSAFE_PICKLE_WARNING, SecurityWarning, stacklevel=3)
         return _pickle.loads(s)  # nosec B301
 
     def _dumps(self, obj: Any) -> bytes:
@@ -289,6 +371,242 @@ class raw_pickle(Codec):
 def pickle() -> Codec:
     """:mod:`pickle` serializer with base64 encoding."""
     return raw_pickle() | binary()
+
+
+class raw_fickling_pickle(Codec):
+    """:mod:`pickle` serializer checked by Fickling before loading.
+
+    Requires the optional ``fickling`` extra. This mirrors Fickling's
+    in-process safety examples, but keeps the check scoped to this codec
+    instead of installing a global pickle hook. The Fickling-specific
+    implementation lives in :mod:`faust.serializers._fickling`; keep that
+    boundary small so another pickle scanner can replace it if Fickling has
+    a bug, dependency issue, or policy mismatch.
+    """
+
+    def __init__(
+        self,
+        children: Optional[Tuple[CodecT, ...]] = None,
+        *,
+        max_acceptable_severity: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        if max_acceptable_severity is not None:
+            kwargs["max_acceptable_severity"] = max_acceptable_severity
+        super().__init__(children=children, **kwargs)
+        self.max_acceptable_severity = max_acceptable_severity
+
+    def _loads(self, s: bytes) -> Any:
+        from faust.serializers import _fickling
+
+        return _fickling.loads(
+            s,
+            max_acceptable_severity=self.max_acceptable_severity,
+        )
+
+    def _dumps(self, obj: Any) -> bytes:
+        return _pickle.dumps(obj, protocol=5)  # nosec B403
+
+
+def pickle_fickling(max_acceptable_severity: Any = None) -> Codec:
+    """:mod:`pickle` serializer checked by Fickling with base64 encoding."""
+    return (
+        raw_fickling_pickle(max_acceptable_severity=max_acceptable_severity) | binary()
+    )
+
+
+class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
+    """A :class:`pickle.Unpickler` that only constructs allowlisted classes.
+
+    Overrides :meth:`~pickle.Unpickler.find_class` to reject any
+    class/function not listed in :attr:`ALLOWED_CLASSES`, closing off the
+    classic ``__reduce__``-based RCE gadgets (``os.system``,
+    ``subprocess.Popen``, ``builtins.exec``, and friends) that plain
+    :func:`pickle.loads` will happily invoke for untrusted input.
+
+    The default allowlist only covers common stdlib container/value
+    types. Extend :attr:`ALLOWED_CLASSES` (or subclass and override
+    :meth:`find_class`) to allow application-specific types you expect
+    producers to send, for example::
+
+        from faust.serializers.codecs import RestrictedUnpickler
+
+        RestrictedUnpickler.ALLOWED_CLASSES = {
+            **RestrictedUnpickler.ALLOWED_CLASSES,
+            "myapp.models": frozenset({"Withdrawal", "Order"}),
+        }
+    """
+
+    #: Mapping of module name to the class/function names allowed from it.
+    #:
+    #: ``bytes`` and ``bytearray`` are deliberately excluded even though
+    #: they are safe *value* types: as REDUCE-invoked *callables* they
+    #: each accept a single integer and allocate that many zero bytes
+    #: (``bytearray(2_000_000_000)`` allocates ~2GB from a payload of a
+    #: few dozen bytes), so allowing them here would let an attacker turn
+    #: a tiny message into a memory-exhaustion DoS. Plain bytes/bytearray
+    #: *values* still round-trip fine -- pickle has dedicated opcodes for
+    #: literal bytes/bytearray data that never go through find_class.
+    ALLOWED_CLASSES: Dict[str, FrozenSet[str]] = {
+        "builtins": frozenset(
+            {
+                "dict",
+                "list",
+                "set",
+                "frozenset",
+                "tuple",
+                "str",
+                "int",
+                "float",
+                "complex",
+                "bool",
+                "object",
+            }
+        ),
+        "collections": frozenset({"OrderedDict", "defaultdict", "deque", "Counter"}),
+        "datetime": frozenset({"datetime", "date", "time", "timedelta", "timezone"}),
+        "decimal": frozenset({"Decimal"}),
+        "uuid": frozenset({"UUID"}),
+    }
+
+    def find_class(self, module: str, name: str) -> Any:
+        """Look up ``module.name``, raising unless it is allowlisted."""
+        _restricted_pickle_check_global(module, name, self.ALLOWED_CLASSES)
+        return super().find_class(module, name)
+
+
+def _restricted_pickle_check_global(
+    module: str,
+    name: str,
+    allowed_classes: MutableMapping[str, FrozenSet[str]],
+) -> None:
+    allowed = allowed_classes.get(module)
+    if allowed is None or name not in allowed:
+        raise _pickle.UnpicklingError(
+            f"Refusing to unpickle disallowed class/function "
+            f"{module}.{name}: not in "
+            "RestrictedUnpickler.ALLOWED_CLASSES. Extend the allowlist "
+            "if this type is expected from your producers, or use the "
+            "unrestricted 'pickle' codec if they are fully trusted."
+        )
+
+
+def _restricted_pickle_pop_mark(stack: list) -> None:
+    while stack:
+        if stack.pop() is _STACK_MARK:
+            return
+    raise _pickle.UnpicklingError("Malformed pickle stream: MARK not found")
+
+
+def _restricted_pickle_memoize(
+    memo: MutableMapping[int, Any], next_index: int, value: Any
+) -> int:
+    memo[next_index] = value
+    return next_index + 1
+
+
+def _restricted_pickle_validate_globals(
+    payload: bytes,
+    allowed_classes: MutableMapping[str, FrozenSet[str]],
+) -> None:
+    # PyPy's unpickler can load STACK_GLOBAL payloads without consulting an
+    # overridden find_class(), so pre-scan the pickle bytecode and reject any
+    # disallowed globals before unpickling executes them.
+    # Also normalize malformed-pickle failures here because pure-Python and
+    # alternate runtime implementations can otherwise raise implementation
+    # details instead of UnpicklingError; see:
+    # https://github.com/python/cpython/issues/141749
+    stack = []
+    memo: Dict[int, Any] = {}
+    next_memo_index = 0
+    for opcode, arg, _pos in pickletools.genops(payload):
+        name = opcode.name
+        if name in {"SHORT_BINUNICODE", "BINUNICODE", "BINUNICODE8", "UNICODE"}:
+            stack.append(arg)
+        elif name == "GLOBAL":
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: GLOBAL missing module/name"
+                )
+            module, _, global_name = arg.partition(" ")
+            _restricted_pickle_check_global(module, global_name, allowed_classes)
+            stack.append(_STACK_PLACEHOLDER)
+        elif name == "STACK_GLOBAL":
+            try:
+                global_name = stack.pop()
+                module = stack.pop()
+            except IndexError as exc:
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: STACK_GLOBAL underflow"
+                ) from exc
+            if not isinstance(module, str) or not isinstance(global_name, str):
+                raise _pickle.UnpicklingError(
+                    "Malformed pickle stream: STACK_GLOBAL expected module/name strings"
+                )
+            _restricted_pickle_check_global(module, global_name, allowed_classes)
+            stack.append(_STACK_PLACEHOLDER)
+        elif name in {"PUT", "BINPUT", "LONG_BINPUT"}:
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    f"Malformed pickle stream: {name} missing memo index"
+                )
+            memo_index = int(arg)
+            memo[memo_index] = stack[-1]
+            next_memo_index = max(next_memo_index, memo_index + 1)
+        elif name in {"GET", "BINGET", "LONG_BINGET"}:
+            if arg is None:
+                raise _pickle.UnpicklingError(
+                    f"Malformed pickle stream: {name} missing memo index"
+                )
+            stack.append(memo[int(arg)])
+        elif name == "MEMOIZE":
+            next_memo_index = _restricted_pickle_memoize(
+                memo, next_memo_index, stack[-1]
+            )
+        else:
+            before = [item.name for item in opcode.stack_before]
+            if "mark" in before:
+                _restricted_pickle_pop_mark(stack)
+                for _ in range(before.index("mark")):
+                    if not stack:
+                        raise _pickle.UnpicklingError(
+                            f"Malformed pickle stream: {name} underflow"
+                        )
+                    stack.pop()
+            else:
+                for _ in before:
+                    if not stack:
+                        raise _pickle.UnpicklingError(
+                            f"Malformed pickle stream: {name} underflow"
+                        )
+                    stack.pop()
+            for item in opcode.stack_after:
+                stack.append(_STACK_MARK if item.name == "mark" else _STACK_PLACEHOLDER)
+
+
+class restricted_pickle(Codec):
+    """:mod:`pickle` serializer with no encoding, restricted to safe classes.
+
+    Like :class:`raw_pickle`, but deserializes using
+    :class:`RestrictedUnpickler` instead of :func:`pickle.loads`, so a
+    payload that tries to construct anything outside the allowlist raises
+    :exc:`pickle.UnpicklingError` instead of running arbitrary code.
+    """
+
+    def _loads(self, s: bytes) -> Any:
+        _restricted_pickle_validate_globals(s, RestrictedUnpickler.ALLOWED_CLASSES)
+        return RestrictedUnpickler(io.BytesIO(s)).load()
+
+    def _dumps(self, obj: Any) -> bytes:
+        # Protocol 5 gives bytearray values their own opcode (BYTEARRAY8)
+        # instead of falling back to a `bytearray(...)` global + REDUCE,
+        # which RestrictedUnpickler refuses (see ALLOWED_CLASSES above).
+        return _pickle.dumps(obj, protocol=5)  # nosec B403
+
+
+def pickle_restricted() -> Codec:
+    """:mod:`pickle` serializer (allowlisted classes) with base64 encoding."""
+    return restricted_pickle() | binary()
 
 
 class binary(Codec):
@@ -315,6 +633,8 @@ class raw(Codec):
 codecs: MutableMapping[str, CodecT] = {
     "json": json(),
     "pickle": pickle(),  # nosec B403
+    "pickle_restricted": pickle_restricted(),
+    "pickle_fickling": pickle_fickling(),
     "binary": binary(),
     "raw": raw(),
     "yaml": yaml(),
@@ -343,10 +663,17 @@ def get_codec(name_or_codec: CodecArg) -> CodecT:
     if isinstance(name_or_codec, str):
         if "|" in name_or_codec:
             nodes = name_or_codec.split("|")
-            codec = None
+            # XXX ``codecs.get(node, node)`` falls back to the *name* when the
+            # codec is unknown, so ``codec`` can hold a plain ``str`` and this
+            # ``|=`` then blows up with ``TypeError: unsupported operand
+            # type(s) for |=: 'str' and 'Codec'`` instead of a KeyError naming
+            # the bad codec.  Real bug (e.g. ``get_codec('bad|json')``), but
+            # the fallback also makes ``get_codec('|json')`` work, so changing
+            # it is a behaviour change and out of scope for a typing pass.
+            codec: Optional[Union[CodecT, str]] = None
             for node in nodes:
                 if codec:
-                    codec |= codecs[node]
+                    codec |= codecs[node]  # type: ignore[operator]
                 else:
                     codec = codecs.get(node, node)
 

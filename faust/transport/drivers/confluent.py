@@ -3,6 +3,7 @@
 import asyncio
 import typing
 from collections import defaultdict
+from logging import Logger
 from time import monotonic
 from typing import (
     Any,
@@ -26,6 +27,7 @@ from mode import Service, get_logger
 from mode.threads import QueueServiceThread
 from mode.utils.futures import notify
 from mode.utils.times import Seconds, want_seconds
+from mode.utils.types.trees import NodeT
 from yarl import URL
 
 from faust.exceptions import ConsumerNotStarted, ProducerSendError
@@ -37,8 +39,20 @@ from faust.transport.consumer import (
     ensure_TP,
     ensure_TPset,
 )
-from faust.types import TP, AppT, ConsumerMessage, HeadersArg, RecordMetadata
-from faust.types.transports import ConsumerT, ProducerT
+from faust.types import (
+    TP,
+    AppT,
+    ConsumerMessage,
+    FutureMessage,
+    HeadersArg,
+    RecordMetadata,
+)
+from faust.types.transports import (
+    ConsumerT,
+    PartitionsAssignedCallback,
+    PartitionsRevokedCallback,
+    ProducerT,
+)
 
 if typing.TYPE_CHECKING:
     from confluent_kafka import (
@@ -73,7 +87,11 @@ class Consumer(ThreadDelegateConsumer):
 
     logger = logger
 
-    def _new_consumer_thread(self) -> ConsumerThread:
+    #: Narrows :attr:`ThreadDelegateConsumer._thread` to the thread type
+    #: this consumer actually creates in :meth:`_new_consumer_thread`.
+    _thread: "ConfluentConsumerThread"
+
+    def _new_consumer_thread(self) -> "ConfluentConsumerThread":
         return ConfluentConsumerThread(self, loop=self.loop, beacon=self.beacon)
 
     async def create_topic(
@@ -82,11 +100,11 @@ class Consumer(ThreadDelegateConsumer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create topic on broker."""
@@ -144,20 +162,28 @@ class Consumer(ThreadDelegateConsumer):
         await super().on_stop()
 
     def verify_event_path(self, now: float, tp: TP) -> None:
-        return self._thread.verify_event_path(now, tp)
+        # XXX broken: neither ConsumerThread nor ConfluentConsumerThread
+        # implements verify_event_path, so this raises AttributeError on
+        # every tick of the commit livelock detector
+        # (faust.transport.consumer.Consumer._commit_livelock_detector ->
+        # verify_all_partitions_active).  Livelock detection is therefore
+        # dead for this driver.  Not fixed here: adding a no-op stub would
+        # change runtime behaviour, and a real implementation belongs in
+        # ConfluentConsumerThread.
+        return self._thread.verify_event_path(now, tp)  # type: ignore[attr-defined]
 
 
 class AsyncConsumer:
     def __init__(
         self,
-        config,
-        logger=None,
-        callback=None,
-        loop=None,
-        on_partitions_revoked=None,
-        on_partitions_assigned=None,
-        beacon=None,
-    ):
+        config: Mapping[str, Any],
+        logger: Optional[Logger] = None,
+        callback: Optional[Callable[[_Message], Awaitable[None]]] = None,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+        on_partitions_revoked: Optional[PartitionsRevokedCallback] = None,
+        on_partitions_assigned: Optional[PartitionsAssignedCallback] = None,
+        beacon: Optional[NodeT] = None,
+    ) -> None:
         """Construct a Consumer usable within asyncio.
 
         :param config: A configuration dict for this Consumer
@@ -170,16 +196,16 @@ class AsyncConsumer:
         self.beacon = beacon
         self.loop = loop
 
-    def close(self):
+    def close(self) -> None:
         self.consumer.close()
 
-    def subscribe(self, *args, **kwargs):
+    def subscribe(self, *args: Any, **kwargs: Any) -> None:
         self.consumer.subscribe(*args, **kwargs)
 
-    def assign(self, *args, **kwargs):
+    def assign(self, *args: Any, **kwargs: Any) -> None:
         self.consumer.assign(*args, **kwargs)
 
-    async def poll(self, timeout=1.0):
+    async def poll(self, timeout: float = 1.0) -> Optional[_Message]:
         """Consume a single message and call the registered callback.
 
         Delegates to the blocking :meth:`confluent_kafka.Consumer.poll`.
@@ -198,7 +224,7 @@ class AsyncConsumer:
             await self.callback(msg)
         return msg
 
-    def assignment(self) -> Set[TP]:
+    def assignment(self) -> List[_TopicPartition]:
         return self.consumer.assignment()
 
 
@@ -207,8 +233,6 @@ class ConfluentConsumerThread(ConsumerThread):
 
     _consumer: Optional[AsyncConsumer] = None
     _assigned: bool = False
-
-    # _pending_rebalancing_spans: Deque[opentracing.Span]
 
     tp_last_committed_at: MutableMapping[TP, float]
     time_started: float
@@ -278,7 +302,10 @@ class ConfluentConsumerThread(ConsumerThread):
     async def subscribe(self, topics: Iterable[str]) -> None:
         # XXX pattern does not work :/
         await self.cast_thread(
-            self._ensure_consumer().subscribe,
+            # mode types cast_thread/call_thread as taking a coroutine
+            # function, but MethodQueue._process_enqueued runs whatever it
+            # gets through ``maybe_async``, so plain callables work too.
+            self._ensure_consumer().subscribe,  # type: ignore[arg-type]
             topics=list(topics),
             on_assign=self._on_assign,
             on_revoke=self._on_revoke,
@@ -307,7 +334,7 @@ class ConfluentConsumerThread(ConsumerThread):
             await consumer.consumer.seek(tp)
         return {ensure_TP(tp): tp.offset for tp in committed}
 
-    async def _committed_offsets(self, partitions: List[TP]) -> MutableMapping[TP, int]:
+    async def _committed_offsets(self, partitions: List[TP]) -> Mapping[TP, int]:
         consumer = self._ensure_consumer()
         committed = consumer.consumer.committed(
             [_TopicPartition(tp[0], tp[1]) for tp in partitions]
@@ -361,12 +388,12 @@ class ConfluentConsumerThread(ConsumerThread):
         # XXX NotImplemented
         return None
 
-    async def earliest_offsets(self, *partitions: TP) -> MutableMapping[TP, int]:
+    async def earliest_offsets(self, *partitions: TP) -> Mapping[TP, int]:
         if not partitions:
             return {}
         return await self.call_thread(self._earliest_offsets, partitions)
 
-    async def _earliest_offsets(self, partitions: List[TP]) -> MutableMapping[TP, int]:
+    async def _earliest_offsets(self, partitions: List[TP]) -> Mapping[TP, int]:
         consumer = self._ensure_consumer()
         return {
             tp: consumer.consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[
@@ -375,12 +402,12 @@ class ConfluentConsumerThread(ConsumerThread):
             for tp in partitions
         }
 
-    async def highwaters(self, *partitions: TP) -> MutableMapping[TP, int]:
+    async def highwaters(self, *partitions: TP) -> Mapping[TP, int]:
         if not partitions:
             return {}
         return await self.call_thread(self._highwaters, partitions)
 
-    async def _highwaters(self, partitions: List[TP]) -> MutableMapping[TP, int]:
+    async def _highwaters(self, partitions: List[TP]) -> Mapping[TP, int]:
         consumer = self._ensure_consumer()
         return {
             tp: consumer.consumer.get_watermark_offsets(_TopicPartition(tp[0], tp[1]))[
@@ -416,19 +443,19 @@ class ConfluentConsumerThread(ConsumerThread):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 30.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         return  # XXX
 
     def key_partition(
-        self, topic: str, key: Optional[bytes], partition: int = None
+        self, topic: str, key: Optional[bytes], partition: Optional[int] = None
     ) -> Optional[int]:
-        metadata = self._consumer.consumer.list_topics(topic)
+        metadata = self._ensure_consumer().consumer.list_topics(topic)
         partition_count = len(metadata.topics[topic]["partitions"])
 
         # Calculate the partition number based on the key hash
@@ -459,6 +486,8 @@ class ProducerThread(QueueServiceThread):
     transport: "Transport"
     _producer: Optional[_Producer] = None
     _flush_soon: Optional[asyncio.Future] = None
+    event_queue: Optional[asyncio.Queue] = None
+    _stopping: bool = False
 
     def __init__(self, producer: "Producer", **kwargs: Any) -> None:
         self.producer = producer
@@ -467,6 +496,8 @@ class ProducerThread(QueueServiceThread):
         super().__init__(**kwargs)
 
     async def on_start(self) -> None:
+        self.event_queue = asyncio.Queue()
+        self._stopping = False
         self._producer = confluent_kafka.Producer(
             {
                 "bootstrap.servers": server_list(
@@ -482,21 +513,47 @@ class ProducerThread(QueueServiceThread):
             self._producer.flush()
 
     async def on_thread_stop(self) -> None:
+        self._stopping = True
+        queue = self.event_queue
+        if queue is not None:
+            while not queue.empty():
+                await self._publish_buffered(queue.get_nowait())
         if self._producer is not None:
             self._producer.flush()
+
+    async def _publish_buffered(self, fut: FutureMessage) -> None:
+        await fut.message.channel.publish_message(fut, wait=False)
+
+    @Service.task
+    async def _push_events(self) -> None:
+        queue = cast(asyncio.Queue, self.event_queue)
+        while not self._stopping or not queue.empty():
+            try:
+                fut = await asyncio.wait_for(queue.get(), timeout=0.1)
+            except asyncio.TimeoutError:
+                continue
+            await self._publish_buffered(fut)
+
+    def _ensure_producer(self) -> _Producer:
+        if self._producer is None:
+            raise RuntimeError("Producer not started")
+        return self._producer
 
     def produce(
         self,
         topic: str,
-        key: bytes,
-        value: bytes,
-        partition: int,
+        key: Optional[bytes],
+        value: Optional[bytes],
+        partition: Optional[int],
+        # Deliberately unparameterised: confluent hands the callback a
+        # KafkaError, which is not a BaseException, and set_from_on_delivery
+        # passes it straight to Future.set_exception.  A precise signature
+        # here would paper over that bug rather than fix it.
         on_delivery: Callable,
     ) -> None:
-        if self._producer is None:
-            raise RuntimeError("Producer not started")
+        producer = self._ensure_producer()
         if partition is not None:
-            self._producer.produce(
+            producer.produce(
                 topic,
                 key,
                 value,
@@ -504,7 +561,7 @@ class ProducerThread(QueueServiceThread):
                 on_delivery=on_delivery,
             )
         else:
-            self._producer.produce(
+            producer.produce(
                 topic,
                 key,
                 value,
@@ -549,6 +606,10 @@ class Producer(base.Producer):
         self._producer_thread = ProducerThread(self, loop=self.loop, beacon=self.beacon)
         self._quick_produce = self._producer_thread.produce
 
+    def create_threaded_producer(self) -> ProducerThread:
+        """Use the driver's producer thread for Faust's threaded buffer."""
+        return self._producer_thread
+
     async def _on_irrecoverable_error(self, exc: BaseException) -> None:
         consumer = self.transport.app.consumer
         if consumer is not None:
@@ -565,11 +626,11 @@ class Producer(base.Producer):
         partitions: int,
         replication: int,
         *,
-        config: Mapping[str, Any] = None,
+        config: Optional[Mapping[str, Any]] = None,
         timeout: Seconds = 20.0,
-        retention: Seconds = None,
-        compacting: bool = None,
-        deleting: bool = None,
+        retention: Optional[Seconds] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
         ensure_created: bool = False,
     ) -> None:
         """Create topic on broker."""
@@ -607,7 +668,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Send message for future delivery."""
         fut = ProducerProduceFuture(loop=self.loop)
@@ -636,7 +697,7 @@ class Producer(base.Producer):
         timestamp: Optional[float],
         headers: Optional[HeadersArg],
         *,
-        transactional_id: str = None,
+        transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be delivered to broker(s)."""
         fut = await self.send(
@@ -659,8 +720,8 @@ class Producer(base.Producer):
 
     def key_partition(self, topic: str, key: bytes) -> TP:
         """Return topic and partition destination for key."""
-        # Get the partition count for the topic
-        metadata = self._producer_thread.producer.list_topics(topic)
+        producer = self._producer_thread._ensure_producer()
+        metadata = producer.list_topics(topic)
         partition_count = len(metadata.topics[topic].partitions)
 
         # Calculate the partition number based on the key hash
@@ -680,7 +741,10 @@ class Transport(base.Transport):
     driver_version = f"confluent_kafka={confluent_kafka.__version__}"
 
     def _topic_config(
-        self, retention: int = None, compacting: bool = None, deleting: bool = None
+        self,
+        retention: Optional[int] = None,
+        compacting: Optional[bool] = None,
+        deleting: Optional[bool] = None,
     ) -> MutableMapping[str, Any]:
         config: MutableMapping[str, Any] = {}
         cleanup_flags: Set[str] = set()

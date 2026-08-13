@@ -120,16 +120,16 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     @abc.abstractmethod
     def __init__(
         self,
-        channel: AsyncIterator[T_co] = None,
+        channel: Optional[AsyncIterator[T_co]] = None,
         *,
         app: Optional[_AppT] = None,
-        processors: Iterable[Processor[T]] = None,
-        combined: List[JoinableT] = None,
+        processors: Optional[Iterable[Processor[T]]] = None,
+        combined: Optional[List[JoinableT]] = None,
         on_start: Optional[Callable] = None,
-        join_strategy: _JoinT = None,
+        join_strategy: Optional[_JoinT] = None,
         beacon: Optional[NodeT] = None,
         concurrency_index: Optional[int] = None,
-        prev: "StreamT" = None,
+        prev: Optional["StreamT"] = None,
         active_partitions: Optional[Set[TP]] = None,
         enable_acks: bool = True,
         prefix: str = "",
@@ -186,8 +186,8 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
         name: str,
         *,
         schema: Optional[_SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         prefix: str = "",
         suffix: str = "",
     ) -> TopicT: ...
@@ -202,7 +202,7 @@ class StreamT(AsyncIterable[T_co], JoinableT, ServiceT):
     def __iter__(self) -> Any: ...
 
     @abc.abstractmethod
-    def __next__(self) -> T: ...
+    def __next__(self) -> T_co: ...
 
     @abc.abstractmethod
     def __aiter__(self) -> AsyncIterator[T_co]: ...

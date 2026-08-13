@@ -2,8 +2,11 @@
 
 - Status: **Proposed**
 - Date: 2026-07-18
-- Supersedes: the OpenTracing shim bridge (`faust[opentelemetry]` extra, PR #688) — that
-  remains a valid *interim* for existing deployments, not the destination.
+- Supersedes: the OpenTracing shim bridge (PR #688) — that remains a valid *interim*
+  for existing deployments, not the destination.
+- Complements: the sensor-level OpenTelemetry support merged in #748
+  (`faust.contrib.opentelemetry`) and the OTel metrics monitor in #746
+  (`faust.sensors.otel`) — see "Relationship to `faust.contrib.opentelemetry`".
 
 ## Context
 
@@ -13,8 +16,10 @@ Crontabs, and the Kafka rebalance sequence. It is wired through the public
 `app.tracer` extension point (`faust.types.app.TracerT`) and is currently
 coupled to the **OpenTracing** API:
 
-- `opentracing>=1.3.0,<=2.4.0` is a **hard core dependency**
-  (`requirements/requirements.txt`).
+- `opentracing>=1.3.0,<=2.4.0` is an optional extra (`faust[opentracing]`,
+  `requirements/extras/opentracing.txt`) since #686; when it is absent the
+  tracing modules fall back to the no-op stand-in in `faust/utils/_opentracing.py`.
+  The *API surface* Faust codes against is still OpenTracing's.
 - Spans are OpenTracing `Span` objects threaded through ~134 call sites across
   12 modules.
 - Current-span propagation uses Python `contextvars`
@@ -42,6 +47,31 @@ nothing about Faust's agent / stream / recovery / rebalance boundaries, which is
 precisely the value Faust's built-in tracing adds. They **complement** Faust's
 spans; they cannot replace them.
 
+### Relationship to `faust.contrib.opentelemetry`
+
+#748 added `faust.contrib.opentelemetry.OpenTelemetrySensor`, which sits at the
+*sensor* layer: it extracts W3C context from Kafka headers and opens a
+`{topic} process` span for the lifetime of stream processing, closing the gap
+`opentelemetry-instrumentation-aiokafka` cannot close (Faust's consumer runs on
+its own thread, so the instrumentor's `receive` span opens and closes on a
+thread the agent never runs on). It gives users native OTel traces **today**,
+without touching `app.tracer`.
+
+That sensor and this ADR are complementary, not competing:
+
+- The sensor covers the *message* boundary — one span per event, driven by
+  `Sensor.on_stream_event_in/out`. It cannot see table recovery, the assignor,
+  timers, Crontabs, or the rebalance sequence, and it does not emit the
+  produce-side spans, because sensors have no hooks there.
+- This work covers the *built-in span tree* — the ~134 call sites that emit
+  agent/stream/recovery/assignor/timer/Crontab/rebalance spans through
+  `app.tracer`, which today can only be OpenTracing.
+
+Once Phase 1b lands, the two produce spans in the same native OTel trace and a
+user may run either or both; `setup_opentelemetry()`'s existing "don't run me
+alongside the OpenTracing `TracingSensor`" guard is what keeps double-injection
+from happening in the interim.
+
 ## Decision
 
 Rewrite the built-in tracing layer to emit **native OpenTelemetry spans**,
@@ -51,8 +81,9 @@ Key design points:
 
 1. **API-only dependency.** As a library, Faust depends on `opentelemetry-api`
    (an optional extra), never the SDK. Calls are cheap no-ops until the *app*
-   registers a `TracerProvider`. This replaces the hard `opentracing` core
-   dependency.
+   registers a `TracerProvider`. This is the same posture
+   `faust.contrib.opentelemetry` and `faust.sensors.otel` already take, and it
+   lets the `opentracing` extra retire entirely in Phase 2.
 
 2. **`app.tracer` becomes optional.** Native OTel apps configure a global
    `TracerProvider`; Faust resolves its tracer via
@@ -117,23 +148,26 @@ Both were prototyped against the real SDK before this ADR.
 
 ## Migration phases
 
-- **Phase 0 — interim (done):** `opentracing` optional (#686) + shim bridge
-  (#688). Non-breaking.
+- **Phase 0 — interim (done):** `opentracing` made optional (#686), shim bridge
+  (#688), OTel metrics monitor (#746), and the sensor-level
+  `faust.contrib.opentelemetry` tracing path (#748). All non-breaking.
 - **Phase 1a — foundation (this change):** native OTel tracing core
   (`faust/utils/otel_tracing.py`) with tracer resolution, deterministic
   rebalance context, semconv coexistence helpers, W3C header propagation, and
   the deferred-finish helper — fully unit-tested, **no call sites rewired yet**.
-  Adds the `faust[opentelemetry]` extra (`opentelemetry-api`).
+  Adds `opentelemetry-sdk` to the existing `faust[opentelemetry]` extra so apps
+  can configure an exporter out of the box; the core itself needs only the API.
 - **Phase 1b — rewire:** convert the 12 modules to the native core; redefine
   `TracerT` in OTel terms; ship a legacy adapter that wraps a user's existing
   OpenTracing `app.tracer` through the shim, kept behind `faust[opentracing]`
   for one major cycle. Target a **major version bump**.
-- **Phase 2 — remove:** drop `opentracing` from core requirements and delete the
-  legacy adapter in the following major.
+- **Phase 2 — remove:** delete the legacy adapter and retire the
+  `faust[opentracing]` extra together with `faust/utils/_opentracing.py` in the
+  following major.
 
 ## Consequences
 
-- **Positive:** no archived/EOL dependency in core; standard W3C wire format;
+- **Positive:** no archived/EOL API surface left in the tracing layer; standard W3C wire format;
   interoperates with the transport instrumentors; cleaner code (no context
   mutation, no monkeypatch); `app.tracer` becomes optional; SDK choice deferred
   to the app as OTel intends.
