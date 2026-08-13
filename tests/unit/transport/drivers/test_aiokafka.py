@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import random
 import string
@@ -1899,6 +1900,15 @@ class TestThreadedProducer(ProducerBaseTest):
             mocked_producer.stop.assert_called_once()
         finally:
             await threaded_producer.stop()
+            # mode's thread keepalive (``ServiceThread._wakeup_timer_in_thread``)
+            # ends each tick with ``run_coroutine_threadsafe(asyncio.sleep(0),
+            # parent_loop)``, and it gets one last tick out of the way as the
+            # thread stops.  That leaves a transient ``sleep()`` task on the
+            # parent loop which the autouse ``tasks_not_lingering`` fixture
+            # reports as "Left over tasks" if the loop never runs again --
+            # it did on the 3.14t leg, where the now-real teardown gives the
+            # keepalive room to fire.  One iteration is all the task needs.
+            await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_publish_message(
