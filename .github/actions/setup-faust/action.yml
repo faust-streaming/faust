@@ -56,7 +56,11 @@ runs:
         allow-prereleases: true
 
     - name: Set up uv
-      uses: astral-sh/setup-uv@v10
+      # Pinned to an exact tag, not a `v10` major alias: setup-uv stopped
+      # publishing floating major tags after v7, so `@v8`/`@v9`/`@v10` do not
+      # resolve at all ("unable to find version `v10`").  Dependabot's
+      # github-actions updater bumps this pin like any other.
+      uses: astral-sh/setup-uv@v10.0.0
       with:
         enable-cache: true
         # uv's default glob (`**/*requirements*.txt`) matches
