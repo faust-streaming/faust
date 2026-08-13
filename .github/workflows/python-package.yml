@@ -106,7 +106,19 @@ jobs:
         # tests/unit/test_cython_parity.py.
         env:
           FAUST_REQUIRE_CYTHON: ${{ matrix.use-cython == 'true' && '1' || '' }}
-        run: scripts/tests
+        # `scripts/tests` shards across cores with `-n auto`; `-n0` puts a leg
+        # back on a single process (the later -n wins).
+        #
+        # Measured on this matrix, sharding is a large win up to 3.13 and a
+        # large loss after it -- the suite runs in 65-88s on 3.10-3.13, against
+        # ~130s serial, but took 380s on 3.15 and blew past 440s on 3.14, where
+        # serial is ~150s.  The cause on the newer interpreters is not
+        # understood yet; until it is, only the versions sharding demonstrably
+        # helps get it.  Re-measure when revisiting: if a fix lands, delete
+        # this argument rather than extending the list to 3.16.
+        run: >-
+          scripts/tests
+          ${{ (matrix.python-version == '3.14' || matrix.python-version == '3.15') && '-n0' || '' }}
       - name: Enforce coverage
         uses: codecov/codecov-action@v5
         with:
