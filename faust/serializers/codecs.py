@@ -9,6 +9,10 @@ Supported codecs
 * **pickle**  - pickle with base64 encoding (not urlsafe).
 * **pickle_restricted** - pickle with base64 encoding, restricted at load
   time to a safe allowlist of classes (see :class:`RestrictedUnpickler`).
+* **pickle_fickling** - pickle with base64 encoding, checked at load time by
+  the optional Fickling pickle scanner. Pass Fickling's
+  ``fickling.loader.Severity`` constants to ``max_acceptable_severity`` when
+  constructing the codec to choose a different tolerance.
 * **binary**  - base64 encoding (not urlsafe).
 
 .. warning::
@@ -181,7 +185,16 @@ import pickletools  # nosec B403
 import warnings
 from base64 import b64decode, b64encode
 from types import ModuleType
-from typing import Any, Dict, FrozenSet, MutableMapping, Optional, Tuple, Union, cast
+from typing import (
+    Any,
+    Dict,
+    FrozenSet,
+    MutableMapping,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 
 from mode.utils.compat import want_bytes, want_str
 from mode.utils.imports import load_extension_classes
@@ -358,6 +371,48 @@ class raw_pickle(Codec):
 def pickle() -> Codec:
     """:mod:`pickle` serializer with base64 encoding."""
     return raw_pickle() | binary()
+
+
+class raw_fickling_pickle(Codec):
+    """:mod:`pickle` serializer checked by Fickling before loading.
+
+    Requires the optional ``fickling`` extra. This mirrors Fickling's
+    in-process safety examples, but keeps the check scoped to this codec
+    instead of installing a global pickle hook. The Fickling-specific
+    implementation lives in :mod:`faust.serializers._fickling`; keep that
+    boundary small so another pickle scanner can replace it if Fickling has
+    a bug, dependency issue, or policy mismatch.
+    """
+
+    def __init__(
+        self,
+        children: Optional[Tuple[CodecT, ...]] = None,
+        *,
+        max_acceptable_severity: Any = None,
+        **kwargs: Any,
+    ) -> None:
+        if max_acceptable_severity is not None:
+            kwargs["max_acceptable_severity"] = max_acceptable_severity
+        super().__init__(children=children, **kwargs)
+        self.max_acceptable_severity = max_acceptable_severity
+
+    def _loads(self, s: bytes) -> Any:
+        from faust.serializers import _fickling
+
+        return _fickling.loads(
+            s,
+            max_acceptable_severity=self.max_acceptable_severity,
+        )
+
+    def _dumps(self, obj: Any) -> bytes:
+        return _pickle.dumps(obj, protocol=5)  # nosec B403
+
+
+def pickle_fickling(max_acceptable_severity: Any = None) -> Codec:
+    """:mod:`pickle` serializer checked by Fickling with base64 encoding."""
+    return (
+        raw_fickling_pickle(max_acceptable_severity=max_acceptable_severity) | binary()
+    )
 
 
 class RestrictedUnpickler(_pickle.Unpickler):  # type: ignore[misc]
@@ -579,6 +634,7 @@ codecs: MutableMapping[str, CodecT] = {
     "json": json(),
     "pickle": pickle(),  # nosec B403
     "pickle_restricted": pickle_restricted(),
+    "pickle_fickling": pickle_fickling(),
     "binary": binary(),
     "raw": raw(),
     "yaml": yaml(),

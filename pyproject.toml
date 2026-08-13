@@ -31,6 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -169,9 +170,6 @@ archs = ["auto64"]
 #
 # Only musllinux stays skipped (unrelated to free-threading).
 skip = ["*musllinux*"]
-
-# cibuildwheel builds cp314t by default but needs to be told to build cp313t.
-enable = ["cpython-freethreading"]
 
 # >=3.1 for the `freethreading_compatible` directive.  Older Cython ignores
 # unknown directives instead of failing, so a lower version here would quietly
