@@ -1,4 +1,6 @@
+import asyncio
 from collections import Counter
+from contextlib import suppress
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -11,6 +13,15 @@ TP1 = TP("foo", 6)
 TP2 = TP("bar", 3)
 TP3 = TP("baz", 1)
 TP4 = TP("xuz", 0)
+
+
+def new_changelog_event(tp: TP, offset: int) -> Mock:
+    """Return a changelog event as ``_slurp_changelogs`` expects one."""
+    message = Mock(name=f"message-{offset}")
+    message.tp = tp
+    message.offset = offset
+    message.partition = tp.partition
+    return Mock(name=f"event-{offset}", message=message)
 
 
 @pytest.fixture()
@@ -297,13 +308,179 @@ class TestRecovery:
         tps = {TP1, TP2, TP3}
 
         await recovery._seek_offsets(consumer, tps, offsets, "seek")
+        # the offsets are those of the last message applied to the table,
+        # so reading resumes at the message after them.
         consumer.seek_wait.assert_called_once_with(
             {
                 TP1: 0,
-                TP2: 1001,
-                TP3: 2002,
+                TP2: 1002,
+                TP3: 2003,
             }
         )
+
+    @pytest.mark.asyncio
+    async def test__seek_offsets_with_unknown_offset(self, *, recovery):
+        consumer = Mock(
+            name="consumer",
+            seek_wait=AsyncMock(),
+        )
+        tps = {TP1}
+
+        await recovery._seek_offsets(consumer, tps, {TP1: None}, "seek")
+        consumer.seek_wait.assert_called_once_with({TP1: 0})
+
+    @pytest.mark.asyncio
+    async def test__seek_offsets_never_seeks_before_log_start(self, *, recovery, table):
+        # Regression test for #176: the changelog is compacted with
+        # ``cleanup.policy=compact,delete``, so the partition's log start
+        # offset has moved past the offset persisted in the state store.
+        # Seeking to an offset below the log start offset fails the fetch with
+        # OffsetOutOfRange and the partition never restores.
+        log_start_offset = 17092
+        table.persisted_offset.return_value = 17091
+        recovery.add_active(table, TP1)
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: log_start_offset}),
+            seek_wait=AsyncMock(),
+        )
+        tps = {TP1}
+
+        await recovery._build_offsets(consumer, tps, recovery.active_offsets, "active")
+        await recovery._seek_offsets(consumer, tps, recovery.active_offsets, "active")
+
+        assert consumer.seek_wait.call_args[0][0][TP1] == log_start_offset
+
+    @pytest.mark.asyncio
+    async def test__seek_offsets_reads_earliest_available_message(
+        self, *, recovery, table
+    ):
+        # An empty state store (fresh worker, or one that lost its disk) means
+        # the whole compacted changelog has to be read back, starting at the
+        # earliest message still available.
+        log_start_offset = 1000
+        table.persisted_offset.return_value = None
+        recovery.add_active(table, TP1)
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: log_start_offset}),
+            seek_wait=AsyncMock(),
+        )
+        tps = {TP1}
+
+        await recovery._build_offsets(consumer, tps, recovery.active_offsets, "active")
+        await recovery._seek_offsets(consumer, tps, recovery.active_offsets, "active")
+
+        assert consumer.seek_wait.call_args[0][0][TP1] == log_start_offset
+        # ``_slurp_changelogs`` only keeps messages with an offset greater
+        # than the one recorded here, so the earliest available message must
+        # still be ahead of it -- otherwise it is fetched and then dropped.
+        assert recovery.active_offsets[TP1] < log_start_offset
+
+    @pytest.mark.asyncio
+    async def test_restores_earliest_available_message(
+        self, *, recovery, tables, table
+    ):
+        # End to end over the restore path: _build_offsets, _seek_offsets and
+        # _slurp_changelogs have to agree on what "the offset we already have"
+        # means, or the earliest message of a compacted changelog is fetched
+        # and then dropped again.
+        log_start_offset = 1000
+        highwater = 1003
+        available = list(range(log_start_offset, highwater))
+        table.persisted_offset.return_value = None
+        table.recovery_buffer_size = 1
+        table.on_changelog_event = AsyncMock()
+        applied = []
+        table.apply_changelog_batch.side_effect = lambda buf: applied.extend(
+            event.message.offset for event in buf
+        )
+        recovery.add_active(table, TP1)
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: log_start_offset}),
+            highwaters=AsyncMock(return_value={TP1: highwater}),
+            seek_wait=AsyncMock(),
+        )
+        tps = {TP1}
+
+        await recovery._build_highwaters(
+            consumer, tps, recovery.active_highwaters, "active"
+        )
+        await recovery._build_offsets(consumer, tps, recovery.active_offsets, "active")
+        await recovery._seek_offsets(consumer, tps, recovery.active_offsets, "active")
+
+        # anything below the log start offset is gone, so that is the only
+        # position the broker can serve.
+        assert consumer.seek_wait.call_args[0][0][TP1] == log_start_offset
+
+        tables.changelog_queue = asyncio.Queue()
+        for offset in available:
+            tables.changelog_queue.put_nowait(new_changelog_event(TP1, offset))
+
+        slurp = asyncio.ensure_future(Recovery._slurp_changelogs.fun(recovery))
+        try:
+            for _ in range(100):
+                if len(applied) >= len(available):
+                    break
+                await asyncio.sleep(0.01)
+        finally:
+            slurp.cancel()
+            with suppress(asyncio.CancelledError):
+                await slurp
+
+        assert applied == available
+        assert recovery.active_offsets[TP1] == available[-1]
+        assert not recovery.need_recovery()
+
+    @pytest.mark.asyncio
+    async def test__build_offsets_keeps_single_remaining_message(
+        self, *, recovery, table
+    ):
+        # Compaction left a single message in the changelog, at offset 1000.
+        # Recovery has to read it: reporting zero remaining messages here
+        # means the table silently starts out empty.
+        table.persisted_offset.return_value = None
+        recovery.add_active(table, TP1)
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: 1000}),
+            highwaters=AsyncMock(return_value={TP1: 1001}),
+        )
+        tps = {TP1}
+
+        await recovery._build_highwaters(
+            consumer, tps, recovery.active_highwaters, "active"
+        )
+        await recovery._build_offsets(consumer, tps, recovery.active_offsets, "active")
+
+        assert recovery.active_remaining()[TP1] == 1
+        assert recovery.need_recovery()
+
+    @pytest.mark.asyncio
+    async def test__build_offsets_emptied_partition_stays_behind_highwater(
+        self, *, recovery, table
+    ):
+        # Every message in the partition has been compacted away, so the log
+        # start offset caught up with the highwater.  Recovery must not end up
+        # ahead of the highwater -- ``recovery_consistency_check`` raises
+        # ConsistencyError when it does.
+        table.persisted_offset.return_value = None
+        recovery.add_active(table, TP1)
+        consumer = Mock(
+            name="consumer",
+            earliest_offsets=AsyncMock(return_value={TP1: 1000}),
+            highwaters=AsyncMock(return_value={TP1: 1000}),
+        )
+        tps = {TP1}
+
+        await recovery._build_highwaters(
+            consumer, tps, recovery.active_highwaters, "active"
+        )
+        await recovery._build_offsets(consumer, tps, recovery.active_offsets, "active")
+
+        assert recovery.active_offsets[TP1] <= recovery.active_highwaters[TP1]
+        assert not recovery.need_recovery()
 
     def test_flush_buffers(self, *, recovery):
         recovery.buffers.update(

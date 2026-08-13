@@ -53,6 +53,14 @@ resumes the Keep a Changelog format.
 - `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
   shipped without the matching `BUNDLES` entry in `setup.py`, despite being
   advertised in the README. A new test guards both directions of that mapping.
+- Table recovery no longer stalls on a compacted changelog. Recovery tracks the
+  offset of the last message applied to the table, but seeked to that offset
+  instead of the one after it. When the offset came from the partition's
+  earliest available offset — a changelog compacted with
+  `cleanup.policy=compact,delete` — that is one below the log start offset, so
+  the fetch failed with `OffsetOutOfRange` and the partition never restored
+  (#176). Recovery now resumes at the next offset, which also stops the last
+  applied message from being re-fetched and discarded on every restore.
 
 ### Changed
 - The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old

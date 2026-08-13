@@ -720,7 +720,11 @@ class Recovery(Service):
         # -- Update offsets
         # Offsets may have been compacted, need to get to the recent ones
         earliest = await consumer.earliest_offsets(*tps)
-        # FIXME To be consistent with the offset -1 logic
+        # ``destination`` holds the offset of the last changelog message that
+        # was applied to the table, while ``earliest_offsets`` returns the log
+        # start offset -- the first message still available.  Subtracting one
+        # puts both on the same scale: "everything up to and including this
+        # offset is accounted for".
         earliest = {
             tp: offset - 1 if offset is not None else None
             for tp, offset in earliest.items()
@@ -762,11 +766,19 @@ class Recovery(Service):
         # Seek to new offsets
         new_offsets = {}
         for tp in tps:
+            # ``offsets`` holds the offset of the last changelog message
+            # applied to the table, so reading has to resume at the offset
+            # *after* it.  Seeking to the offset itself re-reads a message we
+            # already have -- and ``_slurp_changelogs`` drops it again, since
+            # it only keeps messages with ``offset > offsets[tp]``.  Worse,
+            # when the offset came from the partition's earliest available
+            # offset (compacted changelog), seeking to it asks the broker for
+            # an offset below the log start offset: the fetch fails with
+            # OffsetOutOfRange and the partition never restores.
             offset = offsets[tp]
-            if offset == -1:
-                offset = 0
-            new_offsets[tp] = offset
-        # FIXME Remove check when fixed offset-1 discrepancy
+            if offset is None:
+                offset = -1
+            new_offsets[tp] = max(offset + 1, 0)
         await consumer.seek_wait(new_offsets)
 
     @Service.task
