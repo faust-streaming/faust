@@ -41,7 +41,7 @@ try:
 except ImportError:  # pragma: no cover
     HAS_OTEL = False
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from opentelemetry.context import Context
     from opentelemetry.trace import Span, Tracer
 

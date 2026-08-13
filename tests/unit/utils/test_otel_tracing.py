@@ -139,6 +139,42 @@ def test_produce_attributes_coexist_legacy_and_semconv(tracer, exporter):
     assert attrs["messaging.operation.type"] == "send"
 
 
+def test_consume_attributes_omit_absent_optionals(tracer, exporter):
+    span = tracer.start_span("consume-from-orders", kind=SpanKind.CONSUMER)
+    otel_tracing.add_consume_attributes(span, topic="orders")
+    span.end()
+
+    attrs = _finished(exporter)["consume-from-orders"].attributes
+    assert attrs["kafka-topic"] == "orders"
+    # An unknown partition/key/offset is left off the span entirely rather than
+    # recorded as a null, so dashboards never see a bogus "partition 0".
+    for absent in (
+        "kafka-partition",
+        "kafka-key",
+        "messaging.destination.partition.id",
+        "messaging.kafka.offset",
+        "messaging.kafka.message.key",
+    ):
+        assert absent not in attrs
+
+
+def test_produce_attributes_omit_absent_optionals(tracer, exporter):
+    span = tracer.start_span("produce-to-orders", kind=SpanKind.PRODUCER)
+    otel_tracing.add_produce_attributes(span, topic="orders")
+    span.end()
+
+    attrs = _finished(exporter)["produce-to-orders"].attributes
+    assert attrs["kafka-topic"] == "orders"
+    assert attrs["messaging.operation.type"] == "send"
+    for absent in (
+        "kafka-partition",
+        "kafka-offset",
+        "messaging.destination.partition.id",
+        "messaging.kafka.offset",
+    ):
+        assert absent not in attrs
+
+
 def test_stringify_key_handles_non_utf8(tracer, exporter):
     span = tracer.start_span("op")
     otel_tracing.add_consume_attributes(span, topic="t", key=b"\xff\xfe")
