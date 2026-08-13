@@ -1,10 +1,37 @@
 ---
 name: Pages
 on:
+  # Path-filtered on purpose.  This build only reads the documentation sources
+  # and the `faust` package autodoc imports, so a pull request that touches
+  # only tests, CI config or packaging metadata cannot change its output --
+  # and the daily dependabot action bumps were paying three minutes each to
+  # rebuild an identical site.  `release` stays unfiltered: that run publishes.
+  # (The two lists are spelled out twice because GitHub Actions does not
+  # support YAML anchors -- keep them in step.)
   push:
     branches: [master]
+    paths:
+      - docs/**
+      - faust/**
+      - requirements/docs.txt
+      - requirements/requirements.txt
+      - README.md
+      - CHANGELOG.md
+      - Makefile
+      - .github/workflows/gh-pages.yml
+      - .github/actions/setup-faust/action.yml
   pull_request:
     branches: [master]
+    paths:
+      - docs/**
+      - faust/**
+      - requirements/docs.txt
+      - requirements/requirements.txt
+      - README.md
+      - CHANGELOG.md
+      - Makefile
+      - .github/workflows/gh-pages.yml
+      - .github/actions/setup-faust/action.yml
   release:
     types: [created]
     branches: [master]
@@ -20,26 +47,31 @@ env:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
 jobs:
   build:
     name: Build docs
     runs-on: ubuntu-latest
     steps:
-      # Checkout first: the pip cache key below hashes the requirements files,
-      # which have to be on disk before `setup-python` runs.
+      # Checkout first: the composite action below lives in the repository,
+      # and its cache key hashes files that have to be on disk already.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # otherwise, you will failed to push refs to dest repo
-      - uses: actions/setup-python@v5
+      - uses: ./.github/actions/setup-faust
         with:
-          # Pin the interpreter -- the step used to take whatever the runner
-          # image shipped -- and cache the wheels.  Sphinx and its extensions
-          # were previously downloaded from PyPI on every single run.
           python-version: ${{ env.PYTHON_LATEST }}
-          cache: pip
-          cache-dependency-path: |
-            requirements/*.txt
-            requirements/extras/*.txt
+          requirements: requirements/docs.txt
+          # faust itself is installed by the next step, which needs NO_CYTHON.
+          install: none
+      - name: Install faust for autodoc
+        # The docs import faust for autodoc but never touch the compiled
+        # accelerators, so skip building the C extensions here.
+        env:
+          NO_CYTHON: '1'
+          UV_SYSTEM_PYTHON: '1'
+        run: uv pip install .
       # Sphinx builds incrementally: given its doctree cache and the HTML tree
       # it wrote last time, it only re-reads and re-writes the documents whose
       # sources changed -- including the `faust` modules autodoc imports, which
@@ -80,15 +112,7 @@ jobs:
             rm -rf docs/_build/html
             mv Documentation docs/_build/html
           fi
-      - name: Install runtime dependencies
-        # The docs import faust for autodoc but never touch the compiled
-        # accelerators, so skip building the C extensions here.
-        env:
-          NO_CYTHON: '1'
-        run: |
-          pip install .
-          pip install -r requirements/docs.txt
-      - name: Install doc build deps and build with Sphinx
+      - name: Build with Sphinx
         run: make docs
       - name: Save the Sphinx build cache
         if: >-
