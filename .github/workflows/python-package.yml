@@ -80,16 +80,24 @@ jobs:
       - uses: ./.github/actions/setup-faust
         with:
           python-version: ${{ matrix.python-version }}
-          # ckafka on every leg, so the confluent driver's unit tests --
-          # tests/unit/transport/drivers/test_confluent.py, which
+          # ckafka on every leg that can install it, so the confluent driver's
+          # unit tests -- tests/unit/transport/drivers/test_confluent.py, which
           # `importorskip`s on confluent_kafka -- actually run.  They are
           # broker-less tests over a pure-Python wrapper and add ~2s to a leg
           # that already installs and runs everything else; they used to get
-          # six dedicated jobs, each paying a full checkout and install for
-          # six seconds of tests.
+          # six dedicated jobs, each paying a full checkout and install for six
+          # seconds of tests.
+          #
+          # Except on 3.15: confluent-kafka publishes no cp315 wheel yet, so
+          # the install falls back to its sdist, which needs the librdkafka
+          # headers that are not on the runner -- the build dies on "fatal
+          # error: librdkafka/rdkafka.h: No such file or directory" and takes
+          # the whole leg's install down with it.  Drop this condition once a
+          # cp315 wheel ships.  (The empty line the false branch produces is
+          # skipped by the action's reader.)
           requirements: |
             requirements/test.txt
-            requirements/extras/ckafka.txt
+            ${{ matrix.python-version != '3.15' && 'requirements/extras/ckafka.txt' || '' }}
           build-ext: ${{ matrix.use-cython }}
       - name: Run tests
         # FAUST_REQUIRE_CYTHON turns a silent fallback into a failure, so this

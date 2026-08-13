@@ -68,9 +68,10 @@ jobs:
       - name: Install faust for autodoc
         # The docs import faust for autodoc but never touch the compiled
         # accelerators, so skip building the C extensions here.
+        # UV_PYTHON/UV_SYSTEM_PYTHON are exported into the job env by the
+        # composite action above, so this targets the same interpreter.
         env:
           NO_CYTHON: '1'
-          UV_SYSTEM_PYTHON: '1'
         run: uv pip install .
       # Sphinx builds incrementally: given its doctree cache and the HTML tree
       # it wrote last time, it only re-reads and re-writes the documents whose

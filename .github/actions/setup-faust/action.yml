@@ -45,6 +45,7 @@ runs:
   using: composite
   steps:
     - name: Set up Python ${{ inputs.python-version }}
+      id: python
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
@@ -76,14 +77,28 @@ runs:
     - name: Install dependencies
       shell: bash
       env:
-        # Install into the interpreter `setup-python` just put on PATH,
-        # rather than into a uv-managed virtualenv the later steps would have
-        # to know to activate.
+        # Install into the interpreter `setup-python` just provisioned, rather
+        # than into a uv-managed virtualenv the later steps would have to know
+        # to activate.
+        #
+        # UV_PYTHON names that interpreter by absolute path instead of letting
+        # uv search PATH.  The search is not equivalent: uv's discovery skips
+        # free-threaded interpreters unless the request explicitly asks for a
+        # `t` ABI, so on the 3.13t/3.14t legs it walked past the interpreter we
+        # had just installed and settled on Debian's /usr/bin/python3 -- which
+        # then failed as "externally managed", and would have been the *wrong
+        # interpreter* even if it had succeeded.  `python-path` is exactly what
+        # setup-python resolved, for every leg including pypy.
         UV_SYSTEM_PYTHON: '1'
+        UV_PYTHON: ${{ steps.python.outputs.python-path }}
         REQUIREMENTS: ${{ inputs.requirements }}
         INSTALL: ${{ inputs.install }}
       run: |
         set -euo pipefail
+        # Carry the interpreter choice to any later step in the calling job
+        # that shells out to uv (the docs build does).
+        echo "UV_SYSTEM_PYTHON=1" >> "$GITHUB_ENV"
+        echo "UV_PYTHON=$UV_PYTHON" >> "$GITHUB_ENV"
         args=()
         while IFS= read -r req; do
           [ -n "$req" ] || continue
