@@ -6,44 +6,26 @@ imports and runs -- tracing simply becomes a no-op. Distributed tracing only
 does real work when an ``app.tracer`` is configured (or the ``TracingSensor``
 is used), which requires the real ``opentracing`` package to be installed.
 
-This intentionally implements only the small surface Faust touches, but over
-that surface it must stay *substitutable* for the real library: Faust reaches
-through the objects it is handed (``parent.tracer.start_span(...)``), so a
-plausible-looking attribute holding the wrong value breaks callers that never
-mention this module.  Absences count as surface too -- the aiokafka consumer
-thread reads ``Span.operation_name`` and treats the resulting
-:exc:`AttributeError` as "this is not a real span", which only works because
-:class:`opentracing.Span` does not define that attribute either.
-
-``Tracer.start_active_span`` is deliberately *not* provided: Faust never calls
-it, and the real one returns a ``Scope`` wrapping the span rather than the span
-itself, so a stand-in returning a :class:`Span` would mis-serve anyone who did.
+Only the surface Faust touches is implemented, but across it this must stay
+substitutable: callers reach through what they are handed (``parent.tracer``),
+and absences count too -- the consumer thread reads ``operation_name`` and
+treats ``AttributeError`` as "not a real span".
 """
 
 from typing import Any, Literal
 
 
 class Span:
-    """A span that does nothing.
+    """A span that does nothing."""
 
-    Mirrors :class:`opentracing.Span`, including its ``(tracer, context)``
-    signature: every span knows the tracer that made it, so callers can start
-    a child span from any span they are given.
-    """
-
-    def __init__(self, tracer: Any, context: Any = None) -> None:
+    def __init__(self, tracer: Any, *args: Any, **kwargs: Any) -> None:
+        self.context = _SpanContext()
         self.tracer: Any = tracer
-        self.context: Any = _SpanContext() if context is None else context
 
     def __enter__(self) -> "Span":
         return self
 
     def __exit__(self, *exc_info: Any) -> Literal[False]:
-        # ``finish`` rather than ``pass``: subclasses (and the lazy-span
-        # rebinding in the aiokafka driver) override ``finish``, and the real
-        # library calls it on exit.
-        if exc_info and exc_info[0] is not None:
-            self.set_tag(tags.ERROR, True)
         self.finish()
         return False
 
@@ -100,10 +82,7 @@ def child_of(*args: Any, **kwargs: Any) -> Any:
 def start_child_span(
     parent_span: Span, operation_name: Any = None, *args: Any, **kwargs: Any
 ) -> Span:
-    return parent_span.tracer.start_span(
-        operation_name=operation_name,
-        child_of=parent_span.context,
-    )
+    return parent_span.tracer.start_span(operation_name=operation_name)
 
 
 class Format:
