@@ -394,6 +394,25 @@ dependencies, so install these:
     $ pip install -U -r requirements/test.txt
     $ pip install -U -r requirements/default.txt
 
+.. note::
+
+    Install these into a virtualenv.  On Debian and Ubuntu, installing them
+    into the system Python can fail while building :pypi:`opentracing` (pulled
+    in by :file:`requirements/test.txt`) with::
+
+        AttributeError: install_layout
+
+    :pypi:`opentracing` publishes no wheel, so pip builds it from the sdist
+    through the legacy :file:`setup.py` path using whatever setuptools is
+    already installed -- and Debian's packaged ``python3-setuptools`` patches
+    its ``install_lib`` command to read an ``install_layout`` option that the
+    ``install`` command it runs against does not define.
+
+    A virtualenv gets an unpatched setuptools and builds it fine.  If you must
+    install into the system Python, either upgrade setuptools in place
+    (``pip install -U setuptools``) or build that one package in an isolated
+    environment (``pip install --use-pep517 opentracing``).
+
 After installing the dependencies required, you can now execute
 the test suite by calling :pypi:`py.test <pytest`:
 
