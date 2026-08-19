@@ -53,6 +53,23 @@ resumes the Keep a Changelog format.
 - `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
   shipped without the matching `BUNDLES` entry in `setup.py`, despite being
   advertised in the README. A new test guards both directions of that mapping.
+- Every Kafka rebalance raised `AttributeError: 'NoneType' object has no
+  attribute 'start_span'` when the `faust[opentracing]` extra was not installed
+  (#786). Both rebalance callbacks trace their work from the span
+  `_start_span_from_rebalancing()` returns, which is a no-op span whenever no
+  tracer is configured — but the no-op stand-in Faust falls back to gave its
+  spans no tracer, while `traced_from_parent_span()` starts its child span from
+  `parent.tracer`. `on_rebalance_start()` has already run by then, and
+  `on_rebalance_end()` is only reached through recovery, downstream of the
+  callback that raised, so the app was left with `rebalancing` stuck true.
+  The stand-in's spans now carry the tracer that made them, as the real
+  library's do, and `traced_from_parent_span()` no longer assumes a parent span
+  has a tracer: it runs the wrapped function untraced rather than breaking its
+  caller. The same drift hid a second divergence — the stand-in defined
+  `Span.operation_name`, which the aiokafka consumer thread reads to tell a
+  real span from a no-op one (catching the `AttributeError` the real library
+  raises), so no-op spans took the real-span path and failed on `_real_finish`.
+  New tests check the stand-in side by side with the real library.
 
 ### Changed
 - The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
