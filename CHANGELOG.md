@@ -53,6 +53,14 @@ resumes the Keep a Changelog format.
 - `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
   shipped without the matching `BUNDLES` entry in `setup.py`, despite being
   advertised in the README. A new test guards both directions of that mapping.
+- Every Kafka rebalance failed when `opentracing` was not installed. The no-op
+  stand-in Faust falls back to gave its spans no tracer, but
+  `traced_from_parent_span` starts a child span from `parent.tracer`, so
+  `on_partitions_revoked` and `on_partitions_assigned` both raised
+  `AttributeError`. Because `on_rebalance_start()` had already run, the app was
+  left mid-rebalance rather than crashing outright, surfacing as agents that
+  timed out and stalled. The stand-in now matches the real library across the
+  surface Faust uses, and a new parity test guards it.
 
 ### Changed
 - The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
