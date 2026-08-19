@@ -6,7 +6,10 @@ imports and runs -- tracing simply becomes a no-op. Distributed tracing only
 does real work when an ``app.tracer`` is configured (or the ``TracingSensor``
 is used), which requires the real ``opentracing`` package to be installed.
 
-This intentionally implements only the small surface Faust touches.
+Only the surface Faust touches is implemented, but across it this must stay
+substitutable: callers reach through what they are handed (``parent.tracer``),
+and absences count too -- the consumer thread reads ``operation_name`` and
+treats ``AttributeError`` as "not a real span".
 """
 
 from typing import Any, Literal
@@ -15,16 +18,15 @@ from typing import Any, Literal
 class Span:
     """A span that does nothing."""
 
-    operation_name: str = ""
-
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, tracer: Any, *args: Any, **kwargs: Any) -> None:
         self.context = _SpanContext()
-        self.tracer: Any = None
+        self.tracer: Any = tracer
 
     def __enter__(self) -> "Span":
         return self
 
     def __exit__(self, *exc_info: Any) -> Literal[False]:
+        self.finish()
         return False
 
     def finish(self, *args: Any, **kwargs: Any) -> None: ...
@@ -54,13 +56,10 @@ class Tracer:
     """A tracer that produces only no-op spans."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        self._noop_span = Span()
+        self._noop_span = Span(tracer=self)
 
     def start_span(self, *args: Any, **kwargs: Any) -> Span:
-        return Span()
-
-    def start_active_span(self, *args: Any, **kwargs: Any) -> Span:
-        return Span()
+        return self._noop_span
 
     def extract(self, *args: Any, **kwargs: Any) -> Any:
         return None
@@ -80,8 +79,10 @@ def child_of(*args: Any, **kwargs: Any) -> Any:
     return None
 
 
-def start_child_span(*args: Any, **kwargs: Any) -> Span:
-    return Span()
+def start_child_span(
+    parent_span: Span, operation_name: Any = None, *args: Any, **kwargs: Any
+) -> Span:
+    return parent_span.tracer.start_span(operation_name=operation_name)
 
 
 class Format:
