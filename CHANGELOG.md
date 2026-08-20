@@ -69,6 +69,11 @@ resumes the Keep a Changelog format.
   left mid-rebalance rather than crashing outright, surfacing as agents that
   timed out and stalled. The stand-in now matches the real library across the
   surface Faust uses, and a new parity test guards it.
+- `traced_from_parent_span()` no longer assumes the parent span it is given has
+  a tracer. A span is whatever the configured tracer hands back, and starting a
+  child from `parent.tracer` breaks on any that carries none — as the no-op
+  stand-in's did before the fix above (#786). Tracing is instrumentation, so it
+  now runs the wrapped function untraced rather than failing its caller.
 
 ### Changed
 - The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
