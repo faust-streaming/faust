@@ -53,6 +53,27 @@ resumes the Keep a Changelog format.
 - `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
   shipped without the matching `BUNDLES` entry in `setup.py`, despite being
   advertised in the README. A new test guards both directions of that mapping.
+- `agent.test_context()` records what a yielding agent yields even when its
+  function is not itself an async-generator function — a callable object with
+  an async-generator `__call__`, or a function returning an async generator.
+  Previously the wrapper classified the agent with
+  `inspect.isasyncgenfunction()`, which is `False` for both shapes, so they
+  were treated as never yielding and `agent.results` was filled with the values
+  sent *in* rather than the values yielded. Nothing raised, so tests kept
+  passing while asserting against their own input.
+- Every Kafka rebalance failed when `opentracing` was not installed. The no-op
+  stand-in Faust falls back to gave its spans no tracer, but
+  `traced_from_parent_span` starts a child span from `parent.tracer`, so
+  `on_partitions_revoked` and `on_partitions_assigned` both raised
+  `AttributeError`. Because `on_rebalance_start()` had already run, the app was
+  left mid-rebalance rather than crashing outright, surfacing as agents that
+  timed out and stalled. The stand-in now matches the real library across the
+  surface Faust uses, and a new parity test guards it.
+- `traced_from_parent_span()` no longer assumes the parent span it is given has
+  a tracer. A span is whatever the configured tracer hands back, and starting a
+  child from `parent.tracer` breaks on any that carries none — as the no-op
+  stand-in's did before the fix above (#786). Tracing is instrumentation, so it
+  now runs the wrapped function untraced rather than failing its caller.
 
 ### Changed
 - The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
