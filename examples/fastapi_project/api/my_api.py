@@ -1,6 +1,6 @@
 from typing import Union
-from fastapi import APIRouter
 
+from fastapi import APIRouter
 from my_faust.table.my_table import greetings_table
 
 router = APIRouter()

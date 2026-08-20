@@ -1,4 +1,5 @@
 import asyncio
+import functools
 from unittest.mock import ANY, call, patch
 
 import pytest
@@ -1000,9 +1001,74 @@ class Test_Agent:
                 processed.append(value)
 
         async with sinkless.test_context() as agent:
-            assert not agent._agent_yields
+            assert agent._agent_yields is False
             event = await agent.put("hello")
             assert event.value == "hello"
 
         assert processed == ["hello"]
         assert agent.results[0] == "hello"
+
+    async def test_context__callable_object_agent(self, *, app):
+        # ``isasyncgenfunction`` returns False for a class instance whose
+        # ``__call__`` is an async generator, but the agent does yield.
+        # ``results`` must hold the yielded value, not the incoming one.
+        class CustomAgent:
+            async def __call__(self, stream):
+                async for value in stream:
+                    yield value.upper()
+
+        my_agent = app.agent(name="callable_object")(CustomAgent())
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__function_returning_async_generator(self, *, app):
+        # A plain ``def`` that returns an async generator object also yields,
+        # and is likewise invisible to ``isasyncgenfunction``.
+        async def transform(stream):
+            async for value in stream:
+                yield value.upper()
+
+        def returns_async_generator(stream):
+            return transform(stream)
+
+        my_agent = app.agent(name="returns_agen")(returns_async_generator)
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__partial_over_callable_object(self, *, app):
+        # ``isasyncgenfunction`` sees through a partial over an async generator
+        # function, but not over a callable object.  ``name`` is explicit
+        # because every ``functools.partial`` shares the same derived name.
+        class CustomAgent:
+            async def __call__(self, stream):
+                async for value in stream:
+                    yield value.upper()
+
+        my_agent = app.agent(name="partial_over_callable")(
+            functools.partial(CustomAgent())
+        )
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__records_each_value_once_with_concurrency(self, *, app):
+        # Every actor of one test wrapper resolves against the same stream
+        # chain, and ``Stream.add_processor`` is not idempotent, so recording
+        # must be installed once per wrapper rather than once per actor.
+        @app.agent(name="concurrent_sinkless", concurrency=3)
+        async def sinkless(stream):
+            async for value in stream:
+                pass
+
+        async with sinkless.test_context() as agent:
+            await agent.put("hello")
+            assert len(agent.results) == 1
+            assert agent._agent_yields is False

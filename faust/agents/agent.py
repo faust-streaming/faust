@@ -4,7 +4,6 @@ import asyncio
 import typing
 from contextlib import suppress
 from contextvars import ContextVar
-from inspect import isasyncgenfunction
 from time import time
 from typing import (
     Any,
@@ -227,7 +226,14 @@ class Agent(AgentT, Service):
                 "Agent concurrency must be 1 when using isolated partitions"
             )
         self.use_reply_headers = use_reply_headers
-        Service.__init__(self, loop=app.loop)
+        # Do *not* pass ``loop=app.loop`` here.  Agents are declared at module
+        # scope (``@app.agent(...)``), so reading ``app.loop`` at this point
+        # pins the App to whatever loop ``mode``'s ``get_event_loop()`` finds --
+        # at import time that is a loop nobody will ever run.  ``mode.Service``
+        # binds ``self.loop`` lazily on first access, which happens inside
+        # ``_default_start()``, i.e. in the loop that actually runs the app.
+        # See issues #322, #435 and #448.
+        Service.__init__(self)
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services dependencies required to start agent."""
@@ -1110,6 +1116,10 @@ class Agent(AgentT, Service):
 class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
     _stream: StreamT
 
+    # None until the first actor is built, since whether the agent yields is
+    # only knowable from the actor itself.  See ``_prepare_actor``.
+    _agent_yields: Optional[bool] = None
+
     def __init__(
         self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
     ) -> None:
@@ -1118,19 +1128,26 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
         self._stream = self.channel.stream()
-        # Agents that never yield cannot use sinks -- ``_prepare_actor``
-        # raises ``ImproperlyConfigured('Agent must yield to use sinks')``
-        # for them.  So only attach the results sink when the wrapped agent
-        # actually yields; for sink-less agents observe processed values with
-        # a stream processor instead, so ``test_context`` works either way.
-        # See issue #433.
-        self._agent_yields = isasyncgenfunction(self.fun)
+        self.sent_offset = 0
+        self.processed_offset = 0
+
+    async def _prepare_actor(self, aref: ActorRefT, beacon: NodeT) -> ActorRefT:
+        self._install_value_recorder(aref)
+        return await super()._prepare_actor(aref, beacon)
+
+    def _install_value_recorder(self, aref: ActorRefT) -> None:
+        # Install once per wrapper, since all actors share one stream chain and
+        # ``Stream.add_processor`` is not idempotent, and before
+        # ``super()._prepare_actor`` starts the task, since deriving a stream
+        # via ``group_by``/``through`` moves processors off ``self._stream``.
+        if self._agent_yields is not None:
+            return
+        # Mirrors ``Agent._prepare_actor``, which rejects sinks when not yielding.
+        self._agent_yields = not isinstance(aref, Awaitable)
         if self._agent_yields:
             self.add_sink(self._on_value_processed)
         else:
             self._stream.add_processor(self._on_value_processed_processor)
-        self.sent_offset = 0
-        self.processed_offset = 0
 
     async def _on_value_processed_processor(self, value: Any) -> Any:
         # Sink-less agents don't yield, so we can't observe their output.

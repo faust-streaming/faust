@@ -137,9 +137,9 @@ class Test_App:
         assert app._new_transport() is by_url.return_value.return_value
         assert app.transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_consumer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_consumer, app, loop=app.loop
-        )
+        # No ``loop=`` is passed: the transport resolves its loop lazily so
+        # that building it at import time cannot pin the app to a dead loop.
+        by_url.return_value.assert_called_with(app.conf.broker_consumer, app)
         app.transport = 10
         assert app.transport == 10
 
@@ -161,9 +161,8 @@ class Test_App:
         assert transport is by_url.return_value.return_value
         assert app.producer_transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_producer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_producer, app, loop=app.loop
-        )
+        # See ``test_new_transport``: no ``loop=`` argument by design.
+        by_url.return_value.assert_called_with(app.conf.broker_producer, app)
         app.producer_transport = 10
         assert app.producer_transport == 10
 
@@ -463,6 +462,16 @@ class Test_App:
         on_worker_init = app.on_worker_init.connect(Mock(name="on_worker_init"))
         app.worker_init_post_autodiscover()
         on_worker_init.assert_called_once_with(app, signal=app.on_worker_init)
+
+    def test_worker_init_custom_web_server_does_not_construct_aiohttp(self, *, app):
+        app.web = Mock(name="legacy_web")
+
+        @app.web_server
+        class CustomWeb(Service): ...
+
+        app.worker_init_post_autodiscover()
+
+        app.web.init_server.assert_not_called()
 
     def test_discover(self, *, app):
         # With an explicit module list, fixup-provided modules (e.g. Django's
@@ -820,6 +829,22 @@ class Test_App:
         class Foo(Service): ...
 
         assert Foo in app._extra_services
+
+    def test_web_server(self, *, app):
+        @app.web_server
+        class Web(Service):
+            driver_version = "custom=1"
+            web_url = "http://127.0.0.1:7000"
+
+        assert app._web_server_service is Web
+        assert app.web_server(Web) is Web
+        assert app.web_server_driver_version == "custom=1"
+        assert str(app.web_server_url) == "http://127.0.0.1:7000"
+
+        class OtherWeb(Service): ...
+
+        with pytest.raises(ImproperlyConfigured):
+            app.web_server(OtherWeb)
 
     def test_is_leader(self, *, app):
         app._leader_assignor = Mock(
