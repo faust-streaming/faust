@@ -26,7 +26,6 @@ from typing import (
 
 import aiokafka
 import aiokafka.abc
-import opentracing
 from aiokafka import TopicPartition
 from aiokafka.consumer.group_coordinator import OffsetCommitRequest
 from aiokafka.coordinator.assignors.roundrobin import RoundRobinPartitionAssignor
@@ -42,7 +41,7 @@ from aiokafka.errors import (
 )
 from aiokafka.partitioner import DefaultPartitioner, murmur2
 from aiokafka.protocol.admin import CreateTopicsRequest
-from aiokafka.protocol.metadata import MetadataRequest_v1
+from aiokafka.protocol.metadata import MetadataRequest, MetadataRequest_v1
 from aiokafka.structs import OffsetAndMetadata, TopicPartition as _TopicPartition
 from aiokafka.util import parse_kafka_version
 from mode import Service, get_logger
@@ -51,8 +50,15 @@ from mode.utils import text
 from mode.utils.futures import StampedeWrapper
 from mode.utils.objects import cached_property
 from mode.utils.times import Seconds, humanize_seconds_ago, want_seconds
-from opentracing.ext import tags
+from packaging.version import Version
 from yarl import URL
+
+try:
+    import opentracing
+    from opentracing.ext import tags
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
+    from faust.utils._opentracing import tags
 
 from faust.auth import (
     GSSAPICredentials,
@@ -75,6 +81,7 @@ from faust.transport.consumer import (
 )
 from faust.types import (
     TP,
+    AppT,
     ConsumerMessage,
     FutureMessage,
     HeadersArg,
@@ -92,6 +99,8 @@ __all__ = ["Consumer", "Producer", "Transport"]
 #         'Please install robinhood-aiokafka, not aiokafka')
 
 logger = get_logger(__name__)
+
+_AIOKAFKA_HAS_API_VERSION = Version(aiokafka.__version__) < Version("0.13.0")
 
 DEFAULT_GENERATION_ID = OffsetCommitRequest.DEFAULT_GENERATION_ID
 
@@ -163,7 +172,7 @@ Has not committed %r (last commit %s).
 """.strip()
 
 
-def __canon_host(host, default):
+def __canon_host(host: Optional[str], default: str) -> str:
     """Ensure host is correctly formatted for aiokafka. That means IPv6
     addresses must enclosed in squared brackets.
     """
@@ -186,8 +195,8 @@ def server_list(urls: List[URL], default_port: int) -> List[str]:
 class ConsumerRebalanceListener(aiokafka.abc.ConsumerRebalanceListener):  # type: ignore
     # kafka's ridiculous class based callback interface makes this hacky.
 
-    def __init__(self, thread: ConsumerThread) -> None:
-        self._thread: ConsumerThread = thread
+    def __init__(self, thread: "AIOKafkaConsumerThread") -> None:
+        self._thread: "AIOKafkaConsumerThread" = thread
 
     def on_partitions_revoked(self, revoked: Iterable[_TopicPartition]) -> Awaitable:
         """Call when partitions are being revoked."""
@@ -221,7 +230,11 @@ class Consumer(ThreadDelegateConsumer):
         ConsumerStoppedError,
     )
 
-    def _new_consumer_thread(self) -> ConsumerThread:
+    #: Narrows :attr:`ThreadDelegateConsumer._thread` to the thread type
+    #: this consumer actually creates in :meth:`_new_consumer_thread`.
+    _thread: "AIOKafkaConsumerThread"
+
+    def _new_consumer_thread(self) -> "AIOKafkaConsumerThread":
         return AIOKafkaConsumerThread(self, loop=self.loop, beacon=self.beacon)
 
     async def create_topic(
@@ -290,21 +303,27 @@ class Consumer(ThreadDelegateConsumer):
 class ThreadedProducer(ServiceThread):
     _producer: Optional[aiokafka.AIOKafkaProducer] = None
     event_queue: Optional[asyncio.Queue] = None
-    _default_producer: Optional[aiokafka.AIOKafkaProducer] = None
+    #: The Faust producer this thread borrows its configuration from
+    #: (not an :class:`aiokafka.AIOKafkaProducer`) -- always set by __init__.
+    #: The ``= None`` class-level default is kept exactly as it was rather
+    #: than dropped, so ``ThreadedProducer._default_producer`` stays readable
+    #: on the class; the annotation is non-Optional because every instance
+    #: has a real Producer by the time anything uses it.
+    _default_producer: "Producer" = None  # type: ignore[assignment]
     _push_events_task: Optional[asyncio.Task] = None
-    app: None
+    app: AppT
     stopped: bool
     _shutdown_initiated: bool = False
 
     def __init__(
         self,
-        default_producer,
-        app,
+        default_producer: "Producer",
+        app: AppT,
         *,
-        executor: Any = None,
+        executor: Optional[Any] = None,
         loop: Optional[asyncio.AbstractEventLoop] = None,
         thread_loop: Optional[asyncio.AbstractEventLoop] = None,
-        Worker: Type[WorkerThread] = None,
+        Worker: Optional[Type[WorkerThread]] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -316,7 +335,17 @@ class ThreadedProducer(ServiceThread):
         self._default_producer = default_producer
         self.app = app
 
-    def _shutdown_thread(self) -> None:
+    # XXX broken: this synchronous method overrides the coroutine
+    # ``mode.threads.ServiceThread._shutdown_thread``, breaking mode's
+    # contract.  ``ServiceThread._serve()`` ends with
+    # ``finally: await self._shutdown_thread()``, so ``await None`` raises
+    # TypeError on every shutdown of this thread.  The base implementation
+    # (on_thread_stop, stopping children/futures/exit stacks, set_shutdown)
+    # therefore never runs; the shutdown event only gets set because
+    # ``_start_thread`` catches that TypeError and calls ``set_shutdown()``
+    # before re-raising it.  Not fixed here: making it ``async`` changes
+    # runtime behaviour, which is out of scope for this annotation pass.
+    def _shutdown_thread(self) -> None:  # type: ignore[override]
         # Ensure that the shutdown process is initiated only once
         if not self._shutdown_initiated:
             asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
@@ -325,7 +354,12 @@ class ThreadedProducer(ServiceThread):
         """Wait for producer to finish transmitting all buffered messages."""
         while True:
             try:
-                msg = self.event_queue.get_nowait()
+                # ``event_queue`` is created in ``on_start``, and flushing is
+                # only reachable once the thread has started.  cast, not
+                # assert: an assert would turn the AttributeError this raises
+                # when unset into an AssertionError, and vanishes under
+                # ``python -O``.
+                msg = cast(asyncio.Queue, self.event_queue).get_nowait()
             except QueueEmpty:
                 break
             else:
@@ -367,15 +401,22 @@ class ThreadedProducer(ServiceThread):
             while not self._push_events_task.done():
                 await asyncio.sleep(0.1)
 
-    async def push_events(self):
+    async def push_events(self) -> None:
         while not self.stopped:
+            # ``event_queue`` is created by ``on_start`` before this task is
+            # scheduled.  cast, not assert: this runs per message, and an
+            # assert would both change the exception type and disappear
+            # under ``python -O``.
             try:
-                event = await asyncio.wait_for(self.event_queue.get(), timeout=0.1)
+                event = await asyncio.wait_for(
+                    cast(asyncio.Queue, self.event_queue).get(), timeout=0.1
+                )
             except asyncio.TimeoutError:
                 continue
 
             self.app.sensors.on_threaded_producer_buffer_processed(
-                app=self.app, size=self.event_queue.qsize()
+                app=self.app,
+                size=cast(asyncio.Queue, self.event_queue).qsize(),
             )
             await self.publish_message(event)
 
@@ -399,7 +440,11 @@ class ThreadedProducer(ServiceThread):
             timestamp,
             partition,
         )
-        producer = self._producer
+        # The underlying producer is created by ``on_start``, and messages
+        # are only published by tasks started after that.  cast, not assert:
+        # this runs per message, and an assert would both change the
+        # exception type and disappear under ``python -O``.
+        producer = cast(aiokafka.AIOKafkaProducer, self._producer)
         state = self.app.sensors.on_send_initiated(
             producer,
             topic,
@@ -420,7 +465,16 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            fut.message.channel._on_published(
+            # XXX broken: ``_on_published`` is not on the ChannelT interface
+            # (it is implemented by faust.topics.Topic), and worse, the call
+            # below is missing an argument.  Topic._on_published
+            # (faust/topics.py:463) is
+            # ``_on_published(self, fut, message, producer, state)`` -- ``fut``
+            # is a required positional parameter holding the send future, and
+            # nothing is passed for it here, so this raises TypeError at
+            # runtime and ``publish_message(..., wait=True)`` can never
+            # succeed.  Behaviour left untouched in this annotation-only pass.
+            fut.message.channel._on_published(  # type: ignore[attr-defined]
                 message=fut, state=state, producer=producer
             )
             fut.set_result(ret)
@@ -438,7 +492,11 @@ class ThreadedProducer(ServiceThread):
                 ),
             )
             callback = partial(
-                fut.message.channel._on_published,
+                # ``_on_published`` is not on the ChannelT interface; see the
+                # note on the ``wait`` branch above.  This branch does supply
+                # the required positional ``fut``: add_done_callback passes
+                # the completed future as the first positional argument.
+                fut.message.channel._on_published,  # type: ignore[attr-defined]
                 message=fut,
                 state=state,
                 producer=producer,
@@ -462,7 +520,13 @@ class AIOKafkaConsumerThread(ConsumerThread):
     def __post_init__(self) -> None:
         consumer = cast(Consumer, self.consumer)
         self._partitioner: PartitionerT = (
-            self.app.conf.producer_partitioner or DefaultPartitioner()
+            # ``Settings.producer_partitioner`` is a ``Param`` descriptor, but
+            # because the setting's *value* type is itself a callable mypy
+            # reads the class attribute as a method and tries to bind ``self``
+            # instead of going through ``Param.__get__`` -- which both fails
+            # and strips the leading ``key`` argument from the result type.
+            self.app.conf.producer_partitioner  # type: ignore[misc,assignment]
+            or DefaultPartitioner()
         )
         self._rebalance_listener = consumer.RebalanceListener(self)
         self._pending_rebalancing_spans = deque()
@@ -508,10 +572,15 @@ class AIOKafkaConsumerThread(ConsumerThread):
         conf = self.app.conf
         if self.consumer.in_transaction:
             isolation_level = "read_committed"
+        # Table recovery depends on app.assignor state to map changelog
+        # active/standby partitions. Keep Faust assignor enabled whenever
+        # this app has changelog tables configured.
+        has_changelog_tables = bool(self.app.tables.changelog_topics)
         self._assignor = (
             self.app.assignor
             if self.app.conf.table_standby_replicas > 0
             or self.app.conf.consumer_group_instance_id
+            or has_changelog_tables
             else RoundRobinPartitionAssignor
         )
         auth_settings = credentials_to_aiokafka_auth(
@@ -530,8 +599,11 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 f"broker_request_timeout={request_timeout}"
             )
 
+        consumer_kwargs: dict[str, Any] = {}
+        if _AIOKAFKA_HAS_API_VERSION:
+            consumer_kwargs["api_version"] = conf.consumer_api_version
         return aiokafka.AIOKafkaConsumer(
-            api_version=conf.consumer_api_version,
+            **consumer_kwargs,
             client_id=conf.broker_client_id,
             group_id=conf.id,
             group_instance_id=conf.consumer_group_instance_id,
@@ -620,7 +692,14 @@ class AIOKafkaConsumerThread(ConsumerThread):
                 def finish(self) -> None:
                     consumer._span_finish(span)
 
-            span._real_finish, span.finish = span.finish, LazySpan.finish
+            # Bind the replacement to ``span`` -- assigning the raw
+            # ``LazySpan.finish`` function leaves it unbound, so the later
+            # ``span.finish()`` call raises "missing 1 required positional
+            # argument: 'self'".
+            span._real_finish, span.finish = (
+                span.finish,
+                LazySpan.finish.__get__(span),
+            )
 
     def _span_finish(self, span: opentracing.Span) -> None:
         assert self._consumer is not None
@@ -933,7 +1012,7 @@ class AIOKafkaConsumerThread(ConsumerThread):
         await self.call_thread(self._seek_wait, consumer, partitions)
 
     async def _seek_wait(
-        self, consumer: Consumer, partitions: Mapping[TP, int]
+        self, consumer: aiokafka.AIOKafkaConsumer, partitions: Mapping[TP, int]
     ) -> None:
         for tp, offset in partitions.items():
             self.log.dev("SEEK %r -> %r", tp, offset)
@@ -1098,7 +1177,7 @@ class Producer(base.Producer):
     _transaction_producers: typing.Dict[str, aiokafka.AIOKafkaProducer] = {}
     _trn_locks: typing.Dict[str, Lock] = {}
 
-    def create_threaded_producer(self):
+    def create_threaded_producer(self) -> ThreadedProducer:
         return ThreadedProducer(default_producer=self, app=self.app)
 
     def __post_init__(self) -> None:
@@ -1112,7 +1191,7 @@ class Producer(base.Producer):
 
     def _settings_default(self) -> Mapping[str, Any]:
         transport = cast(Transport, self.transport)
-        return {
+        settings: dict[str, Any] = {
             "bootstrap_servers": server_list(transport.url, transport.default_port),
             "client_id": self.client_id,
             "acks": self.acks,
@@ -1123,10 +1202,12 @@ class Producer(base.Producer):
             "security_protocol": "SSL" if self.ssl_context else "PLAINTEXT",
             "partitioner": self.partitioner,
             "request_timeout_ms": int(self.request_timeout * 1000),
-            "api_version": self._api_version,
             "metadata_max_age_ms": self.app.conf.producer_metadata_max_age_ms,
             "connections_max_idle_ms": self.app.conf.producer_connections_max_idle_ms,
         }
+        if _AIOKAFKA_HAS_API_VERSION:
+            settings["api_version"] = self._api_version
+        return settings
 
     def _settings_auth(self) -> Mapping[str, Any]:
         return credentials_to_aiokafka_auth(self.credentials, self.ssl_context)
@@ -1506,7 +1587,11 @@ class Transport(base.Transport):
         for node_id in nodes:
             if node_id is None:
                 raise NotReady("Not connected to Kafka Broker")
-            request = MetadataRequest_v1([])
+            if _AIOKAFKA_HAS_API_VERSION:
+                # aiokafka < 0.13: MetadataRequest is a versioned list.
+                request = MetadataRequest_v1([])
+            else:
+                request = MetadataRequest([])
             wait_result = await owner.wait(
                 client.send(node_id, request),
                 timeout=timeout,
@@ -1539,7 +1624,6 @@ class Transport(base.Transport):
             owner.log.debug("Topic %r exists, skipping creation.", topic)
             return
 
-        protocol_version = 1
         extra_configs = config or {}
         config = self._topic_config(retention, compacting, deleting)
         config.update(extra_configs)
@@ -1556,11 +1640,27 @@ class Transport(base.Transport):
             else:
                 raise Exception("Controller node is None")
 
-        request = CreateTopicsRequest[protocol_version](
-            [(topic, partitions, replication, [], list(config.items()))],
+        # (partition_id, [replica broker ids]) pairs -- empty means "let the
+        # broker decide the replica assignment".
+        replica_assignment: List[Tuple[int, List[int]]] = []
+        create_topics_args = (
+            [
+                (
+                    topic,
+                    partitions,
+                    replication,
+                    replica_assignment,
+                    list(config.items()),
+                )
+            ],
             timeout,
             False,
         )
+        if _AIOKAFKA_HAS_API_VERSION:
+            # aiokafka < 0.13: CreateTopicsRequest is indexed by protocol version.
+            request = CreateTopicsRequest[1](*create_topics_args)
+        else:
+            request = CreateTopicsRequest(*create_topics_args)
         wait_result = await owner.wait(
             client.send(controller_node, request),
             timeout=timeout,
@@ -1588,7 +1688,7 @@ class Transport(base.Transport):
 
 
 def credentials_to_aiokafka_auth(
-    credentials: Optional[CredentialsT] = None, ssl_context: Any = None
+    credentials: Optional[CredentialsT] = None, ssl_context: Optional[Any] = None
 ) -> Mapping:
     if credentials is not None:
         if isinstance(credentials, SSLCredentials):

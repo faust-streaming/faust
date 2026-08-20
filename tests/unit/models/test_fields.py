@@ -214,3 +214,89 @@ class Test_BytesField:
     def test_prepare_value(self, value, coerce, trim, expected_result):
         f = BytesField(coerce=coerce, trim_whitespace=trim)
         assert f.prepare_value(value) == expected_result
+
+
+class Test_FieldDescriptorBase:
+    """The read path, in whichever implementation is active.
+
+    ``_FieldDescriptorBase`` is the Cython one whenever the extension could
+    be built, and is otherwise the same object as ``_PyFieldDescriptorBase``.
+    """
+
+    def test_active_base_is_one_of_the_two(self):
+        from faust.models import fields as f
+
+        active_base = f._FieldDescriptorBase
+        assert active_base is f._PyFieldDescriptorBase or (
+            active_base.__module__ == "faust.models._cython.fields"
+            and active_base.__name__ == "FieldDescriptorBase"
+        )
+        assert issubclass(FieldDescriptor, f._FieldDescriptorBase)
+
+    def test_class_access_returns_the_descriptor(self):
+        class Point(Record):
+            x: int
+
+        assert isinstance(Point.x, FieldDescriptor)
+        assert Point.x.field == "x"
+
+    def test_instance_access_returns_the_value(self):
+        class Point(Record):
+            x: int
+            label: str
+
+        p = Point(x=1, label="hi")
+        assert p.x == 1
+        assert p.label == "hi"
+
+    def test_lazy_coercion_on_read(self):
+        # A nested model is coerced on first access and cached, so the
+        # second read returns the identical object.
+        class Point(Record):
+            x: int
+
+        class Holder(Record):
+            p: Point
+
+        h = Holder(p={"x": 2})
+        first = h.p
+        assert isinstance(first, Point)
+        assert first.x == 2
+        assert h.p is first
+
+    def test_lazy_coercion_flag_is_a_plain_attribute(self):
+        # Regression: both of these used to be mode cached_property, which
+        # defines __set__ and so intercepts every read even once cached.
+        # lazy_coercion is read on every single field access.
+        class Point(Record):
+            x: int
+
+        from mode.utils.objects import cached_property
+
+        descriptor = Point._options.descriptors["x"]
+        # Neither name may resolve to a cached_property anywhere in the MRO.
+        # (Where the value is actually stored differs between the two
+        # implementations: the extension type keeps lazy_coercion as a C
+        # struct member, the Python one as an instance attribute.)
+        for klass in type(descriptor).__mro__:
+            for name in ("lazy_coercion", "related_models"):
+                assert not isinstance(klass.__dict__.get(name), cached_property)
+        assert descriptor.lazy_coercion is False
+        assert descriptor.related_models == set()
+
+    def test_none_value_is_returned_for_optional_field(self):
+        class Point(Record):
+            x: int = None
+
+        assert Point(x=None).x is None
+
+    def test_descriptor_still_accepts_arbitrary_attributes(self):
+        # clone()/as_dict() and several tests set attributes directly, so
+        # the extension type has to keep a __dict__.
+        class Point(Record):
+            x: int
+
+        descriptor = Point._options.descriptors["x"]
+        descriptor.some_extra_attribute = 42
+        assert descriptor.some_extra_attribute == 42
+        assert type(descriptor.clone()) is type(descriptor)

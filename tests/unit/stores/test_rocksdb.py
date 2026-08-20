@@ -67,15 +67,52 @@ class TestRocksDBOptions:
             )
             assert db is rocks.DB()
 
-    @pytest.mark.skip("Need to make mock BlockBasedOptions")
     def test_open_rocksdict(self):
-        with patch("faust.stores.rocksdb.rocksdict", Mock()) as rocks:
+        with (
+            patch("faust.stores.rocksdb.rocksdict", Mock()) as rocks,
+            patch("faust.stores.rocksdb.Options") as Options,
+            patch("faust.stores.rocksdb.DB") as DB,
+        ):
             opts = RocksDBOptions(use_rocksdict=True)
             db = opts.open(Path("foo.db"), read_only=True)
-            rocks.DB.assert_called_once_with(
-                "foo.db", opts.as_options(), read_only=True
+
+            # Options is created in raw mode and configured from RocksDBOptions.
+            Options.assert_called_with(raw_mode=True)
+            db_options = Options.return_value
+            db_options.create_if_missing.assert_called_with(True)
+            db_options.set_max_open_files.assert_called_with(opts.max_open_files)
+            db_options.set_write_buffer_size.assert_called_with(opts.write_buffer_size)
+            db_options.set_target_file_size_base.assert_called_with(
+                opts.target_file_size_base
             )
-            assert db is rocks.DB()
+            db_options.set_max_write_buffer_number.assert_called_with(
+                opts.max_write_buffer_number
+            )
+
+            # The block based table factory is wired up through rocksdict.
+            table_factory_options = rocks.BlockBasedOptions.return_value
+            table_factory_options.set_bloom_filter.assert_called_with(
+                opts.bloom_filter_size, block_based=True
+            )
+            rocks.Cache.assert_called_with(opts.block_cache_size)
+            table_factory_options.set_block_cache.assert_called_with(
+                rocks.Cache.return_value
+            )
+            table_factory_options.set_index_type.assert_called_with(
+                rocks.BlockBasedIndexType.binary_search.return_value
+            )
+            db_options.set_block_based_table_factory.assert_called_with(
+                table_factory_options
+            )
+
+            # The DB is opened with those options and read options are set.
+            DB.assert_called_with(
+                "foo.db",
+                options=db_options,
+                access_type=rocks.AccessType.read_write.return_value,
+            )
+            db.set_read_options.assert_called_with(rocks.ReadOptions.return_value)
+            assert db is DB.return_value
 
 
 class Test_Store_RocksDB:

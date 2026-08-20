@@ -137,9 +137,9 @@ class Test_App:
         assert app._new_transport() is by_url.return_value.return_value
         assert app.transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_consumer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_consumer, app, loop=app.loop
-        )
+        # No ``loop=`` is passed: the transport resolves its loop lazily so
+        # that building it at import time cannot pin the app to a dead loop.
+        by_url.return_value.assert_called_with(app.conf.broker_consumer, app)
         app.transport = 10
         assert app.transport == 10
 
@@ -161,9 +161,8 @@ class Test_App:
         assert transport is by_url.return_value.return_value
         assert app.producer_transport is by_url.return_value.return_value
         by_url.assert_called_with(app.conf.broker_producer[0])
-        by_url.return_value.assert_called_with(
-            app.conf.broker_producer, app, loop=app.loop
-        )
+        # See ``test_new_transport``: no ``loop=`` argument by design.
+        by_url.return_value.assert_called_with(app.conf.broker_producer, app)
         app.producer_transport = 10
         assert app.producer_transport == 10
 
@@ -464,7 +463,20 @@ class Test_App:
         app.worker_init_post_autodiscover()
         on_worker_init.assert_called_once_with(app, signal=app.on_worker_init)
 
+    def test_worker_init_custom_web_server_does_not_construct_aiohttp(self, *, app):
+        app.web = Mock(name="legacy_web")
+
+        @app.web_server
+        class CustomWeb(Service): ...
+
+        app.worker_init_post_autodiscover()
+
+        app.web.init_server.assert_not_called()
+
     def test_discover(self, *, app):
+        # With an explicit module list, fixup-provided modules (e.g. Django's
+        # INSTALLED_APPS) must NOT be pulled in -- the user's list is honored
+        # as-is.  See #500.
         app.conf.autodiscover = ["a", "b", "c"]
         app.conf.origin = "faust"
         fixup1 = Mock(name="fixup1", autospec=Fixup)
@@ -479,12 +491,32 @@ class Test_App:
                         call("a"),
                         call("b"),
                         call("c"),
-                        call("d"),
-                        call("e"),
                         call("faust"),
                     ],
                     any_order=True,
                 )
+                imported = {c.args[0] for c in import_module.call_args_list}
+                assert "d" not in imported
+                assert "e" not in imported
+                fixup1.autodiscover_modules.assert_not_called()
+
+    def test_discover__true_includes_fixup_modules(self, *, app):
+        # The blanket autodiscover=True mode DOES pull in fixup-provided
+        # modules (e.g. every app in Django's INSTALLED_APPS).
+        app.conf.autodiscover = True
+        app.conf.origin = "faust"
+        fixup1 = Mock(name="fixup1", autospec=Fixup)
+        fixup1.autodiscover_modules.return_value = ["d", "e"]
+        app.fixups = [fixup1]
+        with patch("faust.app.base.venusian"):
+            with patch("importlib.import_module") as import_module:
+                app.discover()
+
+                import_module.assert_has_calls(
+                    [call("faust"), call("d"), call("e")],
+                    any_order=True,
+                )
+                fixup1.autodiscover_modules.assert_called_once_with()
 
     def test_discover__disabled(self, *, app):
         app.conf.autodiscover = False
@@ -797,6 +829,22 @@ class Test_App:
         class Foo(Service): ...
 
         assert Foo in app._extra_services
+
+    def test_web_server(self, *, app):
+        @app.web_server
+        class Web(Service):
+            driver_version = "custom=1"
+            web_url = "http://127.0.0.1:7000"
+
+        assert app._web_server_service is Web
+        assert app.web_server(Web) is Web
+        assert app.web_server_driver_version == "custom=1"
+        assert str(app.web_server_url) == "http://127.0.0.1:7000"
+
+        class OtherWeb(Service): ...
+
+        with pytest.raises(ImproperlyConfigured):
+            app.web_server(OtherWeb)
 
     def test_is_leader(self, *, app):
         app._leader_assignor = Mock(

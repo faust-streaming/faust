@@ -77,35 +77,35 @@ class Settings(base.SettingsRegistry):
         id: str,
         *,
         # Common settings:
-        autodiscover: AutodiscoverArg = None,
-        datadir: typing.Union[str, Path] = None,
-        tabledir: typing.Union[str, Path] = None,
+        autodiscover: Optional[AutodiscoverArg] = None,
+        datadir: Optional[typing.Union[str, Path]] = None,
+        tabledir: Optional[typing.Union[str, Path]] = None,
         debug: Optional[bool] = None,
         env_prefix: Optional[str] = None,
         id_format: Optional[str] = None,
         origin: Optional[str] = None,
-        timezone: typing.Union[str, tzinfo] = None,
+        timezone: Optional[typing.Union[str, tzinfo]] = None,
         version: Optional[int] = None,
         # Agent settings:
-        agent_supervisor: SymbolArg[Type[SupervisorStrategyT]] = None,
+        agent_supervisor: Optional[SymbolArg[Type[SupervisorStrategyT]]] = None,
         # Broker settings:
-        broker: BrokerArg = None,
-        broker_consumer: BrokerArg = None,
-        broker_producer: BrokerArg = None,
+        broker: Optional[BrokerArg] = None,
+        broker_consumer: Optional[BrokerArg] = None,
+        broker_producer: Optional[BrokerArg] = None,
         broker_api_version: Optional[str] = None,
         broker_check_crcs: Optional[bool] = None,
         broker_client_id: Optional[str] = None,
         broker_commit_every: Optional[int] = None,
         broker_commit_interval: Optional[Seconds] = None,
         broker_commit_livelock_soft_timeout: Optional[Seconds] = None,
-        broker_credentials: CredentialsArg = None,
+        broker_credentials: Optional[CredentialsArg] = None,
         broker_heartbeat_interval: Optional[Seconds] = None,
         broker_max_poll_interval: Optional[Seconds] = None,
         broker_max_poll_records: Optional[int] = None,
         broker_rebalance_timeout: Optional[Seconds] = None,
         broker_request_timeout: Optional[Seconds] = None,
         broker_session_timeout: Optional[Seconds] = None,
-        ssl_context: ssl.SSLContext = None,
+        ssl_context: Optional[ssl.SSLContext] = None,
         # Consumer settings:
         consumer_api_version: Optional[str] = None,
         consumer_max_fetch_size: Optional[int] = None,
@@ -114,11 +114,11 @@ class Settings(base.SettingsRegistry):
         consumer_metadata_max_age_ms: Optional[int] = None,
         consumer_connections_max_idle_ms: Optional[int] = None,
         # Topic serialization settings:
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         # Logging settings:
-        logging_config: Mapping = None,
-        loghandlers: List[logging.Handler] = None,
+        logging_config: Optional[Mapping] = None,
+        loghandlers: Optional[List[logging.Handler]] = None,
         # Producer settings:
         producer_acks: Optional[int] = None,
         producer_api_version: Optional[str] = None,
@@ -126,7 +126,7 @@ class Settings(base.SettingsRegistry):
         producer_linger_ms: Optional[int] = None,
         producer_max_batch_size: Optional[int] = None,
         producer_max_request_size: Optional[int] = None,
-        producer_partitioner: SymbolArg[PartitionerT] = None,
+        producer_partitioner: Optional[SymbolArg[PartitionerT]] = None,
         producer_request_timeout: Optional[Seconds] = None,
         producer_threaded: bool = False,
         producer_metadata_max_age_ms: Optional[int] = None,
@@ -137,14 +137,14 @@ class Settings(base.SettingsRegistry):
         reply_to: Optional[str] = None,
         reply_to_prefix: Optional[str] = None,
         # Stream settings:
-        processing_guarantee: Union[str, ProcessingGuarantee] = None,
+        processing_guarantee: Optional[Union[str, ProcessingGuarantee]] = None,
         stream_buffer_maxsize: Optional[int] = None,
         stream_processing_timeout: Optional[Seconds] = None,
         stream_publish_on_commit: Optional[bool] = None,
         stream_recovery_delay: Optional[Seconds] = None,
         stream_wait_empty: Optional[bool] = None,
         # Table settings:
-        store: URLArg = None,
+        store: Optional[URLArg] = None,
         table_cleanup_interval: Optional[Seconds] = None,
         table_key_index_size: Optional[int] = None,
         table_standby_replicas: Optional[int] = None,
@@ -154,43 +154,49 @@ class Settings(base.SettingsRegistry):
         topic_partitions: Optional[int] = None,
         topic_replication_factor: Optional[int] = None,
         # Web server settings:
-        cache: URLArg = None,
-        canonical_url: URLArg = None,
-        web: URLArg = None,
+        cache: Optional[URLArg] = None,
+        canonical_url: Optional[URLArg] = None,
+        web: Optional[URLArg] = None,
         web_bind: Optional[str] = None,
-        web_cors_options: typing.Mapping[str, ResourceOptions] = None,
+        web_application_options: Optional[typing.Mapping[str, typing.Any]] = None,
+        web_cors_options: Optional[typing.Mapping[str, ResourceOptions]] = None,
         web_enabled: Optional[bool] = None,
+        web_graph_enabled: Optional[bool] = None,
         web_host: Optional[str] = None,
         web_in_thread: Optional[bool] = None,
+        web_metrics_enabled: Optional[bool] = None,
         web_port: Optional[int] = None,
-        web_ssl_context: ssl.SSLContext = None,
-        web_transport: URLArg = None,
+        web_router_enabled: Optional[bool] = None,
+        web_ssl_context: Optional[ssl.SSLContext] = None,
+        web_stats_enabled: Optional[bool] = None,
+        web_tables_enabled: Optional[bool] = None,
+        web_transport: Optional[URLArg] = None,
         # Worker settings:
         worker_redirect_stdouts: Optional[bool] = None,
-        worker_redirect_stdouts_level: Severity = None,
+        worker_redirect_stdouts_level: Optional[Severity] = None,
         # Extension settings:
-        Agent: SymbolArg[Type[AgentT]] = None,
-        ConsumerScheduler: SymbolArg[Type[SchedulingStrategyT]] = None,
-        Event: SymbolArg[Type[EventT]] = None,
-        Schema: SymbolArg[Type[SchemaT]] = None,
-        Stream: SymbolArg[Type[StreamT]] = None,
-        Table: SymbolArg[Type[TableT]] = None,
-        SetTable: SymbolArg[Type[TableT]] = None,
-        GlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-        SetGlobalTable: SymbolArg[Type[GlobalTableT]] = None,
-        TableManager: SymbolArg[Type[TableManagerT]] = None,
-        Serializers: SymbolArg[Type[RegistryT]] = None,
-        Worker: SymbolArg[Type[_WorkerT]] = None,
-        PartitionAssignor: SymbolArg[Type[PartitionAssignorT]] = None,
-        LeaderAssignor: SymbolArg[Type[LeaderAssignorT]] = None,
-        Router: SymbolArg[Type[RouterT]] = None,
-        Topic: SymbolArg[Type[TopicT]] = None,
-        HttpClient: SymbolArg[Type[HttpClientT]] = None,
-        Monitor: SymbolArg[Type[SensorT]] = None,
+        Agent: Optional[SymbolArg[Type[AgentT]]] = None,
+        ConsumerScheduler: Optional[SymbolArg[Type[SchedulingStrategyT]]] = None,
+        Event: Optional[SymbolArg[Type[EventT]]] = None,
+        Schema: Optional[SymbolArg[Type[SchemaT]]] = None,
+        Stream: Optional[SymbolArg[Type[StreamT]]] = None,
+        Table: Optional[SymbolArg[Type[TableT]]] = None,
+        SetTable: Optional[SymbolArg[Type[TableT]]] = None,
+        GlobalTable: Optional[SymbolArg[Type[GlobalTableT]]] = None,
+        SetGlobalTable: Optional[SymbolArg[Type[GlobalTableT]]] = None,
+        TableManager: Optional[SymbolArg[Type[TableManagerT]]] = None,
+        Serializers: Optional[SymbolArg[Type[RegistryT]]] = None,
+        Worker: Optional[SymbolArg[Type[_WorkerT]]] = None,
+        PartitionAssignor: Optional[SymbolArg[Type[PartitionAssignorT]]] = None,
+        LeaderAssignor: Optional[SymbolArg[Type[LeaderAssignorT]]] = None,
+        Router: Optional[SymbolArg[Type[RouterT]]] = None,
+        Topic: Optional[SymbolArg[Type[TopicT]]] = None,
+        HttpClient: Optional[SymbolArg[Type[HttpClientT]]] = None,
+        Monitor: Optional[SymbolArg[Type[SensorT]]] = None,
         # Deprecated settings:
         stream_ack_cancelled_tasks: Optional[bool] = None,
         stream_ack_exceptions: Optional[bool] = None,
-        url: URLArg = None,
+        url: Optional[URLArg] = None,
         **kwargs: Any,
     ) -> None: ...  # replaced by __init_subclass__ in BaseSettings
 
@@ -205,7 +211,7 @@ class Settings(base.SettingsRegistry):
 
     def _init_env_prefix(
         self,
-        env: Mapping[str, str] = None,
+        env: Optional[Mapping[str, str]] = None,
         env_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
@@ -604,6 +610,59 @@ class Settings(base.SettingsRegistry):
         """
 
     @sections.Common.setting(
+        params.Bool,
+        version_introduced="0.14.0",
+        env_name="CYTHON_OPTIMIZATIONS",
+        default=False,
+    )
+    def cython_optimizations(self) -> bool:
+        """Enable the repaired fast paths in the Cython extensions.
+
+        Disabled by default, and has no effect at all unless the optional
+        Cython extension modules were built.
+
+        Faust ships a few hot paths twice: a pure-Python implementation, and a
+        Cython one used instead when the extensions are available.  Two of the
+        Cython fast paths never actually ran -- each was guarded by a condition
+        that could not become true -- so for years the extensions quietly did
+        more work than the Python they were meant to accelerate:
+
+        * ``StreamIterator`` always awaited the channel rather than taking
+          values already sitting in the queue, and
+        * ``ConductorHandler`` re-deserialized the payload once per subscribed
+          channel instead of decoding once and reusing the event.
+
+        Both are repaired, but the repaired code has by definition never run in
+        production, so it is opt-in.  Leaving this ``False`` keeps the
+        extensions behaving exactly as the released versions do.
+
+        Note this makes the Cython path differ from the pure-Python path while
+        disabled -- which has always been true; the flag does not introduce the
+        divergence, it just makes it selectable.  The most visible difference is
+        in the conductor: a reused event is never decoded again, so a channel
+        whose payload would fail to deserialize raises no error when the event
+        is reused, and does when it is not.  That changes which channels receive
+        a message and how many acks it takes.
+
+        Enable it to get the fast paths::
+
+            app = faust.App('myapp', cython_optimizations=True)
+
+        This setting is transitional: it is expected to default to ``True`` in
+        a later release, then be deprecated and removed, at which point the
+        fast paths are simply the behaviour.  See the developer guide for the
+        sequence -- and for why faust reads this setting internally through
+        :func:`faust.utils.optin.cython_optimizations_enabled` rather than
+        directly, which is what keeps the eventual deprecation from warning
+        once per stream and once per assigned partition.
+
+        .. seealso::
+
+            The developer guide's :ref:`developers-cython` page, for what the
+            two faults were and how the implementations are held level.
+        """
+
+    @sections.Common.setting(
         params.Seconds,
         env_name="BLOCKING_TIMEOUT",
         default=None,
@@ -703,6 +762,15 @@ class Settings(base.SettingsRegistry):
             The recommended transport using the :pypi:`aiokafka` client.
 
             Limitations: None
+
+
+        - ``confluent://``
+
+            Experimental transport using the :pypi:`confluent-kafka` client.
+
+            Limitations: Does not do sticky partition assignment (not
+                suitable for tables), and do not create any necessary internal
+                topics (you have to create them manually).
         """
 
     @broker.on_set_default  # type: ignore
@@ -1827,7 +1895,11 @@ class Settings(base.SettingsRegistry):
         default="aiohttp://",
     )
     def web(self) -> URL:
-        """Web server driver to use."""
+        """Legacy :mod:`faust.web` driver to use.
+
+        This setting is ignored when the application registers a
+        framework-neutral server with :meth:`faust.App.web_server`.
+        """
 
     @sections.WebServer.setting(
         params.Str,
@@ -1846,6 +1918,34 @@ class Settings(base.SettingsRegistry):
 
         This option is usually set by :option:`faust worker --web-bind`,
         not by passing it as a keyword argument to :class:`app`.
+        """
+
+    @sections.WebServer.setting(
+        params.Dict[Any],
+        version_introduced="0.11.4",
+    )
+    def web_application_options(self) -> Mapping[str, Any]:
+        """Extra keyword arguments passed to the web framework's application.
+
+        Use this to configure the underlying web application object that the
+        web driver creates.  For the default :pypi:`aiohttp` driver these are
+        forwarded straight to :class:`aiohttp.web.Application`, so you can set
+        things like ``client_max_size`` or install middlewares:
+
+        .. sourcecode:: python
+
+            from aiohttp.web import middleware
+
+            @middleware
+            async def error_middleware(request, handler):
+                ...
+
+            app = App(..., web_application_options={
+                'client_max_size': 1024 ** 2 * 20,
+                'middlewares': [error_middleware],
+            })
+
+        The accepted keys depend on the configured web driver.
         """
 
     @sections.WebServer.setting(
@@ -1894,6 +1994,112 @@ class Settings(base.SettingsRegistry):
         Enable web server and other web components.
 
         This option can also be set using :option:`faust worker --without-web`.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.15.0",
+        env_name="APP_WEB_STATS_ENABLED",
+        default_alias="debug",
+    )
+    def web_stats_enabled(self) -> bool:
+        """Enable/disable the built-in statistics endpoints.
+
+        Serves sensor statistics at ``/`` and the current partition
+        assignment at ``/assignment/``.
+
+        If not set, this follows :setting:`debug`, which is how these
+        endpoints were gated before this setting existed.
+
+        When disabled, ``/`` serves the plain production index instead.
+
+        .. warning::
+
+            These endpoints expose internal state: every registered sensor's
+            counters, and which partitions this worker is handling.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.15.0",
+        env_name="APP_WEB_GRAPH_ENABLED",
+        default_alias="debug",
+    )
+    def web_graph_enabled(self) -> bool:
+        """Enable/disable the ``/graph`` dependency graph endpoint.
+
+        Renders the worker's service dependency graph as a PNG.
+
+        If not set, this follows :setting:`debug`, which is how this endpoint
+        was gated before this setting existed.
+
+        .. warning::
+
+            The graph describes the entire internal service tree of the
+            worker.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.15.0",
+        env_name="APP_WEB_ROUTER_ENABLED",
+        default=True,
+    )
+    def web_router_enabled(self) -> bool:
+        """Enable/disable the ``/router`` endpoints.
+
+        These report which worker in the cluster owns a given table key, and
+        are what makes :meth:`@table_route` work across nodes.
+
+        .. warning::
+
+            Disabling this breaks :meth:`@table_route` for multi-node
+            deployments.  Only turn it off if you route entirely within a
+            single worker.
+
+            Left enabled, it exposes your cluster topology -- the URLs of
+            every other worker.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.15.0",
+        env_name="APP_WEB_TABLES_ENABLED",
+        default=True,
+    )
+    def web_tables_enabled(self) -> bool:
+        """Enable/disable the ``/table`` endpoints.
+
+        These list the tables defined by this app and allow reading
+        individual keys over HTTP.
+
+        .. warning::
+
+            This exposes table *data*, not just table names.  If your tables
+            hold anything sensitive, turn this off.
+        """
+
+    @sections.WebServer.setting(
+        params.Bool,
+        version_introduced="0.15.0",
+        env_name="APP_WEB_METRICS_ENABLED",
+        default=False,
+    )
+    def web_metrics_enabled(self) -> bool:
+        """Enable/disable the ``/performance/`` metrics endpoint.
+
+        Serves throughput, latency, consumer lag and table statistics as
+        JSON, gathered from :setting:`Monitor`.  Unlike the statistics
+        endpoints this is independent of :setting:`debug`, so it can be left
+        on in production.
+
+        Disabled by default: it is a new endpoint, and enabling it should be
+        a deliberate choice.
+
+        .. seealso::
+
+            :mod:`faust.sensors.prometheus` serves the same underlying data
+            in Prometheus format on its own ``/metrics`` path.
         """
 
     @sections.WebServer.setting(

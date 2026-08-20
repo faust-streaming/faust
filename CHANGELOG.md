@@ -4,6 +4,142 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+<!--
+This changelog was dormant between v0.9.0 and v0.11.3; those releases are
+documented in their GitHub release notes at
+https://github.com/faust-streaming/faust/releases.  The v0.12.0 entry below
+resumes the Keep a Changelog format.
+-->
+
+## [Unreleased]
+
+### Added
+- Per-endpoint feature flags for the built-in web endpoints:
+  `web_stats_enabled`, `web_graph_enabled`, `web_router_enabled`,
+  `web_tables_enabled` and `web_metrics_enabled`. Previously `debug` was the
+  only control, and it enabled the statistics and graph endpoints together,
+  while `/router` and `/table` could not be turned off at all — even though
+  `/table` serves table *data* over HTTP. The statistics and graph flags take
+  their default from `debug`, so behaviour is unchanged unless you set them.
+- New `/performance/` endpoint (`web_metrics_enabled`, off by default)
+  returning throughput, latency percentiles, consumer lag and table statistics
+  as JSON. Consumer lag and latency percentiles are computed here — `Monitor`
+  tracks read and log-end offsets but never derives lag, and keeps raw latency
+  deques rather than summaries. Needs no extra dependency, and is independent
+  of both `debug` and `faust.sensors.prometheus`. Custom frameworks can expose
+  the same payload with `faust.sensors.metrics.performance_metrics()`.
+- Framework-neutral web servers: `App.web_server()` accepts any `mode.Service`
+  as a replacement for the legacy `faust.web`/aiohttp stack. The custom server
+  starts after table recovery and obeys `web_enabled`/`--without-web`.
+- `faust.contrib.asgi`: co-host any ASGI application with the worker, in one
+  process and one event loop. `faust_lifespan()` runs Faust from an ASGI
+  lifespan; `FaustLifespanMiddleware` supplies lifespan support to Django and
+  other ASGI applications without a lifespan hook; `serve_asgi()` installs the
+  ASGI app as the worker's only web server. New `faust[asgi]` extra;
+  `faust[fastapi]` adds FastAPI as well.
+- `faust.contrib.opentelemetry`: OpenTelemetry tracing. `setup_opentelemetry()`
+  continues a trace from Kafka message headers into your agents — the hop
+  `opentelemetry-instrumentation-aiokafka` cannot bridge, because Faust's
+  consumer runs in its own thread. FastAPI apps are instrumented automatically
+  when an SDK is configured. New `faust[opentelemetry]` extra.
+- New userguide page: *FastAPI and other ASGI applications*.
+
+### Fixed
+- Faust apps no longer resolve an event loop when agents, tables or the
+  transport are declared at import time. Previously that pinned the app to a
+  loop that was never run, so starting it from `asyncio.run()` — as uvicorn
+  does — failed with "Please create objects with the same loop as running with"
+  or "Task ... got Future ... attached to a different loop" (#322, #435, #448).
+- `faust[aerospike]` installed nothing: `requirements/extras/aerospike.txt`
+  shipped without the matching `BUNDLES` entry in `setup.py`, despite being
+  advertised in the README. A new test guards both directions of that mapping.
+- `agent.test_context()` records what a yielding agent yields even when its
+  function is not itself an async-generator function — a callable object with
+  an async-generator `__call__`, or a function returning an async generator.
+  Previously the wrapper classified the agent with
+  `inspect.isasyncgenfunction()`, which is `False` for both shapes, so they
+  were treated as never yielding and `agent.results` was filled with the values
+  sent *in* rather than the values yielded. Nothing raised, so tests kept
+  passing while asserting against their own input.
+- Every Kafka rebalance failed when `opentracing` was not installed. The no-op
+  stand-in Faust falls back to gave its spans no tracer, but
+  `traced_from_parent_span` starts a child span from `parent.tracer`, so
+  `on_partitions_revoked` and `on_partitions_assigned` both raised
+  `AttributeError`. Because `on_rebalance_start()` had already run, the app was
+  left mid-rebalance rather than crashing outright, surfacing as agents that
+  timed out and stalled. The stand-in now matches the real library across the
+  surface Faust uses, and a new parity test guards it.
+- `traced_from_parent_span()` no longer assumes the parent span it is given has
+  a tracer. A span is whatever the configured tracer hands back, and starting a
+  child from `parent.tracer` breaks on any that carries none — as the no-op
+  stand-in's did before the fix above (#786). Tracing is instrumentation, so it
+  now runs the wrapped function untraced rather than failing its caller.
+
+### Changed
+- The `examples/fastapi/` directory is now `examples/fastapi_project/`. The old
+  name shadowed the real `fastapi` package when running the sibling
+  `examples/fastapi_example.py`, so neither example could be run as documented.
+
+## [v0.12.1](https://github.com/faust-streaming/faust/releases/tag/v0.12.1) - 2026-07-19
+
+[Compare with v0.12.0](https://github.com/faust-streaming/faust/compare/v0.12.0...v0.12.1)
+
+Packaging-only patch release. v0.12.0's wheels published to PyPI, but its source
+distribution was rejected under [PEP 625](https://peps.python.org/pep-0625/);
+this release fixes the sdist filename so the full set of artifacts publishes.
+
+### Fixed
+- Build the source distribution with `python -m build` and a PEP 625-compliant
+  (normalized) filename — `faust_streaming-<version>.tar.gz` instead of the
+  legacy `faust-streaming-<version>.tar.gz` that PyPI now rejects (#712).
+
+## [v0.12.0](https://github.com/faust-streaming/faust/releases/tag/v0.12.0) - 2026-07-19
+
+[Compare with v0.11.3](https://github.com/faust-streaming/faust/compare/v0.11.3...v0.12.0)
+
+<!--
+Scope: this entry lists only work already merged to `master`.  Fixes and
+features still in open PRs (e.g. the offset-commit data-loss fixes, the
+optional OpenTracing/OpenTelemetry extras, and the reported-issue fix stack)
+will be added here as they merge.
+-->
+
+### Added
+- Re-add the confluent-kafka transport driver (`confluent://`, install with the
+  `faust[ckafka]` extra), rewritten and tested against the released
+  `confluent-kafka` API.
+- Support Python 3.13 and 3.14 (tested with and without the Cython extensions).
+- `on_clear` handlers on `(Global)Table` and `ChangeloggedSet` (#645).
+- Live-broker integration test harness: CI now starts a real Kafka broker and
+  round-trips messages through both the aiokafka and confluent-kafka client
+  libraries (#706).
+
+### Changed
+- **Dropped support for Python 3.8 and 3.9** (#650); the minimum supported
+  version is now Python 3.10.
+- Replaced the unmaintained `aredis` with `redis-py` for the Redis store and
+  leader (#635).
+- Support recent `aiokafka` releases: handle 0.13.0 removing the `api_version`
+  parameter (#674), and guard aiokafka metadata/admin calls by the negotiated
+  protocol-API version while keeping the Faust partition assignor for changelog
+  tables (#682).
+- Modernize CI and wheel building: updated wheel runners, Windows wheels, a
+  refreshed `cibuildwheel`, and an updated test matrix (#690).
+- Pin `black`/`isort` and update the `click` constraint for reproducible CI
+  (#677, #680).
+
+### Fixed
+- Fix release-artifact upload/download for `upload-artifact@v4` (#684).
+
+### Dependencies
+- Runs on the maintained mode fork `mode-streaming >= 0.4.0`.
+- `aiokafka >= 0.10.0`, now compatible with recent aiokafka releases
+  (0.13.x / 0.14.x) — see #674 and #682.
+- Adds `confluent-kafka >= 2.0.0`, required by the optional `faust[ckafka]`
+  transport driver.
+- The `faust[cchardet]` extra now uses the maintained `faust-cchardet` fork in
+  place of the unmaintained `cchardet`.
+
 ## [v0.8.10](https://github.com/faust-streaming/faust/releases/tag/v0.8.10) - 2022-09-14
 
 [Compare with v0.8.9](https://github.com/faust-streaming/faust/compare/v0.8.9...v0.8.10)

@@ -184,15 +184,15 @@ class Agent(AgentT, Service):
         *,
         app: AppT,
         name: Optional[str] = None,
-        channel: Union[str, ChannelT] = None,
+        channel: Optional[Union[str, ChannelT]] = None,
         concurrency: int = 1,
-        sink: Iterable[SinkT] = None,
-        on_error: AgentErrorHandler = None,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
+        sink: Optional[Iterable[SinkT]] = None,
+        on_error: Optional[AgentErrorHandler] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
         help: Optional[str] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         isolated_partitions: bool = False,
         use_reply_headers: Optional[bool] = None,
         **kwargs: Any,
@@ -226,7 +226,14 @@ class Agent(AgentT, Service):
                 "Agent concurrency must be 1 when using isolated partitions"
             )
         self.use_reply_headers = use_reply_headers
-        Service.__init__(self, loop=app.loop)
+        # Do *not* pass ``loop=app.loop`` here.  Agents are declared at module
+        # scope (``@app.agent(...)``), so reading ``app.loop`` at this point
+        # pins the App to whatever loop ``mode``'s ``get_event_loop()`` finds --
+        # at import time that is a loop nobody will ever run.  ``mode.Service``
+        # binds ``self.loop`` lazily on first access, which happens inside
+        # ``_default_start()``, i.e. in the loop that actually runs the app.
+        # See issues #322, #435 and #448.
+        Service.__init__(self)
 
     def on_init_dependencies(self) -> Iterable[ServiceT]:
         """Return list of services dependencies required to start agent."""
@@ -235,7 +242,22 @@ class Agent(AgentT, Service):
         return []
 
     def actor_tracebacks(self) -> List[str]:
-        return [actor.traceback() for actor in self._actors]
+        tracebacks: List[str] = []
+        for actor in self._actors:
+            try:
+                tracebacks.append(actor.traceback())
+            except RuntimeError as exc:
+                # A coroutine/async generator that has finished naturally has
+                # no stack frame (``cr_frame``/``ag_frame`` is ``None``), and
+                # ``mode`` raises "cannot find stack of coroutine" when asked
+                # to format it.  This happens during ``wait_empty`` around
+                # shutdown and rebalances, where tracebacks are collected
+                # purely for logging -- so a missing frame must not crash the
+                # whole collection.  See issue #105.
+                tracebacks.append(
+                    f"Could not extract traceback for actor {actor!r}: {exc}"
+                )
+        return tracebacks
 
     async def _start_one(
         self,
@@ -446,7 +468,7 @@ class Agent(AgentT, Service):
             "isolated_partitions": self.isolated_partitions,
         }
 
-    def clone(self, *, cls: Type[AgentT] = None, **kwargs: Any) -> AgentT:
+    def clone(self, *, cls: Optional[Type[AgentT]] = None, **kwargs: Any) -> AgentT:
         """Create clone of this agent object.
 
         Keyword arguments can be passed to override any argument
@@ -457,8 +479,8 @@ class Agent(AgentT, Service):
     def test_context(
         self,
         channel: Optional[ChannelT] = None,
-        supervisor_strategy: SupervisorStrategyT = None,
-        on_error: AgentErrorHandler = None,
+        supervisor_strategy: Optional[SupervisorStrategyT] = None,
+        on_error: Optional[AgentErrorHandler] = None,
         **kwargs: Any,
     ) -> AgentTestWrapperT:  # pragma: no cover
         """Create new unit-testing wrapper for this agent."""
@@ -485,11 +507,11 @@ class Agent(AgentT, Service):
 
     def _prepare_channel(
         self,
-        channel: Union[str, ChannelT] = None,
+        channel: Optional[Union[str, ChannelT]] = None,
         internal: bool = True,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         **kwargs: Any,
     ) -> ChannelT:
         app = self.app
@@ -752,12 +774,12 @@ class Agent(AgentT, Service):
 
     async def cast(
         self,
-        value: V = None,
+        value: Optional[V] = None,
         *,
-        key: K = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
     ) -> None:
         """RPC operation: like :meth:`ask` but do not expect reply.
 
@@ -774,13 +796,13 @@ class Agent(AgentT, Service):
 
     async def ask(
         self,
-        value: V = None,
+        value: Optional[V] = None,
         *,
-        key: K = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        reply_to: ReplyToArg = None,
+        headers: Optional[HeadersArg] = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
     ) -> Any:
         """RPC operation: ask agent for result of processing value.
@@ -805,13 +827,13 @@ class Agent(AgentT, Service):
 
     async def ask_nowait(
         self,
-        value: V = None,
+        value: Optional[V] = None,
         *,
-        key: K = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        reply_to: ReplyToArg = None,
+        headers: Optional[HeadersArg] = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
         force: bool = False,
     ) -> ReplyPromise:
@@ -837,11 +859,11 @@ class Agent(AgentT, Service):
 
     def _create_req(
         self,
-        key: K = None,
-        value: V = None,
-        reply_to: ReplyToArg = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
     ) -> Tuple[V, Optional[HeadersArg]]:
         if reply_to is None:
             raise TypeError("Missing reply_to argument")
@@ -874,15 +896,15 @@ class Agent(AgentT, Service):
     async def send(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        headers: Optional[HeadersArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -914,8 +936,8 @@ class Agent(AgentT, Service):
     async def map(
         self,
         values: Union[AsyncIterable, Iterable],
-        key: K = None,
-        reply_to: ReplyToArg = None,
+        key: Optional[K] = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> AsyncIterator:  # pragma: no cover
         """RPC map operation on a list of values.
 
@@ -931,7 +953,7 @@ class Agent(AgentT, Service):
     async def kvmap(
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> AsyncIterator[str]:  # pragma: no cover
         """RPC map operation on a list of ``(key, value)`` pairs.
 
@@ -964,8 +986,8 @@ class Agent(AgentT, Service):
     async def join(
         self,
         values: Union[AsyncIterable[V], Iterable[V]],
-        key: K = None,
-        reply_to: ReplyToArg = None,
+        key: Optional[K] = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> List[Any]:  # pragma: no cover
         """RPC map operation on a list of values.
 
@@ -980,7 +1002,7 @@ class Agent(AgentT, Service):
     async def kvjoin(
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> List[Any]:  # pragma: no cover
         """RPC map operation on list of ``(key, value)`` pairs.
 
@@ -1094,6 +1116,10 @@ class Agent(AgentT, Service):
 class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
     _stream: StreamT
 
+    # None until the first actor is built, since whether the agent yields is
+    # only knowable from the actor itself.  See ``_prepare_actor``.
+    _agent_yields: Optional[bool] = None
+
     def __init__(
         self, *args: Any, original_channel: Optional[ChannelT] = None, **kwargs: Any
     ) -> None:
@@ -1101,10 +1127,34 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         self.results = {}
         self.new_value_processed = asyncio.Condition()
         self.original_channel = cast(ChannelT, original_channel)
-        self.add_sink(self._on_value_processed)
         self._stream = self.channel.stream()
         self.sent_offset = 0
         self.processed_offset = 0
+
+    async def _prepare_actor(self, aref: ActorRefT, beacon: NodeT) -> ActorRefT:
+        self._install_value_recorder(aref)
+        return await super()._prepare_actor(aref, beacon)
+
+    def _install_value_recorder(self, aref: ActorRefT) -> None:
+        # Install once per wrapper, since all actors share one stream chain and
+        # ``Stream.add_processor`` is not idempotent, and before
+        # ``super()._prepare_actor`` starts the task, since deriving a stream
+        # via ``group_by``/``through`` moves processors off ``self._stream``.
+        if self._agent_yields is not None:
+            return
+        # Mirrors ``Agent._prepare_actor``, which rejects sinks when not yielding.
+        self._agent_yields = not isinstance(aref, Awaitable)
+        if self._agent_yields:
+            self.add_sink(self._on_value_processed)
+        else:
+            self._stream.add_processor(self._on_value_processed_processor)
+
+    async def _on_value_processed_processor(self, value: Any) -> Any:
+        # Sink-less agents don't yield, so we can't observe their output.
+        # Record the incoming value and wake up any ``put(wait=True)`` caller
+        # instead, then hand the value on to the agent unchanged.
+        await self._on_value_processed(value)
+        return value
 
     async def on_stop(self) -> None:
         await self._stream.stop()
@@ -1126,15 +1176,15 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
 
     async def put(
         self,
-        value: V = None,
-        key: K = None,
+        value: Optional[V] = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        headers: Optional[HeadersArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         *,
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
         wait: bool = True,
     ) -> EventT:
@@ -1170,7 +1220,7 @@ class AgentTestWrapper(Agent, AgentTestWrapperT):  # pragma: no cover
         offset: int = 0,
         timestamp: Optional[float] = None,
         timestamp_type: int = 0,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
     ) -> Message:
         try:
             topic_name = self._get_strtopic(self.original_channel)

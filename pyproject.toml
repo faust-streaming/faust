@@ -1,7 +1,7 @@
 [project]
 name = "faust-streaming"
 description = "Python Stream Processing. A Faust fork"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dynamic = [
     "version",
     "optional-dependencies",
@@ -26,11 +26,12 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Programming Language :: Python :: Implementation :: CPython",
     "Operating System :: POSIX",
     "Operating System :: POSIX :: Linux",
@@ -61,11 +62,24 @@ Changes = "https://github.com/faust-streaming/faust/releases"
 
 [build-system]
 requires = [
-    "setuptools>=30.3.0",
+    # setuptools >= 69 normalizes the sdist filename per PEP 625
+    # (faust_streaming-*.tar.gz), which PyPI now requires.
+    "setuptools>=69",
     "setuptools_scm[toml]",
     "wheel",
     "cython>=0.29; implementation_name == 'cpython'",
     "cython>=3.0.0; implementation_name == 'cpython' and python_version >= '3.12'",
+    # 3.1 is the first Cython that understands `freethreading_compatible`, the
+    # directive the three .pyx files set.  It is what makes the generated
+    # modules emit `Py_mod_gil = Py_MOD_GIL_NOT_USED`; without it a
+    # free-threaded interpreter re-enables the GIL when it imports them (with
+    # only a RuntimeWarning to say so), silently undoing free-threading for the
+    # whole process.  Older Cython ignores the directive rather than failing,
+    # so the floor has to be enforced here or the loss is invisible at build
+    # time.  There is no PEP 508 marker for a free-threaded interpreter, so
+    # this gates on 3.13 -- the first version with a `t` ABI -- which covers
+    # every build that could be free-threaded.
+    "cython>=3.1; implementation_name == 'cpython' and python_version >= '3.13'",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -89,6 +103,37 @@ combine_as_imports = true
 [tool.mypy]
 ignore_missing_imports = true
 disallow_untyped_defs = true
+# Pinned so the result does not depend on which interpreter runs mypy.  Without
+# it mypy targets the running version, and typeshed differs enough between them
+# that a contributor on 3.10 and the lint job on PYTHON_LATEST would disagree
+# about whether the tree is clean.  Tracks the lint job's interpreter; raising
+# it can surface new errors, so bump it deliberately.
+python_version = "3.12"
+
+# The type-checking ratchet is gone: `mypy -p faust` (run by `scripts/check`)
+# now checks all 164 modules in the package with nothing silenced wholesale.
+#
+# Keep it that way.  If a change makes mypy fail, fix the annotations rather
+# than re-introducing an `ignore_errors` list -- that list was only ever a
+# migration aid, and re-adding one would hide every other error in the module
+# too.  For a single line the checker genuinely gets wrong, use a specific
+# `# type: ignore[code]` with a comment saying why.
+#
+# mypy is pinned in requirements/typecheck.txt because a different version
+# reports a different set of errors; bump it deliberately.
+
+# Every setting in `faust.types.settings.settings` is a method with a docstring and
+# no body, decorated with `@sections.<Section>.setting(...)`.  The decorator throws
+# the function away and returns a `params.Param` descriptor built from its name,
+# docstring and return annotation, so the body is never executed -- but mypy sees a
+# function declaring a non-None return type and never returning, and reports
+# `empty-body` for all ~100 of them.  The check does not apply to this pattern.
+#
+# Note this disables one error code, not the module: every OTHER error code is
+# still reported here, so new mistakes in it are caught.
+[[tool.mypy.overrides]]
+module = ["faust.types.settings.settings"]
+disable_error_code = ["empty-body"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -115,9 +160,22 @@ testpaths = [
 build = "cp3*"
 
 archs = ["auto64"]
+# The free-threaded builds (cp313t/cp314t) used to be skipped here because the
+# Cython extension had not been validated under a no-GIL interpreter.  It has
+# been now: the three .pyx files declare `freethreading_compatible=True`, and
+# the full unit + functional suite passes against the compiled extensions on
+# both 3.13t and 3.14t with the GIL actually disabled.  The `free-threaded`
+# CI job keeps that true, and tests/unit/test_free_threading.py fails if an
+# extension ever starts re-enabling the GIL again.
+#
+# Only musllinux stays skipped (unrelated to free-threading).
 skip = ["*musllinux*"]
 
-before-build = "pip install Cython"
+# >=3.1 for the `freethreading_compatible` directive.  Older Cython ignores
+# unknown directives instead of failing, so a lower version here would quietly
+# produce extensions that re-enable the GIL -- see the note in
+# `[build-system].requires`.
+before-build = "pip install 'Cython>=3.1'"
 
 manylinux-x86_64-image = "manylinux2014"
 manylinux-pypy_x86_64-image = "manylinux2014"
