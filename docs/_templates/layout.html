@@ -1,0 +1,15 @@
+{%- extends "!layout.html" %}
+
+{# Cloudflare Web Analytics.
+
+   The published site (https://faust-streaming.github.io/faust) is the Sphinx
+   HTML tree the Pages workflow builds, so there is no hand-written page to
+   paste Cloudflare's snippet into -- a template override is what puts it on
+   every generated page instead.  `footer` is the last block before `</body>`
+   in the basic theme alabaster derives from, which is where the snippet
+   belongs; `super()` keeps the theme's own footer and GitHub banner.
+#}
+{%- block footer %}
+  {{ super() }}
+  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "13ad1310fd9d46ab969470ec2b361b4e"}'></script><!-- End Cloudflare Web Analytics -->
+{%- endblock %}
