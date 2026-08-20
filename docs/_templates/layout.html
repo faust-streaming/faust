@@ -8,8 +8,15 @@
    every generated page instead.  `footer` is the last block before `</body>`
    in the basic theme alabaster derives from, which is where the snippet
    belongs; `super()` keeps the theme's own footer and GitHub banner.
+
+   This is Cloudflare's documented classic `defer` form rather than a
+   `type='module'` one.  A module script is deferred anyway, so nothing is
+   lost -- but `document.currentScript` is null while a module executes, and
+   that is how a beacon reads the `data-cf-beacon` token off its own tag.  The
+   classic form keeps the token readable however the beacon looks it up, and
+   still runs in browsers that skip module scripts.
 #}
 {%- block footer %}
   {{ super() }}
-  <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "13ad1310fd9d46ab969470ec2b361b4e"}'></script><!-- End Cloudflare Web Analytics -->
+  <!-- Cloudflare Web Analytics --><script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "13ad1310fd9d46ab969470ec2b361b4e"}'></script><!-- End Cloudflare Web Analytics -->
 {%- endblock %}
