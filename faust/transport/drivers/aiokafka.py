@@ -82,6 +82,7 @@ from faust.transport.consumer import (
 from faust.types import (
     TP,
     AppT,
+    ChannelT,
     ConsumerMessage,
     FutureMessage,
     HeadersArg,
@@ -335,20 +336,18 @@ class ThreadedProducer(ServiceThread):
         self._default_producer = default_producer
         self.app = app
 
-    # XXX broken: this synchronous method overrides the coroutine
-    # ``mode.threads.ServiceThread._shutdown_thread``, breaking mode's
-    # contract.  ``ServiceThread._serve()`` ends with
-    # ``finally: await self._shutdown_thread()``, so ``await None`` raises
-    # TypeError on every shutdown of this thread.  The base implementation
-    # (on_thread_stop, stopping children/futures/exit stacks, set_shutdown)
-    # therefore never runs; the shutdown event only gets set because
-    # ``_start_thread`` catches that TypeError and calls ``set_shutdown()``
-    # before re-raising it.  Not fixed here: making it ``async`` changes
-    # runtime behaviour, which is out of scope for this annotation pass.
-    def _shutdown_thread(self) -> None:  # type: ignore[override]
-        # Ensure that the shutdown process is initiated only once
+    async def _shutdown_thread(self) -> None:
+        # Ensure that the shutdown process is initiated only once.
+        #
+        # This has to stay a coroutine: ``ServiceThread._serve()`` ends with
+        # ``finally: await self._shutdown_thread()``, so a synchronous
+        # override makes that ``await None`` and raises TypeError.
         if not self._shutdown_initiated:
-            asyncio.run_coroutine_threadsafe(self.on_thread_stop(), self.thread_loop)
+            await super()._shutdown_thread()
+        else:
+            # ``on_thread_stop`` has already run, so skip mode's teardown --
+            # but still set the shutdown event, or ``stop()`` waits forever.
+            self.set_shutdown()
 
     async def flush(self) -> None:
         """Wait for producer to finish transmitting all buffered messages."""
@@ -465,20 +464,12 @@ class ThreadedProducer(ServiceThread):
                 timestamp_ms=timestamp_ms,
                 headers=headers,
             )
-            # XXX broken: ``_on_published`` is not on the ChannelT interface
-            # (it is implemented by faust.topics.Topic), and worse, the call
-            # below is missing an argument.  Topic._on_published
-            # (faust/topics.py:463) is
-            # ``_on_published(self, fut, message, producer, state)`` -- ``fut``
-            # is a required positional parameter holding the send future, and
-            # nothing is passed for it here, so this raises TypeError at
-            # runtime and ``publish_message(..., wait=True)`` can never
-            # succeed.  Behaviour left untouched in this annotation-only pass.
-            fut.message.channel._on_published(  # type: ignore[attr-defined]
-                message=fut, state=state, producer=producer
-            )
-            fut.set_result(ret)
-            return fut
+            # ``send_and_wait`` has already resolved the broker-side
+            # operation.  Let the channel own Faust-level completion,
+            # including callback invocation and async callback handling.
+            self.app.sensors.on_send_completed(producer, state, ret)
+            channel = cast(ChannelT, fut.message.channel)
+            return await channel._finalize_message(fut, ret)
         else:
             fut2 = cast(
                 asyncio.Future,
@@ -492,10 +483,11 @@ class ThreadedProducer(ServiceThread):
                 ),
             )
             callback = partial(
-                # ``_on_published`` is not on the ChannelT interface; see the
-                # note on the ``wait`` branch above.  This branch does supply
-                # the required positional ``fut``: add_done_callback passes
-                # the completed future as the first positional argument.
+                # ``_on_published`` is implemented by faust.topics.Topic but
+                # is not declared on the ChannelT interface, hence the ignore.
+                # Its required positional ``fut`` is supplied here by
+                # add_done_callback, which passes the completed send future as
+                # the first positional argument.
                 fut.message.channel._on_published,  # type: ignore[attr-defined]
                 message=fut,
                 state=state,
