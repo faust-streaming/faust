@@ -2038,7 +2038,10 @@ class TestThreadedProducer(ProducerBaseTest):
         threaded_producer._shutdown_initiated = False
         with patch.object(ServiceThread, "_shutdown_thread", AsyncMock()) as base:
             await threaded_producer._shutdown_thread()
-        base.assert_called_once_with()
+        # Awaited, not merely called: the bug being guarded against here is a
+        # coroutine that never gets awaited, which assert_called_once_with
+        # would happily accept.
+        base.assert_awaited_once_with()
 
     @pytest.mark.asyncio
     async def test_shutdown_thread__already_initiated_still_sets_shutdown(
