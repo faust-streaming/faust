@@ -389,6 +389,12 @@ yields                the value the agent **yielded** (its output)
 does not yield        the value that was **sent in** (its input)
 ===================== =============================================
 
+Which row applies is decided from the running agent, not from how its function
+is written.  An agent implemented as a callable object with an
+async-generator ``__call__``, or as a plain function returning an async
+generator, yields just as much as an ``async def`` that yields directly, and
+its ``results`` hold its output.
+
 There is no output to capture for a sink-less agent, so faust records the
 incoming value instead.  That still makes ``results`` useful for confirming
 which values reached the agent -- as ``test_results_records_input_values``
