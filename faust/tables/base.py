@@ -125,6 +125,7 @@ class Collection(Service, CollectionT):
         on_window_close: Optional[WindowCloseCallback] = None,
         is_global: bool = False,
         synchronize_all_active_partitions: bool = False,
+        value_serializer: Optional[CodecArg] = None,
         **kwargs: Any,
     ) -> None:
         # Do *not* pass ``loop=app.loop`` here: tables are declared at module
@@ -162,7 +163,7 @@ class Collection(Service, CollectionT):
         # Possible values json and raw
         # Fallback to json
         self.key_serializer = self._serializer_from_type(self.key_type)
-        self.value_serializer = self._serializer_from_type(self.value_type)
+        self.value_serializer = value_serializer
 
         # Table key expiration
         self._partition_timestamp_keys = defaultdict(set)
