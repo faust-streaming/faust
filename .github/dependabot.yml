@@ -1,13 +1,53 @@
 version: 2
 updates:
-  # Maintain dependencies for GitHub Actions
+  # Both ecosystems are grouped and weekly rather than ungrouped and daily.
+  #
+  # Every dependabot pull request costs a full CI run, and daily ungrouped
+  # updates meant a steady stream of one-line bumps each paying for the entire
+  # matrix -- repeatedly the largest single consumer of CI minutes in the
+  # repository, for changes that are almost always reviewed and merged as a
+  # batch anyway.  Grouping collapses a week's bumps into one pull request per
+  # ecosystem, which is one CI run instead of a dozen, and still surfaces
+  # exactly the same version changes.
+  #
+  # Security advisories are not affected by either setting: dependabot opens
+  # those immediately and ungrouped regardless of the schedule here.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
 
-  # Maintain dependencies for pip
   - package-ecosystem: "pip"
     directory: "/requirements"
     schedule:
-      interval: "daily"
+      interval: "weekly"
+    groups:
+      # Split so a failing lint-tool bump (black and isort are pinned exactly,
+      # and a new release reformats the tree) cannot hold back the runtime and
+      # test dependency updates in the same pull request.
+      lint-tools:
+        patterns:
+          - "black"
+          - "isort"
+          - "flake8*"
+          - "mypy"
+          - "autoflake"
+          - "pydocstyle"
+          - "bandit"
+          - "pre-commit"
+      dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "black"
+          - "isort"
+          - "flake8*"
+          - "mypy"
+          - "autoflake"
+          - "pydocstyle"
+          - "bandit"
+          - "pre-commit"

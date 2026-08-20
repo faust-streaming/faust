@@ -12,7 +12,15 @@ from faust.exceptions import ImproperlyConfigured
 from faust.tables.wrappers import WindowSet
 from faust.types import Message
 
-DATETIME = datetime.utcnow()
+# A fixed instant, not `datetime.utcnow()`.  This value reaches
+# `@pytest.mark.parametrize` below, so it is baked into the test IDs at
+# collection time -- with "now" every pytest-xdist worker imported the module a
+# few microseconds apart and generated a *different* ID, which xdist rejects as
+# "Different tests were collected between gw0 and gw1".  Nothing here depends on
+# the instant being the current one, only on it having sub-second precision so
+# the ISO-8601 round-trip below is meaningful.  (`utcnow()` is also deprecated
+# since 3.12.)
+DATETIME = datetime(2020, 3, 15, 12, 34, 56, 789012)
 DATETIME_TS = DATETIME.timestamp()
 
 

@@ -1,8 +1,19 @@
 name: Performance Benchmarks
 
 on:
+  # Path-filtered for pull requests: this job builds and times the library
+  # itself, so a branch that changes only docs, CI config or packaging cannot
+  # move the numbers.  `push`, `schedule` and `workflow_dispatch` stay
+  # unfiltered -- the master runs are what feed the benchmark history series,
+  # and a gap in that series is worse than a redundant data point.
   pull_request:
     branches: [master]
+    paths:
+      - faust/**
+      - tests/bench/**
+      - extra/tools/ci_benchmark.py
+      - requirements/requirements.txt
+      - .github/workflows/performance-benchmark.yml
   push:
     branches: [master]
   workflow_dispatch:
