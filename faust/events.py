@@ -28,6 +28,10 @@ else:
 USE_EXISTING_KEY = object()
 USE_EXISTING_VALUE = object()
 USE_EXISTING_HEADERS = object()
+#: Sentinel for ``Event.forward(timestamp=...)``.  Cast to ``float`` so the
+#: signature callers see stays ``Optional[float]``; the value itself is only
+#: ever compared with ``is``, never used as a number.
+USE_EXISTING_TIMESTAMP = cast(float, object())
 
 
 class Event(EventT):
@@ -170,7 +174,7 @@ class Event(EventT):
         key: K = USE_EXISTING_KEY,
         value: V = USE_EXISTING_VALUE,
         partition: Optional[int] = None,
-        timestamp: Optional[float] = None,
+        timestamp: Optional[float] = USE_EXISTING_TIMESTAMP,
         headers: Any = USE_EXISTING_HEADERS,
         schema: Optional[SchemaT] = None,
         key_serializer: Optional[CodecArg] = None,
@@ -183,6 +187,11 @@ class Event(EventT):
             key = self.message.key
         if value is USE_EXISTING_VALUE:
             value = self.message.value
+        if timestamp is USE_EXISTING_TIMESTAMP:
+            # Preserve the original event time so downstream windowing keeps
+            # working after e.g. Stream.group_by (which forwards events).
+            # See issue #427.
+            timestamp = self.message.timestamp
         if headers is USE_EXISTING_HEADERS:
             headers = self.message.headers
             if not headers:
