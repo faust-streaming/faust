@@ -175,7 +175,16 @@ skip = ["*musllinux*"]
 # unknown directives instead of failing, so a lower version here would quietly
 # produce extensions that re-enable the GIL -- see the note in
 # `[build-system].requires`.
-before-build = "pip install 'Cython>=3.1'"
+#
+# Double-quoted, not single-quoted: cibuildwheel runs `before-build` through
+# the native shell, which on windows-2022 is cmd.exe.  cmd.exe does not treat
+# single quotes as a quoting character, so `'Cython>=3.1'` left the `>`
+# exposed as its output-redirection operator -- the command ran as `pip
+# install 'Cython` with stdout redirected to a file literally named `3.1'`,
+# which fails with no Cython installed.  cmd.exe does honor double quotes, and
+# bash/zsh treat `"..."` as a quoted string too, so this is quoted correctly
+# on every platform cibuildwheel builds on here.
+before-build = 'pip install "Cython>=3.1"'
 
 manylinux-x86_64-image = "manylinux2014"
 manylinux-pypy_x86_64-image = "manylinux2014"
