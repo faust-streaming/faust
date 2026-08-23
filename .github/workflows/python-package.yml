@@ -427,10 +427,17 @@ jobs:
     strategy:
       matrix:
         # Modern, supported runner images (ubuntu-20.04 was retired in 2025).
-        # macos-15-intel -> x86_64 wheels, macos-14 -> arm64 wheels,
-        # windows-2022 -> AMD64 wheels. Build config lives in
-        # pyproject.toml's [tool.cibuildwheel] (cp3*, auto64, Cython).
-        os: [ubuntu-latest, macos-15-intel, macos-14, windows-2022]
+        # macos-15-intel -> x86_64 wheels, macos-14 -> arm64 wheels. Build
+        # config lives in pyproject.toml's [tool.cibuildwheel] (cp3*, auto64,
+        # Cython).
+        #
+        # windows-2022 is deliberately not in this list: a failure on that leg
+        # fails the whole `build_wheels` job (matrix legs are ANDed together
+        # for job success, independent of fail-fast), and `publish` needs
+        # `build_wheels` -- so one broken Windows build blocks every
+        # platform's release, not just Windows' (see #790). Re-add it once
+        # Windows wheel builds have proven stable again.
+        os: [ubuntu-latest, macos-15-intel, macos-14]
     steps:
       - uses: actions/checkout@v4
         with:
