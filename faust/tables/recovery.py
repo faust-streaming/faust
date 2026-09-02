@@ -811,18 +811,10 @@ class Recovery(Service):
                     and offsets[tp] is not None
                     and offsets[tp] < highwater
                 ):
-                    # XXX bug: ConsumerT.position is declared
-                    # ``Optional[int]`` and really does return None when the
-                    # partition has no position yet, so this comparison raises
-                    # TypeError on that path (swallowed by the ``except
-                    # Exception`` in the caller's loop, which then skips the
-                    # aborted-tx fixup).  Guarding for None would change which
-                    # events reach the caller, so the behaviour is kept and
-                    # only the type error is silenced.
-                    if (
-                        await self.app.consumer.position(tp)  # type: ignore[operator]
-                        >= highwater
-                    ):
+                    # The partition may have no position yet, in which case
+                    # there is nothing to compare against and we skip it.
+                    position = await self.app.consumer.position(tp)
+                    if position is not None and position >= highwater:
                         logger.info(f"Aborted tx until highwater for {tp}")
                         offsets[tp] = highwater
 
@@ -848,58 +840,52 @@ class Recovery(Service):
                 tp = message.tp
                 offset = message.offset
                 logger.debug(f"Recovery message topic {tp} offset {offset}")
-                offsets: Counter[TP]
-                bufsize = buffer_sizes.get(tp)
-                is_active = False
-                if tp in active_tps:
-                    is_active = True
-                    table = tp_to_table[tp]
-                    offsets = active_offsets
-                    if bufsize is None:
-                        bufsize = buffer_sizes[tp] = table.recovery_buffer_size
-                    active_events_received_at[tp] = now
-                elif tp in standby_tps:
-                    table = tp_to_table[tp]
-                    offsets = standby_offsets
-                    if bufsize is None:
-                        bufsize = buffer_sizes[tp] = table.standby_buffer_size
-                        standby_events_received_at[tp] = now
-                else:
+                if tp not in active_tps and tp not in standby_tps:
+                    # Not a partition we are recovering: skip the event,
+                    # but keep the bookkeeping below running.
                     logger.warning(f"recovery unknown topic {tp} offset {offset}")
+                else:
+                    offsets: Counter[TP]
+                    bufsize = buffer_sizes.get(tp)
+                    is_active = False
+                    if tp in active_tps:
+                        is_active = True
+                        table = tp_to_table[tp]
+                        offsets = active_offsets
+                        if bufsize is None:
+                            bufsize = buffer_sizes[tp] = table.recovery_buffer_size
+                        active_events_received_at[tp] = now
+                    else:
+                        table = tp_to_table[tp]
+                        offsets = standby_offsets
+                        if bufsize is None:
+                            bufsize = buffer_sizes[tp] = table.standby_buffer_size
+                            standby_events_received_at[tp] = now
 
-                seen_offset = offsets.get(tp, None)
-                logger.debug(
-                    f"seen offset for {tp} is {seen_offset} message offset {offset}"
-                )
-                if seen_offset is None or offset > seen_offset:
-                    offsets[tp] = offset
-                    buf = buffers[table]
-                    buf.append(event)
-                    await table.on_changelog_event(event)
-                    # XXX bug: the ``else`` branch above only logs a warning
-                    # and falls through, so an event for a TP that is neither
-                    # active nor standby reaches here with ``table``,
-                    # ``offsets`` and ``bufsize`` still holding the PREVIOUS
-                    # iteration's values -- the event is then applied to an
-                    # unrelated table (or raises UnboundLocalError if it is
-                    # the first event of the loop).  That is why ``bufsize``
-                    # is still ``Optional[int]`` here and the comparison can
-                    # raise TypeError.  Fixing it means skipping the untracked
-                    # TP, which is a behaviour change, so it is left as is.
-                    if len(buf) >= bufsize:  # type: ignore[operator]
-                        table.apply_changelog_batch(buf)
-                        buf.clear()
-                        self._last_flush_at = now
-                    now_after = monotonic()
+                    seen_offset = offsets.get(tp, None)
+                    logger.debug(
+                        f"seen offset for {tp} is {seen_offset} "
+                        f"message offset {offset}"
+                    )
+                    if seen_offset is None or offset > seen_offset:
+                        offsets[tp] = offset
+                        buf = buffers[table]
+                        buf.append(event)
+                        await table.on_changelog_event(event)
+                        if len(buf) >= bufsize:
+                            table.apply_changelog_batch(buf)
+                            buf.clear()
+                            self._last_flush_at = now
+                        now_after = monotonic()
 
-                    if is_active:
-                        last_processed_at = self._last_active_event_processed_at
-                        if last_processed_at is not None:
-                            processing_times.append(now_after - last_processed_at)
-                            max_samples = self.num_samples_required_for_estimate
-                            if len(processing_times) > max_samples:
-                                processing_times.popleft()
-                        self._last_active_event_processed_at = now_after
+                        if is_active:
+                            last_processed_at = self._last_active_event_processed_at
+                            if last_processed_at is not None:
+                                processing_times.append(now_after - last_processed_at)
+                                max_samples = self.num_samples_required_for_estimate
+                                if len(processing_times) > max_samples:
+                                    processing_times.popleft()
+                            self._last_active_event_processed_at = now_after
 
                 await _maybe_signal_recovery_end()
 

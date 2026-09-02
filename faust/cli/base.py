@@ -797,7 +797,10 @@ class AppCommand(Command):
 
     abstract: ClassVar[bool] = True
 
-    app: AppT
+    #: The app this command runs for, or :const:`None` when the command
+    #: sets ``require_app = False`` and was invoked without ``-A``.
+    #: Use the :attr:`app` property to access it when an app is required.
+    _app: Optional[AppT] = None
 
     require_app = True
 
@@ -844,25 +847,44 @@ class AppCommand(Command):
     ) -> None:
         super().__init__(ctx)
 
-        self.app = self._finalize_app(getattr(ctx.find_root(), "app", None))
+        self._app = self._finalize_app(getattr(ctx.find_root(), "app", None))
         self.args = args
         self.kwargs = kwargs
-        self.key_serializer = key_serializer or self.app.conf.key_serializer
-        self.value_serializer = value_serializer or self.app.conf.value_serializer
+        if self._app is not None:
+            conf = self._app.conf
+            self.key_serializer = key_serializer or conf.key_serializer
+            self.value_serializer = value_serializer or conf.value_serializer
+        else:
+            # ``require_app = False`` command invoked without ``-A``:
+            # there is no app to take the default codecs from.
+            self.key_serializer = key_serializer
+            self.value_serializer = value_serializer
 
-    def _finalize_app(self, app: Optional[AppT]) -> AppT:
+    @property
+    def app(self) -> AppT:
+        """Return the app this command runs for.
+
+        Raises:
+            UsageError: if the command was invoked without an app.
+                Only commands setting ``require_app = False`` can get
+                this far without one.
+        """
+        app = self._app
+        if app is None:
+            raise self.UsageError("Need to specify app using -A parameter")
+        return app
+
+    @app.setter
+    def app(self, app: AppT) -> None:
+        self._app = app
+
+    def _finalize_app(self, app: Optional[AppT]) -> Optional[AppT]:
         if app is not None:
             return self._finalize_concrete_app(app)
         else:
-            # XXX ``_app_from_str`` returns None for ``require_app = False``
-            # commands (see faust/cli/completion.py) that were invoked without
-            # ``-A``, so this really can hand back None -- and
-            # ``AppCommand.__init__`` dereferences ``self.app.conf``
-            # unconditionally right after, raising ``AttributeError: 'NoneType'
-            # object has no attribute 'conf'``.  Real bug; fixing it means
-            # deciding what such commands should do without an app, which is
-            # out of scope for a typing pass.
-            return self._app_from_str(self.state.app)  # type: ignore[return-value]
+            # Returns None for ``require_app = False`` commands
+            # (see faust/cli/completion.py) invoked without ``-A``.
+            return self._app_from_str(self.state.app)
 
     def _app_from_str(self, appstr: Optional[str] = None) -> Optional[AppT]:
         if appstr:
@@ -899,7 +921,9 @@ class AppCommand(Command):
     async def on_stop(self) -> None:
         """Call after command executed."""
         await super().on_stop()
-        app = cast(_App, self.app)
+        if self._app is None:
+            return  # command ran without an app: nothing to clean up.
+        app = cast(_App, self._app)
         # If command started the producer, we should also stop that
         #   - this will flush any buffers before exiting.
         if app._producer is not None and app._producer.started:
@@ -1014,7 +1038,10 @@ class AppCommand(Command):
     @property
     def blocking_timeout(self) -> float:
         """Return the blocking timeout used for this command."""
-        return self._blocking_timeout or self.app.conf.blocking_timeout
+        if self._app is None:
+            # command ran without an app: use the Command default.
+            return self._blocking_timeout or 0.0
+        return self._blocking_timeout or self._app.conf.blocking_timeout
 
     @blocking_timeout.setter
     def blocking_timeout(self, timeout: float) -> None:

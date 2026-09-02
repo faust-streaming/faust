@@ -19,7 +19,6 @@
 #  faust/agents.py         - Agents use all of the above.
 # --- ~~~~~ ~ ~  ~           ~             ~   ~                   ~
 import os
-import re
 import sys
 import typing
 
@@ -29,6 +28,8 @@ else:
     from importlib.metadata import version
 
 from typing import Any, Mapping, NamedTuple, Optional, Sequence, Tuple
+
+from packaging.version import InvalidVersion, Version
 
 __version__ = version("faust-streaming")
 __author__ = "Robinhood Markets, Inc."
@@ -50,23 +51,43 @@ class VersionInfo(NamedTuple):
 version_info_t = VersionInfo  # XXX compat
 
 
-# bumpversion can only search for {current_version}
-# so we have to parse the version here.
-_match = re.match(r"^(?P<prefix>v)?(?P<version>[^\+]+)(?P<suffix>.*)?$", __version__)
-if _match is None:  # pragma: no cover
-    raise RuntimeError("THIS IS A BROKEN RELEASE!")
-_temp = _match.groups()
-# XXX This is broken and so is the public ``faust.version_info``: the regex
-# yields the strings ``(prefix, version, suffix)``, which land positionally in
-# the ``(major, minor, micro)`` int fields.  So ``.major`` is the ``'v'``
-# prefix or :const:`None`, ``.minor`` is the entire version string and
-# ``.micro`` is the suffix -- e.g. ``VersionInfo(major=None,
-# minor='0.11.5', micro='')`` instead of ``(0, 11, 5)``.
-# Left as-is because fixing it changes what ``faust.VERSION`` holds.
-VERSION = version_info = VersionInfo(*_temp)  # type: ignore[arg-type]
-del _match
-del _temp
-del re
+def _parse_version(version_string: str) -> VersionInfo:
+    """Parse a version string into a :class:`VersionInfo` tuple.
+
+    The PEP 440 grammar is delegated to :mod:`packaging`, the same parser
+    pip and setuptools use, rather than maintained here.  ``release``
+    supplies ``major``/``minor``/``micro`` (missing components default to
+    ``0``), and a pre/dev/post segment supplies ``releaselevel`` and
+    ``serial`` separately -- ``0.11.5rc1`` gives ``releaselevel='rc'``,
+    ``serial='1'`` -- mirroring what those field names mean on
+    :data:`sys.version_info`.
+
+    Only the parts :class:`VersionInfo` has fields for are kept.  A local
+    segment (the ``+g1234`` of ``0.11.5.dev1+g1234``) and any component
+    past the third are dropped; :data:`faust.__version__` remains the
+    full, unmodified string.
+
+    Never raises: a version :mod:`packaging` cannot parse ends up as the
+    ``releaselevel`` of ``VersionInfo(0, 0, 0)``.
+    """
+    releaselevel: Optional[str]
+    serial: Optional[str]
+    try:
+        parsed = Version(version_string)
+    except InvalidVersion:
+        return VersionInfo(0, 0, 0, version_string or None)
+    if parsed.pre is not None:  # 1.0rc1 / 1.0a2 / 1.0b3
+        releaselevel, serial = parsed.pre[0], str(parsed.pre[1])
+    elif parsed.dev is not None:  # 1.0.dev1
+        releaselevel, serial = "dev", str(parsed.dev)
+    elif parsed.post is not None:  # 1.0.post2
+        releaselevel, serial = "post", str(parsed.post)
+    else:
+        releaselevel, serial = None, None
+    return VersionInfo(parsed.major, parsed.minor, parsed.micro, releaselevel, serial)
+
+
+VERSION = version_info = _parse_version(__version__)
 
 
 # This is here to support setting the --datadir argument
@@ -307,5 +328,6 @@ new_module.__dict__.update(
         "version_info_t": version_info_t,
         "version_info": version_info,
         "VERSION": VERSION,
+        "_parse_version": _parse_version,
     }
 )
