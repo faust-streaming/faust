@@ -189,7 +189,7 @@ class ReplyConsumer(Service):
         return self.app.topic(
             topic,
             partitions=1,
-            replicas=0,
+            replicas=self.app.conf.topic_replication_factor,
             deleting=True,
             retention=self.app.conf.reply_expires,
             value_type=ReqRepResponse,

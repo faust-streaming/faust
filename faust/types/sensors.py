@@ -33,7 +33,12 @@ class SensorInterfaceT(abc.ABC):
 
     @abc.abstractmethod
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None: ...
 
     @abc.abstractmethod
@@ -101,7 +106,7 @@ class SensorInterfaceT(abc.ABC):
 
     @abc.abstractmethod
     def on_web_request_start(
-        self, app: _AppT, request: web.Request, *, view: web.View = None
+        self, app: _AppT, request: web.Request, *, view: Optional[web.View] = None
     ) -> Dict: ...
 
     @abc.abstractmethod
@@ -112,7 +117,7 @@ class SensorInterfaceT(abc.ABC):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None: ...
 
     @abc.abstractmethod

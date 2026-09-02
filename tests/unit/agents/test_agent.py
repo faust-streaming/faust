@@ -1,5 +1,5 @@
 import asyncio
-import platform
+import functools
 from unittest.mock import ANY, call, patch
 
 import pytest
@@ -239,6 +239,29 @@ class Test_Agent:
         actor1.cancel.assert_called_once_with()
         actor2.cancel.assert_called_once_with()
 
+    def test_actor_tracebacks(self, *, agent):
+        actor1 = Mock(name="actor1")
+        actor1.traceback.return_value = "traceback for actor1"
+        agent._actors = [actor1]
+        assert agent.actor_tracebacks() == ["traceback for actor1"]
+
+    def test_actor_tracebacks__missing_stack(self, *, agent):
+        # A finished coroutine has no stack frame, and mode raises
+        # RuntimeError("cannot find stack of coroutine").  Collecting
+        # tracebacks (for logging around shutdown/rebalance) must not
+        # let that error escape.  See issue #105.
+        good = Mock(name="good_actor")
+        good.traceback.return_value = "traceback for good"
+        bad = Mock(name="bad_actor")
+        bad.traceback.side_effect = RuntimeError("cannot find stack of coroutine")
+        agent._actors = [good, bad]
+
+        tracebacks = agent.actor_tracebacks()
+
+        assert tracebacks[0] == "traceback for good"
+        assert "Could not extract traceback" in tracebacks[1]
+        assert "cannot find stack of coroutine" in tracebacks[1]
+
     @pytest.mark.asyncio
     async def test_on_partitions_revoked(self, *, agent):
         revoked = {TP("foo", 0)}
@@ -470,7 +493,6 @@ class Test_Agent:
             await agent._execute_actor(coro, Mock(name="aref", autospec=Actor))
         coro.assert_awaited()
 
-    @pytest.mark.skip(reason="Fix is TBD")
     @pytest.mark.asyncio
     async def test_execute_actor__cancelled_running(self, *, agent):
         agent._on_error = AsyncMock(name="on_error")
@@ -954,9 +976,6 @@ class Test_Agent:
     def test_label(self, *, agent):
         assert label(agent)
 
-    @pytest.mark.skipif(
-        platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-    )
     async def test_context_calls_sink(self, *, agent):
         class SinkCalledException(Exception):
             pass
@@ -968,3 +987,88 @@ class Test_Agent:
         async with agent.test_context() as agent_mock:
             with pytest.raises(SinkCalledException):
                 await agent_mock.put("hello")
+
+    async def test_context__sinkless_agent(self, *, app):
+        # An agent that never yields cannot use sinks, so test_context() used
+        # to raise ImproperlyConfigured("Agent must yield to use sinks") at
+        # startup.  It should now work and still let put(wait=True) return.
+        # See issue #433.
+        processed = []
+
+        @app.agent()
+        async def sinkless(stream):
+            async for value in stream:
+                processed.append(value)
+
+        async with sinkless.test_context() as agent:
+            assert agent._agent_yields is False
+            event = await agent.put("hello")
+            assert event.value == "hello"
+
+        assert processed == ["hello"]
+        assert agent.results[0] == "hello"
+
+    async def test_context__callable_object_agent(self, *, app):
+        # ``isasyncgenfunction`` returns False for a class instance whose
+        # ``__call__`` is an async generator, but the agent does yield.
+        # ``results`` must hold the yielded value, not the incoming one.
+        class CustomAgent:
+            async def __call__(self, stream):
+                async for value in stream:
+                    yield value.upper()
+
+        my_agent = app.agent(name="callable_object")(CustomAgent())
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__function_returning_async_generator(self, *, app):
+        # A plain ``def`` that returns an async generator object also yields,
+        # and is likewise invisible to ``isasyncgenfunction``.
+        async def transform(stream):
+            async for value in stream:
+                yield value.upper()
+
+        def returns_async_generator(stream):
+            return transform(stream)
+
+        my_agent = app.agent(name="returns_agen")(returns_async_generator)
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__partial_over_callable_object(self, *, app):
+        # ``isasyncgenfunction`` sees through a partial over an async generator
+        # function, but not over a callable object.  ``name`` is explicit
+        # because every ``functools.partial`` shares the same derived name.
+        class CustomAgent:
+            async def __call__(self, stream):
+                async for value in stream:
+                    yield value.upper()
+
+        my_agent = app.agent(name="partial_over_callable")(
+            functools.partial(CustomAgent())
+        )
+
+        async with my_agent.test_context() as agent:
+            await agent.put("hello")
+            assert agent.results[0] == "HELLO"
+            assert agent._agent_yields is True
+
+    async def test_context__records_each_value_once_with_concurrency(self, *, app):
+        # Every actor of one test wrapper resolves against the same stream
+        # chain, and ``Stream.add_processor`` is not idempotent, so recording
+        # must be installed once per wrapper rather than once per actor.
+        @app.agent(name="concurrent_sinkless", concurrency=3)
+        async def sinkless(stream):
+            async for value in stream:
+                pass
+
+        async with sinkless.test_context() as agent:
+            await agent.put("hello")
+            assert len(agent.results) == 1
+            assert agent._agent_yields is False

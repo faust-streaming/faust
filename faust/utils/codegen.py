@@ -1,6 +1,6 @@
 """Utilities for generating code at runtime."""
 
-from typing import Any, Callable, Dict, List, Mapping, Tuple, cast
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, cast
 
 __all__ = [
     "Function",
@@ -28,8 +28,8 @@ def Function(
     args: List[str],
     body: List[str],
     *,
-    globals: Dict[str, Any] = None,
-    locals: Dict[str, Any] = None,
+    globals: Optional[Dict[str, Any]] = None,
+    locals: Optional[Dict[str, Any]] = None,
     return_type: Any = MISSING,
     argsep: str = ", ",
 ) -> Callable:
@@ -55,7 +55,7 @@ def build_closure_source(
     body: List[str],
     *,
     outer_name: str = "__outer__",
-    outer_args: List[str] = None,
+    outer_args: Optional[List[str]] = None,
     closures: Dict[str, str],
     return_type: Any = MISSING,
     indentlevel: int = 0,
@@ -91,8 +91,8 @@ def build_closure(
     source: str,
     *args: Any,
     return_type: Any = MISSING,
-    globals: Dict[str, Any] = None,
-    locals: Dict[str, Any] = None,
+    globals: Optional[Dict[str, Any]] = None,
+    locals: Optional[Dict[str, Any]] = None,
 ) -> Callable:
     assert locals is not None
     if return_type is not MISSING:
@@ -108,8 +108,8 @@ def build_function(
     source: str,
     *,
     return_type: Any = MISSING,
-    globals: Dict[str, Any] = None,
-    locals: Dict[str, Any] = None,
+    globals: Optional[Dict[str, Any]] = None,
+    locals: Optional[Dict[str, Any]] = None,
 ) -> Callable:
     """Generate function from Python from source code string."""
     assert locals is not None

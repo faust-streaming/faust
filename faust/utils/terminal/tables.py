@@ -29,7 +29,7 @@ def table(
     data: TableDataT,
     *,
     title: str,
-    target: IO = None,
+    target: Optional[IO] = None,
     tty: Optional[bool] = None,
     **kwargs: Any,
 ) -> Table:
@@ -57,7 +57,7 @@ def logtable(
     data: TableDataT,
     *,
     title: str,
-    target: IO = None,
+    target: Optional[IO] = None,
     tty: Optional[bool] = None,
     headers: Optional[Sequence[str]] = None,
     **kwargs: Any,

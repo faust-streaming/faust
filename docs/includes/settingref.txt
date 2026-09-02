@@ -282,6 +282,61 @@ the second version is 2, and so on.
    use: ``app.topic(..., internal=True)``.
 
 
+.. setting:: cython_optimizations
+
+``cython_optimizations``
+------------------------
+
+:type: :class:`bool`
+:default: :const:`False`
+:environment: :envvar:`CYTHON_OPTIMIZATIONS`
+:version-introduced: 0.14.0
+
+Enable the repaired fast paths in the Cython extensions.
+
+Disabled by default, and has no effect at all unless the optional
+Cython extension modules were built.
+
+Faust ships a few hot paths twice: a pure-Python implementation, and a
+Cython one used instead when the extensions are available.  Two of the
+Cython fast paths never actually ran -- each was guarded by a condition
+that could not become true -- so for years the extensions quietly did
+more work than the Python they were meant to accelerate:
+
+* ``StreamIterator`` always awaited the channel rather than taking
+  values already sitting in the queue, and
+* ``ConductorHandler`` re-deserialized the payload once per subscribed
+  channel instead of decoding once and reusing the event.
+
+Both are repaired, but the repaired code has by definition never run in
+production, so it is opt-in.  Leaving this ``False`` keeps the
+extensions behaving exactly as the released versions do.
+
+Note this makes the Cython path differ from the pure-Python path while
+disabled -- which has always been true; the flag does not introduce the
+divergence, it just makes it selectable.  The most visible difference is
+in the conductor: a reused event is never decoded again, so a channel
+whose payload would fail to deserialize raises no error when the event
+is reused, and does when it is not.  That changes which channels receive
+a message and how many acks it takes.
+
+Enable it to get the fast paths::
+
+    app = faust.App('myapp', cython_optimizations=True)
+
+This setting is transitional: it is expected to default to ``True`` in
+a later release, then be deprecated and removed, at which point the
+fast paths are simply the behaviour.  See the developer guide for the
+sequence -- and for why faust reads this setting internally through
+:func:`faust.utils.optin.cython_optimizations_enabled` rather than
+directly, which is what keeps the eventual deprecation from warning
+once per stream and once per assigned partition.
+
+.. seealso::
+
+    The developer guide's :ref:`developers-cython` page, for what the
+    two faults were and how the implementations are held level.
+
 .. setting:: blocking_timeout
 
 ``blocking_timeout``
@@ -1902,7 +1957,42 @@ Advanced Web Server Settings
 :type: :class:`str` / :class:`~yarl.URL`
 :default: ``'aiohttp://'``
 
-Web server driver to use.
+Legacy :mod:`faust.web` driver to use. This setting is ignored when the
+application registers a framework-neutral server with
+:meth:`faust.App.web_server`.
+
+.. setting:: web_application_options
+
+``web_application_options``
+---------------------------
+
+.. versionadded:: 0.11.4
+
+:type: :class:`~typing.Mapping` [ :class:`str`, :class:`~typing.Any` ]
+:default: :const:`None`
+
+Extra keyword arguments passed to the web framework's application.
+
+Use this to configure the underlying web application object that the
+web driver creates.  For the default :pypi:`aiohttp` driver these are
+forwarded straight to :class:`aiohttp.web.Application`, so you can set
+things like ``client_max_size`` or install middlewares:
+
+.. sourcecode:: python
+
+    from aiohttp.web import middleware
+
+    @middleware
+    async def error_middleware(request, handler):
+        ...
+
+    app = App(..., web_application_options={
+        'client_max_size': 1024 ** 2 * 20,
+        'middlewares': [error_middleware],
+    })
+
+The accepted keys depend on the configured web driver.
+
 
 .. setting:: web_bind
 
@@ -1982,6 +2072,132 @@ Enable/disable internal web server.
 Enable web server and other web components.
 
 This option can also be set using :option:`faust worker --without-web`.
+
+
+.. setting:: web_graph_enabled
+
+``web_graph_enabled``
+---------------------
+
+.. versionadded:: 0.15.0
+
+:type: :class:`bool`
+:default (alias to setting): :setting:`debug`
+:environment: :envvar:`APP_WEB_GRAPH_ENABLED`
+
+Enable/disable the ``/graph`` dependency graph endpoint.
+
+Renders the worker's service dependency graph as a PNG.
+
+If not set, this follows :setting:`debug`, which is how this endpoint
+was gated before this setting existed.
+
+.. warning::
+
+    The graph describes the entire internal service tree of the
+    worker.
+
+
+.. setting:: web_metrics_enabled
+
+``web_metrics_enabled``
+-----------------------
+
+.. versionadded:: 0.15.0
+
+:type: :class:`bool`
+:default: :const:`False`
+:environment: :envvar:`APP_WEB_METRICS_ENABLED`
+
+Enable/disable the ``/performance/`` metrics endpoint.
+
+Serves throughput, latency, consumer lag and table statistics as
+JSON, gathered from :setting:`Monitor`.  Unlike the statistics
+endpoints this is independent of :setting:`debug`, so it can be left
+on in production.
+
+Disabled by default: it is a new endpoint, and enabling it should be
+a deliberate choice.
+
+.. seealso::
+
+    :mod:`faust.sensors.prometheus` serves the same underlying data
+    in Prometheus format on its own ``/metrics`` path.
+
+
+.. setting:: web_router_enabled
+
+``web_router_enabled``
+----------------------
+
+.. versionadded:: 0.15.0
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`APP_WEB_ROUTER_ENABLED`
+
+Enable/disable the ``/router`` endpoints.
+
+These report which worker in the cluster owns a given table key, and
+are what makes :meth:`@table_route` work across nodes.
+
+.. warning::
+
+    Disabling this breaks :meth:`@table_route` for multi-node
+    deployments.  Only turn it off if you route entirely within a
+    single worker.
+
+    Left enabled, it exposes your cluster topology -- the URLs of
+    every other worker.
+
+
+.. setting:: web_stats_enabled
+
+``web_stats_enabled``
+---------------------
+
+.. versionadded:: 0.15.0
+
+:type: :class:`bool`
+:default (alias to setting): :setting:`debug`
+:environment: :envvar:`APP_WEB_STATS_ENABLED`
+
+Enable/disable the built-in statistics endpoints.
+
+Serves sensor statistics at ``/`` and the current partition
+assignment at ``/assignment/``.
+
+If not set, this follows :setting:`debug`, which is how these
+endpoints were gated before this setting existed.
+
+When disabled, ``/`` serves the plain production index instead.
+
+.. warning::
+
+    These endpoints expose internal state: every registered sensor's
+    counters, and which partitions this worker is handling.
+
+
+.. setting:: web_tables_enabled
+
+``web_tables_enabled``
+----------------------
+
+.. versionadded:: 0.15.0
+
+:type: :class:`bool`
+:default: :const:`True`
+:environment: :envvar:`APP_WEB_TABLES_ENABLED`
+
+Enable/disable the ``/table`` endpoints.
+
+These list the tables defined by this app and allow reading
+individual keys over HTTP.
+
+.. warning::
+
+    This exposes table *data*, not just table names.  If your tables
+    hold anything sensitive, turn this off.
 
 
 .. setting:: web_host

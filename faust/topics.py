@@ -42,6 +42,7 @@ from .types import (
 )
 from .types.topics import ChannelT, TopicT
 from .types.transports import ProducerT
+from .types.tuples import _get_len
 
 if typing.TYPE_CHECKING:  # pragma: no cover
     from .app import App as _App
@@ -97,10 +98,10 @@ class Topic(SerializedChannel, TopicT):
         app: AppT,
         *,
         topics: Optional[Sequence[str]] = None,
-        pattern: Union[str, Pattern] = None,
+        pattern: Optional[Union[str, Pattern]] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         is_iterator: bool = False,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
@@ -111,8 +112,8 @@ class Topic(SerializedChannel, TopicT):
         internal: bool = False,
         config: Optional[Mapping[str, Any]] = None,
         queue: Optional[ThrowableQueue] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         maxsize: Optional[int] = None,
         root: Optional[ChannelT] = None,
         active_partitions: Optional[Set[TP]] = None,
@@ -158,14 +159,14 @@ class Topic(SerializedChannel, TopicT):
     async def send(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -201,14 +202,14 @@ class Topic(SerializedChannel, TopicT):
     def send_soon(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
         eager_partitioning: bool = False,
@@ -298,8 +299,11 @@ class Topic(SerializedChannel, TopicT):
         return self._partitions
 
     @partitions.setter
-    def partitions(self, partitions: int) -> None:
+    def partitions(self, partitions: Optional[int]) -> None:
         """Set the number of partitions for this topic.
+
+        :const:`None` means "let the broker decide", which is what
+        ``__init__`` assigns when no ``partitions`` argument is given.
 
         Only used for internal topics, see :attr:`partitions`.
         """
@@ -323,10 +327,10 @@ class Topic(SerializedChannel, TopicT):
         *,
         topics: Optional[Sequence[str]] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         partitions: Optional[int] = None,
         retention: Optional[Seconds] = None,
         compacting: Optional[bool] = None,
@@ -409,8 +413,12 @@ class Topic(SerializedChannel, TopicT):
             producer,
             topic,
             message=message,
-            keysize=len(key) if key else 0,
-            valsize=len(value) if value else 0,
+            # ``key``/``value`` are not always serialized bytes here -- e.g. a
+            # raw int key produced via group_by/forward (#513) -- and this only
+            # feeds a sensor statistic, so use the bytes-safe helper rather than
+            # a bare len() that would crash the publish for non-sized payloads.
+            keysize=_get_len(key),
+            valsize=_get_len(value),
         )
         if wait:
             ret: RecordMetadata = await producer.send_and_wait(

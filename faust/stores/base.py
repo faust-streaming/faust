@@ -34,10 +34,10 @@ class Store(StoreT[KT, VT], Service):
         table: CollectionT,
         *,
         table_name: str = "",
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         options: Optional[Mapping[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
@@ -162,7 +162,9 @@ class SerializedStore(Store[KT, VT]):
         ...
 
     @abc.abstractmethod
-    def _itervalues(self) -> Iterator[bytes]:  # pragma: no cover
+    def _itervalues(self) -> Iterator[Optional[bytes]]:  # pragma: no cover
+        # May yield None: `_values_decoded` feeds each value straight to
+        # `_decode_value`, which accepts `Optional[bytes]`.
         ...
 
     @abc.abstractmethod

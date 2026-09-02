@@ -13,6 +13,7 @@ import asyncio
 from typing import Any, ClassVar, List, Optional, Type
 
 from mode.services import ServiceT
+from mode.utils.loops import get_event_loop
 from yarl import URL
 
 from faust.types import AppT
@@ -62,7 +63,26 @@ class Transport(TransportT):
     ) -> None:
         self.url = url
         self.app = app
-        self.loop = loop or asyncio.get_event_loop_policy().get_event_loop()
+        self._loop = loop
+
+    @property
+    def loop(self) -> asyncio.AbstractEventLoop:
+        """Event loop this transport belongs to (resolved lazily).
+
+        A transport can be constructed at import time -- declaring an agent
+        touches ``app.topics``, which builds the conductor and therefore
+        ``app.transport`` -- so resolving the loop in ``__init__`` would pin
+        the App to a loop that is never run.  Resolving on first *access*
+        instead means the loop is picked up from whichever loop is actually
+        running the app.  See the note in ``faust.agents.agent``.
+        """
+        if self._loop is None:
+            self._loop = get_event_loop()
+        return self._loop
+
+    @loop.setter
+    def loop(self, loop: Optional[asyncio.AbstractEventLoop]) -> None:
+        self._loop = loop
 
     def create_consumer(self, callback: ConsumerCallback, **kwargs: Any) -> ConsumerT:
         """Create new consumer."""
@@ -85,4 +105,8 @@ class Transport(TransportT):
 
     def create_conductor(self, **kwargs: Any) -> ConductorT:
         """Create new consumer conductor."""
-        return self.Conductor(app=self.app, loop=self.loop, **kwargs)
+        # No ``loop=``: the conductor is built from ``app.topics``, which is
+        # reached at import time when an agent is declared.  Reading
+        # ``self.loop`` here would resolve -- and cache -- a loop that is
+        # never run.  ``Conductor`` is a ``mode.Service`` and late-binds.
+        return self.Conductor(app=self.app, **kwargs)

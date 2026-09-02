@@ -7,6 +7,7 @@ __all__ = [
     "FaustWarning",
     "FaustPredicate",
     "SecurityError",
+    "SecurityWarning",
     "NotReady",
     "Skip",
     "AlreadyConfiguredWarning",
@@ -43,6 +44,10 @@ class FaustPredicate(FaustError):
 
 class SecurityError(FaustError):
     """Base-class for security related (high priority) exceptions."""
+
+
+class SecurityWarning(FaustWarning):
+    """Base-class for security related warnings."""
 
 
 class NotReady(FaustPredicate):

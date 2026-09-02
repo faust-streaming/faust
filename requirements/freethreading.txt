@@ -1,0 +1,53 @@
+# Test dependencies for the free-threaded (PEP 703) CI job.
+#
+# This is requirements/test.txt with the packages that cannot be installed on a
+# free-threaded interpreter removed, and the pins needed to work around them.
+# It exists because pip cannot express "install test.txt except for X": every
+# omission below is a package that fails to *build*, so it has to be left out
+# rather than skipped at runtime.
+#
+# What is missing compared to test.txt, and why:
+#
+#   * twine.  Pulls keyring -> secretstorage -> cryptography -> cffi, and cffi
+#     refuses to build on free-threaded 3.13 outright ("CFFI does not support
+#     the free-threaded build of CPython 3.13.  Upgrade to free-threaded 3.14
+#     or newer").  twine is a publishing tool that the tests never import.
+#
+#   * black / isort / autoflake / flake8* / bandit / pre-commit, and mypy via
+#     typecheck.txt.  Lint-only tools.  The `lint` job already runs them on
+#     PYTHON_LATEST, and running them again here would only re-check the same
+#     tree with the same pins.  Leaving them out also keeps this job away from
+#     mypy's mypyc-compiled wheels, which are irrelevant to what it tests.
+#
+# And the one pin that differs:
+#
+#   * hypothesis <6.130 on 3.13t.  From 6.130 hypothesis ships a Rust
+#     extension (hypothesis._native) built with PyO3, and PyO3 does not
+#     support free-threaded builds before 3.14 ("PyO3 does not support the
+#     free-threaded build of CPython versions below 3.14").  3.14t gets a
+#     working wheel, so the pin is scoped to 3.13.  The suite only uses
+#     hypothesis' pure-Python API, which is unchanged across that boundary.
+#
+# Everything else in test.txt installs unmodified on both 3.13t and 3.14t.
+hypothesis>=3.31; python_version >= '3.14'
+hypothesis>=3.31,<6.130; python_version < '3.14'
+freezegun>=0.3.11
+pytest-aiofiles>=0.2.0
+pytest-aiohttp>=0.3.0
+pytest-asyncio
+pytest-forked
+pytest-picked
+pytest-cov
+pytest-random-order>=0.5.4
+pytest<8
+python-dateutil>=2.8
+pytz>=2018.7
+wheel
+intervaltree
+-r requirements.txt
+-r extras/datadog.txt
+-r extras/opentracing.txt
+-r extras/redis.txt
+-r extras/statsd.txt
+-r extras/yaml.txt
+-r extras/prometheus.txt

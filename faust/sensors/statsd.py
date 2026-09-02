@@ -99,7 +99,12 @@ class StatsdMonitor(Monitor):
         )
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
@@ -240,7 +245,7 @@ class StatsdMonitor(Monitor):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         super().on_web_request_end(app, request, response, state, view=view)

@@ -95,6 +95,7 @@ class CollectionT(ServiceT, JoinableT):
     options: Optional[Mapping[str, Any]]
     last_closed_window: float
     use_partitioner: bool
+    synchronize_all_active_partitions: bool
 
     is_global: bool = False
 
@@ -104,16 +105,16 @@ class CollectionT(ServiceT, JoinableT):
         app: _AppT,
         *,
         name: Optional[str] = None,
-        default: Callable[[], Any] = None,
-        store: Union[str, URL] = None,
+        default: Optional[Callable[[], Any]] = None,
+        store: Optional[Union[str, URL]] = None,
         schema: Optional[_SchemaT] = None,
-        key_type: _ModelArg = None,
-        value_type: _ModelArg = None,
+        key_type: Optional[_ModelArg] = None,
+        value_type: Optional[_ModelArg] = None,
         partitions: Optional[int] = None,
         window: Optional[WindowT] = None,
         changelog_topic: Optional[TopicT] = None,
         help: Optional[str] = None,
-        on_recover: RecoverCallback = None,
+        on_recover: Optional[RecoverCallback] = None,
         on_changelog_event: Optional[ChangelogEventCallback] = None,
         recovery_buffer_size: int = 1000,
         standby_buffer_size: Optional[int] = None,
@@ -155,8 +156,8 @@ class CollectionT(ServiceT, JoinableT):
         partition: Optional[int],
         key: Any,
         value: Any,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
     ) -> FutureMessage: ...
 
     @abc.abstractmethod
@@ -392,7 +393,7 @@ class WindowWrapperT(MutableMapping):
         self,
         table: TableT,
         *,
-        relative_to: RelativeArg = None,
+        relative_to: Optional[RelativeArg] = None,
         key_index: bool = False,
         key_index_table: Optional[TableT] = None,
     ) -> None: ...

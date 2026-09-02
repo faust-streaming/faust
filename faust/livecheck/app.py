@@ -56,7 +56,12 @@ class LiveCheckSensor(Sensor):
         return None
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is finished handling event."""
         has_active_test = getattr(stream, "current_test", None)
@@ -186,18 +191,22 @@ class LiveCheck(faust.App):
         patches.patch_all()
 
     def _connect_signals(self) -> None:
+        # mode's ``SignalHandlerT`` is ``(sender, /, *args, signal, **kwargs)``
+        # -- the sender has to be positional-only for a handler to match it.
+        # This handler accepts it by name as well, which mode never does but
+        # which the public signature has always allowed.
         AppT.on_produce_message.connect(
-            self.on_produce_attach_test_headers
-        )  # type: ignore
+            self.on_produce_attach_test_headers  # type: ignore[arg-type]
+        )
 
     def on_produce_attach_test_headers(
         self,
         sender: AppT,
-        key: bytes = None,
-        value: bytes = None,
+        key: Optional[bytes] = None,
+        value: Optional[bytes] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: List[Tuple[str, bytes]] = None,
+        headers: Optional[List[Tuple[str, bytes]]] = None,
         signal: Optional[BaseSignalT] = None,
         **kwargs: Any,
     ) -> None:

@@ -129,15 +129,15 @@ class AgentT(ServiceT, Generic[_T]):
         *,
         name: Optional[str] = None,
         app: Optional[_AppT] = None,
-        channel: Union[str, ChannelT] = None,
+        channel: Optional[Union[str, ChannelT]] = None,
         concurrency: int = 1,
-        sink: Iterable[SinkT] = None,
-        on_error: AgentErrorHandler = None,
-        supervisor_strategy: Type[SupervisorStrategyT] = None,
+        sink: Optional[Iterable[SinkT]] = None,
+        on_error: Optional[AgentErrorHandler] = None,
+        supervisor_strategy: Optional[Type[SupervisorStrategyT]] = None,
         help: Optional[str] = None,
         schema: Optional[SchemaT] = None,
-        key_type: ModelArg = None,
-        value_type: ModelArg = None,
+        key_type: Optional[ModelArg] = None,
+        value_type: Optional[ModelArg] = None,
         isolated_partitions: bool = False,
         **kwargs: Any,
     ) -> None:
@@ -160,7 +160,7 @@ class AgentT(ServiceT, Generic[_T]):
     def test_context(
         self,
         channel: Optional[ChannelT] = None,
-        supervisor_strategy: SupervisorStrategyT = None,
+        supervisor_strategy: Optional[SupervisorStrategyT] = None,
         **kwargs: Any,
     ) -> "AgentTestWrapperT": ...
 
@@ -179,24 +179,24 @@ class AgentT(ServiceT, Generic[_T]):
     @abc.abstractmethod
     async def cast(
         self,
-        value: V = None,
+        value: Optional[V] = None,
         *,
-        key: K = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
     ) -> None: ...
 
     @abc.abstractmethod
     async def ask(
         self,
-        value: V = None,
+        value: Optional[V] = None,
         *,
-        key: K = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        reply_to: ReplyToArg = None,
+        headers: Optional[HeadersArg] = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
     ) -> Any: ...
 
@@ -204,14 +204,14 @@ class AgentT(ServiceT, Generic[_T]):
     async def send(
         self,
         *,
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
-        reply_to: ReplyToArg = None,
+        headers: Optional[HeadersArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]: ...
 
@@ -220,8 +220,8 @@ class AgentT(ServiceT, Generic[_T]):
     async def map(
         self,
         values: Union[AsyncIterable, Iterable],
-        key: K = None,
-        reply_to: ReplyToArg = None,
+        key: Optional[K] = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> AsyncIterator: ...
 
     @abc.abstractmethod
@@ -229,29 +229,31 @@ class AgentT(ServiceT, Generic[_T]):
     async def kvmap(
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> AsyncIterator[str]: ...
 
     @abc.abstractmethod
     async def join(
         self,
         values: Union[AsyncIterable[V], Iterable[V]],
-        key: K = None,
-        reply_to: ReplyToArg = None,
+        key: Optional[K] = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> List[Any]: ...
 
     @abc.abstractmethod
     async def kvjoin(
         self,
         items: Union[AsyncIterable[Tuple[K, V]], Iterable[Tuple[K, V]]],
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
     ) -> List[Any]: ...
 
     @abc.abstractmethod
     def info(self) -> Mapping: ...
 
     @abc.abstractmethod
-    def clone(self, *, cls: Type["AgentT"] = None, **kwargs: Any) -> "AgentT": ...
+    def clone(
+        self, *, cls: Optional[Type["AgentT"]] = None, **kwargs: Any
+    ) -> "AgentT": ...
 
     @abc.abstractmethod
     def get_topic_names(self) -> Iterable[str]: ...
@@ -305,15 +307,15 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
     @abc.abstractmethod
     async def put(
         self,
-        value: V = None,
-        key: K = None,
+        value: Optional[V] = None,
+        key: Optional[K] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        headers: Optional[HeadersArg] = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         *,
-        reply_to: ReplyToArg = None,
+        reply_to: Optional[ReplyToArg] = None,
         correlation_id: Optional[str] = None,
         wait: bool = True,
     ) -> EventT: ...
@@ -328,7 +330,7 @@ class AgentTestWrapperT(AgentT, AsyncIterable):
         offset: int = 0,
         timestamp: Optional[float] = None,
         timestamp_type: int = 0,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
     ) -> Message: ...
 
     @abc.abstractmethod

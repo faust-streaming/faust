@@ -3,14 +3,19 @@ import platform
 from collections import Counter
 from typing import MutableMapping
 
-import pytest
 from hypothesis import assume, given, settings
 from hypothesis.strategies import integers
 
 from faust.assignor.client_assignment import CopartitionedAssignment
 from faust.assignor.copartitioned_assignor import CopartitionedAssignor
 
-TEST_DEADLINE = 4000
+# PyPy runs these property tests several times slower than CPython, and the
+# largest generated cases (hundreds of clients x hundreds of partitions) land
+# either side of a 4s deadline from run to run.  Hypothesis reports that as
+# FlakyFailure ("failed on the first call but did not on a subsequent one"),
+# so the deadline is raised there rather than dropped everywhere -- CPython
+# keeps the tighter bound that makes it a useful performance guard.
+TEST_DEADLINE = 20000 if platform.python_implementation() == "PyPy" else 4000
 
 
 _topics = {"foo", "bar", "baz"}
@@ -79,9 +84,6 @@ def client_removal_sticky(
     return True
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -100,9 +102,6 @@ def test_fresh_assignment(partitions, replicas, num_clients):
     assert is_valid(new_assignments, partitions, replicas)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -139,9 +138,6 @@ def test_add_new_clients(partitions, replicas, num_clients, num_additional_clien
         assert clients_balanced(new_assignments)
 
 
-@pytest.mark.skipif(
-    platform.python_implementation() == "PyPy", reason="Not yet supported on PyPy"
-)
 @given(
     partitions=integers(min_value=0, max_value=256),
     replicas=integers(min_value=0, max_value=64),
@@ -179,3 +175,31 @@ def test_remove_clients(partitions, replicas, num_clients, num_removal_clients):
         assert client_removal_sticky(old_assignments, new_assignments)
     elif partitions >= num_clients - num_removal_clients:
         assert clients_balanced(new_assignments)
+
+
+@given(
+    partitions=integers(min_value=2, max_value=256),
+    num_clients=integers(min_value=2, max_value=64),
+    replicas=integers(min_value=1, max_value=8),
+)
+@settings(deadline=TEST_DEADLINE)
+def test_standby_assignment_terminates(partitions, num_clients, replicas):
+    # Regression test for a standby-assignment livelock.
+    #
+    # When the round-robin pass has to free up a slot on an exhausted client,
+    # it used to evict an arbitrary partition (``set.pop``).  If that arbitrary
+    # choice was the partition's only possible home, two partitions could
+    # ping-pong between the work queue and the same client forever.  Whether it
+    # happened depended on set iteration order, so the assignment hung on PyPy
+    # while completing on CPython for identical input.  Any ``replicas >= 1``
+    # case exercises the standby path; this asserts termination and a valid,
+    # fully-replicated assignment regardless of interpreter.
+    assume(replicas < num_clients)
+    client_assignments = {
+        str(client): CopartitionedAssignment(topics=_topics)
+        for client in range(num_clients)
+    }
+    new_assignments = CopartitionedAssignor(
+        _topics, client_assignments, partitions, replicas=replicas
+    ).get_assignment()
+    assert is_valid(new_assignments, partitions, replicas)

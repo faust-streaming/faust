@@ -1,5 +1,6 @@
 import operator
 import random
+from contextlib import contextmanager
 from datetime import datetime
 from unittest.mock import Mock, patch
 
@@ -18,6 +19,14 @@ DATETIME_TS = DATETIME.timestamp()
 class User(faust.Record):
     id: str
     name: str
+
+
+class WindowedRecord(faust.Record):
+    # Mirrors the model from issue #389: ``date_time`` is declared as a
+    # plain ``str`` holding an ISO-8601 timestamp, not a ``datetime``.
+    job_id: str
+    value: int
+    date_time: str
 
 
 @pytest.fixture
@@ -57,6 +66,34 @@ def _maybe_items(d):
 
 def same(a, b):
     return sorted(a) == sorted(b)
+
+
+def _windowed_event(app, value, *, timestamp):
+    # Build a real Event whose ``.value`` is a model instance, so
+    # relative_to_field() can extract a field from it just like it
+    # does during stream processing.
+    message = Message(
+        topic="topic",
+        key=value.job_id,
+        value=value,
+        partition=0,
+        offset=0,
+        checksum=None,
+        timestamp=timestamp,
+        timestamp_type=0,
+        headers={},
+    )
+    return Event(app=app, key=value.job_id, value=value, headers={}, message=message)
+
+
+@contextmanager
+def _current_event(event):
+    # Windowed table mutation reads ``current_event()`` in both the
+    # wrappers module (to pick the window) and the base module (to
+    # partition the key), so both must be patched.
+    with patch("faust.tables.wrappers.current_event", return_value=event):
+        with patch("faust.tables.base.current_event", return_value=event):
+            yield
 
 
 @pytest.fixture()
@@ -264,6 +301,8 @@ class Test_WindowWrapper:
         "input,expected",
         [
             (DATETIME, DATETIME_TS),
+            # relative_to_field on an ISO-8601 string field (issue #389)
+            (DATETIME.isoformat(), DATETIME_TS),
             (303.333, 303.333),
             (None, 99999.6),
         ],
@@ -275,6 +314,49 @@ class Test_WindowWrapper:
         else:
             wtable.get_relative_timestamp = None
         assert wtable.get_timestamp(event) == expected
+
+    def test_relative_to_field__iso8601_string(self, *, app):
+        """End-to-end reproduction of issue #389.
+
+        A hopping table using ``.relative_to_field()`` on a field that
+        holds an ISO-8601 *string* (declared ``str`` rather than
+        ``datetime``) used to crash the agent with ``TypeError: must be
+        real number, not str`` deep in the Cython windowing code, when
+        the value flowed through ``table[key] += n``.  The field must
+        now be parsed and the value bucketed by its own timestamp.
+        """
+        table = app.Table("issue389", default=int)
+        wtable = table.hopping(6000.0, 3000.0, 6000.0).relative_to_field(
+            WindowedRecord.date_time
+        )
+
+        # Both events carry the *same* message timestamp, so any
+        # difference in bucketing can only come from the ``date_time``
+        # field -- proving relative_to_field drives the window, not the
+        # message/stream time.
+        message_ts = datetime(2022, 11, 1, 13, 0).timestamp()
+        early = WindowedRecord("a", 1, datetime(2022, 11, 1, 13, 0).isoformat())
+        later = WindowedRecord("a", 1, datetime(2022, 11, 2, 13, 0).isoformat())
+        event_early = _windowed_event(app, early, timestamp=message_ts)
+        event_later = _windowed_event(app, later, timestamp=message_ts)
+
+        with _current_event(event_early):
+            # This line raised ``TypeError: must be real number, not
+            # str`` before the fix in faust/tables/wrappers.py.
+            wtable["a"] += 1
+            assert wtable["a"].value(event_early) == 1
+
+        with _current_event(event_later):
+            # A day later => a different hopping window, so the earlier
+            # count is not visible even though the message timestamp is
+            # identical.
+            assert wtable["a"].value(event_later) == 0
+            wtable["a"] += 5
+            assert wtable["a"].value(event_later) == 5
+
+        with _current_event(event_early):
+            # The first window is unaffected by the second event.
+            assert wtable["a"].value(event_early) == 1
 
     def test_get_timestamp__event_is_None(self, *, event, wtable):
         wtable.get_relative_timestamp = None

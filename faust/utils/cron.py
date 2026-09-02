@@ -2,11 +2,12 @@
 
 import time
 from datetime import datetime, tzinfo
+from typing import Optional
 
 from croniter.croniter import croniter
 
 
-def secs_for_next(cron_format: str, tz: tzinfo = None) -> float:
+def secs_for_next(cron_format: str, tz: Optional[tzinfo] = None) -> float:
     """Return seconds until next execution given Crontab style format."""
     now_ts = time.time()
     # If we have a tz object we'll make now timezone aware, and

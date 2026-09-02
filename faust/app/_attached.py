@@ -90,14 +90,14 @@ class Attachments:
     async def maybe_put(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -148,10 +148,10 @@ class Attachments:
         value: V,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         """Attach message to source topic offset."""
@@ -183,8 +183,15 @@ class Attachments:
 
     async def commit(self, tp: TP, offset: int) -> None:
         """Publish all messaged attached to topic partition and offset."""
+        # XXX ``publish_for_tp_offset`` is typed as returning bare awaitables,
+        # but ``asyncio.wait`` accepts only futures/tasks -- passing a plain
+        # coroutine raises TypeError on Python 3.11+.  In-tree channels always
+        # hand back an ``asyncio.Future``, so this works today; a third-party
+        # ``ChannelT.publish_message`` returning a coroutine would break it.
+        # Wrapping in ``ensure_future`` here would change runtime behaviour,
+        # so the error is silenced instead.
         await asyncio.wait(
-            await self.publish_for_tp_offset(tp, offset),
+            await self.publish_for_tp_offset(tp, offset),  # type: ignore[type-var]
             return_when=asyncio.ALL_COMPLETED,
         )
 

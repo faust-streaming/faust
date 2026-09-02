@@ -92,7 +92,7 @@ def _build_sentry_handler() -> Type[_SentryHandler]:
 def handler_from_dsn(
     dsn: Optional[str] = None,
     workers: int = 5,
-    include_paths: Iterable[str] = None,
+    include_paths: Optional[Iterable[str]] = None,
     loglevel: Optional[int] = None,
     qsize: int = 1000,
     **kwargs: Any,
@@ -129,7 +129,7 @@ def setup(
     workers: int = 4,
     max_queue_size: int = 1000,
     loglevel: Optional[int] = None,
-    **kwargs,
+    **kwargs: Any,
 ) -> None:
     sentry_handler = handler_from_dsn(
         dsn=dsn, workers=workers, qsize=max_queue_size, loglevel=loglevel, **kwargs

@@ -523,3 +523,49 @@ class TestPrometheusMonitor:
         monitor.on_message_in(topic_partition, offset, event.message)
         monitor.on_stream_event_in(topic_partition, offset, stream, event)
         monitor.on_tp_commit({topic_partition: offset})
+
+
+# Every latency histogram in FaustMetrics observes milliseconds (see
+# Monitor.ms_since), so its bucket boundaries must be millisecond-scale too
+# (see faust-streaming/faust#260) -- otherwise real observations mostly land
+# in the +Inf overflow bucket instead of a meaningful bucket.
+LATENCY_HISTOGRAM_FIELDS = [
+    "events_runtime_latency",
+    "producer_send_latency",
+    "producer_error_send_latency",
+    "assign_latency",
+    "rebalance_done_consumer_latency",
+    "rebalance_done_latency",
+    "http_latency",
+    "consumer_commit_latency",
+]
+
+
+@pytest.mark.parametrize("field", LATENCY_HISTOGRAM_FIELDS)
+def test_latency_histograms_use_millisecond_scale_buckets(field: str) -> None:
+    from faust.sensors.prometheus import MS_LATENCY_BUCKETS
+
+    registry = CollectorRegistry()
+    metrics = FaustMetrics.create(registry, "test")
+    histogram = getattr(metrics, field)
+
+    # _upper_bounds always ends with +Inf; everything before it must match
+    # the millisecond-scale bucket boundaries exactly.
+    assert histogram._upper_bounds[:-1] == [float(b) for b in MS_LATENCY_BUCKETS]
+
+
+def test_millisecond_latency_observation_lands_in_a_real_bucket() -> None:
+    # A typical ~250ms latency must not be swallowed entirely by the +Inf
+    # overflow bucket -- it should land at/under the 250ms boundary.
+    registry = CollectorRegistry()
+    metrics = FaustMetrics.create(registry, "test")
+
+    metrics.events_runtime_latency.observe(250)
+
+    buckets = dict(
+        zip(
+            metrics.events_runtime_latency._upper_bounds,
+            metrics.events_runtime_latency._buckets,
+        )
+    )
+    assert buckets[250.0].get() == 1

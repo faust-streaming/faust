@@ -1,4 +1,5 @@
 # cython: language_level=3
+# cython: freethreading_compatible=True
 from asyncio import sleep
 from time import monotonic
 
@@ -6,6 +7,8 @@ from mode.utils.futures import maybe_async, notify
 
 from faust.exceptions import Skip
 from faust.types import ChannelT, EventT
+from faust.types.tuples import ack_lock
+from faust.utils.optin import cython_optimizations_enabled
 
 
 cdef class StreamIterator:
@@ -34,6 +37,7 @@ cdef class StreamIterator:
         object topics
         object acks_enabled_for
         object _skipped_value
+        bint cython_optimizations
 
     def __init__(self, object stream):
         self.stream = stream
@@ -52,6 +56,11 @@ cdef class StreamIterator:
         self.unacked = self.consumer._unacked_messages
         self.add_unacked = self.unacked.add
         self._skipped_value = self.stream._skipped_value
+        # Opt-in: see the `cython_optimizations` setting.  Read once here
+        # rather than per message, so the hot path costs a `bint` test.
+        # Via the helper, not `app.conf.<name>`, so that deprecating the
+        # setting does not emit a warning per stream -- see faust/utils/optin.py.
+        self.cython_optimizations = cython_optimizations_enabled(self.app.conf)
 
         if isinstance(self.channel, ChannelT):
             self.chan_is_channel = True
@@ -111,30 +120,39 @@ cdef class StreamIterator:
         last_stream_to_ack = False
         if do_ack and event is not None:
             message = event.message
-            if not message.acked:
-                refcount = message.refcount
-                refcount -= 1
-                if refcount < 0:
-                    refcount = 0
-                message.refcount = refcount
-                if not refcount:
-                    message.acked = True
-                    tp = message.tp
-                    offset = message.offset
-                    if self.acks_enabled_for(message.topic):
-                        committed = consumer._committed_offset[tp]
-                        try:
-                            if committed is None or offset >= committed:
-                                acked_index = consumer._acked_index[tp]
-                                if offset not in acked_index:
-                                    self.unacked.discard(message)
-                                    acked_index.add(offset)
-                                    acked_for_tp = consumer._acked[tp]
-                                    acked_for_tp.append(offset)
-                                    consumer._n_acked += 1
-                                    last_stream_to_ack = True
-                        finally:
-                            notify(consumer._waiting_for_ack)
+            # `ack_lock`, for the same reason the pure-Python twin takes it.
+            # This path inlines both `Message.ack` and `Consumer.ack` rather
+            # than calling them, so it does not inherit their locking and has
+            # to establish the same critical section itself -- otherwise the
+            # accelerated path would be the one that loses acks.
+            #
+            # The sensor callbacks below stay outside it: they are user code,
+            # they can be slow, and they do not touch the state being guarded.
+            with ack_lock:
+                if not message.acked:
+                    refcount = message.refcount
+                    refcount -= 1
+                    if refcount < 0:
+                        refcount = 0
+                    message.refcount = refcount
+                    if not refcount:
+                        message.acked = True
+                        tp = message.tp
+                        offset = message.offset
+                        if self.acks_enabled_for(message.topic):
+                            committed = consumer._committed_offset[tp]
+                            try:
+                                if committed is None or offset >= committed:
+                                    acked_index = consumer._acked_index[tp]
+                                    if offset not in acked_index:
+                                        self.unacked.discard(message)
+                                        acked_index.add(offset)
+                                        acked_for_tp = consumer._acked[tp]
+                                        acked_for_tp.append(offset)
+                                        consumer._n_acked += 1
+                                        last_stream_to_ack = True
+                            finally:
+                                notify(consumer._waiting_for_ack)
             tp = event.message.tp
             offset = event.message.offset
             self.on_stream_event_out(
@@ -188,11 +206,35 @@ cdef class StreamIterator:
             return None, channel_value, stream_state
 
     cdef object _try_get_quick_value(self):
+        # Returns (need_slow_get, value), matching how ``next()`` unpacks it.
+        #
+        # Two bugs used to cancel each other out here.  ``chan_queue_empty`` is
+        # the bound ``queue.empty`` *method*, not a call, so ``if
+        # self.chan_queue_empty`` tested a method object -- always truthy --
+        # and this always reported "queue empty, use the slow path".  That made
+        # the ``else`` unreachable, which hid the fact that it returned the
+        # bare value from ``get_nowait()`` instead of the (flag, value) pair
+        # the caller unpacks: had it ever run, ``next()`` would have raised
+        # TypeError, or silently mis-unpacked a two-element value into
+        # ``need_slow_get, channel_value``.
+        #
+        # Both are fixed together; fixing only the condition would activate the
+        # broken return.  streams.py has always had this right (``if
+        # chan_queue_empty():`` ... ``channel_value = chan_quick_get()``), so
+        # this restores the fast path the extension was meant to provide and
+        # brings the two implementations back into agreement.
+        #
+        # Behind the `cython_optimizations` setting, off by default: the
+        # repaired path has never run in production, so taking it is opt-in.
+        # Disabled, this reproduces the released behaviour exactly -- always
+        # reporting "use the slow path", never reaching `get_nowait()`.
         if self.chan_is_channel:
             if self.chan_errors:
                 raise self.chan_errors.popleft()
-            if self.chan_queue_empty:
+            if not self.cython_optimizations:
+                return (True, None)
+            if self.chan_queue_empty():
                 return (True, None)
             else:
-                return self.chan_quick_get()
+                return (False, self.chan_quick_get())
         return (True, None)

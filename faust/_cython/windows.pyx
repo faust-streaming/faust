@@ -1,4 +1,5 @@
 # cython: language_level=3
+# cython: freethreading_compatible=True
 from datetime import timedelta
 from libc.math cimport floor
 from faust.types import WindowT

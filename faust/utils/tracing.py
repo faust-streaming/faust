@@ -7,7 +7,10 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any, Callable, Optional, Tuple
 
-import opentracing
+try:
+    import opentracing
+except ImportError:  # pragma: no cover
+    from faust.utils import _opentracing as opentracing  # type: ignore
 from mode import shortlabel
 
 __all__ = [
@@ -41,7 +44,7 @@ def noop_span() -> opentracing.Span:
 
 
 def finish_span(
-    span: Optional[opentracing.Span], *, error: BaseException = None
+    span: Optional[opentracing.Span], *, error: Optional[BaseException] = None
 ) -> None:
     """Finish span, and optionally set error tag."""
     if span is not None:
@@ -66,7 +69,7 @@ def operation_name_from_fun(fun: Any) -> str:
 
 
 def traced_from_parent_span(
-    parent_span: opentracing.Span = None,
+    parent_span: Optional[opentracing.Span] = None,
     callback: Optional[Callable] = None,
     **extra_context: Any,
 ) -> Callable:
@@ -80,18 +83,24 @@ def traced_from_parent_span(
             parent = parent_span
             if parent is None:
                 parent = current_span()
-            if parent is not None:
-                child = parent.tracer.start_span(
-                    operation_name=operation_name,
-                    child_of=parent,
-                    tags={**extra_context, **more_context},
-                )
-                if callback is not None:
-                    callback(child)
-                on_exit = (_restore_span, (parent, child))
-                set_current_span(child)
-                return call_with_trace(child, fun, on_exit, *args, **kwargs)
-            return fun(*args, **kwargs)
+            # A child span can only come from the parent's own tracer, and
+            # not every span has one: ``getattr`` covers both "no parent at
+            # all" and "parent span carrying no tracer".  Tracing is
+            # instrumentation, so fall back to calling the wrapped function
+            # untraced instead of failing its caller.
+            tracer = getattr(parent, "tracer", None)
+            if tracer is None:
+                return fun(*args, **kwargs)
+            child = tracer.start_span(
+                operation_name=operation_name,
+                child_of=parent,
+                tags={**extra_context, **more_context},
+            )
+            if callback is not None:
+                callback(child)
+            on_exit = (_restore_span, (parent, child))
+            set_current_span(child)
+            return call_with_trace(child, fun, on_exit, *args, **kwargs)
 
         return _inner
 

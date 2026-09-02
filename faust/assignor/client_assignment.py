@@ -1,7 +1,7 @@
 """Client Assignment."""
 
 import copy
-from typing import List, Mapping, MutableMapping, Sequence, Set, Tuple, cast
+from typing import List, Mapping, MutableMapping, Optional, Sequence, Set, Tuple, cast
 
 from faust.models import Record
 from faust.types import TP
@@ -22,9 +22,9 @@ class CopartitionedAssignment:
 
     def __init__(
         self,
-        actives: Set[int] = None,
-        standbys: Set[int] = None,
-        topics: Set[str] = None,
+        actives: Optional[Set[int]] = None,
+        standbys: Optional[Set[int]] = None,
+        topics: Optional[Set[str]] = None,
     ) -> None:
         self.actives = actives or set()
         self.standbys = standbys or set()

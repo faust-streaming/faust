@@ -37,6 +37,7 @@ from mode import Service, ServiceT, Worker
 from mode.utils import text
 from mode.utils.compat import want_bytes
 from mode.utils.imports import import_from_cwd, symbol_by_name
+from mode.utils.loops import get_event_loop
 from mode.worker import exiting
 
 from faust.types import AppT, CodecArg, ModelT
@@ -145,7 +146,10 @@ faust_version: str = symbol_by_name("faust:__version__")
 # implement through decorators."
 # [from https://github.com/pallets/click/issues/108]
 class State:
-    app: Optional[AppT] = None
+    #: The ``-A``/``--app`` option: a string like ``proj.app``, never an
+    #: already-instantiated app (that one is stashed on the root
+    #: :class:`click.Context` instead, see ``_Group.make_context``).
+    app: Optional[str] = None
     quiet: bool = False
     debug: bool = False
     workdir: Optional[str] = None
@@ -153,7 +157,7 @@ class State:
     json: bool = False
     loop: Optional[str] = None
     logfile: Optional[str] = None
-    loglevel: Optional[int] = None
+    loglevel: Optional[str] = None
     blocking_timeout: Optional[float] = None
     console_port: Optional[int] = None
 
@@ -161,7 +165,7 @@ class State:
 def compat_option(
     *args: Any,
     state_key: str,
-    callback: Callable[[click.Context, click.Parameter, Any], Any] = None,
+    callback: Optional[Callable[[click.Context, click.Parameter, Any], Any]] = None,
     expose_value: bool = False,
     **kwargs: Any,
 ) -> Callable[[Any], click.Parameter]:
@@ -329,7 +333,12 @@ def prepare_app(app: AppT, name: Optional[str]) -> AppT:
     if app.conf._origin is None:
         app.conf._origin = name
     app.worker_init()
-    if app.conf.autodiscover:
+    # ``Settings.autodiscover`` is a ``Param`` descriptor, but one of the
+    # setting's *value* types is itself a callable, so mypy reads the class
+    # attribute as a method and tries to bind ``self`` to it instead of going
+    # through ``Param.__get__``.  Same workaround as
+    # ``Producer.__init__``/``producer_partitioner``.
+    if app.conf.autodiscover:  # type: ignore[misc]
         app.discover()
     app.worker_init_post_autodiscover()
 
@@ -413,9 +422,9 @@ class _Group(click.Group):
         info_name: str,
         args: str,
         app: Optional[AppT] = None,
-        parent: click.Context = None,
-        stdout: IO = None,
-        stderr: IO = None,
+        parent: Optional[click.Context] = None,
+        stdout: Optional[IO] = None,
+        stderr: Optional[IO] = None,
         side_effects: bool = True,
         **extra: Any,
     ) -> click.Context:
@@ -449,7 +458,7 @@ def cli(*args: Any, **kwargs: Any) -> None:  # pragma: no cover
 
 def _prepare_cli(
     ctx: click.Context,
-    app: Union[AppT, str],
+    app: Optional[str],
     quiet: bool,
     debug: bool,
     workdir: str,
@@ -502,10 +511,10 @@ class Command(abc.ABC):  # noqa: B024
 
     debug: bool
     quiet: bool
-    workdir: str
-    datadir: str
+    workdir: Optional[str]
+    datadir: Optional[str]
     json: bool
-    logfile: str
+    logfile: Optional[str]
     _loglevel: Optional[str]
     _blocking_timeout: Optional[float]
     _console_port: Optional[int]
@@ -622,7 +631,11 @@ class Command(abc.ABC):  # noqa: B024
 
     def run_using_worker(self, *args: Any, **kwargs: Any) -> NoReturn:
         """Execute command using :class:`faust.Worker`."""
-        loop = asyncio.get_event_loop_policy().get_event_loop()
+        # ``get_event_loop_policy().get_event_loop()`` raises on Python 3.14
+        # when no loop is current, and nothing has created one by this point:
+        # declaring agents and tables no longer resolves a loop.  mode's
+        # helper keeps the historical get-or-create behaviour across versions.
+        loop = get_event_loop()
         args = self.args + args
         kwargs = {**self.kwargs, **kwargs}
         service = self.as_service(loop, *args, **kwargs)
@@ -641,7 +654,7 @@ class Command(abc.ABC):  # noqa: B024
         return Service.from_awaitable(
             self.execute(*args, **kwargs),
             name=type(self).__name__,
-            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
+            loop=loop or get_event_loop(),
         )
 
     def worker_for_service(
@@ -660,7 +673,7 @@ class Command(abc.ABC):  # noqa: B024
             console_port=self.console_port,
             redirect_stdouts=self.redirect_stdouts or False,
             redirect_stdouts_level=self.redirect_stdouts_level,
-            loop=loop or asyncio.get_event_loop_policy().get_event_loop(),
+            loop=loop or get_event_loop(),
             daemon=self.daemon,
         )
 
@@ -715,7 +728,13 @@ class Command(abc.ABC):  # noqa: B024
         max_width = max(table.column_max_width(1), 10)
         return "\n".join(wrap(text, max_width))
 
-    def say(self, message: str, file: IO = None, err: IO = None, **kwargs: Any) -> None:
+    def say(
+        self,
+        message: str,
+        file: Optional[IO] = None,
+        err: Optional[IO] = None,
+        **kwargs: Any,
+    ) -> None:
         """Print something to stdout (or use ``file=stderr`` kwarg).
 
         Note:
@@ -819,8 +838,8 @@ class AppCommand(Command):
         self,
         ctx: click.Context,
         *args: Any,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(ctx)
@@ -831,11 +850,19 @@ class AppCommand(Command):
         self.key_serializer = key_serializer or self.app.conf.key_serializer
         self.value_serializer = value_serializer or self.app.conf.value_serializer
 
-    def _finalize_app(self, app: AppT) -> AppT:
+    def _finalize_app(self, app: Optional[AppT]) -> AppT:
         if app is not None:
             return self._finalize_concrete_app(app)
         else:
-            return self._app_from_str(self.state.app)
+            # XXX ``_app_from_str`` returns None for ``require_app = False``
+            # commands (see faust/cli/completion.py) that were invoked without
+            # ``-A``, so this really can hand back None -- and
+            # ``AppCommand.__init__`` dereferences ``self.app.conf``
+            # unconditionally right after, raising ``AttributeError: 'NoneType'
+            # object has no attribute 'conf'``.  Real bug; fixing it means
+            # deciding what such commands should do without an app, which is
+            # out of scope for a typing pass.
+            return self._app_from_str(self.state.app)  # type: ignore[return-value]
 
     def _app_from_str(self, appstr: Optional[str] = None) -> Optional[AppT]:
         if appstr:
@@ -996,13 +1023,16 @@ class AppCommand(Command):
 
 def call_command(
     command: str,
-    args: List[str] = None,
-    stdout: IO = None,
-    stderr: IO = None,
+    args: Optional[List[str]] = None,
+    stdout: Optional[IO] = None,
+    stderr: Optional[IO] = None,
     side_effects: bool = False,
     **kwargs: Any,
-) -> Tuple[int, IO, IO]:
-    exitcode: int = 0
+) -> Tuple[Union[int, str, None], IO, IO]:
+    # The exit code is whatever ``SystemExit`` carried, and that is not
+    # necessarily an int: ``sys.exit()`` also accepts None (success) or a
+    # string (message printed to stderr, exit status 1).
+    exitcode: Union[int, str, None] = 0
     if stdout is None:
         stdout = io.StringIO()
     if stderr is None:

@@ -8,6 +8,17 @@ fi
 
 set -x
 
-${PREFIX}python setup.py sdist bdist_wheel
+# `python -m build`, not `setup.py sdist bdist_wheel`.  The direct invocation
+# needs setuptools importable from the interpreter running it, which a Python
+# 3.12+ environment does not provide unless something installed it (PEP 632
+# removed distutils and `ensurepip` stopped seeding setuptools with it), so it
+# failed with `ModuleNotFoundError: No module named 'setuptools'` before
+# building anything.  `build` provisions the backend itself from
+# `[build-system].requires`.
+#
+# It also names the sdist by the normalized project name
+# (`faust_streaming-*.tar.gz`), which PyPI requires under PEP 625 -- the same
+# reason the release workflow's sdist job already uses it.
+${PREFIX}python -m build
 ${PREFIX}twine check dist/*
 # ${PREFIX}mkdocs build

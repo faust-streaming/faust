@@ -135,7 +135,7 @@ class View:
         return self.web.url_for(view_name, **kwargs)
 
     def url_for(
-        self, view_name: str, _base_url: Union[str, URL] = None, **kwargs: Any
+        self, view_name: str, _base_url: Optional[Union[str, URL]] = None, **kwargs: Any
     ) -> URL:
         """Return the canonical URL for view by name.
 
@@ -201,7 +201,7 @@ class View:
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create text response, using "text/plain" content-type."""
         return self.web.text(
@@ -219,7 +219,7 @@ class View:
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create HTML response from string, ``text/html`` content-type."""
         return self.web.html(
@@ -237,7 +237,7 @@ class View:
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create new JSON response.
 
@@ -261,7 +261,7 @@ class View:
         content_type: Optional[str] = None,
         status: int = 200,
         reason: Optional[str] = None,
-        headers: MutableMapping = None,
+        headers: Optional[MutableMapping] = None,
     ) -> Response:
         """Create new ``bytes`` response - for binary data."""
         return self.web.bytes(
@@ -301,7 +301,11 @@ class View:
         return self.error(404, reason, **kwargs)
 
     def error(
-        self, status: int, reason: str, headers: MutableMapping = None, **kwargs: Any
+        self,
+        status: int,
+        reason: str,
+        headers: Optional[MutableMapping] = None,
+        **kwargs: Any,
     ) -> Response:
         """Create error JSON response."""
         return self.json({"error": reason, **kwargs}, status=status, headers=headers)

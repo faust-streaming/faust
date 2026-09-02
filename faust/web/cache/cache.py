@@ -27,7 +27,7 @@ class Cache(CacheT):
         timeout: Optional[Seconds] = None,
         include_headers: bool = False,
         key_prefix: Optional[str] = None,
-        backend: Union[Type[CacheBackendT], str] = None,
+        backend: Optional[Union[Type[CacheBackendT], str]] = None,
         **kwargs: Any,
     ) -> None:
         self.timeout = timeout

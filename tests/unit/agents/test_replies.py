@@ -254,7 +254,12 @@ class Test_ReplyConsumer:
         topic = c._reply_topic("foo")
         assert topic.get_topic_name() == "foo"
         assert topic.partitions == 1
-        assert topic.replicas == 0
+        # Must not hardcode 0: most brokers reject a replication factor of
+        # 0 outright (InvalidReplicationFactorError, see
+        # faust-streaming/faust#76). Use the app's configured default
+        # instead, consistent with every other topic faust creates.
+        assert topic.replicas == app.conf.topic_replication_factor
+        assert topic.replicas > 0
         assert topic.deleting
         assert topic.retention == app.conf.reply_expires
         assert topic.value_type is ReqRepResponse

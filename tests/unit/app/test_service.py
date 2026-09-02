@@ -79,6 +79,7 @@ class Test_AppService:
     async def test_on_started(self, *, app):
         app._wait_for_table_recovery_completed = AsyncMock(return_value=True)
         app.on_started_init_extra_tasks = AsyncMock(name="osiet")
+        app.on_started_init_web_server = AsyncMock(name="osiws")
         app.on_started_init_extra_services = AsyncMock(name="osies")
         app.on_startup_finished = None
         app._wait_for_table_recovery_completed.return_value = True
@@ -88,6 +89,7 @@ class Test_AppService:
         await app.on_started()
 
         app.on_started_init_extra_tasks.assert_called_once_with()
+        app.on_started_init_web_server.assert_called_once_with()
         app.on_started_init_extra_services.assert_called_once_with()
 
         app.on_startup_finished = AsyncMock(name="on_startup_finished")
@@ -140,6 +142,31 @@ class Test_AppService:
         app.add_runtime_dependency.assert_called_once_with(service1)
         assert app._extra_service_instances == [service1]
         await app.on_started_init_extra_services()  # noop
+
+    @pytest.mark.asyncio
+    async def test_on_started_init_web_server(self, *, app):
+        service = Mock(name="web_service", autospec=Service)
+        app._web_server_service = service
+        app._web_server_service_instance = None
+        app.on_init_extra_service = AsyncMock(return_value=service)
+
+        await app.on_started_init_web_server()
+
+        app.on_init_extra_service.assert_called_once_with(service)
+        assert app._web_server_service_instance is service
+        await app.on_started_init_web_server()
+        app.on_init_extra_service.assert_called_once_with(service)
+
+    @pytest.mark.asyncio
+    async def test_on_started_init_web_server_honors_web_enabled(self, *, app):
+        service = Mock(name="web_service", autospec=Service)
+        app._web_server_service = service
+        app.boot_strategy.enable_web = False
+        app.on_init_extra_service = AsyncMock()
+
+        await app.on_started_init_web_server()
+
+        app.on_init_extra_service.assert_not_called()
 
     def test_prepare_subservice(self, *, app):
         service = OtherService()

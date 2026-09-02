@@ -15,6 +15,7 @@ from typing import (
     Optional,
     Set,
     Type,
+    Union,
 )
 
 from mode import Service
@@ -107,7 +108,13 @@ class ChangeloggedObjectManager(Store):
         """Set the last persisted offset for changelog topic partition."""
         self.storage.set_persisted_offset(tp, offset)
 
-    async def on_rebalance(
+    # XXX This override is signature-incompatible with StoreT.on_rebalance /
+    # Store.on_rebalance, which take (assigned, revoked, newly_assigned,
+    # generation_id=0).  This class takes a leading `table` argument instead and
+    # forwards it on, so any caller holding a StoreT will call it wrongly.  This
+    # is a real defect, not intended design; reconciling it changes runtime
+    # behaviour and is out of scope for a typing pass.
+    async def on_rebalance(  # type: ignore[override]
         self,
         table: CollectionT,
         assigned: Set[TP],
@@ -115,7 +122,15 @@ class ChangeloggedObjectManager(Store):
         newly_assigned: Set[TP],
     ) -> None:
         """Call when cluster is rebalancing."""
-        await self.storage.on_rebalance(table, assigned, revoked, newly_assigned)
+        # XXX Same defect on the forwarding side: `table` is passed as the
+        # `assigned` argument of the underlying store and every later argument
+        # is shifted by one.
+        await self.storage.on_rebalance(
+            table,  # type: ignore[arg-type]
+            assigned,
+            revoked,
+            newly_assigned,  # type: ignore[arg-type]
+        )
 
     async def on_recovery_completed(
         self, active_tps: Set[TP], standby_tps: Set[TP]
@@ -168,13 +183,17 @@ class ChangeloggedObjectManager(Store):
             self.set_persisted_offset(tp, offset)
 
     async def backup_partition(
-        self, tp, flush: bool = True, purge: bool = False, keep: int = 1
+        self,
+        tp: Union[TP, int],
+        flush: bool = True,
+        purge: bool = False,
+        keep: int = 1,
     ) -> None:
         raise NotImplementedError
 
     def restore_backup(
         self,
-        tp,
+        tp: Union[TP, int],
         latest: bool = True,
         backup_id: int = 0,
     ) -> None:

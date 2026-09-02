@@ -138,8 +138,8 @@ class Event(EventT):
         timestamp: Optional[float] = None,
         headers: Any = USE_EXISTING_HEADERS,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -173,8 +173,8 @@ class Event(EventT):
         timestamp: Optional[float] = None,
         headers: Any = USE_EXISTING_HEADERS,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -204,14 +204,14 @@ class Event(EventT):
     async def _send(
         self,
         channel: Union[str, ChannelT],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
         force: bool = False,
     ) -> Awaitable[RecordMetadata]:
@@ -232,14 +232,14 @@ class Event(EventT):
     def _attach(
         self,
         channel: Union[ChannelT, str],
-        key: K = None,
-        value: V = None,
+        key: Optional[K] = None,
+        value: Optional[V] = None,
         partition: Optional[int] = None,
         timestamp: Optional[float] = None,
-        headers: HeadersArg = None,
+        headers: Optional[HeadersArg] = None,
         schema: Optional[SchemaT] = None,
-        key_serializer: CodecArg = None,
-        value_serializer: CodecArg = None,
+        key_serializer: Optional[CodecArg] = None,
+        value_serializer: Optional[CodecArg] = None,
         callback: Optional[MessageSentCallback] = None,
     ) -> Awaitable[RecordMetadata]:
         return cast(_App, self.app)._attachments.put(
@@ -273,9 +273,9 @@ class Event(EventT):
 
     async def __aexit__(
         self,
-        _exc_type: Type[BaseException] = None,
-        _exc_val: BaseException = None,
-        _exc_tb: TracebackType = None,
+        _exc_type: Optional[Type[BaseException]] = None,
+        _exc_val: Optional[BaseException] = None,
+        _exc_tb: Optional[TracebackType] = None,
     ) -> Optional[bool]:
         self.ack()
         return None

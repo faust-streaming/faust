@@ -50,7 +50,7 @@ def patch_aiohttp_session() -> None:
 
         @no_type_check
         def _faust_trace_configs(
-            self, configs: List[TraceConfig] = None
+            self, configs: Optional[List[TraceConfig]] = None
         ) -> List[TraceConfig]:
             if configs is None:
                 configs = []

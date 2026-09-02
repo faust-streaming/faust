@@ -1,1 +1,5 @@
-mypy>=0.750
+# Pinned for the same reason as the formatters in test.txt: a new mypy release
+# adds checks, which would turn an otherwise-unchanged tree red.  Bump it
+# deliberately, together with whatever ratchet-list changes the new version
+# demands (see [[tool.mypy.overrides]] in pyproject.toml).
+mypy==2.3.0

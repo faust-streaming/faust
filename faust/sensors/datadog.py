@@ -49,7 +49,7 @@ class DatadogStatsClient:
         self.sanitize_re = re.compile(r"[^0-9a-zA-Z_]")
         self.re_substitution = "_"
 
-    def gauge(self, metric: str, value: float, labels: Dict = None) -> None:
+    def gauge(self, metric: str, value: float, labels: Optional[Dict] = None) -> None:
         self.client.gauge(
             metric,
             value=value,
@@ -57,7 +57,9 @@ class DatadogStatsClient:
             sample_rate=self.rate,
         )
 
-    def increment(self, metric: str, value: float = 1.0, labels: Dict = None) -> None:
+    def increment(
+        self, metric: str, value: float = 1.0, labels: Optional[Dict] = None
+    ) -> None:
         self.client.increment(
             metric,
             value=value,
@@ -69,7 +71,9 @@ class DatadogStatsClient:
         """Statsd compatibility."""
         self.increment(metric, value=count)
 
-    def decrement(self, metric: str, value: float = 1.0, labels: Dict = None) -> float:
+    def decrement(
+        self, metric: str, value: float = 1.0, labels: Optional[Dict] = None
+    ) -> float:
         return self.client.decrement(  # type: ignore
             metric,
             value=value,
@@ -81,7 +85,7 @@ class DatadogStatsClient:
         """Statsd compatibility."""
         self.decrement(metric, value=count)
 
-    def timing(self, metric: str, value: float, labels: Dict = None) -> None:
+    def timing(self, metric: str, value: float, labels: Optional[Dict] = None) -> None:
         self.client.timing(  # type: ignore
             metric,
             value=value,
@@ -92,7 +96,7 @@ class DatadogStatsClient:
     def timed(
         self,
         metric: Optional[str] = None,
-        labels: Dict = None,
+        labels: Optional[Dict] = None,
         use_ms: Optional[bool] = None,
     ) -> float:
         return self.client.timed(  # type: ignore
@@ -102,7 +106,9 @@ class DatadogStatsClient:
             use_ms=use_ms,
         )
 
-    def histogram(self, metric: str, value: float, labels: Dict = None) -> None:
+    def histogram(
+        self, metric: str, value: float, labels: Optional[Dict] = None
+    ) -> None:
         self.client.histogram(  # type: ignore
             metric,
             value=value,
@@ -178,7 +184,12 @@ class DatadogMonitor(Monitor):
         return state
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         super().on_stream_event_out(tp, offset, stream, event, state)
@@ -331,7 +342,7 @@ class DatadogMonitor(Monitor):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         super().on_web_request_end(app, request, response, state, view=view)

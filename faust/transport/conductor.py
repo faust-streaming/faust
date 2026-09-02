@@ -164,8 +164,15 @@ class ConductorCompiler:  # pragma: no cover
                             )
                         delivered.add(chan)
                     if full:
-                        for _, dest_chan in full:
-                            on_topic_buffer_full(dest_chan)
+                        for _ in full:
+                            # ``tp``, not the channel: the sensor takes a
+                            # ``TP`` (as ``on_pressure_high`` above passes),
+                            # and ``Monitor.topic_buffer_full`` is a
+                            # ``Counter[TP]``.  Passing the channel here keyed
+                            # part of that counter by channel instead, so the
+                            # same partition was counted under two different
+                            # keys depending on which path reported it.
+                            on_topic_buffer_full(tp)
                         await asyncio.wait(
                             [
                                 asyncio.ensure_future(dest_chan.put(dest_event))

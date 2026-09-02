@@ -39,7 +39,7 @@ class CredentialsT:
 CredentialsArg = Union[CredentialsT, ssl.SSLContext]
 
 
-def to_credentials(obj: CredentialsArg = None) -> Optional[CredentialsT]:
+def to_credentials(obj: Optional[CredentialsArg] = None) -> Optional[CredentialsT]:
     if obj is not None:
         from faust.auth import SSLCredentials  # XXX :(
 

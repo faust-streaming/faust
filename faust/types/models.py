@@ -20,8 +20,6 @@ from typing import (
     cast,
 )
 
-from mode.utils.objects import cached_property
-
 from faust.exceptions import ValidationError  # XXX !!coupled
 
 from .codecs import CodecArg
@@ -146,7 +144,7 @@ class ModelT(base):  # type: ignore
     @classmethod
     @abc.abstractmethod
     def from_data(
-        cls, data: Any, *, preferred_type: Type["ModelT"] = None
+        cls, data: Any, *, preferred_type: Optional[Type["ModelT"]] = None
     ) -> "ModelT": ...
 
     @classmethod
@@ -155,15 +153,15 @@ class ModelT(base):  # type: ignore
         cls,
         s: bytes,
         *,
-        default_serializer: CodecArg = None,  # XXX use serializer
-        serializer: CodecArg = None,
+        default_serializer: Optional[CodecArg] = None,  # XXX use serializer
+        serializer: Optional[CodecArg] = None,
     ) -> "ModelT": ...
 
     @abc.abstractmethod
     def __init__(self, *args: Any, **kwargs: Any) -> None: ...
 
     @abc.abstractmethod
-    def dumps(self, *, serializer: CodecArg = None) -> bytes: ...
+    def dumps(self, *, serializer: Optional[CodecArg] = None) -> bytes: ...
 
     @abc.abstractmethod
     def derive(self, *objects: "ModelT", **fields: Any) -> "ModelT": ...
@@ -206,10 +204,10 @@ class FieldDescriptorT(Generic[T]):
         type: Optional[Type[T]] = None,
         model: Optional[Type[ModelT]] = None,
         required: bool = True,
-        default: T = None,
-        parent: "FieldDescriptorT" = None,
+        default: Optional[T] = None,
+        parent: Optional["FieldDescriptorT"] = None,
         exclude: Optional[bool] = None,
-        date_parser: Callable[[Any], datetime] = None,
+        date_parser: Optional[Callable[[Any], datetime]] = None,
         **kwargs: Any,
     ) -> None:
         # we have to do this in __init__ or mypy will think
@@ -252,13 +250,18 @@ class FieldDescriptorT(Generic[T]):
     @abc.abstractmethod
     def ident(self) -> str: ...
 
-    @cached_property
-    @abc.abstractmethod
-    def related_models(self) -> Set[Type[ModelT]]: ...
+    #: Model types reachable from this field's type expression.
+    #:
+    #: Declared as a plain annotation rather than a cached_property:
+    #: mode's cached_property defines __set__, so it is a *data* descriptor
+    #: and intercepts every read even after the value is cached.  Both of
+    #: these are set as ordinary instance attributes by
+    #: FieldDescriptor.on_model_attached(), and lazy_coercion is read on
+    #: every single model field access.
+    related_models: Set[Type[ModelT]]
 
-    @cached_property
-    @abc.abstractmethod
-    def lazy_coercion(self) -> bool: ...
+    #: Set when reading this field has to coerce the value on access.
+    lazy_coercion: bool
 
 
 # XXX See top of module!  We redefine with actual ModelT for Sphinx,

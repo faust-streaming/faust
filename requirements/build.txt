@@ -1,0 +1,41 @@
+# The build toolchain, installable into the ambient interpreter.
+#
+# `pip install .` does not need this file: PEP 517 build isolation reads
+# `[build-system].requires` from pyproject.toml and provisions those packages
+# into a throwaway environment that is discarded once the wheel is built.
+# Nothing they contain is left behind on the interpreter that ran pip.
+#
+# Anything that drives the build *directly* does need it -- notably
+# `python setup.py build_ext --inplace`, which is how the compiled extensions
+# end up next to the .pyx files in the source tree (the only place an
+# `import faust` from the repository root will find them; a build into
+# site-packages is never imported by the test suite).
+#
+# Two failure modes make this worth pinning down rather than leaving to
+# whatever the interpreter happens to ship:
+#
+# * setuptools is no longer bundled.  Since Python 3.12 removed distutils
+#   (PEP 632), `ensurepip` stopped seeding setuptools into new environments,
+#   so a bare 3.12+ interpreter -- including the ones `actions/setup-python`
+#   provides -- has none.  `setup.py` then dies at its first import with
+#   `ModuleNotFoundError: No module named 'setuptools'`.
+#
+# * A missing Cython fails *silently*.  setup.py falls back to compiling
+#   pre-generated .c files, which this repository does not track, and the
+#   `ve_build_ext` fallback swallows the resulting error and re-runs setup
+#   with no `ext_modules` at all.  `build_ext --inplace` then exits 0 having
+#   built nothing, and the breakage only surfaces much later as accelerated
+#   imports quietly falling back to pure Python.
+#
+# Keep in step with `[build-system].requires` in pyproject.toml.
+setuptools>=69
+setuptools_scm[toml]
+wheel
+cython>=0.29; implementation_name == 'cpython'
+cython>=3.0.0; implementation_name == 'cpython' and python_version >= '3.12'
+# 3.1 is the first Cython that understands `freethreading_compatible`, and
+# older releases ignore the directive instead of failing -- so an environment
+# built from this file could otherwise compile extensions that re-enable the
+# GIL on a free-threaded interpreter, reporting it only as a RuntimeWarning.
+# See the longer note beside the same line in `[build-system].requires`.
+cython>=3.1; implementation_name == 'cpython' and python_version >= '3.13'

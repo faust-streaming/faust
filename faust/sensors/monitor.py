@@ -229,30 +229,30 @@ class Monitor(Sensor, KeywordReduce):
         max_send_latency_history: Optional[int] = None,
         max_assignment_latency_history: Optional[int] = None,
         messages_sent: int = 0,
-        tables: MutableMapping[str, TableState] = None,
+        tables: Optional[MutableMapping[str, TableState]] = None,
         messages_active: int = 0,
         events_active: int = 0,
         messages_received_total: int = 0,
-        messages_received_by_topic: Counter[str] = None,
+        messages_received_by_topic: Optional[Counter[str]] = None,
         events_total: int = 0,
-        events_by_stream: Counter[StreamT] = None,
-        events_by_task: Counter[asyncio.Task] = None,
-        events_runtime: Deque[float] = None,
-        commit_latency: Deque[float] = None,
-        send_latency: Deque[float] = None,
-        assignment_latency: Deque[float] = None,
+        events_by_stream: Optional[Counter[StreamT]] = None,
+        events_by_task: Optional[Counter[asyncio.Task]] = None,
+        events_runtime: Optional[Deque[float]] = None,
+        commit_latency: Optional[Deque[float]] = None,
+        send_latency: Optional[Deque[float]] = None,
+        assignment_latency: Optional[Deque[float]] = None,
         events_s: int = 0,
         messages_s: int = 0,
         events_runtime_avg: float = 0.0,
-        topic_buffer_full: Counter[TP] = None,
+        topic_buffer_full: Optional[Counter[TP]] = None,
         rebalances: Optional[int] = None,
-        rebalance_return_latency: Deque[float] = None,
-        rebalance_end_latency: Deque[float] = None,
+        rebalance_return_latency: Optional[Deque[float]] = None,
+        rebalance_end_latency: Optional[Deque[float]] = None,
         rebalance_return_avg: float = 0.0,
         rebalance_end_avg: float = 0.0,
         time: Callable[[], float] = monotonic,
-        http_response_codes: Counter[HTTPStatus] = None,
-        http_response_latency: Deque[float] = None,
+        http_response_codes: Optional[Counter[HTTPStatus]] = None,
+        http_response_latency: Optional[Deque[float]] = None,
         http_response_latency_avg: float = 0.0,
         **kwargs: Any,
     ) -> None:
@@ -484,7 +484,12 @@ class Monitor(Sensor, KeywordReduce):
         }
 
     def on_stream_event_out(
-        self, tp: TP, offset: int, stream: StreamT, event: EventT, state: Dict = None
+        self,
+        tp: TP,
+        offset: int,
+        stream: StreamT,
+        event: EventT,
+        state: Optional[Dict] = None,
     ) -> None:
         """Call when stream is done processing an event."""
         if state is not None:
@@ -626,7 +631,7 @@ class Monitor(Sensor, KeywordReduce):
         self._clear_topic_related_sensors()
 
     def on_web_request_start(
-        self, app: AppT, request: web.Request, *, view: web.View = None
+        self, app: AppT, request: web.Request, *, view: Optional[web.View] = None
     ) -> Dict:
         """Web server started working on request."""
         return {"time_start": self.time()}
@@ -638,7 +643,7 @@ class Monitor(Sensor, KeywordReduce):
         response: Optional[web.Response],
         state: Dict,
         *,
-        view: web.View = None,
+        view: Optional[web.View] = None,
     ) -> None:
         """Web server finished working on request."""
         status_code = HTTPStatus(response.status if response is not None else 500)

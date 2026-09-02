@@ -111,7 +111,7 @@ class Blueprint(BlueprintT):
         timeout: Optional[Seconds] = None,
         include_headers: bool = False,
         key_prefix: Optional[str] = None,
-        backend: Union[Type[CacheBackendT], str] = None,
+        backend: Optional[Union[Type[CacheBackendT], str]] = None,
     ) -> CacheT:
         """Cache API."""
         if key_prefix is None:
@@ -123,7 +123,7 @@ class Blueprint(BlueprintT):
         uri: str,
         *,
         name: Optional[str] = None,
-        cors_options: Mapping[str, ResourceOptions] = None,
+        cors_options: Optional[Mapping[str, ResourceOptions]] = None,
         base: Type[View] = View,
     ) -> RouteDecoratorRet:
         """Create route by decorating handler or view class."""
