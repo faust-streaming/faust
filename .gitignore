@@ -38,6 +38,8 @@ htmlcov/
 faust/_cython/*.c
 faust/models/_cython/*.c
 faust/transport/_cython/*.c
+faust/utils/_cython/*.c
+faust/sensors/_cython/*.c
 
 # virtualenvs
 /env
