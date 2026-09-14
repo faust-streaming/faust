@@ -1,22 +1,22 @@
 ---
-# For most projects, this workflow file will not need changing; you simply need
-# to commit it to your repository.
+# CodeQL security analysis.
 #
-# You may wish to alter this file to override the set of languages analyzed,
-# or to provide custom queries or build logic.
-#
-# ******** NOTE ********
-# We have attempted to detect the languages in your repository. Please check
-# the `language` matrix defined below to confirm you have the correct set of
-# supported CodeQL languages.
-#
+# `languages: python` is the whole of the build configuration: faust's C
+# extensions are generated Cython, which CodeQL does not analyse, so there is
+# nothing for the autobuild step to do and it is not run.
 name: CodeQL
 on:
   push:
     branches: [master]
+  # Only re-analyse a pull request when it actually changes Python.  A CodeQL
+  # run on a docs- or workflow-only branch re-derives the identical database
+  # for two minutes and reports the identical alerts; the scheduled and
+  # master-push runs below keep the security dashboard current regardless.
   pull_request:
-    # The branches below must be a subset of the branches above
     branches: [master]
+    paths:
+      - '**/*.py'
+      - .github/workflows/codeql-analysis.yml
   schedule:
     - cron: 19 10 * * 6
 # Supersede a pull request's analysis when it gets a new push; scheduled and
@@ -25,52 +25,34 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
 jobs:
   analyze:
-    name: Analyze
+    # Spelled out rather than derived from a one-entry `language` matrix, which
+    # is all that matrix ever did.  The rendered check name is unchanged, so
+    # any branch protection referring to it keeps matching.
+    name: Analyze (python)
     runs-on: ubuntu-latest
     permissions:
       actions: read
       contents: read
       security-events: write
-    strategy:
-      fail-fast: false
-      matrix:
-        language: [python]
-        # CodeQL supports [ 'cpp', 'csharp', 'go', 'java', 'javascript', 'python' ]
-        # Learn more:
-        # https://docs.github.com/en/free-pro-team@latest/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#changing-the-languages-that-are-analyzed
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-    # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: ${{ matrix.language }}
+          languages: python
           # Cache the dependencies the Python extractor installs to resolve
           # imports, instead of leaving it to a server-side feature flag.
           dependency-caching: true
-        # If you wish to specify custom queries, you can do so here or in a config file.
-        # By default, queries listed here will override any specified in a config file.
-        # Prefix the list here with "+" to use these queries and those in the config file.
-        # queries: ./path/to/local/query, your-org/your-repo/queries@main
-
-    # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-    # If this step fails, then you should remove it and run the build manually (see below)
+      # Kept for Python: autobuild is what installs the project's dependencies
+      # so the extractor can resolve imports, and `dependency-caching` above
+      # caches exactly that work.  Dropping it would leave unresolved imports
+      # and quietly weaken the analysis.
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
-
-    # ℹ️ Command-line programs to run using the OS shell.
-    # 📚 https://git.io/JvXDl
-
-    # ✏️ If the Autobuild fails above, remove it and uncomment the following three lines
-    #    and modify them (or add more) to build your code if your project
-    #    uses a compiled language
-
-    #- run: |
-    #   make bootstrap
-    #   make release
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

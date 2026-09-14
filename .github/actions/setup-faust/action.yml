@@ -1,0 +1,145 @@
+---
+name: Set up a faust environment
+description: >
+  Provision an interpreter and install faust's dependencies with uv.
+
+  Every job in the CI/CD workflow needs the same three things -- an
+  interpreter, the dependency set, and (usually) faust itself -- and used to
+  spell all three out inline.  That was eight near-identical copies of the
+  same twenty lines, which is how the pip cache key and the requirements list
+  drifted apart between jobs in the first place.  Keeping it here means there
+  is exactly one place to fix when any of it changes.
+
+  The caller must run `actions/checkout` first: GitHub resolves a local
+  `uses: ./.github/actions/...` from the workspace, so this file does not
+  exist yet until the repository is on disk.
+
+inputs:
+  python-version:
+    description: >
+      Interpreter to provision, spelled as `actions/setup-python` spells it
+      (`3.12`, `3.14t`, `pypy3.11`, ...).
+    required: true
+  requirements:
+    description: >
+      Requirement files to install, one per line.  Passed to uv as `-r` in a
+      single resolution, so conflicting pins across files fail loudly here
+      rather than silently depending on install order.
+    required: false
+    default: requirements/test.txt
+  install:
+    description: >
+      How to install faust itself: `wheel` (a normal build+install),
+      `editable` (registers the distribution metadata against the source
+      tree, which the free-threading job needs), or `none`.
+    required: false
+    default: wheel
+  build-ext:
+    description: >
+      Build the Cython extensions in place after installing.  See the step
+      itself for why the in-place copy is the one that matters.
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      id: python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        # Required by the 3.15 rows: a bare `3.15` matches stable releases
+        # only and fails with "Version 3.15 was not found in the local cache".
+        # Safe for every other row -- it widens `3.X` to `~3.X.0-0`, and a
+        # pre-release only wins when no stable release satisfies the spec, so
+        # 3.10-3.14 still resolve to their newest stable patch.
+        allow-prereleases: true
+
+    - name: Set up uv
+      # Pinned to an exact tag, not a `v10` major alias: setup-uv stopped
+      # publishing floating major tags after v7, so `@v8`/`@v9`/`@v10` do not
+      # resolve at all ("unable to find version `v10`").  Dependabot's
+      # github-actions updater bumps this pin like any other.
+      uses: astral-sh/setup-uv@v10.0.0
+      with:
+        enable-cache: true
+        # uv's default glob (`**/*requirements*.txt`) matches
+        # requirements/requirements.txt and nothing else here, because `*`
+        # does not cross a `/` -- test.txt, ci.txt and the extras/ files would
+        # all miss.  Hash the same list every job installs from, so they share
+        # one cache entry per interpreter instead of each warming a partial
+        # one and none of them ever being invalidated by a moved pin.
+        cache-dependency-glob: |
+          requirements/*.txt
+          requirements/extras/*.txt
+
+    - name: Install dependencies
+      shell: bash
+      env:
+        # Install into the interpreter `setup-python` just provisioned, rather
+        # than into a uv-managed virtualenv the later steps would have to know
+        # to activate.
+        #
+        # UV_PYTHON names that interpreter by absolute path instead of letting
+        # uv search PATH.  The search is not equivalent: uv's discovery skips
+        # free-threaded interpreters unless the request explicitly asks for a
+        # `t` ABI, so on the 3.13t/3.14t legs it walked past the interpreter we
+        # had just installed and settled on Debian's /usr/bin/python3 -- which
+        # then failed as "externally managed", and would have been the *wrong
+        # interpreter* even if it had succeeded.  `python-path` is exactly what
+        # setup-python resolved, for every leg including pypy.
+        UV_SYSTEM_PYTHON: '1'
+        UV_PYTHON: ${{ steps.python.outputs.python-path }}
+        REQUIREMENTS: ${{ inputs.requirements }}
+        INSTALL: ${{ inputs.install }}
+      run: |
+        set -euo pipefail
+        # Carry the interpreter choice to any later step in the calling job
+        # that shells out to uv (the docs build does).
+        echo "UV_SYSTEM_PYTHON=1" >> "$GITHUB_ENV"
+        echo "UV_PYTHON=$UV_PYTHON" >> "$GITHUB_ENV"
+        args=()
+        while IFS= read -r req; do
+          [ -n "$req" ] || continue
+          args+=(-r "$req")
+        done <<< "$REQUIREMENTS"
+        uv pip install "${args[@]}"
+        case "$INSTALL" in
+          wheel)
+            uv pip install .
+            ;;
+          editable)
+            # Editable, unlike `wheel`.  pytest runs from the repository root,
+            # so `import faust` resolves to the source tree either way -- but
+            # the suite also needs the distribution *metadata* to exist,
+            # because `faust/__init__.py` calls `version("faust-streaming")`
+            # at import time.  An editable install registers that metadata
+            # against the tree the tests actually import, instead of a second
+            # copy in site-packages that nothing loads.
+            USE_CYTHON=1 uv pip install -e . --no-build-isolation
+            ;;
+          none)
+            ;;
+          *)
+            echo "::error::unknown install mode '$INSTALL'"
+            exit 1
+            ;;
+        esac
+
+    - name: Build the Cython extensions in place
+      # The install above compiles the extensions into site-packages, where
+      # the tests never see them: pytest runs from the repository root, so
+      # `import faust` resolves to the source tree, and every accelerated
+      # import sits behind `try: ... except ImportError`.  The fallback
+      # engages silently, so without this the Cython legs would differ from
+      # the pure-Python ones only in whether a build step succeeded -- the
+      # compiled code itself would never be executed by a single test.
+      #
+      # Building in place puts the .so files next to the .pyx files, which is
+      # what the source-tree import actually picks up.  It is nearly free:
+      # the objects were already compiled by the install above, so this only
+      # copies them out of build/lib.*/ into the tree.
+      if: inputs.build-ext == 'true'
+      shell: bash
+      run: USE_CYTHON=1 python setup.py build_ext --inplace

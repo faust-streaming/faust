@@ -23,8 +23,11 @@ omit =
     */faust/assignor/*
     */faust/transport/drivers/memory.py
 
-    # optional driver: only importable/tested with the ckafka extra installed
-    # (faust[ckafka]); not part of the CI test environment.
+    # optional driver (faust[ckafka]).  The CI matrix does now install the
+    # extra and run tests/unit/transport/drivers/test_confluent.py, but the
+    # driver stays out of the reported total: a contributor without
+    # confluent-kafka installed skips those tests, and counting the module
+    # would drop their local coverage by a couple of points for no reason.
     */faust/transport/drivers/confluent.py
 
     # tested by integration

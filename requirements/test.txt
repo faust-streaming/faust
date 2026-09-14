@@ -20,6 +20,10 @@ pytest-picked
 pytest-cov
 pytest-random-order>=0.5.4
 pytest-run-parallel>=0.10.0
+# Shards the suite across cores; see the note in scripts/tests.  Note this is
+# process-level parallelism and unrelated to pytest-run-parallel above, which
+# runs a single test on many *threads* to check free-threading safety.
+pytest-xdist>=3.0
 pytest<8
 python-dateutil>=2.8
 pytz>=2018.7
