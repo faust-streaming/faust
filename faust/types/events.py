@@ -34,7 +34,7 @@ T = TypeVar("T")
 class EventT(Generic[T], AsyncContextManager):
     app: _AppT
     key: K
-    value: V
+    value: T
     headers: Mapping
     message: Message
     acked: bool
