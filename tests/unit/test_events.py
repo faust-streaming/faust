@@ -141,6 +141,16 @@ class Test_Event:
             force=False,
         )
 
+    @pytest.mark.asyncio
+    async def test_forward__default_timestamp_preserved(self, *, event):
+        # With no timestamp argument, forward keeps the original event time
+        # so downstream windowing survives e.g. group_by.  See issue #427.
+        event._send = AsyncMock(name="event._send")
+        event.message.timestamp = 987.6
+        await event.forward(channel="chan")
+        # timestamp is the 5th positional argument to _send.
+        assert event._send.call_args.args[4] == 987.6
+
     def test_attach(self, *, event, app):
         callback = Mock(name="callback")
         schema = Mock(name="schema")
