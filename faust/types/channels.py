@@ -125,6 +125,11 @@ class ChannelT(AsyncIterator[_EventT[_T]]):
         self, fut: FutureMessage, wait: bool = True
     ) -> Awaitable[RecordMetadata]: ...
 
+    @abc.abstractmethod
+    async def _finalize_message(
+        self, fut: FutureMessage, result: RecordMetadata
+    ) -> FutureMessage: ...
+
     @stampede
     @abc.abstractmethod
     async def maybe_declare(self) -> None: ...

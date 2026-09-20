@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import random
 import string
 from contextlib import contextmanager
@@ -9,6 +11,7 @@ import opentracing
 import pytest
 from aiokafka.errors import CommitFailedError, IllegalStateError, KafkaError
 from aiokafka.structs import OffsetAndMetadata, TopicPartition
+from mode.threads import ServiceThread
 from mode.utils import text
 from mode.utils.futures import done_future
 from mode.utils.times import humanize_seconds_ago
@@ -1897,6 +1900,15 @@ class TestThreadedProducer(ProducerBaseTest):
             mocked_producer.stop.assert_called_once()
         finally:
             await threaded_producer.stop()
+            # mode's thread keepalive (``ServiceThread._wakeup_timer_in_thread``)
+            # ends each tick with ``run_coroutine_threadsafe(asyncio.sleep(0),
+            # parent_loop)``, and it gets one last tick out of the way as the
+            # thread stops.  That leaves a transient ``sleep()`` task on the
+            # parent loop which the autouse ``tasks_not_lingering`` fixture
+            # reports as "Left over tasks" if the loop never runs again --
+            # it did on the 3.14t leg, where the now-real teardown gives the
+            # keepalive room to fire.  One iteration is all the task needs.
+            await asyncio.sleep(0.1)
 
     @pytest.mark.asyncio
     async def test_publish_message(
@@ -1941,7 +1953,9 @@ class TestThreadedProducer(ProducerBaseTest):
                 wait=True,
                 fut_other=FutureMessage(
                     PendingMessage(
-                        channel=Mock(),
+                        # ``_finalize_message`` is a coroutine on every real
+                        # channel, so the stand-in has to be awaitable too.
+                        channel=Mock(_finalize_message=AsyncMock()),
                         key="Test",
                         value="Test",
                         partition=None,
@@ -1956,6 +1970,95 @@ class TestThreadedProducer(ProducerBaseTest):
             mocked_producer.send_and_wait.assert_called_once()
         finally:
             await threaded_producer.stop()
+
+    @pytest.mark.asyncio
+    async def test_publish_message_with_wait__completes_the_message(
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+        mocked_producer: Mock,
+        app,
+        loop,
+    ):
+        # Regression: the wait=True branch used to call
+        # ``fut.message.channel._on_published(message=..., state=...,
+        # producer=...)``.  ``Topic._on_published`` takes the send future as a
+        # required *positional* ``fut``, so that call raised TypeError for any
+        # real channel and ``publish_message(wait=True)`` could never succeed.
+        # ``test_publish_message_with_wait`` above does not catch it because
+        # its channel is a bare Mock, which accepts any call.
+        record_metadata = Mock(name="RecordMetadata")
+        mocked_producer.send_and_wait = AsyncMock(return_value=record_metadata)
+        threaded_producer.app.sensors = Mock(name="sensors")
+        callback = AsyncMock(name="callback")
+        await threaded_producer.start()
+        try:
+            fut = await threaded_producer.publish_message(
+                wait=True,
+                fut_other=FutureMessage(
+                    PendingMessage(
+                        channel=app.topic("test-publish-wait"),
+                        key=b"k",
+                        value=b"v",
+                        partition=None,
+                        timestamp=None,
+                        headers=None,
+                        key_serializer=None,
+                        value_serializer=None,
+                        callback=callback,
+                    )
+                ),
+            )
+            assert fut.result() is record_metadata
+            callback.assert_awaited_once_with(fut)
+            threaded_producer.app.sensors.on_send_completed.assert_called_once_with(
+                mocked_producer,
+                threaded_producer.app.sensors.on_send_initiated.return_value,
+                record_metadata,
+            )
+        finally:
+            await threaded_producer.stop()
+
+    def test_shutdown_thread_is_a_coroutine(self):
+        # Regression: this was a plain ``def`` overriding mode's
+        # ``async def ServiceThread._shutdown_thread``.  ``_serve()`` ends with
+        # ``finally: await self._shutdown_thread()``, so a sync override makes
+        # that ``await None`` -- TypeError on every shutdown of the thread.
+        assert inspect.iscoroutinefunction(ThreadedProducer._shutdown_thread)
+
+    @pytest.mark.asyncio
+    async def test_shutdown_thread__runs_mode_teardown(
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+    ):
+        # The old override scheduled on_thread_stop() with
+        # run_coroutine_threadsafe on the very loop that was about to stop, so
+        # mode's teardown never ran.  Awaiting the base is what makes it run.
+        threaded_producer._shutdown_initiated = False
+        with patch.object(ServiceThread, "_shutdown_thread", AsyncMock()) as base:
+            await threaded_producer._shutdown_thread()
+        # Awaited, not merely called: the bug being guarded against here is a
+        # coroutine that never gets awaited, which assert_called_once_with
+        # would happily accept.
+        base.assert_awaited_once_with()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_thread__already_initiated_still_sets_shutdown(
+        self,
+        *,
+        threaded_producer: ThreadedProducer,
+    ):
+        threaded_producer._shutdown_initiated = True
+        with (
+            patch.object(ServiceThread, "_shutdown_thread", AsyncMock()) as base,
+            patch.object(threaded_producer, "set_shutdown") as set_shutdown,
+        ):
+            await threaded_producer._shutdown_thread()
+        # on_thread_stop() must not run a second time, but the shutdown event
+        # still has to be set or stop() waits forever.
+        base.assert_not_called()
+        set_shutdown.assert_called_once_with()
 
 
 class TestTransport:
