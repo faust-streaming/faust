@@ -11,7 +11,7 @@ pytest-sugar
 build
 -r build.txt
 sphinx-autobuild
-sphinx2rst>=1.0
+sphinx2rst>=1.1.0
 tox>=2.3.1
 twine
 vulture
