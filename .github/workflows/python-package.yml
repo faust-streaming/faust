@@ -190,7 +190,7 @@ jobs:
             scripts/tests
           fi
       - name: Enforce coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
   test-freethreading:
