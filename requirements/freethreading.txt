@@ -29,7 +29,7 @@
 #     hypothesis' pure-Python API, which is unchanged across that boundary.
 #
 # Everything else in test.txt installs unmodified on both 3.13t and 3.14t.
-hypothesis>=3.31; python_version >= '3.14'
+hypothesis>=6.165.10; python_version >= '3.14'
 hypothesis>=3.31,<6.130; python_version < '3.14'
 freezegun>=0.3.11
 pytest-aiofiles>=0.2.0
