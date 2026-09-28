@@ -2159,3 +2159,17 @@ def test_ensure_aiokafka_TPset():
     actual = ensure_aiokafka_TPset({TP(topic="foo", partition=0)})
     assert actual == {TopicPartition("foo", 0)}
     assert all(isinstance(tp, TopicPartition) for tp in actual)
+
+
+@pytest.mark.parametrize(
+    "username,password",
+    [(None, None), (None, "bar"), ("foo", None)],
+)
+def test_credentials_to_aiokafka__sasl_plain_missing_credentials(username, password):
+    credentials = auth.SASLCredentials(
+        username=username, password=password, mechanism="PLAIN"
+    )
+    with pytest.raises(ImproperlyConfigured, match="broker_credentials") as exc:
+        credentials_to_aiokafka_auth(credentials)
+    assert "foo" not in str(exc.value)
+    assert "bar" not in str(exc.value)
