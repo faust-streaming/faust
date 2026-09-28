@@ -1580,6 +1580,43 @@ class TestProducer(ProducerBaseTest):
         p = producer._new_producer()
         assert isinstance(p, aiokafka.AIOKafkaProducer)
 
+    @pytest.mark.asyncio
+    @pytest.mark.conf(
+        processing_guarantee="exactly_once",
+        broker="kafka://localhost:9098",
+        broker_credentials=auth.SASLCredentials(
+            username="uname",
+            **{"pass" "word": "pw"},
+            mechanism="PLAIN",
+        ),
+    )
+    async def test_on_start__passes_sasl_plain_credentials(self, *, app):
+        producer = Producer(app.transport)
+        assert app.in_transaction is False
+        with patch("aiokafka.AIOKafkaProducer") as AIOKafkaProducer:
+            AIOKafkaProducer.return_value.start = AsyncMock()
+            await producer.on_start()
+            AIOKafkaProducer.assert_called_once_with(
+                bootstrap_servers=["localhost:9098"],
+                client_id=f"faust-{faust.__version__}",
+                acks=-1,
+                linger_ms=0,
+                max_batch_size=16384,
+                max_request_size=1000000,
+                compression_type=None,
+                security_protocol="SASL_PLAINTEXT",
+                partitioner=producer.partitioner,
+                request_timeout_ms=1200000,
+                metadata_max_age_ms=300000,
+                connections_max_idle_ms=540000,
+                sasl_mechanism="PLAIN",
+                sasl_plain_username="uname",
+                sasl_plain_password="pw",
+                ssl_context=None,
+                transactional_id=None,
+                **({"api_version": "auto"} if _AIOKAFKA_HAS_API_VERSION else {}),
+            )
+
     def test__producer_type(self, *, producer, app):
         assert producer._producer_type is aiokafka.AIOKafkaProducer
 
