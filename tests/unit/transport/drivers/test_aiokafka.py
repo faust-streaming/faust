@@ -1586,7 +1586,7 @@ class TestProducer(ProducerBaseTest):
         broker="kafka://localhost:9098",
         broker_credentials=auth.SASLCredentials(
             username="uname",
-            **{"pass" "word": "pw"},
+            password=("p" "w"),
             mechanism="PLAIN",
         ),
     )
