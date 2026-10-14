@@ -1702,6 +1702,15 @@ def credentials_to_aiokafka_auth(
                 "ssl_context": credentials.ssl_context,
             }
         elif isinstance(credentials, SASLCredentials):
+            if credentials.mechanism.value == "PLAIN" and (
+                credentials.username is None or credentials.password is None
+            ):
+                raise ImproperlyConfigured(
+                    "SASL/PLAIN requires both username and password in "
+                    "broker_credentials=SASLCredentials(...). "
+                    "Check the credentials configured on the App that owns "
+                    "the topic before creating its producer or consumer."
+                )
             return {
                 "security_protocol": credentials.protocol.value,
                 "sasl_mechanism": credentials.mechanism.value,
