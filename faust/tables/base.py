@@ -388,23 +388,10 @@ class Collection(Service, CollectionT):
             while timestamps and window.stale(timestamps[0], time.time()):
                 timestamp = heappop(timestamps)
                 triggered_windows = [
-                    # XXX bug: this lookup can never hit.
                     # ``_partition_timestamp_keys`` is keyed by
-                    # ``(partition, range_end)`` -- a ``(int, float)`` pair,
-                    # written that way in ``_maybe_set_key_ttl`` and read that
-                    # way in ``_maybe_del_key_ttl``.  Here it is looked up by
-                    # ``(partition, window_range)`` where ``window_range`` is
-                    # the ``(start, end)`` tuple, so no key ever matches and
-                    # ``triggered_windows`` is always ``[None, ...]``.  The
-                    # consequence is that ``window_data`` stays empty and
-                    # ``on_window_close`` never receives the aggregated window
-                    # data, only the raw per-key value.  The correct key is
-                    # ``(partition, window_range[1])``; that is a behaviour
-                    # change, so it is not made here and the type error is
-                    # only silenced.
-                    self._partition_timestamp_keys.get(
-                        (partition, window_range)  # type: ignore[arg-type]
-                    )
+                    # ``(partition, range_end)``, so look up the end of
+                    # each ``(start, end)`` range.
+                    self._partition_timestamp_keys.get((partition, window_range[1]))
                     for window_range in self._window_ranges(timestamp)
                 ]
                 keys_to_remove = self._partition_timestamp_keys.pop(
@@ -420,9 +407,22 @@ class Collection(Service, CollectionT):
                                 # it is not related to window's timestamp
                                 # windows are in format:
                                 # (key, (window_start, window_end))
-                                window_data.setdefault(processed_window[0], []).extend(
-                                    self.data.get(processed_window, [])
-                                )
+                                #
+                                # Only list values are aggregated across the
+                                # overlapping windows: a list of events is the
+                                # shape this exists to accumulate, and it is
+                                # the only one that can be concatenated without
+                                # inventing semantics.  A counter (``default=int``)
+                                # is not iterable and would raise here; a string
+                                # is iterable and would be shredded into
+                                # characters.  Those keys are left out of
+                                # ``window_data`` and delivered below as the raw
+                                # per-key value instead.
+                                window_value = self.data.get(processed_window)
+                                if isinstance(window_value, list):
+                                    window_data.setdefault(
+                                        processed_window[0], []
+                                    ).extend(window_value)
 
                     for key_to_remove in keys_to_remove:
                         value = self.data.pop(key_to_remove, None)

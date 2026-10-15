@@ -130,15 +130,10 @@ class SSLCredentials(Credentials):
         cadata: Optional[str] = None,
     ) -> None:
         if context is None:
+            if purpose is None:
+                purpose = ssl.Purpose.SERVER_AUTH
             context = ssl.create_default_context(
-                # XXX ``purpose`` defaults to None here, but
-                # ``ssl.create_default_context`` requires an ``ssl.Purpose``
-                # and raises ``TypeError`` on None -- so ``SSLCredentials()``
-                # with no explicit ``purpose`` cannot build a context at all.
-                # Real bug, kept as-is: fixing it changes the default TLS
-                # purpose of a security-relevant public API, which is out of
-                # scope for a typing pass.
-                purpose=purpose,  # type: ignore[arg-type]
+                purpose=purpose,
                 cafile=cafile,
                 capath=capath,
                 cadata=cadata,

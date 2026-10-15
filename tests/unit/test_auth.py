@@ -148,6 +148,31 @@ class Test_SSLCredentials:
                 cadata="moo",
             )
 
+    def test_constructor__default_purpose_is_SERVER_AUTH(self):
+        with patch("faust.auth.ssl.create_default_context") as cdc:
+            c = SSLCredentials(cafile="/foo/bar/ca.file")
+            assert c.context is cdc.return_value
+            cdc.assert_called_once_with(
+                purpose=ssl.Purpose.SERVER_AUTH,
+                cafile="/foo/bar/ca.file",
+                capath=None,
+                cadata=None,
+            )
+
+    def test_constructor__no_arguments_builds_verifying_context(self):
+        # Not mocked: builds a real context, so this exercises the
+        # ``ssl.create_default_context`` argument validation.
+        c = SSLCredentials()
+        assert isinstance(c.context, ssl.SSLContext)
+        # SERVER_AUTH means we verify the broker's certificate.
+        assert c.context.check_hostname is True
+        assert c.context.verify_mode == ssl.CERT_REQUIRED
+
+    def test_constructor__purpose_is_overridable(self):
+        c = SSLCredentials(purpose=ssl.Purpose.CLIENT_AUTH)
+        assert isinstance(c.context, ssl.SSLContext)
+        assert c.context.check_hostname is False
+
     def test_having_context(self):
         context = Mock(name="context")
         c = SSLCredentials(context)

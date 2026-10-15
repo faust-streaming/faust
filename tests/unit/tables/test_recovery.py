@@ -1,3 +1,4 @@
+import asyncio
 from collections import Counter
 from unittest.mock import MagicMock, Mock
 
@@ -5,12 +6,20 @@ import pytest
 
 from faust.tables.recovery import RebalanceAgain, Recovery, ServiceStopped
 from faust.types import TP
-from tests.helpers import AsyncMock
+from tests.helpers import AsyncMock, new_event
 
 TP1 = TP("foo", 6)
 TP2 = TP("bar", 3)
 TP3 = TP("baz", 1)
 TP4 = TP("xuz", 0)
+
+
+class LoopBreak(BaseException):
+    """Raised by the fake changelog queue to break out of the slurp loop.
+
+    Inherits from :class:`BaseException` so it is not swallowed by the
+    ``except Exception`` guarding the body of ``_slurp_changelogs``.
+    """
 
 
 @pytest.fixture()
@@ -385,6 +394,82 @@ class TestRecovery:
     def test__is_changelog_tp(self, *, recovery, tables):
         tables.changelog_topics = {TP1.topic}
         assert recovery._is_changelog_tp(TP1)
+
+
+class TestSlurpChangelogs:
+    @pytest.fixture()
+    def table(self):
+        return Mock(
+            name="table",
+            recovery_buffer_size=1000,
+            standby_buffer_size=1000,
+            on_changelog_event=AsyncMock(),
+        )
+
+    async def _slurp(self, recovery, tables, items):
+        # Feed the changelog queue with ``items`` (events, or exceptions to
+        # raise), then break out of the otherwise infinite loop.
+        tables.changelog_queue = Mock(
+            name="changelog_queue",
+            get=AsyncMock(side_effect=[*items, LoopBreak()]),
+        )
+        with pytest.raises(LoopBreak):
+            await Recovery._slurp_changelogs(recovery)
+
+    @pytest.mark.asyncio
+    async def test_unknown_tp_is_not_applied_to_previous_table(
+        self, *, recovery, tables, table, app
+    ):
+        recovery.active_tps.add(TP1)
+        recovery.tp_to_table[TP1] = table
+        known = new_event(app, topic=TP1.topic, partition=TP1.partition, offset=1)
+        unknown = new_event(app, topic=TP3.topic, partition=TP3.partition, offset=5)
+
+        await self._slurp(recovery, tables, [known, unknown])
+
+        assert recovery.active_offsets[TP1] == 1
+        # the event for the untracked partition must not end up in the
+        # offsets/buffer of the table handled in the previous iteration.
+        assert TP3 not in recovery.active_offsets
+        assert recovery.buffers[table] == [known]
+        table.on_changelog_event.assert_called_once_with(known)
+
+    @pytest.mark.asyncio
+    async def test_unknown_tp_still_runs_end_of_loop(self, *, recovery, tables, app):
+        tables.standbys_ready = False
+        recovery.in_recovery = True
+        unknown = new_event(app, topic=TP3.topic, partition=TP3.partition, offset=5)
+
+        await self._slurp(recovery, tables, [unknown])
+
+        # Everything after the "apply event" block must still run for an
+        # event on an untracked partition: recovery end is signalled...
+        assert not recovery.in_recovery
+        # ...and the standby bookkeeping happens.
+        tables.on_standbys_ready.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_detect_aborted_tx__partition_without_position(
+        self, *, recovery, tables, app
+    ):
+        positions = {TP1: None, TP2: 30}
+        app.in_transaction = True
+        app.consumer = Mock(
+            name="consumer",
+            position=AsyncMock(side_effect=lambda tp: positions[tp]),
+        )
+        recovery.active_highwaters.update({TP1: 10, TP2: 20})
+        recovery.active_offsets.update({TP1: 5, TP2: 5})
+
+        # two timeouts in a row trigger the aborted transaction detection.
+        await self._slurp(
+            recovery, tables, [asyncio.TimeoutError(), asyncio.TimeoutError()]
+        )
+
+        # TP1 has no position yet, so it is skipped, and that must not
+        # prevent TP2 from being fixed up to its highwater.
+        assert recovery.active_offsets[TP1] == 5
+        assert recovery.active_offsets[TP2] == 20
 
 
 @pytest.mark.parametrize(
