@@ -302,6 +302,30 @@ class TestTransactionManager:
             3,
             43.2,
             {},
+            transactional_id=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_and_wait__forwards_transactional_id(self, *, manager):
+        on_send = Mock()
+
+        async def send(*args, **kwargs):
+            on_send(*args, **kwargs)
+            return done_future()
+
+        manager.send = send
+
+        await manager.send_and_wait(
+            "t", "k", "v", 3, 43.2, {}, transactional_id="testid-2-4"
+        )
+        on_send.assert_called_once_with(
+            "t",
+            "k",
+            "v",
+            3,
+            43.2,
+            {},
+            transactional_id="testid-2-4",
         )
 
     @pytest.mark.asyncio

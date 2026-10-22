@@ -333,7 +333,15 @@ class TransactionManager(Service, TransactionManagerT):
         transactional_id: Optional[str] = None,
     ) -> RecordMetadata:
         """Send message and wait for it to be transmitted."""
-        fut = await self.send(topic, key, value, partition, timestamp, headers)
+        fut = await self.send(
+            topic,
+            key,
+            value,
+            partition,
+            timestamp,
+            headers,
+            transactional_id=transactional_id,
+        )
         return await fut
 
     async def commit(
