@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any, Optional
-from unittest.mock import Mock, PropertyMock, call
+from unittest.mock import Mock, PropertyMock, call, patch
 
 import pytest
 
@@ -21,6 +21,32 @@ class TestProducerBuffer:
         buf.put(fut)
 
         buf.pending.put_nowait.assert_called_once_with(fut)
+
+    def test_put__threaded_when_configured(self, *, buf):
+        fut = Mock(name="future_message")
+        buf.app.conf.producer_threaded = True
+        buf.pending = Mock(name="pending")
+        threaded_producer = Mock(name="threaded_producer", thread_loop=Mock())
+        buf.threaded_producer = threaded_producer
+        buf.queue = Mock(name="queue")
+
+        with patch("faust.transport.producer.asyncio.run_coroutine_threadsafe") as run:
+            buf.put(fut)
+
+        run.assert_called_once()
+        buf.pending.put_nowait.assert_not_called()
+
+    def test_put__transactional_uses_async_buffer(self, *, buf):
+        fut = Mock(name="future_message")
+        buf.app.conf.producer_threaded = True
+        buf.app.in_transaction = True
+        buf.pending = Mock(name="pending")
+        buf.threaded_producer = Mock(name="threaded_producer")
+
+        buf.put(fut)
+
+        buf.pending.put_nowait.assert_called_once_with(fut)
+        buf.threaded_producer.event_queue.put.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_on_stop(self, *, buf):

@@ -1436,6 +1436,12 @@ class ProducerBaseTest:
 
 
 class TestProducer(ProducerBaseTest):
+    def test_producer__threaded_disabled_for_transactions(self, *, app):
+        app.conf.producer_threaded = True
+        app.in_transaction = True
+        producer = Producer(app.transport)
+        assert producer.threaded_producer is None
+
     @pytest.mark.conf(producer_partitioner=my_partitioner)
     def test_producer__uses_custom_partitioner(self, *, producer):
         assert producer.partitioner is my_partitioner
