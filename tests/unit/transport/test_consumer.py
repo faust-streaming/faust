@@ -182,7 +182,7 @@ class TestTransactionManager:
         manager._stop_transactions = AsyncMock()
         manager._start_transactions = AsyncMock()
 
-        assigned = {TP2}
+        assigned = {TP1, TP2}
         revoked = {TP3}
         newly_assigned = {TP2}
         await manager.on_rebalance(assigned, revoked, newly_assigned)
