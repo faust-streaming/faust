@@ -294,20 +294,16 @@ class TransactionManager(Service, TransactionManagerT):
         transactional_id: Optional[str] = None,
     ) -> Awaitable[RecordMetadata]:
         """Schedule message to be sent by producer."""
-        group = transactional_id = None
+        group = None
         p = self.consumer.key_partition(topic, key, partition)
-        from faust.streams import current_event
+        if transactional_id is None:
+            from faust.streams import current_event
 
-        event = current_event()
-        if event is not None:
-            source_tp = event.message.tp
-            group = self.app.assignor.group_for_topic(source_tp.topic)
-            transactional_id = (
-                f"{self.app.conf.id}-{group}-{source_tp.partition}"
-            )
-        elif p is not None:
-            group = self.app.assignor.group_for_topic(topic)
-            transactional_id = f"{self.app.conf.id}-{group}-{p}"
+            event = current_event()
+            if event is not None:
+                transactional_id = self.transactional_id_for_tp(event.message.tp)
+            elif p is not None:
+                transactional_id = self.transactional_id_for_tp(TP(topic, p))
         return await self.producer.send(
             topic,
             key,
@@ -317,6 +313,10 @@ class TransactionManager(Service, TransactionManagerT):
             headers,
             transactional_id=transactional_id,
         )
+
+    def transactional_id_for_tp(self, tp: TP) -> str:
+        group = self.app.assignor.group_for_topic(tp.topic)
+        return f"{self.app.conf.id}-{group}-{tp.partition}"
 
     def send_soon(self, fut: FutureMessage) -> None:
         raise NotImplementedError()

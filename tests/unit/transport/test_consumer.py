@@ -263,9 +263,7 @@ class TestTransactionManager:
         event = Mock(name="event", message=Mock(tp=TP("input", 2)))
 
         with patch("faust.streams.current_event", return_value=event):
-            await manager.send(
-                "output", "k", "v", partition=None, headers=None, timestamp=None
-            )
+            await manager.send("output", "k", "v", partition=None, headers=None, timestamp=None)
 
         manager.consumer.key_partition.assert_called_once_with("output", "k", None)
         producer.send.assert_called_once_with(
@@ -277,6 +275,10 @@ class TestTransactionManager:
             None,
             transactional_id="testid-4-2",
         )
+
+    def test_transactional_id_for_tp(self, *, manager):
+        manager.app.assignor._topic_groups = {"input": 4}
+        assert manager.transactional_id_for_tp(TP("input", 2)) == "testid-4-2"
 
     def test_send_soon(self, *, manager):
         with pytest.raises(NotImplementedError):

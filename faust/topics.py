@@ -232,6 +232,14 @@ class Topic(SerializedChannel, TopicT):
             callback=callback,
             eager_partitioning=eager_partitioning,
         )
+        if self.app.in_transaction:
+            event = current_event()
+            if event is not None:
+                fut.message = fut.message._replace(
+                    transactional_id=self.app.consumer.transactions.transactional_id_for_tp(
+                        event.message.tp
+                    )
+                )
         self.app.producer.send_soon(fut)
         return fut
 
@@ -409,6 +417,9 @@ class Topic(SerializedChannel, TopicT):
         )
         assert topic is not None
         producer = await self._get_producer()
+        transaction_id_options: dict[str, str] = {}
+        if message.transactional_id is not None:
+            transaction_id_options["transactional_id"] = message.transactional_id
         state = app.sensors.on_send_initiated(
             producer,
             topic,
@@ -428,6 +439,7 @@ class Topic(SerializedChannel, TopicT):
                 partition=partition,
                 timestamp=timestamp,
                 headers=headers,
+                **transaction_id_options,
             )
             app.sensors.on_send_completed(producer, state, ret)
             return await self._finalize_message(fut, ret)
@@ -441,6 +453,7 @@ class Topic(SerializedChannel, TopicT):
                     partition=partition,
                     timestamp=timestamp,
                     headers=headers,
+                    **transaction_id_options,
                 ),
             )
             callback = partial(

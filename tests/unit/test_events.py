@@ -3,6 +3,8 @@ from unittest.mock import Mock
 import pytest
 
 from faust import Event
+from faust.app._attached import Attachments
+from faust.types import TP
 from tests.helpers import AsyncMock
 
 
@@ -171,6 +173,26 @@ class Test_Event:
             callback=callback,
         )
         assert result is app._attachments.put()
+
+    def test_attach__retains_source_transaction_id(self, *, app, message):
+        app.in_transaction = True
+        app._attachments = Attachments(app)
+        app.consumer = Mock(
+            transactions=Mock(
+                transactional_id_for_tp=Mock(return_value="app-2-4")
+            )
+        )
+        message.tp = TP("input", 4)
+        message.offset = 20
+
+        future = app._attachments.put(
+            message, "output", key=b"key", value=b"value"
+        )
+
+        assert future.message.transactional_id == "app-2-4"
+        app.consumer.transactions.transactional_id_for_tp.assert_called_once_with(
+            message.tp
+        )
 
     @pytest.mark.asyncio
     async def test__send(self, *, event, app):

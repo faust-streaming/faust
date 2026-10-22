@@ -174,6 +174,12 @@ class Attachments:
             value_serializer,
             callback,
         )
+        if self.app.in_transaction:
+            fut.message = fut.message._replace(
+                transactional_id=self.app.consumer.transactions.transactional_id_for_tp(
+                    message.tp
+                )
+            )
         # Note: Since FutureMessage have members that are unhashable
         # we wrap it in an Unordered object to stop heappush from crashing.
         # Unordered simply orders by random order, which is fine

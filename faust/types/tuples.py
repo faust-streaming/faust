@@ -69,6 +69,7 @@ class PendingMessage(NamedTuple):
     topic: Optional[str] = None
     offset: Optional[int] = None
     generation_id: Optional[int] = None
+    transactional_id: Optional[str] = None
 
 
 def _PendingMessage_to_Message(p: PendingMessage) -> "Message":
