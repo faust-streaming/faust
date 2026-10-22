@@ -791,6 +791,15 @@ class AIOKafkaConsumerThread(ConsumerThread):
         """Commit topic offsets."""
         return await self.call_thread(self._commit, offsets)
 
+    async def note_transactional_commit(self, offsets: Mapping[TP, int]) -> None:
+        await self.call_thread(self._note_transactional_commit, offsets)
+
+    def _note_transactional_commit(self, offsets: Mapping[TP, int]) -> None:
+        now = monotonic()
+        self.tp_last_committed_at.update(
+            {tp: now for tp in offsets if tp in self.assignment()}
+        )
+
     async def _commit(self, offsets: Mapping[TP, int]) -> bool:
         consumer = self._ensure_consumer()
         now = monotonic()

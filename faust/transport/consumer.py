@@ -1069,6 +1069,8 @@ class Consumer(Service, ConsumerT):
                     committable_offsets,
                     start_new_transaction=start_new_transaction,
                 )
+                if did_commit:
+                    await self.note_transactional_commit(committable_offsets)
             else:
                 await self.app.producer.flush()
                 did_commit = await self._commit(committable_offsets)
@@ -1080,6 +1082,10 @@ class Consumer(Service, ConsumerT):
                 self._committed_offset.update(committable_offsets)
                 self.app.monitor.on_tp_commit(committable_offsets)
         return did_commit
+
+    async def note_transactional_commit(self, offsets: Mapping[TP, int]) -> None:
+        """Notify the transport after transactional offsets commit."""
+        await self.app.consumer.note_transactional_commit(offsets)
 
     def _filter_tps_with_pending_acks(
         self, topics: Optional[TPorTopicSet] = None
@@ -1286,6 +1292,9 @@ class ConsumerThread(QueueServiceThread):
         """Commit offsets in topic partitions."""
         ...
 
+    async def note_transactional_commit(self, offsets: Mapping[TP, int]) -> None:
+        """Record a commit completed through the producer transaction."""
+
     @abc.abstractmethod
     async def position(self, tp: TP) -> Optional[int]:
         """Return the current offset for partition."""
@@ -1475,6 +1484,9 @@ class ThreadDelegateConsumer(Consumer):
 
     async def _commit(self, offsets: Mapping[TP, int]) -> bool:
         return await self._thread.commit(offsets)
+
+    async def note_transactional_commit(self, offsets: Mapping[TP, int]) -> None:
+        await self._thread.note_transactional_commit(offsets)
 
     def close(self) -> None:
         """Close consumer for graceful shutdown."""

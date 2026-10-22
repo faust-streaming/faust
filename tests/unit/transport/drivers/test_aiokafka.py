@@ -1063,6 +1063,21 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             await cthread.commit(offsets)
 
     @pytest.mark.asyncio
+    async def test_note_transactional_commit(self, *, cthread):
+        offsets = {TP1: 100}
+        cthread.call_thread = AsyncMock()
+        await cthread.note_transactional_commit(offsets)
+        cthread.call_thread.assert_awaited_once_with(
+            cthread._note_transactional_commit, offsets
+        )
+
+    def test__note_transactional_commit(self, *, cthread):
+        cthread.assignment = Mock(return_value={TP1})
+        cthread.tp_last_committed_at = {}
+        cthread._note_transactional_commit({TP1: 100})
+        assert cthread.tp_last_committed_at[TP1] > 0
+
+    @pytest.mark.asyncio
     async def test__commit(self, *, cthread, _consumer):
         offsets = {TP1: 1001}
         cthread._consumer = _consumer
