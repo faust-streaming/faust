@@ -254,6 +254,32 @@ class TestTransactionManager:
             transactional_id=None,
         )
 
+    @pytest.mark.asyncio
+    async def test_send__uses_source_transaction_when_destination_unassigned(
+        self, *, manager, producer
+    ):
+        manager.app.assignor._topic_groups = {"input": 4}
+        manager.consumer.key_partition.return_value = None
+        event = Mock(name="event", message=Mock(tp=TP("input", 2)))
+
+        with patch("faust.streams.current_event", return_value=event):
+            await manager.send("output", "k", "v", partition=None, headers=None, timestamp=None)
+
+        manager.consumer.key_partition.assert_called_once_with("output", "k", None)
+        producer.send.assert_called_once_with(
+            "output",
+            "k",
+            "v",
+            None,
+            None,
+            None,
+            transactional_id="testid-4-2",
+        )
+
+    def test_transactional_id_for_tp(self, *, manager):
+        manager.app.assignor._topic_groups = {"input": 4}
+        assert manager.transactional_id_for_tp(TP("input", 2)) == "testid-4-2"
+
     def test_send_soon(self, *, manager):
         with pytest.raises(NotImplementedError):
             manager.send_soon(Mock(name="FutureMessage"))
@@ -276,6 +302,30 @@ class TestTransactionManager:
             3,
             43.2,
             {},
+            transactional_id=None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_and_wait__forwards_transactional_id(self, *, manager):
+        on_send = Mock()
+
+        async def send(*args, **kwargs):
+            on_send(*args, **kwargs)
+            return done_future()
+
+        manager.send = send
+
+        await manager.send_and_wait(
+            "t", "k", "v", 3, 43.2, {}, transactional_id="testid-2-4"
+        )
+        on_send.assert_called_once_with(
+            "t",
+            "k",
+            "v",
+            3,
+            43.2,
+            {},
+            transactional_id="testid-2-4",
         )
 
     @pytest.mark.asyncio

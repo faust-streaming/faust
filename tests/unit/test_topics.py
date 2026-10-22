@@ -7,7 +7,7 @@ import pytest
 import faust
 from faust import Event, Record
 from faust.exceptions import KeyDecodeError, ValueDecodeError
-from faust.types import FutureMessage, Message, PendingMessage
+from faust.types import FutureMessage, Message, PendingMessage, TP
 from tests.helpers import AsyncMock
 
 
@@ -161,6 +161,18 @@ class Test_Topic:
             timestamp=312.5134,
         )
         callback.assert_called_once_with(fm)
+
+    @pytest.mark.asyncio
+    async def test_publish_message_forwards_pending_transaction_id(self, *, topic):
+        send_result = asyncio.get_running_loop().create_future()
+        producer = Mock(send=AsyncMock(return_value=send_result))
+        topic._get_producer = AsyncMock(return_value=producer)
+        future = topic.as_future_message(key="foo", value="bar")
+        future.message = future.message._replace(transactional_id="app-2-4")
+
+        await topic.publish_message(future)
+
+        assert producer.send.await_args.kwargs["transactional_id"] == "app-2-4"
 
     @pytest.mark.asyncio
     async def test_publish_message__non_bytes_key_does_not_crash(self, *, topic, app):
@@ -322,6 +334,19 @@ class Test_Topic:
         assert fut is topic.as_future_message.return_value
 
         app.producer.send_soon.assert_called_once_with(fut)
+
+    def test_send_soon__retains_source_transaction(self, *, topic, app):
+        app.in_transaction = True
+        app.consumer.transactions.transactional_id_for_tp = Mock(
+            return_value="app-2-4"
+        )
+        app.producer.send_soon = Mock(name="send_soon")
+        event = Mock(name="event", message=Mock(tp=TP("input", 4)))
+
+        with patch("faust.topics.current_event", return_value=event):
+            future = topic.send_soon(key="foo", value="bar")
+
+        assert future.message.transactional_id == "app-2-4"
 
     @pytest.mark.asyncio
     async def test_decode__decode_error_propagate(self, *, topic, message):
