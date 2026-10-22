@@ -254,6 +254,30 @@ class TestTransactionManager:
             transactional_id=None,
         )
 
+    @pytest.mark.asyncio
+    async def test_send__uses_source_transaction_when_destination_unassigned(
+        self, *, manager, producer
+    ):
+        manager.app.assignor._topic_groups = {"input": 4}
+        manager.consumer.key_partition.return_value = None
+        event = Mock(name="event", message=Mock(tp=TP("input", 2)))
+
+        with patch("faust.streams.current_event", return_value=event):
+            await manager.send(
+                "output", "k", "v", partition=None, headers=None, timestamp=None
+            )
+
+        manager.consumer.key_partition.assert_called_once_with("output", "k", None)
+        producer.send.assert_called_once_with(
+            "output",
+            "k",
+            "v",
+            None,
+            None,
+            None,
+            transactional_id="testid-4-2",
+        )
+
     def test_send_soon(self, *, manager):
         with pytest.raises(NotImplementedError):
             manager.send_soon(Mock(name="FutureMessage"))

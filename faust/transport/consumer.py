@@ -296,7 +296,16 @@ class TransactionManager(Service, TransactionManagerT):
         """Schedule message to be sent by producer."""
         group = transactional_id = None
         p = self.consumer.key_partition(topic, key, partition)
-        if p is not None:
+        from faust.streams import current_event
+
+        event = current_event()
+        if event is not None:
+            source_tp = event.message.tp
+            group = self.app.assignor.group_for_topic(source_tp.topic)
+            transactional_id = (
+                f"{self.app.conf.id}-{group}-{source_tp.partition}"
+            )
+        elif p is not None:
             group = self.app.assignor.group_for_topic(topic)
             transactional_id = f"{self.app.conf.id}-{group}-{p}"
         return await self.producer.send(
