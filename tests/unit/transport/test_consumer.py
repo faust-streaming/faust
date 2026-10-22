@@ -980,6 +980,9 @@ class TestConsumer:
     async def test_commit_offsets__in_transaction(self, *, consumer):
         consumer.in_transaction = True
         consumer.app.producer.flush = AsyncMock()
+        consumer.app.consumer = Mock(
+            note_transactional_commit=AsyncMock(name="note_transactional_commit")
+        )
         consumer.transactions.commit = AsyncMock()
         consumer.current_assignment.update({TP1, TP2})
         ret = await consumer._commit_offsets(
@@ -992,6 +995,9 @@ class TestConsumer:
         consumer.transactions.commit.assert_called_once_with(
             {TP1: 3003, TP2: 6006},
             start_new_transaction=True,
+        )
+        consumer.app.consumer.note_transactional_commit.assert_awaited_once_with(
+            {TP1: 3003, TP2: 6006}
         )
         assert ret is consumer.transactions.commit.return_value
 
