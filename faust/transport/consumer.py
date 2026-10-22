@@ -237,17 +237,19 @@ class TransactionManager(Service, TransactionManagerT):
             )
             await T(self._stop_transactions, tids=revoked_tids)(revoked_tids)
 
-        # Start produers for assigned partitions
-        assigned_tids = sorted(self._tps_to_transactional_ids(assigned))
-        if assigned_tids:
+        # Start producers only for partitions newly assigned in this rebalance.
+        newly_assigned_tids = sorted(self._tps_to_transactional_ids(newly_assigned))
+        if newly_assigned_tids:
             self.log.info(
                 "Starting %r transactional %s for %r assigned %s...",
-                len(assigned_tids),
-                pluralize(len(assigned_tids), "producer"),
-                len(assigned),
-                pluralize(len(assigned), "partition"),
+                len(newly_assigned_tids),
+                pluralize(len(newly_assigned_tids), "producer"),
+                len(newly_assigned),
+                pluralize(len(newly_assigned), "partition"),
             )
-            await T(self._start_transactions, tids=assigned_tids)(assigned_tids)
+            await T(self._start_transactions, tids=newly_assigned_tids)(
+                newly_assigned_tids
+            )
 
     async def _stop_transactions(self, tids: Iterable[str]) -> None:
         T = traced_from_parent_span()
