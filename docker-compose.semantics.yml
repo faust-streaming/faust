@@ -1,0 +1,23 @@
+services:
+  redpanda:
+    image: redpandadata/redpanda:v24.2.18
+    command:
+      - redpanda
+      - start
+      - --mode
+      - dev-container
+      - --smp
+      - "1"
+      - --memory
+      - 1G
+      - --reserve-memory
+      - 0M
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - external://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - external://localhost:9092
+    ports:
+      - "9092:9092"
