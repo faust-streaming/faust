@@ -824,6 +824,17 @@ class Test_AIOKafkaConsumerThread(AIOKafkaConsumerThreadFixtures):
             cthread._create_worker_consumer(transport)
         assert cthread._assignor is mod.RoundRobinPartitionAssignor
 
+    def test__create_worker_consumer__uses_faust_assignor_for_transactions(
+        self, *, cthread, app
+    ):
+        app.conf.table_standby_replicas = 0
+        app.tables._changelogs.clear()
+        cthread.consumer.in_transaction = True
+        transport = cthread.transport
+        with patch("aiokafka.AIOKafkaConsumer"):
+            cthread._create_worker_consumer(transport)
+        assert cthread._assignor is app.assignor
+
     def test__create_worker_consumer__uses_faust_assignor_with_changelog_topics(
         self, *, cthread, app
     ):
