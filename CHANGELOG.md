@@ -45,6 +45,9 @@ resumes the Keep a Changelog format.
 - New userguide page: *FastAPI and other ASGI applications*.
 
 ### Fixed
+- Support aiokafka 0.15.0, which removed the internal
+  `aiokafka.util.parse_kafka_version` helper used to determine Kafka header
+  support.
 - Faust apps no longer resolve an event loop when agents, tables or the
   transport are declared at import time. Previously that pinned the app to a
   loop that was never run, so starting it from `asyncio.run()` — as uvicorn
