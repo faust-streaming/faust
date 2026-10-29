@@ -52,10 +52,11 @@ class ProducerBuffer(Service, ProducerBufferT):
         # both swap the AttributeError raised by a half-built buffer for an
         # AssertionError and disappear under ``python -O``.
         app = cast(AppT, self.app)
-        if app.conf.producer_threaded:
+        threaded_producer = getattr(self, "threaded_producer", None)
+        if threaded_producer is not None and not app.in_transaction:
             # Likewise Optional: only set when :setting:`producer_threaded`
             # is enabled, which is the branch we are in.
-            threaded_producer = cast(ServiceThread, self.threaded_producer)
+            threaded_producer = cast(ServiceThread, threaded_producer)
             if not self.queue:
                 # ``event_queue`` is not part of the ``ServiceThread``
                 # interface: it belongs to the driver's threaded producer
@@ -132,7 +133,8 @@ class ProducerBuffer(Service, ProducerBufferT):
         # after construction; ``cast`` keeps the original AttributeError
         # behaviour instead of an assert that ``python -O`` would remove.
         app = cast(AppT, self.app)
-        if app.conf.producer_threaded:
+        threaded_producer = getattr(self, "threaded_producer", None)
+        if threaded_producer is not None and not app.in_transaction:
             if not self.queue:
                 return 0
             # ``Queue._queue`` is a CPython implementation detail (the
@@ -180,7 +182,7 @@ class Producer(Service, ProducerT):
         assert api_version is not None
         super().__init__(loop=loop, **kwargs)
         self.buffer = ProducerBuffer(loop=self.loop, beacon=self.beacon)
-        if conf.producer_threaded:
+        if conf.producer_threaded and not self.app.in_transaction:
             # XXX ``create_threaded_producer`` is not defined here or on
             # ``ProducerT``; only the aiokafka driver implements it.  With the
             # confluent driver (faust/transport/drivers/confluent.py) this line

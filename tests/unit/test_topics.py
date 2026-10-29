@@ -163,6 +163,18 @@ class Test_Topic:
         callback.assert_called_once_with(fm)
 
     @pytest.mark.asyncio
+    async def test_publish_message_uses_transaction_aware_producer(self, *, topic, app):
+        send_result = asyncio.get_running_loop().create_future()
+        producer = Mock(send=AsyncMock(return_value=send_result))
+        app.maybe_start_producer = AsyncMock(return_value=producer)
+        fm = topic.as_future_message(key="foo", value="bar")
+
+        await topic.publish_message(fm)
+
+        app.maybe_start_producer.assert_awaited_once_with()
+        producer.send.assert_awaited_once()
+
+    @pytest.mark.asyncio
     async def test_publish_message__non_bytes_key_does_not_crash(self, *, topic, app):
         # A raw, unserialized non-bytes key/value can reach publish_message
         # (e.g. an int key produced via group_by/forward). Computing the
